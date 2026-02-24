@@ -3,10 +3,6 @@ import "dotenv/config";
 
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  console.warn("DATABASE_URL is not set. Database checks will fail.");
-}
-
 export const pool = new Pool({
   connectionString,
 });
