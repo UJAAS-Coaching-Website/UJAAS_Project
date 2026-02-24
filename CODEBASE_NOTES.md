@@ -1,14 +1,13 @@
 # Codebase Notes (Auto-maintained)
 
 ## Summary
-- Vite + React frontend.
-- Express backend scaffold in `backend/`.
-- Entry point: `index.html` -> `src/main.tsx` -> `src/App.tsx`.
+- Mono-repo layout with `frontend/` (Vite + React) and `backend/` (Express).
+- Entry point: `frontend/index.html` -> `frontend/src/main.tsx` -> `frontend/src/App.tsx`.
 - UI uses Radix UI components, Tailwind utilities, and assorted UI helpers.
 
 ## Tooling
-- Frontend build: Vite (`vite.config.ts`)
-- Frontend scripts: `npm run dev`, `npm run build` (`package.json`)
+- Frontend build: Vite (`frontend/vite.config.ts`)
+- Frontend scripts: `npm run dev`, `npm run build` (`frontend/package.json`)
 - Backend scripts: `npm run dev`, `npm start` (`backend/package.json`)
 
 ## Dependencies (high level)
@@ -21,10 +20,10 @@
 - Express, Helmet, Morgan, CORS, dotenv, pg
 
 ## Source Layout
-- `src/main.tsx`: app bootstrap
-- `src/App.tsx`: routing/flow controller (login, get started, dashboards)
-- `src/index.css`, `src/styles/globals.css`: styling
-- `src/guidelines/Guidelines.md`: placeholder guidance
+- `frontend/src/main.tsx`: app bootstrap
+- `frontend/src/App.tsx`: routing/flow controller (login, get started, dashboards)
+- `frontend/src/index.css`, `frontend/src/styles/globals.css`: styling
+- `frontend/src/guidelines/Guidelines.md`: placeholder guidance
 - `backend/src/index.js`: Express app entry
 
 ## Components (top-level)
@@ -48,8 +47,8 @@
 - `ViewResults.tsx`
 
 ## UI Library
-- `src/components/ui/*`: local Radix UI-based components
-- `src/components/figma/ImageWithFallback.tsx`: Figma helper
+- `frontend/src/components/ui/*`: local Radix UI-based components
+- `frontend/src/components/figma/ImageWithFallback.tsx`: Figma helper
 
 ## App Behavior Notes
 - Uses `localStorage` keys:
@@ -68,3 +67,4 @@
 ## Update Log
 - 2026-02-24: Initial structure snapshot and key notes.
 - 2026-02-24: Added Express backend scaffold under `backend/`.
+- 2026-02-24: Moved frontend files into `frontend/` directory.
