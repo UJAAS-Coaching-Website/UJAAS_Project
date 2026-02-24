@@ -190,22 +190,23 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Test Results</h1>
-            <p className="text-gray-600">Your complete performance history and analytics</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Test Results</h1>
+            <p className="text-sm sm:text-base text-gray-600">Your complete performance history and analytics</p>
           </div>
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-medium hover:bg-indigo-200 transition-all">
-              <Download className="w-5 h-5" />
-              Export All
+          <div className="flex flex-wrap gap-3">
+            <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-medium hover:bg-indigo-200 transition-all text-sm">
+              <Download className="w-4 sm:w-5 h-4 sm:h-5" />
+              <span className="hidden sm:inline">Export All</span>
+              <span className="sm:hidden">Export</span>
             </button>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-all"
             >
-              <X className="w-6 h-6 text-gray-600" />
+              <X className="w-5 sm:w-6 h-5 sm:h-6 text-gray-600" />
             </button>
           </div>
         </div>

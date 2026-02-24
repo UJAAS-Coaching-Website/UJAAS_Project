@@ -8,7 +8,9 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  Save
+  Save,
+  BookOpen,
+  Award
 } from 'lucide-react';
 
 interface Question {
@@ -103,51 +105,64 @@ export function TestTaking({
 
   const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null).length;
   const notAnsweredCount = questions.length - answeredCount;
+  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
+  const questionCount = questions.length;
 
   const question = questions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{testTitle}</h1>
-              <p className="text-sm text-gray-600">Question {currentQuestion + 1} of {questions.length}</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">{testTitle}</h1>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
+                  {questionCount} Questions
+                </span>
+                <span className="flex items-center gap-1">
+                  <Award className="w-3 h-3 sm:w-4 sm:h-4" />
+                  {totalMarks} Marks
+                </span>
+              </div>
             </div>
 
             {/* Timer */}
-            <div className={`flex items-center gap-3 px-6 py-3 rounded-xl ${
-              timeLeft < 300 ? 'bg-red-50 border-2 border-red-200' : 'bg-blue-50 border-2 border-blue-200'
+            <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
+              timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
+              timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
+              'bg-blue-50 border-blue-300'
             }`}>
-              <Clock className={`w-5 h-5 ${timeLeft < 300 ? 'text-red-600' : 'text-blue-600'}`} />
-              <span className={`text-lg font-bold ${timeLeft < 300 ? 'text-red-600' : 'text-blue-600'}`}>
-                {formatTime(timeLeft)}
-              </span>
+              <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                timeLeft <= 300 ? 'text-red-600' :
+                timeLeft <= 600 ? 'text-yellow-600' :
+                'text-blue-600'
+              }`} />
+              <div>
+                <p className="text-xs text-gray-600">Time Left</p>
+                <p className={`text-lg sm:text-2xl font-bold ${
+                  timeLeft <= 300 ? 'text-red-600' :
+                  timeLeft <= 600 ? 'text-yellow-600' :
+                  'text-blue-600'
+                }`}>
+                  {formatTime(timeLeft)}
+                </p>
+              </div>
             </div>
-
-            {/* Exit Button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onExit}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-all"
-            >
-              Save & Exit
-            </motion.button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Main Question Area */}
           <div className="lg:col-span-3 space-y-4">
             {/* Question Card */}
             <div
               key={currentQuestion}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8"
+              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8"
             >
               {/* Question Header */}
               <div className="flex items-start justify-between mb-6">

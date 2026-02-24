@@ -43,7 +43,7 @@ export function StudentDashboard({
   const [activeTab, setActiveTab] = useState<Tab>('home');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -54,11 +54,11 @@ export function StudentDashboard({
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-lg flex items-center justify-center shadow-lg">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                UGAS
+              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+                UJAAS
               </span>
             </motion.div>
 
@@ -77,7 +77,7 @@ export function StudentDashboard({
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                     activeTab === tab.id
-                      ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -93,7 +93,7 @@ export function StudentDashboard({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveTab('profile')}
-                className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
               >
                 {user.name.charAt(0).toUpperCase()}
@@ -147,8 +147,8 @@ function HomeTab({ user }: { user: User }) {
       label: 'Notes Downloaded', 
       value: '18', 
       icon: BookOpen, 
-      gradient: 'from-purple-500 to-pink-500',
-      bgGradient: 'from-purple-50 to-pink-50',
+      gradient: 'from-cyan-500 to-blue-500',
+      bgGradient: 'from-cyan-50 to-blue-50',
       percentage: 60
     },
     { 
@@ -168,7 +168,7 @@ function HomeTab({ user }: { user: User }) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.02 }}
-        className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
       >
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
@@ -188,7 +188,7 @@ function HomeTab({ user }: { user: User }) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-indigo-100"
+              className="text-teal-100"
             >
               Ready to continue your learning journey?
             </motion.p>
@@ -264,7 +264,7 @@ function HomeTab({ user }: { user: User }) {
         className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Target className="w-6 h-6 text-indigo-600" />
+          <Target className="w-6 h-6 text-teal-600" />
           <h3 className="text-xl font-semibold text-gray-900">Enrolled Courses</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -275,9 +275,9 @@ function HomeTab({ user }: { user: User }) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5 + index * 0.1 }}
               whileHover={{ scale: 1.05, y: -5 }}
-              className="p-5 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all"
+              className="p-5 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all"
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-3 shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-xl flex items-center justify-center mb-3 shadow-lg">
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <h4 className="font-semibold text-gray-900 mb-1 text-lg">{course}</h4>

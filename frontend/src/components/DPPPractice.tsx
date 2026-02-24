@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, ChevronLeft, ChevronRight, Flag, CheckCircle } from 'lucide-react';
+import { X, Clock, ChevronLeft, ChevronRight, Flag, CheckCircle, ArrowRight } from 'lucide-react';
 
 interface DPP {
   id: string;
@@ -74,7 +74,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswer = (optionIndex: number) => {
+  const handleAnswerSelect = (optionIndex: number) => {
     if (isSubmitted) return;
     const newAnswers = [...answers];
     newAnswers[currentQuestion] = optionIndex;
@@ -135,19 +135,21 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-teal-50 to-cyan-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!isSubmitted ? (
             <div className="space-y-6">
-              {/* Question Card */}
+              {/* Question */}
               <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-100">
                 <div className="flex items-start gap-3 mb-6">
-                  <span className="flex-shrink-0 w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold">
+                  <span className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-semibold">
                     {currentQuestion + 1}
                   </span>
-                  <p className="text-lg text-gray-900 leading-relaxed">
-                    {questions[currentQuestion].question}
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="text-lg text-gray-900 leading-relaxed">
+                      {questions[currentQuestion].question}
+                    </h3>
+                  </div>
                 </div>
 
                 {/* Options */}
@@ -155,17 +157,17 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
                   {questions[currentQuestion].options.map((option, index) => (
                     <button
                       key={index}
-                      onClick={() => handleAnswer(index)}
+                      onClick={() => handleAnswerSelect(index)}
                       className={`w-full text-left p-4 rounded-lg border-2 transition ${
                         answers[currentQuestion] === index
-                          ? 'border-indigo-600 bg-indigo-50'
-                          : 'border-gray-200 hover:border-indigo-300 bg-white'
+                          ? 'border-teal-600 bg-teal-50'
+                          : 'border-gray-200 hover:border-teal-300 bg-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                           answers[currentQuestion] === index
-                            ? 'border-indigo-600 bg-indigo-600'
+                            ? 'border-teal-600 bg-teal-600'
                             : 'border-gray-300'
                         }`}>
                           {answers[currentQuestion] === index && (
@@ -177,49 +179,49 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
                     </button>
                   ))}
                 </div>
-              </div>
 
-              {/* Navigation */}
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
-                  disabled={currentQuestion === 0}
-                  className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                  Previous
-                </button>
-
-                {currentQuestion === questions.length - 1 ? (
+                {/* Navigation */}
+                <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
                   <button
-                    onClick={() => setShowConfirmSubmit(true)}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition shadow-lg"
+                    onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
+                    disabled={currentQuestion === 0}
+                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Flag className="w-5 h-5" />
-                    Submit Test
+                    Previous
                   </button>
-                ) : (
-                  <button
-                    onClick={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-lg"
-                  >
-                    Next
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                )}
+                  
+                  {currentQuestion < questions.length - 1 ? (
+                    <button
+                      onClick={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-lg"
+                    >
+                      Next
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={answers.some(a => a === null)}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Submit
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Question Grid */}
               <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                <h3 className="font-semibold text-gray-900 mb-4">Question Navigator</h3>
-                <div className="grid grid-cols-8 sm:grid-cols-10 gap-2">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4">Questions</h4>
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                   {questions.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentQuestion(index)}
                       className={`aspect-square rounded-lg font-medium text-sm transition ${
                         currentQuestion === index
-                          ? 'bg-indigo-600 text-white ring-2 ring-indigo-600 ring-offset-2'
+                          ? 'bg-teal-600 text-white ring-2 ring-teal-600 ring-offset-2'
                           : answers[index] !== null
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -229,31 +231,24 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-6 mt-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 rounded" />
-                    <span className="text-gray-600">Answered ({answeredCount})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 rounded" />
-                    <span className="text-gray-600">Not Answered ({questions.length - answeredCount})</span>
-                  </div>
-                </div>
               </div>
             </div>
           ) : (
             /* Results */
-            <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-100 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-12 h-12 text-white" />
+            <div className="space-y-8">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  DPP Completed! 🎉
+                </h2>
+                <p className="text-gray-600">
+                  Great job! Here's your performance summary
+                </p>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Test Completed!</h2>
-              <p className="text-gray-600 mb-8">Great job on completing the test</p>
 
               <div className="max-w-md mx-auto mb-8">
-                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-8 border border-indigo-200">
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-8 border border-teal-200">
                   <p className="text-sm text-gray-600 mb-2">Your Score</p>
-                  <p className="text-6xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                  <p className="text-6xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-4">
                     {score}%
                   </p>
                   <p className="text-gray-700">
@@ -283,7 +278,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
 
               <button
                 onClick={onExit}
-                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-lg"
+                className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-lg"
               >
                 Back to DPP List
               </button>

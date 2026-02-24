@@ -60,9 +60,9 @@
 
 ## App Behavior Notes
 - Uses `localStorage` keys:
-  - `ugasUser` for current session user
-  - `ugasHasVisited` for get-started gating
-  - `ugasNotifications` for notifications
+  - `ujaasUser` for current session user
+  - `ujaasHasVisited` for get-started gating
+  - `ujaasNotifications` for notifications
   - `student_details_<id>` for student details
 
 ## Backend Notes

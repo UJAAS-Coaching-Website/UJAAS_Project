@@ -12,7 +12,8 @@ import {
   Phone,
   MapPin,
   MessageCircle,
-  UserPlus
+  UserPlus,
+  Trophy
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -24,23 +25,23 @@ interface LoginProps {
 // Mock user data
 const MOCK_USERS = {
   student: {
-    email: 'student@ugas.com',
+    email: 'student@ujaas.com',
     password: 'student123',
     data: {
       id: '1',
       name: 'Rahul Kumar',
-      email: 'student@ugas.com',
+      email: 'student@ujaas.com',
       role: 'student' as const,
       enrolledCourses: ['JEE Advanced', 'JEE Mains', 'NEET']
     }
   },
   admin: {
-    email: 'admin@ugas.com',
+    email: 'admin@ujaas.com',
     password: 'admin123',
     data: {
       id: '2',
       name: 'Admin User',
-      email: 'admin@ugas.com',
+      email: 'admin@ujaas.com',
       role: 'admin' as const
     }
   }
@@ -52,7 +53,7 @@ const testimonials = [
     course: 'JEE Advanced',
     image: '👩‍🎓',
     rating: 5,
-    text: 'UGAS helped me crack JEE with AIR 234! The DPP practice and notes are exceptional.',
+    text: 'UJAAS helped me crack JEE with AIR 234! The DPP practice and notes are exceptional.',
     achievement: 'AIR 234'
   },
   {
@@ -68,7 +69,7 @@ const testimonials = [
     course: 'JEE Mains',
     image: '👩‍🎓',
     rating: 5,
-    text: 'Outstanding faculty and excellent study material. Highly recommend UGAS to all aspirants!',
+    text: 'Outstanding faculty and excellent study material. Highly recommend UJAAS to all aspirants!',
     achievement: '99.8 Percentile'
   }
 ];
@@ -129,429 +130,301 @@ export function Login({ onLogin, onSignup }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute top-20 left-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
           animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0],
           }}
           transition={{
             duration: 20,
             repeat: Infinity,
             ease: "linear"
           }}
+          className="absolute -top-24 -right-24 w-96 h-96 bg-gradient-to-br from-teal-400/20 to-cyan-400/20 rounded-full blur-3xl"
         />
         <motion.div
-          className="absolute top-40 right-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
           animate={{
-            x: [0, -100, 0],
-            y: [0, 100, 0],
+            scale: [1, 1.3, 1],
+            rotate: [0, -90, 0],
           }}
           transition={{
-            duration: 15,
+            duration: 25,
             repeat: Infinity,
             ease: "linear"
           }}
-        />
-        <motion.div
-          className="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
-          animate={{
-            x: [0, 50, 0],
-            y: [0, -50, 0],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "linear"
-          }}
+          className="absolute -bottom-24 -left-24 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl"
         />
       </div>
 
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
-          {/* Left Side - Branding & Info */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="hidden lg:block space-y-8"
-          >
-            {/* Logo and Header */}
-            <div>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-3xl mb-6 shadow-2xl"
-              >
-                <GraduationCap className="w-11 h-11 text-white" />
-              </motion.div>
-              <h1 className="text-6xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-                UGAS
-              </h1>
-              <p className="text-2xl text-gray-700 mb-2">Ultimate Guidance & Academic Support</p>
-              <p className="text-lg text-gray-600">Empowering students to achieve their dreams</p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: 1 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">5000+</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">Students Enrolled</p>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: -1 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <Award className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">98%</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">Success Rate</p>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: -1 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">500+</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">AIR Top Rankers</p>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ scale: 1.05, rotate: 1 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white"
-              >
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-                    <Star className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">15+</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-600">Years Experience</p>
-              </motion.div>
-            </div>
-
-            {/* Testimonial Carousel */}
+      {/* Login Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md relative z-10"
+      >
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
+          {/* Logo and Header */}
+          <div className="text-center mb-8">
             <motion.div
-              key={currentTestimonial}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl mb-4 shadow-lg"
             >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="text-4xl">{testimonials[currentTestimonial].image}</div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">{testimonials[currentTestimonial].name}</h4>
-                  <p className="text-sm text-gray-600">{testimonials[currentTestimonial].course}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    {[...Array(testimonials[currentTestimonial].rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                </div>
-                <div className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-semibold rounded-full">
-                  {testimonials[currentTestimonial].achievement}
-                </div>
-              </div>
-              <p className="text-gray-700 italic">"{testimonials[currentTestimonial].text}"</p>
-              
-              {/* Dots */}
-              <div className="flex justify-center gap-2 mt-4">
-                {testimonials.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentTestimonial(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      currentTestimonial === index 
-                        ? 'w-8 bg-gradient-to-r from-indigo-600 to-purple-600' 
-                        : 'bg-gray-300 hover:bg-gray-400'
-                    }`}
-                  />
-                ))}
-              </div>
+              <GraduationCap className="w-9 h-9 text-white" />
             </motion.div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+              UJAAS
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Ultimate Guidance & Academic Support
+            </p>
+          </div>
 
-            {/* Contact Info */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white space-y-3">
-              <h3 className="font-semibold text-gray-900 mb-3">Contact Us</h3>
-              <div className="flex items-center gap-3 text-sm text-gray-700">
-                <Phone className="w-4 h-4 text-indigo-600" />
-                <span>+91 98765 43210</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-gray-700">
-                <Mail className="w-4 h-4 text-purple-600" />
-                <span>info@ugas.com</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-gray-700">
-                <MapPin className="w-4 h-4 text-pink-600" />
-                <span>123 Education Street, Delhi, India</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Right Side - Login Form */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="w-full max-w-md mx-auto"
-          >
-            {/* Mobile Logo */}
-            <div className="text-center mb-8 lg:hidden">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg"
-              >
-                <GraduationCap className="w-9 h-9 text-white" />
-              </motion.div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                UGAS
-              </h1>
-              <p className="text-gray-600">Ultimate Guidance & Academic Support</p>
-            </div>
-
-            {/* Login Card */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/50"
+          {/* Tab Switcher */}
+          <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+            <button
+              onClick={() => {
+                setIsSignup(false);
+                setError('');
+              }}
+              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
+                !isSignup
+                  ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
-              <div className="mb-6">
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-                  {isSignup ? 'Create Account' : 'Welcome Back'}
-                </h2>
-                <p className="text-gray-600">
-                  {isSignup ? 'Join UGAS and start your learning journey' : 'Sign in to continue your learning journey'}
-                </p>
-              </div>
+              Sign In
+            </button>
+            <button
+              onClick={() => {
+                setIsSignup(true);
+                setError('');
+                setShowDemo(false);
+              }}
+              className={`flex-1 py-2.5 rounded-lg font-medium transition-all ${
+                isSignup
+                  ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Name Input - Only for Signup */}
-                {isSignup && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                  >
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name
-                    </label>
-                    <div className="relative group">
-                      <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-indigo-600 transition" />
-                      <input
-                        id="name"
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-gray-50 focus:bg-white"
-                        placeholder="John Doe"
-                        required={isSignup}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Email Input */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address
-                  </label>
-                  <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-indigo-600 transition" />
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-gray-50 focus:bg-white"
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name Input - Only for Signup */}
+            {isSignup && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Full Name
+                </label>
+                <div className="relative">
+                  <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                    placeholder="John Doe"
+                    required={isSignup}
+                  />
                 </div>
+              </motion.div>
+            )}
 
-                {/* Password Input */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                    Password
-                  </label>
-                  <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-indigo-600 transition" />
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-gray-50 focus:bg-white"
-                      placeholder="••••••••"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Confirm Password - Only for Signup */}
-                {isSignup && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                  >
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm Password
-                    </label>
-                    <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-indigo-600 transition" />
-                      <input
-                        id="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition bg-gray-50 focus:bg-white"
-                        placeholder="••••••••"
-                        required={isSignup}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-2 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 text-sm"
-                  >
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{error}</span>
-                  </motion.div>
-                )}
-
-                {/* Submit Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
-                >
-                  {isSignup ? (
-                    <>
-                      <UserPlus className="w-5 h-5" />
-                      Create Account
-                    </>
-                  ) : (
-                    'Sign In'
-                  )}
-                </motion.button>
-              </form>
-
-              {/* Toggle between Login and Signup */}
-              <div className="mt-6 text-center">
-                <button
-                  onClick={() => {
-                    setIsSignup(!isSignup);
-                    setError('');
-                    setShowDemo(false);
-                  }}
-                  className="text-sm text-gray-600 hover:text-indigo-600 transition"
-                >
-                  {isSignup ? (
-                    <>Already have an account? <span className="font-semibold text-indigo-600">Sign In</span></>
-                  ) : (
-                    <>Don't have an account? <span className="font-semibold text-indigo-600">Sign Up</span></>
-                  )}
-                </button>
+            {/* Email Input */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                  placeholder="you@example.com"
+                  required
+                />
               </div>
+            </div>
 
-              {/* Demo Credentials - Only show for login */}
-              {!isSignup && (
-                <div className="mt-6 pt-6 border-t border-gray-200">
+            {/* Password Input */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Confirm Password - Only for Signup */}
+            {isSignup && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                    placeholder="••••••••"
+                    required={isSignup}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+
+            {/* Submit Button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {isSignup ? 'Create Account' : 'Sign In'}
+            </motion.button>
+          </form>
+
+          {/* Demo Credentials - Only show for login */}
+          {!isSignup && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowDemo(!showDemo)}
+                className="text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1 mb-3"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {showDemo ? 'Hide' : 'Try'} Demo Login
+              </button>
+              
+              {showDemo && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
                   <button
-                    onClick={() => setShowDemo(!showDemo)}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                    onClick={() => handleDemoLogin('student')}
+                    className="w-full p-3 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all text-left group"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    {showDemo ? 'Hide' : 'Show'} Demo Credentials
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 mb-0.5">Student Demo</p>
+                        <p className="text-xs text-gray-600">student@ujaas.com</p>
+                      </div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Users className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
                   </button>
                   
-                  {showDemo && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-4 space-y-3 overflow-hidden"
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200"
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-medium text-gray-700">Student Account</p>
-                          <button
-                            onClick={() => handleDemoLogin('student')}
-                            className="text-xs bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md"
-                          >
-                            Quick Login
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-600">Email: student@ugas.com</p>
-                        <p className="text-xs text-gray-600">Password: student123</p>
-                      </motion.div>
-                      
-                      <motion.div
-                        whileHover={{ scale: 1.02 }}
-                        className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200"
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-medium text-gray-700">Admin Account</p>
-                          <button
-                            onClick={() => handleDemoLogin('admin')}
-                            className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition shadow-md"
-                          >
-                            Quick Login
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-600">Email: admin@ugas.com</p>
-                        <p className="text-xs text-gray-600">Password: admin123</p>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </div>
+                  <button
+                    onClick={() => handleDemoLogin('admin')}
+                    className="w-full p-3 bg-gradient-to-r from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 rounded-xl border border-cyan-200 transition-all text-left group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 mb-0.5">Admin Demo</p>
+                        <p className="text-xs text-gray-600">admin@ujaas.com</p>
+                      </div>
+                      <div className="w-8 h-8 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Award className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  </button>
+                </motion.div>
               )}
-            </motion.div>
+            </div>
+          )}
 
-            <p className="text-center text-sm text-gray-600 mt-6">
-              © 2026 UGAS Coaching Center. All rights reserved.
-            </p>
-          </motion.div>
+          {/* Footer Stats */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">5000+</p>
+                <p className="text-xs text-gray-600">Students</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">98%</p>
+                <p className="text-xs text-gray-600">Success</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">15+</p>
+                <p className="text-xs text-gray-600">Years</p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-gray-500 mt-6">
+            © 2026 UJAAS Coaching Center. All rights reserved.
+          </p>
         </div>
-      </div>
+
+        {/* Additional Info Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-6 grid grid-cols-2 gap-4"
+        >
+          <div className="bg-white/70 backdrop-blur-lg rounded-2xl p-4 border border-white/50 text-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <Star className="w-5 h-5 text-white" />
+            </div>
+            <p className="text-xs text-gray-600">Top Ranked Institute</p>
+          </div>
+          <div className="bg-white/70 backdrop-blur-lg rounded-2xl p-4 border border-white/50 text-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center mx-auto mb-2">
+              <Trophy className="w-5 h-5 text-white" />
+            </div>
+            <p className="text-xs text-gray-600">500+ Top Ranks</p>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

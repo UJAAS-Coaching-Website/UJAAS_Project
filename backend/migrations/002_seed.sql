@@ -6,17 +6,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 WITH
   admin_user AS (
     INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Admin User', 'admin@ugas.local', 'admin')
+    VALUES (uuid_generate_v4(), 'Admin User', 'admin@ujaas.local', 'admin')
     RETURNING id
   ),
   teacher_user AS (
     INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Asha Teacher', 'teacher@ugas.local', 'teacher')
+    VALUES (uuid_generate_v4(), 'Asha Teacher', 'teacher@ujaas.local', 'teacher')
     RETURNING id
   ),
   student_user AS (
     INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Demo Student', 'student@ugas.local', 'student')
+    VALUES (uuid_generate_v4(), 'Demo Student', 'student@ujaas.local', 'student')
     RETURNING id
   ),
   batches_inserted AS (
@@ -72,7 +72,7 @@ WHERE t.title = 'Physics Test Series 1'
 LIMIT 1;
 
 INSERT INTO notifications (id, user_id, type, title, message, icon, read, created_at)
-SELECT uuid_generate_v4(), u.id, 'announcement', 'Welcome to UGAS!',
+SELECT uuid_generate_v4(), u.id, 'announcement', 'Welcome to UJAAS!',
        'Start your learning journey with our comprehensive study materials and practice tests.',
        'award', false, now()
 FROM users u WHERE u.role = 'student'

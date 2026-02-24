@@ -16,12 +16,16 @@ import {
   Calendar,
   Star,
   Trophy,
-  FileText
+  FileText,
+  LayoutDashboard
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
+import { CreateTestSeries } from './CreateTestSeries';
+import { CreateDPP } from './CreateDPP';
+import { UploadNotes } from './UploadNotes';
 import { motion } from 'motion/react';
 
 interface AdminDashboardProps {
@@ -33,7 +37,7 @@ interface AdminDashboardProps {
   onDeleteNotification: (id: string) => void;
 }
 
-type Tab = 'overview' | 'students' | 'notes' | 'dpps' | 'test-series' | 'ratings' | 'rankings';
+type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes';
 
 interface Student {
   id: string;
@@ -87,10 +91,10 @@ export function AdminDashboard({
   onMarkAllAsRead,
   onDeleteNotification
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('home');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -101,24 +105,22 @@ export function AdminDashboard({
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent">
-                UGAS Admin
+              <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
+                UJAAS Admin
               </span>
             </motion.div>
 
             {/* Center Navigation Tabs */}
             <div className="flex items-center gap-2">
               {[
-                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                 { id: 'students', label: 'Students', icon: Users },
-                { id: 'ratings', label: 'Ratings', icon: Star },
-                { id: 'rankings', label: 'Rankings', icon: Trophy },
-                { id: 'notes', label: 'Notes', icon: BookOpen },
-                { id: 'dpps', label: 'DPPs', icon: ClipboardList },
-                { id: 'test-series', label: 'Tests', icon: FileText }
+                { id: 'content', label: 'Content', icon: BookOpen },
+                { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+                { id: 'test-series', label: 'Test Series', icon: FileText }
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
@@ -127,7 +129,7 @@ export function AdminDashboard({
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                     activeTab === tab.id
-                      ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
@@ -137,13 +139,13 @@ export function AdminDashboard({
               ))}
             </div>
 
-            {/* Profile Button - Logout functionality */}
+            {/* Logout Button */}
             <div className="flex items-center gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onLogout}
-                className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="Logout"
               >
                 {user.name.charAt(0).toUpperCase()}
@@ -161,13 +163,16 @@ export function AdminDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'overview' && <OverviewTab />}
+          {activeTab === 'home' && <OverviewTab onNavigate={setActiveTab} />}
           {activeTab === 'students' && <StudentsTab />}
           {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS} />}
           {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-          {activeTab === 'notes' && <NotesManagementTab />}
-          {activeTab === 'dpps' && <DPPsManagementTab />}
-          {activeTab === 'test-series' && <TestSeriesManagementTab />}
+          {activeTab === 'content' && <NotesManagementTab onNavigate={setActiveTab} />}
+          {activeTab === 'analytics' && <DPPsManagementTab onNavigate={setActiveTab} />}
+          {activeTab === 'test-series' && <TestSeriesManagementTab onNavigate={setActiveTab} />}
+          {activeTab === 'create-test' && <CreateTestSeries onBack={() => setActiveTab('test-series')} />}
+          {activeTab === 'create-dpp' && <CreateDPP onBack={() => setActiveTab('analytics')} />}
+          {activeTab === 'upload-notes' && <UploadNotes onBack={() => setActiveTab('content')} />}
         </motion.div>
       </main>
 
@@ -177,7 +182,7 @@ export function AdminDashboard({
   );
 }
 
-function OverviewTab() {
+function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const stats = [
     { 
       label: 'Total Students', 
@@ -198,11 +203,11 @@ function OverviewTab() {
       trendUp: true
     },
     { 
-      label: 'Study Notes', 
+      label: 'Notes Uploaded', 
       value: '48', 
       icon: BookOpen, 
-      gradient: 'from-purple-500 to-pink-500',
-      bgGradient: 'from-purple-50 to-pink-50',
+      gradient: 'from-cyan-500 to-blue-500',
+      bgGradient: 'from-cyan-50 to-blue-50',
       trend: '+8',
       trendUp: true
     },
@@ -311,9 +316,9 @@ function OverviewTab() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Plus, label: 'Add Student', desc: 'Enroll a new student', gradient: 'from-blue-500 to-cyan-500' },
-          { icon: Plus, label: 'Upload Notes', desc: 'Add study materials', gradient: 'from-purple-500 to-pink-500' },
-          { icon: Plus, label: 'Create DPP', desc: 'Add practice tests', gradient: 'from-green-500 to-emerald-500' }
+          { icon: Plus, label: 'Add Student', desc: 'Enroll a new student', gradient: 'from-blue-500 to-cyan-500', action: () => {} },
+          { icon: Plus, label: 'Upload Notes', desc: 'Add study materials', gradient: 'from-cyan-500 to-blue-500', action: () => onNavigate('upload-notes') },
+          { icon: Plus, label: 'Create DPP', desc: 'Add practice tests', gradient: 'from-green-500 to-emerald-500', action: () => onNavigate('create-dpp') }
         ].map((action, index) => (
           <motion.button
             key={index}
@@ -322,6 +327,7 @@ function OverviewTab() {
             transition={{ delay: 0.7 + index * 0.1 }}
             whileHover={{ scale: 1.05, y: -5 }}
             whileTap={{ scale: 0.95 }}
+            onClick={action.action}
             className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all text-left group"
           >
             <motion.div
@@ -494,7 +500,7 @@ function StudentsTab() {
   );
 }
 
-function NotesManagementTab() {
+function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -547,7 +553,7 @@ function NotesManagementTab() {
   );
 }
 
-function DPPsManagementTab() {
+function DPPsManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -600,7 +606,7 @@ function DPPsManagementTab() {
   );
 }
 
-function TestSeriesManagementTab() {
+function TestSeriesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   return (
     <div className="space-y-6">
       <motion.div

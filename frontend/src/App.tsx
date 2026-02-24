@@ -23,20 +23,20 @@ function App() {
 
   useEffect(() => {
     // Check if user is already logged in
-    const savedUser = localStorage.getItem('ugasUser');
+    const savedUser = localStorage.getItem('ujaasUser');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
       setShowGetStarted(false);
     }
     
     // Check if user has visited before
-    const hasVisited = localStorage.getItem('ugasHasVisited');
+    const hasVisited = localStorage.getItem('ujaasHasVisited');
     if (hasVisited) {
       setShowGetStarted(false);
     }
     
     // Load notifications from localStorage
-    const savedNotifications = localStorage.getItem('ugasNotifications');
+    const savedNotifications = localStorage.getItem('ujaasNotifications');
     if (savedNotifications) {
       setNotifications(JSON.parse(savedNotifications));
     } else {
@@ -45,7 +45,7 @@ function App() {
         {
           id: '1',
           type: 'announcement',
-          title: 'Welcome to UGAS!',
+          title: 'Welcome to UJAAS!',
           message: 'Start your learning journey with our comprehensive study materials and practice tests.',
           time: '2 hours ago',
           read: false,
@@ -71,7 +71,7 @@ function App() {
         },
       ];
       setNotifications(defaultNotifications);
-      localStorage.setItem('ugasNotifications', JSON.stringify(defaultNotifications));
+      localStorage.setItem('ujaasNotifications', JSON.stringify(defaultNotifications));
     }
     
     setLoading(false);
@@ -80,13 +80,13 @@ function App() {
   // Save notifications to localStorage whenever they change
   useEffect(() => {
     if (notifications.length > 0) {
-      localStorage.setItem('ugasNotifications', JSON.stringify(notifications));
+      localStorage.setItem('ujaasNotifications', JSON.stringify(notifications));
     }
   }, [notifications]);
 
   const handleLogin = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('ugasUser', JSON.stringify(userData));
+    localStorage.setItem('ujaasUser', JSON.stringify(userData));
     
     // Initialize student details for demo student if not exists
     if (userData.role === 'student') {
@@ -117,14 +117,14 @@ function App() {
 
   const handleSignup = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('ugasUser', JSON.stringify(userData));
+    localStorage.setItem('ujaasUser', JSON.stringify(userData));
     setIsNewSignup(true);
     setShowGetStarted(true);
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('ugasUser');
+    localStorage.removeItem('ujaasUser');
   };
 
   const handleMarkAsRead = (id: string) => {
@@ -144,7 +144,7 @@ function App() {
   const handleGetStarted = () => {
     setShowGetStarted(false);
     setIsNewSignup(false);
-    localStorage.setItem('ugasHasVisited', 'true');
+    localStorage.setItem('ujaasHasVisited', 'true');
   };
 
   if (loading) {
@@ -153,11 +153,11 @@ function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50"
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50"
       >
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-2xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Loading...</div>
+          <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-2xl font-semibold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Loading...</div>
         </div>
       </motion.div>
     );

@@ -91,7 +91,7 @@ export function DPPSection() {
       {/* Header */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-lg flex items-center justify-center">
             <ClipboardList className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -140,8 +140,8 @@ export function DPPSection() {
                 )}%
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Award className="w-6 h-6 text-purple-600" />
+            <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
+              <Award className="w-6 h-6 text-cyan-600" />
             </div>
           </div>
         </div>
@@ -196,7 +196,7 @@ export function DPPSection() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 rounded-full transition-all"
+                          className="bg-gradient-to-r from-teal-600 to-cyan-600 h-2 rounded-full transition-all"
                           style={{ width: `${dpp.score}%` }}
                         />
                       </div>
@@ -206,7 +206,7 @@ export function DPPSection() {
 
                 <button
                   onClick={() => setSelectedDPP(dpp)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md hover:shadow-lg flex-shrink-0"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-md hover:shadow-lg flex-shrink-0"
                 >
                   <Play className="w-4 h-4" />
                   {dpp.completed ? 'Retry' : 'Start'}

@@ -412,7 +412,7 @@ function AcademicsSection({ user, details }: { user: any; details: StudentDetail
         </h3>
         <div className="space-y-4">
           {[
-            { event: 'Enrolled in UGAS', date: details.joinDate, status: 'completed' },
+            { event: 'Enrolled in UJAAS', date: details.joinDate, status: 'completed' },
             { event: 'Completed Orientation', date: new Date(new Date(details.joinDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'completed' },
             { event: 'Mid-term Exams', date: '2025-12-15', status: 'upcoming' },
             { event: 'Final Exams', date: '2026-05-20', status: 'upcoming' }

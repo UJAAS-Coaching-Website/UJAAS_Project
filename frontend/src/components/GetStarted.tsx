@@ -58,7 +58,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
   const features = [
     { icon: Trophy, title: 'Top Results', desc: '95% Success Rate', color: 'from-yellow-500 to-orange-500' },
     { icon: Users, title: 'Expert Faculty', desc: '20+ Experienced Teachers', color: 'from-blue-500 to-cyan-500' },
-    { icon: BookOpen, title: 'Study Material', desc: 'Comprehensive Notes & DPP', color: 'from-purple-500 to-pink-500' },
+    { icon: BookOpen, title: 'Study Material', desc: 'Comprehensive Notes & DPP', color: 'from-cyan-500 to-blue-500' },
     { icon: Target, title: 'Personalized', desc: 'Individual Attention', color: 'from-green-500 to-emerald-500' },
   ];
 
@@ -70,33 +70,33 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Welcome Banner for New Users */}
       {isNewUser && userName && (
         <motion.div
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, type: "spring" }}
-          className="sticky top-0 z-50 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white py-4 px-4 shadow-2xl"
+          className="sticky top-0 z-50 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white py-4 px-4 shadow-2xl"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
               <motion.div
                 animate={{ rotate: [0, 360] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
                 <Award className="w-8 h-8" />
               </motion.div>
-              <div>
-                <h3 className="text-xl font-bold">Welcome to UGAS, {userName}! 🎉</h3>
-                <p className="text-sm text-indigo-100">Your account has been successfully created. Explore what we offer below!</p>
+              <div className="text-center sm:text-left">
+                <h3 className="text-lg sm:text-xl font-bold">Welcome to UJAAS, {userName}! 🎉</h3>
+                <p className="text-xs sm:text-sm text-teal-100">Your account has been successfully created. Explore what we offer below!</p>
               </div>
             </div>
             <motion.button
               onClick={onGetStarted}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-6 py-2 bg-white text-indigo-600 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+              className="px-6 py-2 bg-white text-teal-600 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
             >
               Go to Dashboard
               <ArrowRight className="w-4 h-4" />
@@ -144,16 +144,16 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
               transition={{ duration: 0.8 }}
             >
               <motion.div 
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-full mb-6"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-full mb-6"
                 whileHover={{ scale: 1.05 }}
               >
-                <Zap className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-medium text-indigo-700">India's Leading Coaching Institute</span>
+                <Zap className="w-4 h-4 text-teal-600" />
+                <span className="text-sm font-medium text-teal-700">India's Leading Coaching Institute</span>
               </motion.div>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
-                <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  UGAS
+                <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+                  UJAAS
                 </span>
                 <br />
                 <span className="text-gray-800">Coaching Center</span>
@@ -168,7 +168,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                   onClick={onGetStarted}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-8 py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white rounded-xl font-semibold shadow-2xl hover:shadow-purple-500/50 transition-all flex items-center gap-2 group"
+                  className="px-8 py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-2xl hover:shadow-cyan-500/50 transition-all flex items-center gap-2 group"
                 >
                   Get Started
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -182,7 +182,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                     e.preventDefault();
                     document.getElementById('teachers')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-8 py-4 bg-white/80 backdrop-blur-sm border-2 border-indigo-200 text-indigo-700 rounded-xl font-semibold hover:bg-white transition-all"
+                  className="px-8 py-4 bg-white/80 backdrop-blur-sm border-2 border-teal-200 text-teal-700 rounded-xl font-semibold hover:bg-white transition-all"
                 >
                   Meet Our Teachers
                 </motion.a>
@@ -231,15 +231,15 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-2xl font-bold text-indigo-600">95%</p>
+                      <p className="text-2xl font-bold text-teal-600">95%</p>
                       <p className="text-sm text-gray-600">Success Rate</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-purple-600">10k+</p>
+                      <p className="text-2xl font-bold text-cyan-600">10k+</p>
                       <p className="text-sm text-gray-600">Students</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-pink-600">20+</p>
+                      <p className="text-2xl font-bold text-blue-500">20+</p>
                       <p className="text-sm text-gray-600">Expert Faculty</p>
                     </div>
                   </div>
@@ -263,10 +263,10 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 transition={{ delay: idx * 0.1 }}
                 className="text-center"
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-2xl mb-4 shadow-lg">
                   <stat.icon className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                <h3 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
                   {stat.number}
                 </h3>
                 <p className="text-gray-600">{stat.label}</p>
@@ -276,7 +276,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
         </div>
       </section>
 
-      {/* Why Choose UGAS */}
+      {/* Why Choose UJAAS */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -286,8 +286,8 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Why Choose UGAS?
+              <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+                Why Choose UJAAS?
               </span>
             </h2>
             <p className="text-xl text-gray-600">The ultimate destination for your academic success</p>
@@ -311,7 +311,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 icon: BookOpen,
                 title: 'Comprehensive Study Material',
                 description: 'Curated notes, DPPs, and practice tests for thorough preparation',
-                color: 'from-purple-500 to-pink-500'
+                color: 'from-cyan-500 to-blue-500'
               },
               {
                 icon: Target,
@@ -329,7 +329,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 icon: CheckCircle,
                 title: 'Digital Learning',
                 description: 'Access study materials and practice tests anytime, anywhere',
-                color: 'from-indigo-500 to-purple-500'
+                color: 'from-teal-500 to-cyan-500'
               }
             ].map((feature, idx) => (
               <motion.div
@@ -362,7 +362,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
                 Meet Our Expert Faculty
               </span>
             </h2>
@@ -397,7 +397,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                   {/* Name & Subject Overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-6">
                     <h3 className="text-2xl font-bold text-white mb-1">{teacher.name}</h3>
-                    <p className="text-indigo-300 font-medium">{teacher.subject} Expert</p>
+                    <p className="text-teal-300 font-medium">{teacher.subject} Expert</p>
                   </div>
                 </div>
 
@@ -438,7 +438,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-12 shadow-2xl relative overflow-hidden"
+            className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-12 shadow-2xl relative overflow-hidden"
           >
             {/* Decorative Elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -448,14 +448,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Ready to Start Your Journey?
               </h2>
-              <p className="text-xl text-indigo-100 mb-8">
-                Join thousands of successful students and achieve your dreams with UGAS
+              <p className="text-xl text-teal-100 mb-8">
+                Join thousands of successful students and achieve your dreams with UJAAS
               </p>
               <motion.button
                 onClick={onGetStarted}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-10 py-5 bg-white text-indigo-600 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/50 transition-all inline-flex items-center gap-3 group"
+                className="px-10 py-5 bg-white text-teal-600 rounded-xl font-bold text-lg shadow-2xl hover:shadow-white/50 transition-all inline-flex items-center gap-3 group"
               >
                 Get Started Now
                 <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
