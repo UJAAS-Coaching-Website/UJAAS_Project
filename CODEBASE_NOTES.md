@@ -25,6 +25,7 @@
 - `frontend/src/index.css`, `frontend/src/styles/globals.css`: styling
 - `frontend/src/guidelines/Guidelines.md`: placeholder guidance
 - `backend/src/index.js`: Express app entry
+- `backend/src/db.js`: Postgres connection + health check
 
 ## Components (top-level)
 - `AdminDashboard.tsx`
@@ -59,6 +60,7 @@
 
 ## Backend Notes
 - Express scaffold with `GET /` and `GET /health`.
+- DB health check: `GET /health/db` using `backend/src/db.js`.
 - Env template at `backend/.env.example` with `DATABASE_URL`.
 
 ## Known Gaps
@@ -68,3 +70,4 @@
 - 2026-02-24: Initial structure snapshot and key notes.
 - 2026-02-24: Added Express backend scaffold under `backend/`.
 - 2026-02-24: Moved frontend files into `frontend/` directory.
+- 2026-02-24: Added Postgres health check and db helper.

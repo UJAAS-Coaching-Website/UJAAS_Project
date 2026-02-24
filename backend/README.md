@@ -13,7 +13,7 @@ Minimal Express backend scaffold.
 ## Endpoints
 - `GET /`
 - `GET /health`
+- `GET /health/db` (checks Postgres connectivity)
 
-## Next
-- Add DB connection pool (Postgres)
-- Add routes and schemas
+## Notes
+- Database connectivity uses `DATABASE_URL`.
