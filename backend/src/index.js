@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import crypto from "node:crypto";
 import "dotenv/config";
 import { checkDb, pool } from "./server.js";
 import { hashPassword, parseCookies, signJwt, verifyJwt, verifyPassword } from "./auth.js";
@@ -9,7 +10,10 @@ const app = express();
 const port = process.env.PORT || 4000;
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map((v) => v.trim()) : true;
-const authCookieName = "ujaas_token";
+const accessCookieName = "ujaas_token";
+const refreshCookieName = "ujaas_refresh";
+const accessTtlSeconds = 15 * 60;
+const refreshTtlSeconds = 7 * 24 * 60 * 60;
 
 function toApiUser(row) {
   return {
@@ -83,7 +87,7 @@ async function fetchUserProfileById(userId) {
 
 function getTokenFromRequest(req) {
   const cookies = parseCookies(req.headers.cookie);
-  const cookieToken = cookies[authCookieName];
+  const cookieToken = cookies[accessCookieName];
   if (cookieToken) {
     return cookieToken;
   }
@@ -96,14 +100,91 @@ function getTokenFromRequest(req) {
   return null;
 }
 
-function setAuthCookie(res, token) {
-  res.cookie(authCookieName, token, {
+function setAccessCookie(res, token) {
+  res.cookie(accessCookieName, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: accessTtlSeconds * 1000,
     path: "/",
   });
+}
+
+function setRefreshCookie(res, token) {
+  res.cookie(refreshCookieName, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: refreshTtlSeconds * 1000,
+    path: "/",
+  });
+}
+
+function clearAuthCookies(res) {
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  };
+  res.clearCookie(accessCookieName, cookieOptions);
+  res.clearCookie(refreshCookieName, cookieOptions);
+}
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+async function issueAuthTokens({ userId, role, res, familyId = crypto.randomUUID() }) {
+  const accessJti = crypto.randomUUID();
+  const refreshJti = crypto.randomUUID();
+  const accessToken = signJwt({ sub: userId, role, type: "access", jti: accessJti }, jwtSecret, accessTtlSeconds);
+  const refreshToken = signJwt(
+    { sub: userId, role, type: "refresh", jti: refreshJti, fid: familyId },
+    jwtSecret,
+    refreshTtlSeconds
+  );
+
+  await pool.query(
+    `
+    INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
+    VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval)
+    `,
+    [userId, hashToken(refreshToken), familyId, refreshTtlSeconds]
+  );
+
+  setAccessCookie(res, accessToken);
+  setRefreshCookie(res, refreshToken);
+
+  return { accessToken };
+}
+
+async function isTokenBlacklisted(jti) {
+  if (!jti) return false;
+  const result = await pool.query("SELECT 1 FROM token_blacklist WHERE jti = $1 AND expires_at > now()", [jti]);
+  return result.rowCount > 0;
+}
+
+async function authenticateAccess(req, res, requiredRole = null) {
+  const token = getTokenFromRequest(req);
+  const payload = verifyJwt(token, jwtSecret);
+
+  if (!payload?.sub || payload.type !== "access") {
+    res.status(401).json({ message: "unauthorized" });
+    return null;
+  }
+
+  if (await isTokenBlacklisted(payload.jti)) {
+    res.status(401).json({ message: "unauthorized" });
+    return null;
+  }
+
+  if (requiredRole && payload.role !== requiredRole) {
+    res.status(403).json({ message: "forbidden" });
+    return null;
+  }
+
+  return payload;
 }
 
 app.use(helmet());
@@ -169,10 +250,9 @@ app.post("/api/auth/signup", async (req, res) => {
     await client.query("COMMIT");
 
     const user = await fetchUserProfileById(userId);
-    const token = signJwt({ sub: userId, role: user.role }, jwtSecret);
-    setAuthCookie(res, token);
+    const { accessToken } = await issueAuthTokens({ userId, role: user.role, res });
 
-    return res.status(201).json({ token, user });
+    return res.status(201).json({ token: accessToken, user });
   } catch (error) {
     await client.query("ROLLBACK");
     return res.status(500).json({ message: "signup failed", error: error.message });
@@ -204,22 +284,17 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const user = await fetchUserProfileById(dbUser.id);
-    const token = signJwt({ sub: dbUser.id, role: dbUser.role }, jwtSecret);
-    setAuthCookie(res, token);
+    const { accessToken } = await issueAuthTokens({ userId: dbUser.id, role: dbUser.role, res });
 
-    return res.status(200).json({ token, user });
+    return res.status(200).json({ token: accessToken, user });
   } catch (error) {
     return res.status(500).json({ message: "login failed", error: error.message });
   }
 });
 
 app.get("/api/auth/me", async (req, res) => {
-  const token = getTokenFromRequest(req);
-  const payload = verifyJwt(token, jwtSecret);
-
-  if (!payload?.sub) {
-    return res.status(401).json({ message: "unauthorized" });
-  }
+  const payload = await authenticateAccess(req, res);
+  if (!payload) return;
 
   try {
     const user = await fetchUserProfileById(payload.sub);
@@ -233,12 +308,8 @@ app.get("/api/auth/me", async (req, res) => {
 });
 
 app.put("/api/profile/me", async (req, res) => {
-  const token = getTokenFromRequest(req);
-  const payload = verifyJwt(token, jwtSecret);
-
-  if (!payload?.sub || payload.role !== "student") {
-    return res.status(401).json({ message: "unauthorized" });
-  }
+  const payload = await authenticateAccess(req, res, "student");
+  if (!payload) return;
 
   const { name, phone, address, dateOfBirth, parentContact } = req.body || {};
   const normalizedName = String(name ?? "").trim();
@@ -295,13 +366,123 @@ app.put("/api/profile/me", async (req, res) => {
   }
 });
 
+app.post("/api/auth/refresh", async (req, res) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const refreshToken = cookies[refreshCookieName];
+  const payload = verifyJwt(refreshToken, jwtSecret);
+
+  if (!payload?.sub || payload.type !== "refresh" || !payload.fid) {
+    clearAuthCookies(res);
+    return res.status(401).json({ message: "unauthorized" });
+  }
+
+  const currentHash = hashToken(refreshToken);
+
+  try {
+    const current = await pool.query(
+      `
+      SELECT id, user_id, family_id, revoked_at, expires_at
+      FROM refresh_tokens
+      WHERE token_hash = $1
+      `,
+      [currentHash]
+    );
+
+    if (current.rowCount === 0) {
+      clearAuthCookies(res);
+      return res.status(401).json({ message: "unauthorized" });
+    }
+
+    const currentToken = current.rows[0];
+    if (currentToken.revoked_at || new Date(currentToken.expires_at) <= new Date()) {
+      await pool.query("UPDATE refresh_tokens SET revoked_at = now() WHERE family_id = $1 AND revoked_at IS NULL", [
+        payload.fid,
+      ]);
+      clearAuthCookies(res);
+      return res.status(401).json({ message: "unauthorized" });
+    }
+
+    const user = await fetchUserProfileById(payload.sub);
+    if (!user || (user.role !== "student" && user.role !== "admin")) {
+      clearAuthCookies(res);
+      return res.status(401).json({ message: "unauthorized" });
+    }
+
+    const accessJti = crypto.randomUUID();
+    const nextRefreshJti = crypto.randomUUID();
+    const accessToken = signJwt(
+      { sub: payload.sub, role: user.role, type: "access", jti: accessJti },
+      jwtSecret,
+      accessTtlSeconds
+    );
+    const nextRefreshToken = signJwt(
+      { sub: payload.sub, role: user.role, type: "refresh", jti: nextRefreshJti, fid: payload.fid },
+      jwtSecret,
+      refreshTtlSeconds
+    );
+    const nextRefreshHash = hashToken(nextRefreshToken);
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `
+        UPDATE refresh_tokens
+        SET revoked_at = now(), replaced_by_hash = $1, last_used_at = now()
+        WHERE token_hash = $2 AND revoked_at IS NULL
+        `,
+        [nextRefreshHash, currentHash]
+      );
+      await client.query(
+        `
+        INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
+        VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval)
+        `,
+        [payload.sub, nextRefreshHash, payload.fid, refreshTtlSeconds]
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    setAccessCookie(res, accessToken);
+    setRefreshCookie(res, nextRefreshToken);
+    return res.status(200).json({ token: accessToken });
+  } catch (error) {
+    clearAuthCookies(res);
+    return res.status(500).json({ message: "refresh failed", error: error.message });
+  }
+});
+
 app.post("/api/auth/logout", async (req, res) => {
-  res.clearCookie(authCookieName, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
+  const accessToken = getTokenFromRequest(req);
+  const accessPayload = verifyJwt(accessToken, jwtSecret);
+  const cookies = parseCookies(req.headers.cookie);
+  const refreshToken = cookies[refreshCookieName];
+  const refreshPayload = verifyJwt(refreshToken, jwtSecret);
+
+  try {
+    if (accessPayload?.jti && accessPayload?.exp) {
+      await pool.query(
+        "INSERT INTO token_blacklist (jti, expires_at) VALUES ($1, to_timestamp($2)) ON CONFLICT (jti) DO NOTHING",
+        [accessPayload.jti, accessPayload.exp]
+      );
+    }
+
+    if (refreshToken && refreshPayload?.fid) {
+      await pool.query(
+        "UPDATE refresh_tokens SET revoked_at = now(), last_used_at = now() WHERE token_hash = $1 AND revoked_at IS NULL",
+        [hashToken(refreshToken)]
+      );
+    }
+  } catch {
+    // Best-effort revoke; still clear client credentials.
+  }
+
+  clearAuthCookies(res);
   return res.status(200).json({ message: "logged out" });
 });
 

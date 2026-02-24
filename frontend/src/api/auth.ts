@@ -39,14 +39,15 @@ interface AuthResponse {
 }
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+let refreshInFlight: Promise<boolean> | null = null;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("ujaasToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+async function runRequest(path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(`${API_BASE_URL}${path}`, {
     ...options,
     credentials: "include",
     cache: "no-store",
@@ -56,12 +57,47 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...(options.headers || {}),
     },
   });
+}
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await runRequest("/api/auth/refresh", { method: "POST" });
+        if (!response.ok) {
+          localStorage.removeItem("ujaasToken");
+          return false;
+        }
+        const data = await response.json().catch(() => ({}));
+        if (data?.token) {
+          localStorage.setItem("ujaasToken", data.token);
+        }
+        return true;
+      } catch {
+        localStorage.removeItem("ujaasToken");
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+  const response = await runRequest(path, options);
+
+  if (response.status === 401 && !retried && path !== "/api/auth/refresh" && path !== "/api/auth/login") {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      return request<T>(path, options, true);
+    }
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(data?.message || "Request failed");
   }
-
   return data;
 }
 
