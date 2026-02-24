@@ -3,20 +3,41 @@
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+DELETE FROM users
+WHERE email IN ('admin@ujaas.com', 'teacher@ujaas.com', 'student@ujaas.com');
+
 WITH
   admin_user AS (
-    INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Admin User', 'admin@ujaas.local', 'admin')
+    INSERT INTO users (id, name, email, role, password_hash)
+    VALUES (
+      uuid_generate_v4(),
+      'Admin User',
+      'admin@ujaas.com',
+      'admin',
+      'admin_seed_salt:0b7d88c3a05e53e82430f7d7f76931abd3d21f710df4c3746b5db71edc669fd16b48dc2263e709e521f32558ceac43ee4468481fc39f4eefa0dd4a2fb52c7d42'
+    )
     RETURNING id
   ),
   teacher_user AS (
-    INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Asha Teacher', 'teacher@ujaas.local', 'teacher')
+    INSERT INTO users (id, name, email, role, password_hash)
+    VALUES (
+      uuid_generate_v4(),
+      'Asha Teacher',
+      'teacher@ujaas.com',
+      'teacher',
+      'teacher_seed_salt:4cd0c38ba859d32b04943c9f6f1f4bc20a4c3af5670f6a0f7b377d4b9b9bec2e8cebe9f3778c12e09cf8ee5085fb3d986f438e56dc759f9a4f40a8dd9e4238f4'
+    )
     RETURNING id
   ),
   student_user AS (
-    INSERT INTO users (id, name, email, role)
-    VALUES (uuid_generate_v4(), 'Demo Student', 'student@ujaas.local', 'student')
+    INSERT INTO users (id, name, email, role, password_hash)
+    VALUES (
+      uuid_generate_v4(),
+      'Demo Student',
+      'student@ujaas.com',
+      'student',
+      'student_seed_salt:f52a9eabd44b4662ce26d5ad1f287bdeafc2b78d4e40ad3cb7f275c505dd5d0bbb0126109e5489a89e10edec7640e59a1f03e71d89f5f86df60a70e697996a53'
+    )
     RETURNING id
   ),
   batches_inserted AS (
@@ -28,7 +49,14 @@ WITH
   ),
   student_inserted AS (
     INSERT INTO students (user_id, roll_number, phone, address, date_of_birth, parent_contact, join_date)
-    SELECT id, 'UG2025001', '+91 98765 43210', 'Mumbai, Maharashtra', '2005-05-15', '+91 98765 43211', '2025-09-01'
+    SELECT
+      id,
+      'UG' || TO_CHAR(CURRENT_DATE, 'YYYY') || RIGHT(REPLACE(id::text, '-', ''), 4),
+      '+91 98765 43210',
+      'Mumbai, Maharashtra',
+      '2005-05-15',
+      '+91 98765 43211',
+      '2025-09-01'
     FROM student_user
     RETURNING user_id
   ),

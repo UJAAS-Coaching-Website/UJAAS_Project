@@ -2,13 +2,308 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import "dotenv/config";
-import { checkDb } from "./server.js";
+import { checkDb, pool } from "./server.js";
+import { hashPassword, parseCookies, signJwt, verifyJwt, verifyPassword } from "./auth.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
+const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
+const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",").map((v) => v.trim()) : true;
+const authCookieName = "ujaas_token";
+
+function toApiUser(row) {
+  return {
+    id: row.user_id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    enrolledCourses: row.enrolled_courses ?? [],
+    studentDetails:
+      row.role === "student"
+        ? {
+            rollNumber: row.roll_number ?? "",
+            batch: row.batch_name ?? "",
+            joinDate: row.join_date ?? null,
+            phone: row.phone ?? "",
+            address: row.address ?? "",
+            dateOfBirth: row.date_of_birth ?? null,
+            parentContact: row.parent_contact ?? "",
+            ratings: {
+              attendance: row.attendance ?? 0,
+              assignments: row.assignments ?? 0,
+              tests: row.tests ?? 0,
+              participation: row.participation ?? 0,
+              behavior: row.behavior ?? 0,
+              engagement: row.engagement ?? 0,
+            },
+          }
+        : null,
+  };
+}
+
+async function fetchUserProfileById(userId) {
+  const query = `
+    SELECT
+      u.id AS user_id,
+      u.name,
+      u.email,
+      u.role,
+      s.roll_number,
+      s.phone,
+      s.address,
+      TO_CHAR(s.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+      s.parent_contact,
+      TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+      COALESCE(r.attendance, 0) AS attendance,
+      COALESCE(r.assignments, 0) AS assignments,
+      COALESCE(r.tests, 0) AS tests,
+      COALESCE(r.participation, 0) AS participation,
+      COALESCE(r.behavior, 0) AS behavior,
+      COALESCE(r.engagement, 0) AS engagement,
+      COALESCE(
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT b.name), NULL),
+        ARRAY[]::text[]
+      ) AS enrolled_courses,
+      MIN(b.year) AS batch_name
+    FROM users u
+    LEFT JOIN students s ON s.user_id = u.id
+    LEFT JOIN ratings r ON r.student_id = s.user_id
+    LEFT JOIN student_batches sb ON sb.student_id = s.user_id
+    LEFT JOIN batches b ON b.id = sb.batch_id
+    WHERE u.id = $1
+    GROUP BY
+      u.id, u.name, u.email, u.role,
+      s.roll_number, s.phone, s.address, s.date_of_birth, s.parent_contact, s.join_date,
+      r.attendance, r.assignments, r.tests, r.participation, r.behavior, r.engagement
+  `;
+
+  const result = await pool.query(query, [userId]);
+  return result.rows[0] ? toApiUser(result.rows[0]) : null;
+}
+
+function getTokenFromRequest(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  const cookieToken = cookies[authCookieName];
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice("Bearer ".length);
+  }
+
+  return null;
+}
+
+function setAuthCookie(res, token) {
+  res.cookie(authCookieName, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/",
+  });
+}
 
 app.use(helmet());
-app.use(cors({ origin: true }));
+app.use(
+  cors({
+    origin: corsOrigin,
+    credentials: true,
+  })
+);
+app.use(express.json());
+
+app.post("/api/auth/signup", async (req, res) => {
+  const { name, email, password } = req.body || {};
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "name, email and password are required" });
+  }
+
+  if (String(password).length < 6) {
+    return res.status(400).json({ message: "password must be at least 6 characters" });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const existingUser = await client.query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()]);
+    if (existingUser.rowCount > 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ message: "email already exists" });
+    }
+
+    const passwordHash = hashPassword(password);
+    const createdUser = await client.query(
+      `
+      INSERT INTO users (name, email, role, password_hash)
+      VALUES ($1, $2, 'student', $3)
+      RETURNING id
+      `,
+      [name, email.toLowerCase(), passwordHash]
+    );
+
+    const userId = createdUser.rows[0].id;
+    const rollNumber = `UG${new Date().getFullYear()}${String(Date.now()).slice(-4)}`;
+
+    await client.query(
+      `
+      INSERT INTO students (user_id, roll_number, phone, address, date_of_birth, parent_contact, join_date)
+      VALUES ($1, $2, '', '', NULL, '', CURRENT_DATE)
+      `,
+      [userId, rollNumber]
+    );
+
+    await client.query(
+      `
+      INSERT INTO ratings (student_id, attendance, assignments, tests, participation, behavior, engagement)
+      VALUES ($1, 0, 0, 0, 0, 0, 0)
+      `,
+      [userId]
+    );
+
+    await client.query("COMMIT");
+
+    const user = await fetchUserProfileById(userId);
+    const token = signJwt({ sub: userId, role: user.role }, jwtSecret);
+    setAuthCookie(res, token);
+
+    return res.status(201).json({ token, user });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    return res.status(500).json({ message: "signup failed", error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body || {};
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "email and password are required" });
+  }
+
+  try {
+    const userLookup = await pool.query(
+      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'admin')",
+      [email.toLowerCase()]
+    );
+    if (userLookup.rowCount === 0) {
+      return res.status(401).json({ message: "invalid email or password" });
+    }
+
+    const dbUser = userLookup.rows[0];
+    const validPassword = verifyPassword(password, dbUser.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ message: "invalid email or password" });
+    }
+
+    const user = await fetchUserProfileById(dbUser.id);
+    const token = signJwt({ sub: dbUser.id, role: dbUser.role }, jwtSecret);
+    setAuthCookie(res, token);
+
+    return res.status(200).json({ token, user });
+  } catch (error) {
+    return res.status(500).json({ message: "login failed", error: error.message });
+  }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+  const token = getTokenFromRequest(req);
+  const payload = verifyJwt(token, jwtSecret);
+
+  if (!payload?.sub) {
+    return res.status(401).json({ message: "unauthorized" });
+  }
+
+  try {
+    const user = await fetchUserProfileById(payload.sub);
+    if (!user || (user.role !== "student" && user.role !== "admin")) {
+      return res.status(401).json({ message: "unauthorized" });
+    }
+    return res.status(200).json({ user });
+  } catch (error) {
+    return res.status(500).json({ message: "failed to load profile", error: error.message });
+  }
+});
+
+app.put("/api/profile/me", async (req, res) => {
+  const token = getTokenFromRequest(req);
+  const payload = verifyJwt(token, jwtSecret);
+
+  if (!payload?.sub || payload.role !== "student") {
+    return res.status(401).json({ message: "unauthorized" });
+  }
+
+  const { name, phone, address, dateOfBirth, parentContact } = req.body || {};
+  const normalizedName = String(name ?? "").trim();
+
+  if (!normalizedName) {
+    return res.status(400).json({ message: "name is required" });
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      await client.query(
+        `
+        UPDATE users
+        SET name = $1
+        WHERE id = $2
+        `,
+        [normalizedName, payload.sub]
+      );
+
+      const updateResult = await client.query(
+        `
+        UPDATE students
+        SET
+          phone = $1,
+          address = $2,
+          date_of_birth = NULLIF($3, '')::date,
+          parent_contact = $4
+        WHERE user_id = $5
+        RETURNING user_id
+        `,
+        [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", payload.sub]
+      );
+
+      if (updateResult.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "student profile not found" });
+      }
+
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    const user = await fetchUserProfileById(payload.sub);
+    return res.status(200).json({ user });
+  } catch (error) {
+    return res.status(500).json({ message: "failed to update profile", error: error.message });
+  }
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  res.clearCookie(authCookieName, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
+  return res.status(200).json({ message: "logged out" });
+});
 
 app.get("/", async (req, res) => {
   try {

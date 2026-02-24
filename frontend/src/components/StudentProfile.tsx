@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { me, updateMyProfile } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User,
@@ -28,7 +29,9 @@ interface StudentProfileProps {
     id: string;
     name: string;
     email: string;
+    role?: 'student' | 'admin';
     enrolledCourses?: string[];
+    studentDetails?: StudentDetails | null;
   };
   onLogout: () => void;
 }
@@ -51,36 +54,121 @@ interface StudentDetails {
   };
 }
 
+function normalizeDateForInput(value?: string | null): string {
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (typeof value === 'string' && value.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateForDisplay(value?: string | null): string {
+  if (!value) return 'N/A';
+  const normalized = normalizeDateForInput(value);
+  if (!normalized) return 'N/A';
+  const [year, month, day] = normalized.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
+
 export function StudentProfile({ user, onLogout }: StudentProfileProps) {
+  const [profileUser, setProfileUser] = useState(user);
+  const [editedName, setEditedName] = useState(user.name || '');
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [activeSection, setActiveSection] = useState<'overview' | 'academics' | 'performance' | 'settings'>('overview');
-  
-  // Load student details from localStorage or use defaults
-  const [studentDetails, setStudentDetails] = useState<StudentDetails>(() => {
-    const saved = localStorage.getItem(`student_details_${user.id}`);
-    if (saved) {
-      return JSON.parse(saved);
+
+  const normalizeDetails = (details?: StudentDetails | null): StudentDetails => {
+    if (!details) {
+      return {
+        rollNumber: 'UG2025001',
+        batch: '2025-26',
+        joinDate: '2025-09-01',
+        phone: '+91 98765 43210',
+        address: 'Mumbai, Maharashtra',
+        dateOfBirth: '2005-05-15',
+        parentContact: '+91 98765 43211',
+        ratings: {
+          attendance: 0,
+          assignments: 0,
+          tests: 0,
+          participation: 0,
+          behavior: 0,
+          engagement: 0
+        }
+      };
     }
+
     return {
-      rollNumber: 'UG2025001',
-      batch: '2025-26',
-      joinDate: '2025-09-01',
-      phone: '+91 98765 43210',
-      address: 'Mumbai, Maharashtra',
-      dateOfBirth: '2005-05-15',
-      parentContact: '+91 98765 43211',
+      rollNumber: details.rollNumber || '',
+      batch: details.batch || '',
+      joinDate: normalizeDateForInput(details.joinDate),
+      phone: details.phone || '',
+      address: details.address || '',
+      dateOfBirth: normalizeDateForInput(details.dateOfBirth),
+      parentContact: details.parentContact || '',
       ratings: {
-        attendance: 0,
-        assignments: 0,
-        tests: 0,
-        participation: 0,
-        behavior: 0,
-        engagement: 0
+        attendance: details.ratings?.attendance ?? 0,
+        assignments: details.ratings?.assignments ?? 0,
+        tests: details.ratings?.tests ?? 0,
+        participation: details.ratings?.participation ?? 0,
+        behavior: details.ratings?.behavior ?? 0,
+        engagement: details.ratings?.engagement ?? 0
       }
     };
+  };
+  
+  // Use backend profile details when available; fallback to defaults.
+  const [studentDetails, setStudentDetails] = useState<StudentDetails>(() => {
+    return normalizeDetails(user.studentDetails);
   });
 
   const [editedDetails, setEditedDetails] = useState(studentDetails);
+
+  useEffect(() => {
+    setProfileUser(user);
+    setEditedName(user.name || '');
+    const normalized = normalizeDetails(user.studentDetails);
+    setStudentDetails(normalized);
+    setEditedDetails(normalized);
+  }, [user]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshProfile = async () => {
+      try {
+        const response = await me();
+        if (!mounted) return;
+
+        const latestUser = response.user as any;
+        setProfileUser(latestUser);
+        setEditedName(latestUser.name || '');
+        const normalized = normalizeDetails(latestUser.studentDetails);
+        setStudentDetails(normalized);
+        setEditedDetails(normalized);
+      } catch {
+        // Keep existing profile state if refresh fails.
+      }
+    };
+
+    refreshProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Calculate overall performance based on ratings
   const calculateOverallPerformance = () => {
@@ -100,13 +188,33 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
     return Math.round(score);
   };
 
-  const handleSave = () => {
-    setStudentDetails(editedDetails);
-    localStorage.setItem(`student_details_${user.id}`, JSON.stringify(editedDetails));
-    setIsEditing(false);
+  const handleSave = async () => {
+    setSaveError('');
+    setIsSaving(true);
+    try {
+      const response = await updateMyProfile({
+        name: editedName,
+        phone: editedDetails.phone,
+        address: editedDetails.address,
+        dateOfBirth: editedDetails.dateOfBirth || null,
+        parentContact: editedDetails.parentContact,
+      });
+      const latestUser = response.user as any;
+      setProfileUser(latestUser);
+      setEditedName(latestUser.name || '');
+      const normalized = normalizeDetails(latestUser.studentDetails);
+      setStudentDetails(normalized);
+      setEditedDetails(normalized);
+      setIsEditing(false);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save profile changes');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
+    setEditedName(profileUser.name || '');
     setEditedDetails(studentDetails);
     setIsEditing(false);
   };
@@ -130,17 +238,27 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
             whileHover={{ scale: 1.05, rotate: 5 }}
             className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
           >
-            {user.name.charAt(0).toUpperCase()}
+            {profileUser.name.charAt(0).toUpperCase()}
           </motion.div>
           
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-3xl font-bold mb-2">{user.name}</h2>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    className="text-3xl font-bold mb-2 bg-white/20 border border-white/40 rounded-lg px-3 py-1 text-white placeholder-indigo-100 focus:outline-none focus:ring-2 focus:ring-white/70"
+                    placeholder="Enter username"
+                  />
+                ) : (
+                  <h2 className="text-3xl font-bold mb-2">{profileUser.name}</h2>
+                )}
                 <div className="flex flex-wrap gap-4 text-indigo-100">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    <span>{user.email}</span>
+                    <span>{profileUser.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -153,7 +271,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
                 </div>
               </div>
               
-              {!isEditing && activeSection === 'overview' && (
+              {!isEditing && activeSection === 'overview' && profileUser.role !== 'admin' && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -200,18 +318,20 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
       {/* Content Sections */}
       {activeSection === 'overview' && (
         <OverviewSection
-          user={user}
+          user={profileUser}
           details={isEditing ? editedDetails : studentDetails}
           isEditing={isEditing}
           onDetailsChange={setEditedDetails}
           onSave={handleSave}
           onCancel={handleCancel}
           overallPerformance={overallPerformance}
+          isSaving={isSaving}
+          saveError={saveError}
         />
       )}
 
       {activeSection === 'academics' && (
-        <AcademicsSection user={user} details={studentDetails} />
+        <AcademicsSection user={profileUser} details={studentDetails} />
       )}
 
       {activeSection === 'performance' && (
@@ -232,15 +352,19 @@ function OverviewSection({
   onDetailsChange, 
   onSave, 
   onCancel,
-  overallPerformance 
+  overallPerformance,
+  isSaving,
+  saveError
 }: { 
   user: any; 
   details: StudentDetails; 
   isEditing: boolean; 
   onDetailsChange: (details: StudentDetails) => void;
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   onCancel: () => void;
   overallPerformance: number;
+  isSaving: boolean;
+  saveError: string;
 }) {
   const stats = [
     {
@@ -259,7 +383,9 @@ function OverviewSection({
     },
     {
       label: 'Days Active',
-      value: Math.floor((new Date().getTime() - new Date(details.joinDate).getTime()) / (1000 * 60 * 60 * 24)),
+      value: details.joinDate
+        ? Math.floor((new Date().getTime() - new Date(`${details.joinDate}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
       icon: Calendar,
       gradient: 'from-purple-500 to-pink-500',
       bgGradient: 'from-purple-50 to-pink-50'
@@ -305,15 +431,17 @@ function OverviewSection({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onSave}
+                disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg transition shadow-md hover:shadow-lg"
               >
                 <Save className="w-4 h-4" />
-                Save
+                {isSaving ? 'Saving...' : 'Save'}
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onCancel}
+                disabled={isSaving}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg transition shadow-md hover:shadow-lg"
               >
                 <X className="w-4 h-4" />
@@ -323,14 +451,20 @@ function OverviewSection({
           )}
         </div>
 
+        {saveError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {saveError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
             { label: 'Date of Birth', value: details.dateOfBirth, icon: Calendar, key: 'dateOfBirth', type: 'date' },
             { label: 'Address', value: details.address, icon: MapPin, key: 'address' },
             { label: 'Parent Contact', value: details.parentContact, icon: Phone, key: 'parentContact' },
-            { label: 'Roll Number', value: details.rollNumber, icon: Award, key: 'rollNumber' },
-            { label: 'Join Date', value: details.joinDate, icon: Calendar, key: 'joinDate', type: 'date' }
+            { label: 'Roll Number', value: details.rollNumber, icon: Award, key: 'rollNumber', editable: false },
+            { label: 'Join Date', value: details.joinDate, icon: Calendar, key: 'joinDate', type: 'date', editable: false }
           ].map((field, index) => (
             <motion.div
               key={field.key}
@@ -343,7 +477,7 @@ function OverviewSection({
                 <field.icon className="w-4 h-4" />
                 {field.label}
               </label>
-              {isEditing ? (
+              {isEditing && field.editable !== false ? (
                 <input
                   type={field.type || 'text'}
                   value={field.value}
@@ -352,7 +486,7 @@ function OverviewSection({
                 />
               ) : (
                 <p className="text-gray-900 font-medium px-4 py-2 bg-gray-50 rounded-lg group-hover:bg-indigo-50 transition">
-                  {field.value}
+                  {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
                 </p>
               )}
             </motion.div>
@@ -413,7 +547,15 @@ function AcademicsSection({ user, details }: { user: any; details: StudentDetail
         <div className="space-y-4">
           {[
             { event: 'Enrolled in UJAAS', date: details.joinDate, status: 'completed' },
-            { event: 'Completed Orientation', date: new Date(new Date(details.joinDate).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: 'completed' },
+            {
+              event: 'Completed Orientation',
+              date: details.joinDate
+                ? new Date(new Date(`${details.joinDate}T00:00:00`).getTime() + 7 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .split('T')[0]
+                : '',
+              status: 'completed'
+            },
             { event: 'Mid-term Exams', date: '2025-12-15', status: 'upcoming' },
             { event: 'Final Exams', date: '2026-05-20', status: 'upcoming' }
           ].map((item, index) => (
@@ -438,11 +580,7 @@ function AcademicsSection({ user, details }: { user: any; details: StudentDetail
               <div className="flex-1">
                 <h4 className="font-semibold text-gray-900">{item.event}</h4>
                 <p className="text-sm text-gray-600">
-                  {new Date(item.date).toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
+                  {formatDateForDisplay(item.date)}
                 </p>
               </div>
               <span className={`text-xs font-medium px-3 py-1 rounded-full ${

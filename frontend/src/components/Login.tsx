@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { User } from '../App';
+import { login, signup } from '../api/auth';
 import { 
   GraduationCap, 
   Mail, 
@@ -21,31 +22,6 @@ interface LoginProps {
   onLogin: (user: User) => void;
   onSignup: (user: User) => void;
 }
-
-// Mock user data
-const MOCK_USERS = {
-  student: {
-    email: 'student@ujaas.com',
-    password: 'student123',
-    data: {
-      id: '1',
-      name: 'Rahul Kumar',
-      email: 'student@ujaas.com',
-      role: 'student' as const,
-      enrolledCourses: ['JEE Advanced', 'JEE Mains', 'NEET']
-    }
-  },
-  admin: {
-    email: 'admin@ujaas.com',
-    password: 'admin123',
-    data: {
-      id: '2',
-      name: 'Admin User',
-      email: 'admin@ujaas.com',
-      role: 'admin' as const
-    }
-  }
-};
 
 const testimonials = [
   {
@@ -82,51 +58,44 @@ export function Login({ onLogin, onSignup }: LoginProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [showDemo, setShowDemo] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
 
-    if (isSignup) {
-      // Signup validation
-      if (password !== confirmPassword) {
-        setError('Passwords do not match');
-        return;
-      }
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters');
-        return;
-      }
-      
-      // Create new user
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: name,
-        email: email,
-        role: 'student',
-        enrolledCourses: []
-      };
-      
-      onSignup(newUser);
-    } else {
-      // Login - Check credentials
-      if (email === MOCK_USERS.student.email && password === MOCK_USERS.student.password) {
-        onLogin(MOCK_USERS.student.data);
-      } else if (email === MOCK_USERS.admin.email && password === MOCK_USERS.admin.password) {
-        onLogin(MOCK_USERS.admin.data);
+    try {
+      if (isSignup) {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters');
+          return;
+        }
+
+        const response = await signup(name, email, password);
+        onSignup(response.user as User);
       } else {
-        setError('Invalid email or password');
+        const response = await login(email, password);
+        onLogin(response.user as User);
       }
+    } catch (err: any) {
+      setError(err?.message || 'Authentication failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDemoLogin = (role: 'student' | 'admin') => {
-    if (role === 'student') {
-      onLogin(MOCK_USERS.student.data);
-    } else {
-      onLogin(MOCK_USERS.admin.data);
-    }
+  const handleUseDemoCreds = (role: 'student' | 'admin') => {
+    const demoEmail = role === 'student' ? 'student@ujaas.com' : 'admin@ujaas.com';
+    const demoPassword = role === 'student' ? 'student123' : 'admin123';
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setShowDemo(false);
   };
 
   return (
@@ -323,9 +292,10 @@ export function Login({ onLogin, onSignup }: LoginProps) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
+              disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              {isSignup ? 'Create Account' : 'Sign In'}
+              {isSubmitting ? 'Please wait...' : isSignup ? 'Create Account' : 'Sign In'}
             </motion.button>
           </form>
 
@@ -348,7 +318,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                   className="space-y-2"
                 >
                   <button
-                    onClick={() => handleDemoLogin('student')}
+                    onClick={() => handleUseDemoCreds('student')}
                     className="w-full p-3 bg-gradient-to-r from-teal-50 to-cyan-50 hover:from-teal-100 hover:to-cyan-100 rounded-xl border border-teal-200 transition-all text-left group"
                   >
                     <div className="flex items-center justify-between">
@@ -363,7 +333,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                   </button>
                   
                   <button
-                    onClick={() => handleDemoLogin('admin')}
+                    onClick={() => handleUseDemoCreds('admin')}
                     className="w-full p-3 bg-gradient-to-r from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 rounded-xl border border-cyan-200 transition-all text-left group"
                   >
                     <div className="flex items-center justify-between">

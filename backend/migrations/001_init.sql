@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   name text NOT NULL,
   email text NOT NULL UNIQUE,
   role text NOT NULL CHECK (role IN ('student','teacher','admin')),
+  password_hash text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 

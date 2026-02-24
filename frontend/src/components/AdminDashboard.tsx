@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
+import { StudentProfile } from './StudentProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { CreateTestSeries } from './CreateTestSeries';
@@ -37,7 +38,7 @@ interface AdminDashboardProps {
   onDeleteNotification: (id: string) => void;
 }
 
-type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes';
+type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
 
 interface Student {
   id: string;
@@ -139,14 +140,14 @@ export function AdminDashboard({
               ))}
             </div>
 
-            {/* Logout Button */}
+            {/* Profile Button */}
             <div className="flex items-center gap-4">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={onLogout}
+                onClick={() => setActiveTab('profile')}
                 className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
-                title="Logout"
+                title="View Profile"
               >
                 {user.name.charAt(0).toUpperCase()}
               </motion.button>
@@ -173,6 +174,7 @@ export function AdminDashboard({
           {activeTab === 'create-test' && <CreateTestSeries onBack={() => setActiveTab('test-series')} />}
           {activeTab === 'create-dpp' && <CreateDPP onBack={() => setActiveTab('analytics')} />}
           {activeTab === 'upload-notes' && <UploadNotes onBack={() => setActiveTab('content')} />}
+          {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
         </motion.div>
       </main>
 

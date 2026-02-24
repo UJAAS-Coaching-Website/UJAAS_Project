@@ -3,7 +3,10 @@
 Minimal backend scaffold.
 
 ## Setup
-- Copy `.env.example` to `.env` and fill `DATABASE_URL`.
+- Create `.env` and set:
+  - `DATABASE_URL=...`
+  - `JWT_SECRET=...` (required for auth token signing)
+  - `CORS_ORIGIN=http://localhost:5173` (optional; comma-separated origins supported)
 - Install deps: `npm i` (from `backend/`).
 
 ## Run
@@ -21,3 +24,11 @@ Minimal backend scaffold.
 
 ## Notes
 - DB check logic lives in `backend/src/server.js`.
+- Auth endpoints:
+  - `POST /api/auth/signup`
+  - `POST /api/auth/login`
+  - `GET /api/auth/me`
+  - `POST /api/auth/logout`
+- Seed login credentials:
+  - Admin: `admin@ujaas.com` / `admin123`
+  - Student: `student@ujaas.com` / `student123`

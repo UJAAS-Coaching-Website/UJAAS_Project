@@ -4,6 +4,7 @@ import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
+import { me, logout as logoutRequest, StudentDetails } from './api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 
 export interface User {
@@ -12,6 +13,7 @@ export interface User {
   email: string;
   role: 'student' | 'admin';
   enrolledCourses?: string[];
+  studentDetails?: StudentDetails | null;
 }
 
 function App() {
@@ -22,13 +24,18 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const savedUser = localStorage.getItem('ujaasUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setShowGetStarted(false);
-    }
-    
+    const initializeSession = async () => {
+      try {
+        const profile = await me();
+        setUser(profile.user as User);
+        setShowGetStarted(false);
+      } catch {
+        setUser(null);
+      }
+
+      setLoading(false);
+    };
+
     // Check if user has visited before
     const hasVisited = localStorage.getItem('ujaasHasVisited');
     if (hasVisited) {
@@ -73,8 +80,8 @@ function App() {
       setNotifications(defaultNotifications);
       localStorage.setItem('ujaasNotifications', JSON.stringify(defaultNotifications));
     }
-    
-    setLoading(false);
+
+    initializeSession();
   }, []);
 
   // Save notifications to localStorage whenever they change
@@ -86,45 +93,21 @@ function App() {
 
   const handleLogin = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('ujaasUser', JSON.stringify(userData));
-    
-    // Initialize student details for demo student if not exists
-    if (userData.role === 'student') {
-      const studentDetailsKey = `student_details_${userData.id}`;
-      const existingDetails = localStorage.getItem(studentDetailsKey);
-      if (!existingDetails) {
-        const defaultDetails = {
-          rollNumber: 'UG2025001',
-          batch: '2025-26',
-          joinDate: '2025-09-01',
-          phone: '+91 98765 43210',
-          address: 'Mumbai, Maharashtra',
-          dateOfBirth: '2005-05-15',
-          parentContact: '+91 98765 43211',
-          ratings: {
-            attendance: 0,
-            assignments: 0,
-            tests: 0,
-            participation: 0,
-            behavior: 0,
-            engagement: 0
-          }
-        };
-        localStorage.setItem(studentDetailsKey, JSON.stringify(defaultDetails));
-      }
-    }
   };
 
   const handleSignup = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('ujaasUser', JSON.stringify(userData));
     setIsNewSignup(true);
     setShowGetStarted(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch {
+      // Proceed with local cleanup even if API call fails.
+    }
     setUser(null);
-    localStorage.removeItem('ujaasUser');
   };
 
   const handleMarkAsRead = (id: string) => {
