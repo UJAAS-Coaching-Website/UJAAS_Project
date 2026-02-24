@@ -1,13 +1,15 @@
 # Codebase Notes (Auto-maintained)
 
 ## Summary
-- Frontend-only Vite + React app (no backend detected yet).
+- Vite + React frontend.
+- Express backend scaffold in `backend/`.
 - Entry point: `index.html` -> `src/main.tsx` -> `src/App.tsx`.
 - UI uses Radix UI components, Tailwind utilities, and assorted UI helpers.
 
 ## Tooling
-- Build: Vite (`vite.config.ts`)
-- Scripts: `npm run dev`, `npm run build` (`package.json`)
+- Frontend build: Vite (`vite.config.ts`)
+- Frontend scripts: `npm run dev`, `npm run build` (`package.json`)
+- Backend scripts: `npm run dev`, `npm start` (`backend/package.json`)
 
 ## Dependencies (high level)
 - React 18
@@ -16,12 +18,14 @@
 - Tailwind CSS + utilities (`tailwind-merge`, `class-variance-authority`)
 - Motion (`motion`)
 - Recharts, embla-carousel, sonner, react-hook-form, react-day-picker
+- Express, Helmet, Morgan, CORS, dotenv, pg
 
 ## Source Layout
 - `src/main.tsx`: app bootstrap
 - `src/App.tsx`: routing/flow controller (login, get started, dashboards)
 - `src/index.css`, `src/styles/globals.css`: styling
 - `src/guidelines/Guidelines.md`: placeholder guidance
+- `backend/src/index.js`: Express app entry
 
 ## Components (top-level)
 - `AdminDashboard.tsx`
@@ -54,8 +58,13 @@
   - `ugasNotifications` for notifications
   - `student_details_<id>` for student details
 
+## Backend Notes
+- Express scaffold with `GET /` and `GET /health`.
+- Env template at `backend/.env.example` with `DATABASE_URL`.
+
 ## Known Gaps
-- No backend/API layer in repo; data is mocked via `localStorage`.
+- No API routes or DB integration yet.
 
 ## Update Log
 - 2026-02-24: Initial structure snapshot and key notes.
+- 2026-02-24: Added Express backend scaffold under `backend/`.
