@@ -34,6 +34,8 @@ interface AdminDashboardProps {
   user: User;
   activeTab: Tab;
   onNavigate: (tab: Tab) => void;
+  adminSection: AdminSection;
+  onNavigateSection: (section: AdminSection) => void;
   selectedBatch: Batch | null;
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
@@ -46,6 +48,7 @@ interface AdminDashboardProps {
 
 type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
 type Batch = '11th JEE' | '11th NEET' | '12th JEE' | '12th NEET' | 'Dropper JEE' | 'Dropper NEET';
+type AdminSection = 'batches' | 'students' | 'faculty';
 
 interface Student {
   id: string;
@@ -55,6 +58,14 @@ interface Student {
   joinDate: string;
   performance: number;
   batch: Batch;
+}
+
+interface Teacher {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  experience: string;
 }
 
 const MOCK_STUDENTS: Student[] = [
@@ -116,10 +127,19 @@ const MOCK_STUDENTS: Student[] = [
 
 const DEMO_BATCHES: Batch[] = ['11th JEE', '11th NEET', '12th JEE', '12th NEET', 'Dropper JEE', 'Dropper NEET'];
 
+const MOCK_FACULTY: Teacher[] = [
+  { id: 'f1', name: 'Arvind Sir', email: 'arvind@example.com', subject: 'Physics', experience: '8 years' },
+  { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', experience: '6 years' },
+  { id: 'f3', name: 'Rohit Sir', email: 'rohit@example.com', subject: 'Mathematics', experience: '10 years' },
+  { id: 'f4', name: 'Nidhi Maam', email: 'nidhi@example.com', subject: 'Biology', experience: '7 years' },
+];
+
 export function AdminDashboard({ 
   user, 
   activeTab,
   onNavigate,
+  adminSection,
+  onNavigateSection,
   selectedBatch,
   onSelectBatch,
   onClearBatch,
@@ -154,14 +174,37 @@ export function AdminDashboard({
             </motion.button>
 
             {/* Center Navigation Tabs */}
-            {selectedBatch ? (
+            {!selectedBatch ? (
+              <div className="flex items-center gap-2">
+                {[
+                  { id: 'batches', label: 'Batches', icon: BookOpen },
+                  { id: 'students', label: 'Students', icon: Users },
+                  { id: 'faculty', label: 'Faculty', icon: GraduationCap },
+                ].map((section) => (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => onNavigateSection(section.id as AdminSection)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
+                      adminSection === section.id
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <section.icon className="w-5 h-5" />
+                    <span className="hidden sm:inline">{section.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            ) : (
               <div className="flex items-center gap-2">
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
-                  { id: 'students', label: 'Students', icon: Users },
+                  { id: 'students', label: 'Batch Students', icon: Users },
                   { id: 'content', label: 'Content', icon: BookOpen },
                   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                  { id: 'test-series', label: 'Test Series', icon: FileText }
+                  { id: 'test-series', label: 'Test Series', icon: FileText },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -179,8 +222,6 @@ export function AdminDashboard({
                   </motion.button>
                 ))}
               </div>
-            ) : (
-              <div />
             )}
 
             {/* Profile Button */}
@@ -202,13 +243,17 @@ export function AdminDashboard({
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
-          key={`${selectedBatch || 'batch-selector'}-${activeTab}`}
+          key={`${selectedBatch || adminSection}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
           {!selectedBatch && activeTab !== 'profile' ? (
-            <BatchSelectionTab onSelectBatch={onSelectBatch} />
+            <>
+              {adminSection === 'batches' && <BatchSelectionTab onSelectBatch={onSelectBatch} />}
+              {adminSection === 'students' && <StudentsDirectoryTab />}
+              {adminSection === 'faculty' && <FacultyDirectoryTab />}
+            </>
           ) : (
             <>
               {activeTab === 'home' && (
@@ -264,6 +309,211 @@ function BatchSelectionTab({ onSelectBatch }: { onSelectBatch: (batch: Batch) =>
           </motion.button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function StudentsDirectoryTab() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredStudents = MOCK_STUDENTS.filter((student) =>
+    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    student.batch.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+      >
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">All Students</h2>
+          <p className="text-gray-600">Manage students across all batches</p>
+        </div>
+
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-teal-600 transition" />
+          <input
+            type="text"
+            placeholder="Search students..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-gray-50 focus:bg-white"
+          />
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white overflow-hidden"
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Student</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Batch</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Courses</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Performance</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filteredStudents.map((student, index) => (
+                <motion.tr
+                  key={student.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="hover:bg-teal-50/60 transition"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        {student.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm text-gray-500">{student.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{student.batch}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {student.enrolledCourses.map((course, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-teal-100 via-cyan-100 to-blue-100 text-teal-800 rounded-full"
+                        >
+                          {course}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-gray-200 rounded-full h-2.5 w-24">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${student.performance}%` }}
+                          transition={{ delay: 0.5 + index * 0.05, duration: 1 }}
+                          className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 h-2.5 rounded-full"
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 min-w-[3ch]">{student.performance}%</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex items-center gap-2">
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                        <Edit className="w-4 h-4" />
+                      </motion.button>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function FacultyDirectoryTab() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredFaculty = MOCK_FACULTY.filter((teacher) =>
+    teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    teacher.subject.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+      >
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">All Faculty</h2>
+          <p className="text-gray-600">Manage faculty across all departments</p>
+        </div>
+
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-teal-600 transition" />
+          <input
+            type="text"
+            placeholder="Search faculty..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-gray-50 focus:bg-white"
+          />
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white overflow-hidden"
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Faculty</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Subject</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Experience</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filteredFaculty.map((teacher, index) => (
+                <motion.tr
+                  key={teacher.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="hover:bg-teal-50/60 transition"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold">
+                        {teacher.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{teacher.name}</div>
+                        <div className="text-sm text-gray-500">{teacher.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{teacher.subject}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{teacher.experience}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex items-center gap-2">
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                        <Edit className="w-4 h-4" />
+                      </motion.button>
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                        <Trash2 className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
     </div>
   );
 }
