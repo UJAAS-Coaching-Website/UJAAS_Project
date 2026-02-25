@@ -32,7 +32,7 @@ export function Footer() {
               </h3>
             </div>
             <p className="text-gray-300 mb-4 text-sm leading-relaxed">
-              Ultimate Guidance & Academic Support - Empowering students to achieve their dreams through quality education and comprehensive support.
+              UJAAS CAREER INSTITUTE
             </p>
             <div className="flex gap-3">
               {[
@@ -55,36 +55,6 @@ export function Footer() {
             </div>
           </motion.div>
 
-          {/* Quick Links */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-          >
-            <h4 className="font-semibold text-lg mb-4 text-white">Quick Links</h4>
-            <ul className="space-y-2 text-sm">
-              {[
-                'About Us',
-                'Courses',
-                'Faculty',
-                'Success Stories',
-                'Blog',
-                'Careers'
-              ].map((link, index) => (
-                <li key={index}>
-                  <motion.a
-                    href="#"
-                    whileHover={{ x: 5 }}
-                    className="text-gray-300 hover:text-white transition-all flex items-center gap-2 group"
-                  >
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {link}
-                  </motion.a>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
 
           {/* Courses */}
           <motion.div
@@ -96,12 +66,11 @@ export function Footer() {
             <h4 className="font-semibold text-lg mb-4 text-white">Our Courses</h4>
             <ul className="space-y-2 text-sm">
               {[
-                'JEE Main',
-                'JEE Advanced',
+                'JEE (Mains+Advanced)',
                 'NEET',
-                'Foundation Course',
-                'Online Test Series',
-                'Crash Course'
+                'Foundation Courses',
+                'Boards',
+                'GUJCET'
               ].map((course, index) => (
                 <li key={index}>
                   <motion.a
@@ -117,7 +86,27 @@ export function Footer() {
             </ul>
           </motion.div>
 
-          {/* Contact Info */}
+          {/* Our Locations */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+          >
+            <h4 className="font-semibold text-lg mb-4 text-white">Our Locations</h4>
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-start gap-3 text-gray-300">
+                <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <span>6/D, Shankeshwar Society, Near Kaliyawadi Bridge, Grid Road, Junathana, Navsari - 396445, Gujarat</span>
+              </li>
+              <li className="flex items-start gap-3 text-gray-300">
+                <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <span>Somnath Tower, Opp. L.M.P. School, Bilimora - Chikhli Road, Bilimora - 396321, Gujarat</span>
+              </li>
+            </ul>
+          </motion.div>
+
+          {/* Our Locations */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -126,30 +115,35 @@ export function Footer() {
           >
             <h4 className="font-semibold text-lg mb-4 text-white">Contact Us</h4>
             <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-3 text-gray-300">
-                <MapPin className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                <span>123 Education Street, Connaught Place, New Delhi - 110001, India</span>
+
+             <li className="flex items-center gap-3 text-gray-300">
+                <Phone className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                VP Sir
+                <a href="tel:+919904562526" className="hover:text-white transition">
+                  +91 99045 62526
+                </a>
               </li>
               <li className="flex items-center gap-3 text-gray-300">
                 <Phone className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-                <a href="tel:+919876543210" className="hover:text-white transition">
-                  +91 98765 43210
+                AK Sir
+                <a href="tel:+917983184044" className="hover:text-white transition">
+                  +91 79831 84044
+                </a>
+              </li>
+              <li className="flex items-center gap-3 text-gray-300">
+                <Phone className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+                KA Sir
+                <a href="tel:+918630370169" className="hover:text-white transition">
+                  +91 86303 70169
                 </a>
               </li>
               <li className="flex items-center gap-3 text-gray-300">
                 <Mail className="w-5 h-5 text-teal-400 flex-shrink-0" />
-                <a href="mailto:info@ujaas.com" className="hover:text-white transition">
-                  info@ujaas.com
+                <a href="mailto:ujas2.0.nvs@gmail.com" className="hover:text-white transition">
+                  ujas2.0.nvs@gmail.com
                 </a>
               </li>
             </ul>
-
-            {/* Opening Hours */}
-            <div className="mt-4 p-3 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10">
-              <p className="text-xs font-semibold text-gray-300 mb-1">Opening Hours</p>
-              <p className="text-xs text-gray-400">Mon - Sat: 8:00 AM - 8:00 PM</p>
-              <p className="text-xs text-gray-400">Sunday: 10:00 AM - 6:00 PM</p>
-            </div>
           </motion.div>
         </div>
 
