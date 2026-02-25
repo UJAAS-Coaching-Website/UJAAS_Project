@@ -22,6 +22,7 @@ function App() {
   const adminTabs = [
     'home',
     'students',
+    'faculty',
     'content',
     'analytics',
     'test-series',
@@ -35,19 +36,53 @@ function App() {
 
   type StudentTab = (typeof studentTabs)[number];
   type AdminTab = (typeof adminTabs)[number];
-  const adminBatches = [
+  type AdminBatch = string;
+  type AdminBatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
+  const initialAdminBatches: AdminBatchInfo[] = [
     { label: '11th JEE', slug: '11th-jee' },
     { label: '11th NEET', slug: '11th-neet' },
     { label: '12th JEE', slug: '12th-jee' },
     { label: '12th NEET', slug: '12th-neet' },
     { label: 'Dropper JEE', slug: 'dropper-jee' },
     { label: 'Dropper NEET', slug: 'dropper-neet' },
-  ] as const;
-  type AdminBatch = (typeof adminBatches)[number]['label'];
-  const adminLandingSections = ['batches', 'students', 'faculty'] as const;
+  ];
+  const adminLandingSections = ['batches', 'students', 'faculty', 'test-series'] as const;
   type AdminLandingSection = (typeof adminLandingSections)[number];
 
   const [user, setUser] = useState<User | null>(null);
+  const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
+    const stored = localStorage.getItem('ujaasAdminBatches');
+    if (!stored) return initialAdminBatches;
+    try {
+      const parsed = JSON.parse(stored) as AdminBatchInfo[];
+      if (!Array.isArray(parsed) || parsed.length === 0) return initialAdminBatches;
+      const normalized = parsed
+        .filter((entry) => entry && typeof entry.label === 'string' && typeof entry.slug === 'string')
+        .map((entry) => {
+          const subjectList = Array.isArray(entry.subjects)
+            ? entry.subjects.map((subject) => subject.trim()).filter(Boolean)
+            : entry.subject
+            ? [String(entry.subject).trim()].filter(Boolean)
+            : [];
+          const facultyList = Array.isArray(entry.facultyAssigned)
+            ? entry.facultyAssigned.map((faculty) => faculty.trim()).filter(Boolean)
+            : entry.facultyAssigned
+            ? [String(entry.facultyAssigned).trim()].filter(Boolean)
+            : [];
+
+          return {
+            label: entry.label.trim(),
+            slug: entry.slug.trim(),
+            subjects: subjectList.length ? subjectList : undefined,
+            facultyAssigned: facultyList.length ? facultyList : undefined,
+          };
+        })
+        .filter((entry) => entry.label && entry.slug);
+      return normalized.length ? normalized : initialAdminBatches;
+    } catch {
+      return initialAdminBatches;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [activeTab, setActiveTab] = useState<StudentTab | AdminTab>('home');
@@ -64,7 +99,7 @@ function App() {
   const isAdminLandingSection = (section?: string): section is AdminLandingSection =>
     !!section && adminLandingSections.includes(section as AdminLandingSection);
 
-  const isAdminBatchSlug = (slug?: string): slug is (typeof adminBatches)[number]['slug'] =>
+  const isAdminBatchSlug = (slug?: string): slug is string =>
     !!slug && adminBatches.some((batch) => batch.slug === slug);
 
   const batchFromSlug = (slug?: string): AdminBatch | null => {
@@ -75,6 +110,85 @@ function App() {
   const slugFromBatch = (label?: AdminBatch | null): string | null => {
     if (!label) return null;
     return adminBatches.find((batch) => batch.label === label)?.slug ?? null;
+  };
+
+  const addAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+    const trimmedLabel = label.trim();
+    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
+    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
+    if (!trimmedLabel) {
+      return { ok: false, error: 'Batch name is required.' };
+    }
+    if (trimmedSubjects.length === 0) {
+      return { ok: false, error: 'At least one subject is required.' };
+    }
+    if (trimmedFaculty.length === 0) {
+      return { ok: false, error: 'At least one faculty is required.' };
+    }
+
+    let result: { ok: boolean; error?: string; label?: string } = { ok: false, error: 'Unknown error.' };
+    setAdminBatches((prev) => {
+      const exists = prev.some((batch) => batch.label.toLowerCase() === trimmedLabel.toLowerCase());
+      if (exists) {
+        result = { ok: false, error: 'Batch already exists.' };
+        return prev;
+      }
+
+      const baseSlug = trimmedLabel
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '') || 'batch';
+      let slug = baseSlug;
+      let counter = 2;
+      const existingSlugs = new Set(prev.map((batch) => batch.slug));
+      while (existingSlugs.has(slug)) {
+        slug = `${baseSlug}-${counter}`;
+        counter += 1;
+      }
+
+      result = { ok: true, label: trimmedLabel };
+      return [
+        ...prev,
+        {
+          label: trimmedLabel,
+          slug,
+          subjects: trimmedSubjects,
+          facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
+        },
+      ];
+    });
+
+    return result;
+  };
+
+  const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+    const trimmedLabel = label.trim();
+    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
+    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
+
+    if (!trimmedLabel) {
+      return { ok: false, error: 'Batch name is required.' };
+    }
+
+    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
+    setAdminBatches((prev) => {
+      const index = prev.findIndex((batch) => batch.label === trimmedLabel);
+      if (index === -1) {
+        result = { ok: false, error: 'Batch not found.' };
+        return prev;
+      }
+
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
+        facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
+      };
+      result = { ok: true };
+      return next;
+    });
+
+    return result;
   };
 
   const parsePath = () => {
@@ -328,6 +442,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem('ujaasAdminBatches', JSON.stringify(adminBatches));
+  }, [adminBatches]);
+
+  useEffect(() => {
     const handlePopState = () => {
       setTabFromPath(user);
     };
@@ -512,6 +630,8 @@ function App() {
             selectedBatch={adminBatch}
             onSelectBatch={handleAdminSelectBatch}
             onClearBatch={handleAdminClearBatch}
+            batches={adminBatches}
+            onUpdateBatch={updateAdminBatch}
             onLogout={handleLogout}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
@@ -536,6 +656,9 @@ function App() {
             selectedBatch={adminBatch}
             onSelectBatch={handleAdminSelectBatch}
             onClearBatch={handleAdminClearBatch}
+            batches={adminBatches}
+            onCreateBatch={addAdminBatch}
+            onUpdateBatch={updateAdminBatch}
             onLogout={handleLogout}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}

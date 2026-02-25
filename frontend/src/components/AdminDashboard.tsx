@@ -40,6 +40,9 @@ interface AdminDashboardProps {
   selectedBatch: Batch | null;
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
+  batches: BatchInfo[];
+  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -47,9 +50,10 @@ interface AdminDashboardProps {
   onDeleteNotification: (id: string) => void;
 }
 
-type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student';
-type Batch = '11th JEE' | '11th NEET' | '12th JEE' | '12th NEET' | 'Dropper JEE' | 'Dropper NEET';
-type AdminSection = 'batches' | 'students' | 'faculty';
+type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student';
+type Batch = string;
+type AdminSection = 'batches' | 'students' | 'faculty' | 'test-series';
+type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
 
 interface Student {
   id: string;
@@ -61,6 +65,12 @@ interface Student {
   performance: number;
   rating: number;
   batch: Batch;
+  ratings?: {
+    attendance: number;
+    tests: number;
+    dppPerformance: number;
+    behavior: number;
+  };
 }
 
 interface Teacher {
@@ -68,8 +78,28 @@ interface Teacher {
   name: string;
   email: string;
   subject: string;
-  experience: string;
+  phone?: string;
 }
+
+type StudentFormState = {
+  id?: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  batch: Batch;
+  phoneNumber: string;
+  dateOfBirth: string;
+  address: string;
+  parentContact: string;
+};
+
+type FacultyFormState = {
+  id?: string;
+  subject: string;
+  name: string;
+  phone: string;
+  email: string;
+};
 
 function renderPerformanceStars(rating: number) {
   const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)));
@@ -109,7 +139,8 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-01',
     performance: 87,
     rating: 4,
-    batch: '11th JEE'
+    batch: '11th JEE',
+    ratings: { attendance: 4, tests: 4, dppPerformance: 3, behavior: 5 }
   },
   {
     id: '2',
@@ -120,7 +151,8 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-05',
     performance: 92,
     rating: 3,
-    batch: '11th NEET'
+    batch: '11th NEET',
+    ratings: { attendance: 5, tests: 4, dppPerformance: 4, behavior: 4 }
   },
   {
     id: '3',
@@ -131,7 +163,8 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-10',
     performance: 78,
     rating: 3,
-    batch: '12th JEE'
+    batch: '12th JEE',
+    ratings: { attendance: 3, tests: 3, dppPerformance: 3, behavior: 4 }
   },
   {
     id: '4',
@@ -142,7 +175,8 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-12',
     performance: 95,
     rating: 5,
-    batch: '12th NEET'
+    batch: '12th NEET',
+    ratings: { attendance: 5, tests: 5, dppPerformance: 5, behavior: 4 }
   },
   {
     id: '5',
@@ -153,7 +187,8 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-14',
     performance: 84,
     rating: 4,
-    batch: 'Dropper JEE'
+    batch: 'Dropper JEE',
+    ratings: { attendance: 4, tests: 4, dppPerformance: 4, behavior: 3 }
   },
   {
     id: '6',
@@ -164,17 +199,16 @@ const MOCK_STUDENTS: Student[] = [
     joinDate: '2025-09-18',
     performance: 90,
     rating: 4,
-    batch: 'Dropper NEET'
+    batch: 'Dropper NEET',
+    ratings: { attendance: 4, tests: 5, dppPerformance: 4, behavior: 4 }
   },
 ];
 
-const DEMO_BATCHES: Batch[] = ['11th JEE', '11th NEET', '12th JEE', '12th NEET', 'Dropper JEE', 'Dropper NEET'];
-
 const MOCK_FACULTY: Teacher[] = [
-  { id: 'f1', name: 'Arvind Sir', email: 'arvind@example.com', subject: 'Physics', experience: '8 years' },
-  { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', experience: '6 years' },
-  { id: 'f3', name: 'Rohit Sir', email: 'rohit@example.com', subject: 'Mathematics', experience: '10 years' },
-  { id: 'f4', name: 'Nidhi Maam', email: 'nidhi@example.com', subject: 'Biology', experience: '7 years' },
+  { id: 'f1', name: 'Arvind Sir', email: 'arvind@example.com', subject: 'Physics', phone: '+91 98765 11111' },
+  { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', phone: '+91 98765 22222' },
+  { id: 'f3', name: 'Rohit Sir', email: 'rohit@example.com', subject: 'Mathematics', phone: '+91 98765 33333' },
+  { id: 'f4', name: 'Nidhi Maam', email: 'nidhi@example.com', subject: 'Biology', phone: '+91 98765 44444' },
 ];
 
 export function AdminDashboard({ 
@@ -186,15 +220,155 @@ export function AdminDashboard({
   selectedBatch,
   onSelectBatch,
   onClearBatch,
+  batches,
+  onCreateBatch,
+  onUpdateBatch,
   onLogout,
   notifications,
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification
 }: AdminDashboardProps) {
-  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
-  const openAddStudent = () => setIsAddStudentOpen(true);
-  const closeAddStudent = () => setIsAddStudentOpen(false);
+  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
+  const [faculty, setFaculty] = useState<Teacher[]>(MOCK_FACULTY);
+  const [studentModal, setStudentModal] = useState<{
+    open: boolean;
+    initialData?: StudentFormState;
+    defaultBatch: Batch | null;
+    title: string;
+  }>({
+    open: false,
+    defaultBatch: null,
+    title: 'Add Student',
+  });
+  const [facultyModal, setFacultyModal] = useState<{
+    open: boolean;
+    initialData?: FacultyFormState;
+    title: string;
+  }>({
+    open: false,
+    title: 'Add Faculty',
+  });
+  const [batchModal, setBatchModal] = useState<{
+    open: boolean;
+    mode: 'add' | 'edit';
+    batchLabel?: string;
+  }>({
+    open: false,
+    mode: 'add',
+  });
+  const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student }>({
+    open: false,
+  });
+
+  const openAddStudent = (batch: Batch | null = null) => {
+    setStudentModal({ open: true, initialData: undefined, defaultBatch: batch, title: 'Add Student' });
+  };
+  const openEditStudent = (student: Student) => {
+    setStudentModal({
+      open: true,
+      defaultBatch: student.batch,
+      title: 'Edit Student',
+      initialData: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        rollNumber: student.rollNumber,
+        batch: student.batch,
+        phoneNumber: '',
+        dateOfBirth: '',
+        address: '',
+        parentContact: '',
+      },
+    });
+  };
+  const closeStudentModal = () => setStudentModal((prev) => ({ ...prev, open: false }));
+  const handleSaveStudent = (data: StudentFormState) => {
+    if (data.id) {
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === data.id
+            ? {
+                ...student,
+                name: data.name,
+                email: data.email,
+                rollNumber: data.rollNumber,
+                batch: data.batch,
+              }
+            : student
+        )
+      );
+    } else {
+      const newStudent: Student = {
+        id: `student-${Date.now()}`,
+        name: data.name,
+        email: data.email,
+        rollNumber: data.rollNumber,
+        enrolledCourses: [],
+        joinDate: new Date().toISOString().slice(0, 10),
+        performance: 0,
+        rating: 0,
+        batch: data.batch,
+      };
+      setStudents((prev) => [newStudent, ...prev]);
+    }
+  };
+  const handleDeleteStudent = (id: string) => {
+    setStudents((prev) => prev.filter((student) => student.id !== id));
+  };
+  const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
+  const closeStudentRatings = () => setRatingModal({ open: false });
+
+  const openAddFaculty = () => {
+    setFacultyModal({ open: true, initialData: undefined, title: 'Add Faculty' });
+  };
+  const openEditFaculty = (teacher: Teacher) => {
+    setFacultyModal({
+      open: true,
+      title: 'Edit Faculty',
+      initialData: {
+        id: teacher.id,
+        subject: teacher.subject,
+        name: teacher.name,
+        phone: teacher.phone ?? '',
+        email: teacher.email,
+      },
+    });
+  };
+  const closeFacultyModal = () => setFacultyModal((prev) => ({ ...prev, open: false }));
+  const handleSaveFaculty = (data: FacultyFormState) => {
+    if (data.id) {
+      setFaculty((prev) =>
+        prev.map((teacher) =>
+          teacher.id === data.id
+            ? {
+                ...teacher,
+                name: data.name,
+                subject: data.subject,
+                email: data.email,
+                phone: data.phone,
+              }
+            : teacher
+        )
+      );
+    } else {
+      const newFaculty: Teacher = {
+        id: `faculty-${Date.now()}`,
+        name: data.name,
+        email: data.email,
+        subject: data.subject,
+        phone: data.phone,
+      };
+      setFaculty((prev) => [newFaculty, ...prev]);
+    }
+  };
+  const handleDeleteFaculty = (id: string) => {
+    setFaculty((prev) => prev.filter((teacher) => teacher.id !== id));
+  };
+
+  const openAddBatch = () => setBatchModal({ open: true, mode: 'add' });
+  const openEditBatch = (label: string) => setBatchModal({ open: true, mode: 'edit', batchLabel: label });
+  const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
@@ -224,6 +398,7 @@ export function AdminDashboard({
                   { id: 'batches', label: 'Batches', icon: BookOpen },
                   { id: 'students', label: 'Students', icon: Users },
                   { id: 'faculty', label: 'Faculty', icon: GraduationCap },
+                  { id: 'test-series', label: 'Test Series', icon: FileText },
                 ].map((section) => (
                   <motion.button
                     key={section.id}
@@ -231,7 +406,7 @@ export function AdminDashboard({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      adminSection === section.id && activeTab !== 'profile'
+                      (adminSection === section.id || (section.id === 'test-series' && activeTab === 'test-series')) && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -246,9 +421,8 @@ export function AdminDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
+                  { id: 'faculty', label: 'Batch Faculty', icon: GraduationCap },
                   { id: 'content', label: 'Content', icon: BookOpen },
-                  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                  { id: 'test-series', label: 'Test Series', icon: FileText },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -294,28 +468,66 @@ export function AdminDashboard({
         >
           {!selectedBatch && activeTab !== 'profile' ? (
             <>
-              {adminSection === 'batches' && <BatchSelectionTab onSelectBatch={onSelectBatch} />}
-              {adminSection === 'students' && <StudentsDirectoryTab />}
-              {adminSection === 'faculty' && <FacultyDirectoryTab />}
+              {adminSection === 'batches' && (
+                <BatchSelectionTab
+                  batches={batches}
+                  onSelectBatch={onSelectBatch}
+                  onAddBatch={openAddBatch}
+                />
+              )}
+              {adminSection === 'students' && (
+                <StudentsDirectoryTab
+                  students={students}
+                  batches={batches}
+                  onAddStudent={() => openAddStudent(null)}
+                  onEditStudent={openEditStudent}
+                  onDeleteStudent={handleDeleteStudent}
+                  onViewStudent={openStudentRatings}
+                />
+              )}
+              {adminSection === 'faculty' && (
+                <FacultyDirectoryTab
+                  faculty={faculty}
+                  onAddFaculty={openAddFaculty}
+                  onEditFaculty={openEditFaculty}
+                  onDeleteFaculty={handleDeleteFaculty}
+                />
+              )}
+              {adminSection === 'test-series' && (
+                <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={null as unknown as Batch} onChangeBatch={() => {}} />
+              )}
             </>
           ) : (
             <>
               {activeTab === 'home' && (
                 <OverviewTab
-                  onNavigate={onNavigate}
                   selectedBatch={selectedBatch}
-                  onChangeBatch={onClearBatch}
-                  onAddStudent={openAddStudent}
+                  onEditBatch={openEditBatch}
+                  students={students}
                 />
               )}
               {activeTab === 'students' && selectedBatch && (
-                <StudentsTab selectedBatch={selectedBatch} onChangeBatch={onClearBatch} onAddStudent={openAddStudent} />
+                <StudentsTab
+                  students={students}
+                  selectedBatch={selectedBatch}
+                  onChangeBatch={onClearBatch}
+                  onAddStudent={() => openAddStudent(selectedBatch)}
+                  onEditStudent={openEditStudent}
+                  onDeleteStudent={handleDeleteStudent}
+                  onViewStudent={openStudentRatings}
+                />
               )}
-              {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS.filter((student) => student.batch === selectedBatch)} />}
+              {activeTab === 'faculty' && selectedBatch && (
+                <BatchFacultyTab
+                  selectedBatch={selectedBatch}
+                  batches={batches}
+                  faculty={faculty}
+                  onUpdateBatch={onUpdateBatch}
+                />
+              )}
+              {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
               {activeTab === 'content' && selectedBatch && <NotesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
-              {activeTab === 'analytics' && selectedBatch && <DPPsManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
-              {activeTab === 'test-series' && selectedBatch && <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
               {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
               {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
@@ -329,37 +541,93 @@ export function AdminDashboard({
       <Footer />
 
       <AddStudentModal
-        open={isAddStudentOpen}
-        onClose={closeAddStudent}
-        defaultBatch={selectedBatch}
+        open={studentModal.open}
+        onClose={closeStudentModal}
+        defaultBatch={studentModal.defaultBatch}
+        batches={batches}
+        initialData={studentModal.initialData}
+        title={studentModal.title}
+        onSubmit={handleSaveStudent}
+      />
+
+      <AddFacultyModal
+        open={facultyModal.open}
+        onClose={closeFacultyModal}
+        initialData={facultyModal.initialData}
+        title={facultyModal.title}
+        onSubmit={handleSaveFaculty}
+      />
+
+      <BatchFormModal
+        open={batchModal.open}
+        mode={batchModal.mode}
+        batches={batches}
+        faculty={faculty}
+        batchLabel={batchModal.batchLabel}
+        onClose={closeBatchModal}
+        onCreateBatch={onCreateBatch}
+        onUpdateBatch={onUpdateBatch}
+      />
+
+      <StudentRatingsModal
+        open={ratingModal.open}
+        student={ratingModal.student}
+        onClose={closeStudentRatings}
       />
     </div>
   );
 }
 
-function BatchSelectionTab({ onSelectBatch }: { onSelectBatch: (batch: Batch) => void }) {
+function BatchSelectionTab({
+  batches,
+  onSelectBatch,
+  onAddBatch,
+}: {
+  batches: BatchInfo[];
+  onSelectBatch: (batch: Batch) => void;
+  onAddBatch: () => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Batch</h2>
-        <p className="text-gray-600">Choose a batch to open the admin dashboard in that context.</p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Batch</h2>
+            <p className="text-gray-600">Choose a batch to open the admin dashboard in that context.</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={onAddBatch}
+            className="ml-auto inline-flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" />
+            New Batch
+          </motion.button>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {DEMO_BATCHES.map((batch, index) => (
+        {batches.map((batch, index) => (
           <motion.button
-            key={batch}
+            key={batch.label}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => onSelectBatch(batch)}
+            onClick={() => onSelectBatch(batch.label)}
             className="bg-white/90 text-left rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all group"
           >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-widest text-cyan-700 font-semibold">Batch</p>
-                <h3 className="text-xl font-bold text-gray-900 mt-1">{batch}</h3>
+                <h3 className="text-xl font-bold text-gray-900 mt-1">{batch.label}</h3>
+                {batch.subjects && batch.subjects.length > 0 && (
+                  <p className="text-sm text-gray-500 mt-1">Subjects: {batch.subjects.join(', ')}</p>
+                )}
+                {batch.facultyAssigned && batch.facultyAssigned.length > 0 && (
+                  <p className="text-sm text-gray-500 mt-1">Faculty: {batch.facultyAssigned.join(', ')}</p>
+                )}
               </div>
               <ChevronRight className="w-6 h-6 text-cyan-600 group-hover:translate-x-1 transition-transform" />
             </div>
@@ -370,9 +638,23 @@ function BatchSelectionTab({ onSelectBatch }: { onSelectBatch: (batch: Batch) =>
   );
 }
 
-function StudentsDirectoryTab() {
+function StudentsDirectoryTab({
+  students,
+  batches,
+  onAddStudent,
+  onEditStudent,
+  onDeleteStudent,
+  onViewStudent,
+}: {
+  students: Student[];
+  batches: BatchInfo[];
+  onAddStudent: () => void;
+  onEditStudent: (student: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewStudent: (student: Student) => void;
+}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredStudents = MOCK_STUDENTS.filter((student) =>
+  const filteredStudents = students.filter((student) =>
     student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     student.batch.toLowerCase().includes(searchQuery.toLowerCase())
@@ -385,9 +667,20 @@ function StudentsDirectoryTab() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
       >
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">All Students</h2>
-          <p className="text-gray-600">Manage students across all batches</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">All Students</h2>
+            <p className="text-gray-600">Manage students across all batches</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAddStudent}
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+          >
+            <Plus className="w-5 h-5" />
+            Add Student
+          </motion.button>
         </div>
 
         <div className="relative group">
@@ -426,7 +719,8 @@ function StudentsDirectoryTab() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="hover:bg-teal-50/60 transition"
+                  onClick={() => onViewStudent(student)}
+                  className="hover:bg-teal-50/60 transition cursor-pointer"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
@@ -448,10 +742,26 @@ function StudentsDirectoryTab() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-2">
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditStudent(student);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                      >
                         <Edit className="w-4 h-4" />
                       </motion.button>
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDeleteStudent(student.id);
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </motion.button>
                     </div>
@@ -466,9 +776,19 @@ function StudentsDirectoryTab() {
   );
 }
 
-function FacultyDirectoryTab() {
+function FacultyDirectoryTab({
+  faculty,
+  onAddFaculty,
+  onEditFaculty,
+  onDeleteFaculty,
+}: {
+  faculty: Teacher[];
+  onAddFaculty: () => void;
+  onEditFaculty: (teacher: Teacher) => void;
+  onDeleteFaculty: (id: string) => void;
+}) {
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredFaculty = MOCK_FACULTY.filter((teacher) =>
+  const filteredFaculty = faculty.filter((teacher) =>
     teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     teacher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     teacher.subject.toLowerCase().includes(searchQuery.toLowerCase())
@@ -481,9 +801,20 @@ function FacultyDirectoryTab() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
       >
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">All Faculty</h2>
-          <p className="text-gray-600">Manage faculty across all departments</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">All Faculty</h2>
+            <p className="text-gray-600">Manage faculty across all departments</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAddFaculty}
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+          >
+            <Plus className="w-5 h-5" />
+            Add Faculty
+          </motion.button>
         </div>
 
         <div className="relative group">
@@ -510,7 +841,7 @@ function FacultyDirectoryTab() {
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Faculty</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Subject</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Experience</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -535,13 +866,23 @@ function FacultyDirectoryTab() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{teacher.subject}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{teacher.experience}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{teacher.phone || '—'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex items-center gap-2">
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => onEditFaculty(teacher)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                      >
                         <Edit className="w-4 h-4" />
                       </motion.button>
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => onDeleteFaculty(teacher.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </motion.button>
                     </div>
@@ -557,22 +898,17 @@ function FacultyDirectoryTab() {
 }
 
 function OverviewTab({
-  onNavigate,
   selectedBatch,
-  onChangeBatch,
-  onAddStudent,
+  onEditBatch,
+  students,
 }: {
-  onNavigate: (tab: Tab) => void;
   selectedBatch: Batch | null;
-  onChangeBatch: () => void;
-  onAddStudent: () => void;
+  onEditBatch: (label: string) => void;
+  students: Student[];
 }) {
   if (!selectedBatch) return null;
 
-  const batchStudents = MOCK_STUDENTS.filter((student) => student.batch === selectedBatch);
-  const averagePerformance = batchStudents.length
-    ? Math.round(batchStudents.reduce((sum, student) => sum + student.performance, 0) / batchStudents.length)
-    : 0;
+  const batchStudents = students.filter((student) => student.batch === selectedBatch);
 
   const stats = [
     { 
@@ -602,15 +938,6 @@ function OverviewTab({
       trend: '+8',
       trendUp: true
     },
-    { 
-      label: 'Avg. Performance', 
-      value: `${averagePerformance}%`, 
-      icon: BarChart3, 
-      gradient: 'from-yellow-500 to-orange-500',
-      bgGradient: 'from-yellow-50 to-orange-50',
-      trend: '+5%',
-      trendUp: true
-    },
   ];
 
   return (
@@ -621,15 +948,15 @@ function OverviewTab({
           <h2 className="text-xl font-bold text-gray-900">{selectedBatch}</h2>
         </div>
         <button
-          onClick={onChangeBatch}
+          onClick={() => onEditBatch(selectedBatch)}
           className="px-4 py-2 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
         >
-          Change Batch
+          Edit Batch
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
@@ -661,50 +988,30 @@ function OverviewTab({
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { icon: Plus, label: 'Add Student', desc: 'Enroll a new student', gradient: 'from-blue-500 to-cyan-500', action: onAddStudent },
-          { icon: Plus, label: 'Upload Notes', desc: 'Add study materials', gradient: 'from-cyan-500 to-blue-500', action: () => onNavigate('upload-notes') },
-          { icon: Plus, label: 'Create DPP', desc: 'Add practice tests', gradient: 'from-green-500 to-emerald-500', action: () => onNavigate('create-dpp') }
-        ].map((action, index) => (
-          <motion.button
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 + index * 0.1 }}
-            whileHover={{ scale: 1.05, y: -5 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={action.action}
-            className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all text-left group"
-          >
-            <motion.div
-              whileHover={{ scale: 1.2}}
-              className={`w-12 h-12 bg-gradient-to-br ${action.gradient} rounded-xl flex items-center justify-center mb-4 group-hover:shadow-lg transition-all`}
-            >
-              <action.icon className="w-6 h-6 text-white" />
-            </motion.div>
-            <h4 className="font-semibold text-gray-900 mb-1">{action.label}</h4>
-            <p className="text-sm text-gray-600">{action.desc}</p>
-          </motion.button>
-        ))}
-      </div>
     </div>
   );
 }
 
 function StudentsTab({
+  students,
   selectedBatch,
   onChangeBatch,
   onAddStudent,
+  onEditStudent,
+  onDeleteStudent,
+  onViewStudent,
 }: {
+  students: Student[];
   selectedBatch: Batch;
   onChangeBatch: () => void;
   onAddStudent: () => void;
+  onEditStudent: (student: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewStudent: (student: Student) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredStudents = MOCK_STUDENTS.filter(student =>
+  const filteredStudents = students.filter(student =>
     student.batch === selectedBatch &&
     (student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.email.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -781,7 +1088,8 @@ function StudentsTab({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="hover:bg-teal-50/60 transition"
+                  onClick={() => onViewStudent(student)}
+                  className="hover:bg-teal-50/60 transition cursor-pointer"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
@@ -805,6 +1113,10 @@ function StudentsTab({
                       <motion.button 
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEditStudent(student);
+                        }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                       >
                         <Edit className="w-4 h-4" />
@@ -812,6 +1124,10 @@ function StudentsTab({
                       <motion.button 
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDeleteStudent(student.id);
+                        }}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -832,28 +1148,37 @@ function AddStudentModal({
   open,
   onClose,
   defaultBatch,
+  batches,
+  initialData,
+  title,
+  onSubmit,
 }: {
   open: boolean;
   onClose: () => void;
   defaultBatch: Batch | null;
+  batches: BatchInfo[];
+  initialData?: StudentFormState;
+  title?: string;
+  onSubmit?: (data: StudentFormState) => void;
 }) {
-  const createInitialState = (batch: Batch | null) => ({
-    name: '',
-    email: '',
-    rollNumber: '',
-    batch: batch ?? '',
-    phoneNumber: '',
-    dateOfBirth: '',
-    address: '',
-    parentContact: '',
+  const createInitialState = (batch: Batch | null, initial?: StudentFormState): StudentFormState => ({
+    id: initial?.id,
+    name: initial?.name ?? '',
+    email: initial?.email ?? '',
+    rollNumber: initial?.rollNumber ?? '',
+    batch: initial?.batch ?? batch ?? '',
+    phoneNumber: initial?.phoneNumber ?? '',
+    dateOfBirth: initial?.dateOfBirth ?? '',
+    address: initial?.address ?? '',
+    parentContact: initial?.parentContact ?? '',
   });
 
-  const [formState, setFormState] = useState(createInitialState(defaultBatch));
+  const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
 
   useEffect(() => {
     if (!open) return;
-    setFormState(createInitialState(defaultBatch));
-  }, [open, defaultBatch]);
+    setFormState(createInitialState(defaultBatch, initialData));
+  }, [open, defaultBatch, initialData]);
 
   if (!open) return null;
 
@@ -863,6 +1188,7 @@ function AddStudentModal({
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
+    onSubmit?.(formState);
     onClose();
   };
 
@@ -877,7 +1203,7 @@ function AddStudentModal({
         className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
-          <h3 className="text-xl font-semibold">Add Student</h3>
+          <h3 className="text-xl font-semibold">{title ?? 'Add Student'}</h3>
           <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
         </div>
 
@@ -938,9 +1264,9 @@ function AddStudentModal({
                 <option value="" disabled>
                   Select batch
                 </option>
-                {DEMO_BATCHES.map((batch) => (
-                  <option key={batch} value={batch}>
-                    {batch}
+                {batches.map((batch) => (
+                  <option key={batch.slug} value={batch.label}>
+                    {batch.label}
                   </option>
                 ))}
               </select>
@@ -1023,7 +1349,703 @@ function AddStudentModal({
   );
 }
 
-function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
+function BatchFacultyTab({
+  selectedBatch,
+  batches,
+  faculty,
+  onUpdateBatch,
+}: {
+  selectedBatch: Batch;
+  batches: BatchInfo[];
+  faculty: Teacher[];
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+}) {
+  const batchInfo = batches.find((batch) => batch.label === selectedBatch);
+  const assignedFaculty = batchInfo?.facultyAssigned ?? [];
+  const assignedDetails = assignedFaculty
+    .map((name) => faculty.find((item) => item.name === name) ?? { name, subject: '—', email: '', phone: '' })
+    .filter(Boolean);
+  const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formState, setFormState] = useState({
+    subject: '',
+    faculty: '',
+    assignments: [] as { subject: string; faculty: string }[],
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const openModal = () => {
+    const prefill = assignedDetails.map((faculty) => ({
+      subject: faculty.subject || '—',
+      faculty: faculty.name,
+    }));
+    setFormState({ subject: '', faculty: '', assignments: prefill });
+    setError(null);
+    setIsModalOpen(true);
+  };
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setError(null);
+  };
+
+  const facultyOptions = formState.subject
+    ? faculty.filter((item) => item.subject === formState.subject)
+    : [];
+
+  const addAssignment = () => {
+    if (!formState.subject || !formState.faculty) return;
+    setFormState((prev) => {
+      const exists = prev.assignments.some(
+        (item) => item.subject === prev.subject && item.faculty === prev.faculty
+      );
+      if (exists) {
+        return { ...prev, subject: '', faculty: '' };
+      }
+      return {
+        ...prev,
+        assignments: [...prev.assignments, { subject: prev.subject, faculty: prev.faculty }],
+        subject: '',
+        faculty: '',
+      };
+    });
+  };
+
+  const handleSave = () => {
+    const subjectsSet = Array.from(new Set(formState.assignments.map((item) => item.subject).filter((subject) => subject && subject !== '—')));
+    const facultySet = Array.from(new Set(formState.assignments.map((item) => item.faculty)));
+    const result = onUpdateBatch(selectedBatch, subjectsSet, facultySet);
+    if (!result.ok) {
+      setError(result.error ?? 'Unable to update batch.');
+      return;
+    }
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Batch Faculty</h2>
+            <p className="text-gray-600">Faculty assigned to {selectedBatch}</p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={openModal}
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+          >
+            <Plus className="w-5 h-5" />
+            Add Faculty
+          </motion.button>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white overflow-hidden"
+      >
+        {assignedDetails.length === 0 ? (
+          <div className="p-6 text-sm text-gray-600">No faculty assigned yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Faculty</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Subject</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {assignedDetails.map((faculty, index) => (
+                  <motion.tr
+                    key={`${faculty.name}-${index}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-teal-50/60 transition"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                          {faculty.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{faculty.name}</div>
+                          {faculty.email && <div className="text-sm text-gray-500">{faculty.email}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{faculty.subject}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{faculty.email || '—'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{faculty.phone || '—'}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={closeModal} />
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+          >
+            <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+              <h3 className="text-xl font-semibold">Assign Faculty</h3>
+              <p className="text-sm text-white/80">Select subject and faculty, then add.</p>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+                <label className="space-y-2 text-sm font-medium text-gray-700">
+                  <span>Subject</span>
+                  <select
+                    value={formState.subject}
+                    onChange={(event) =>
+                      setFormState((prev) => ({
+                        ...prev,
+                        subject: event.target.value,
+                        faculty: '',
+                      }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+                  >
+                    <option value="">Select subject</option>
+                    {subjects.map((subject) => (
+                      <option key={subject} value={subject}>
+                        {subject}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-2 text-sm font-medium text-gray-700">
+                  <span>Faculty</span>
+                  <select
+                    value={formState.faculty}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, faculty: event.target.value }))}
+                    disabled={!formState.subject}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  >
+                    <option value="">{formState.subject ? 'Select faculty' : 'Select subject first'}</option>
+                    {facultyOptions.map((faculty) => (
+                      <option key={faculty.id} value={faculty.name}>
+                        {faculty.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={addAssignment}
+                  className="mt-7 px-5 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+                >
+                  Add
+                </button>
+              </div>
+
+              {formState.assignments.length > 0 && (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Assigned</p>
+                  <div className="space-y-1">
+                    {formState.assignments.map((item, index) => (
+                      <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+                        <span>
+                          {item.subject} — <span className="font-semibold">{item.faculty}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormState((prev) => ({
+                              ...prev,
+                              assignments: prev.assignments.filter((_, i) => i !== index),
+                            }))
+                          }
+                          className="text-xs text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddFacultyModal({
+  open,
+  onClose,
+  initialData,
+  title,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialData?: FacultyFormState;
+  title?: string;
+  onSubmit?: (data: FacultyFormState) => void;
+}) {
+  const [formState, setFormState] = useState<FacultyFormState>({
+    id: initialData?.id,
+    subject: initialData?.subject ?? '',
+    name: initialData?.name ?? '',
+    phone: initialData?.phone ?? '',
+    email: initialData?.email ?? '',
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormState({
+      id: initialData?.id,
+      subject: initialData?.subject ?? '',
+      name: initialData?.name ?? '',
+      phone: initialData?.phone ?? '',
+      email: initialData?.email ?? '',
+    });
+  }, [open, initialData]);
+
+  if (!open) return null;
+
+  const handleChange = (field: keyof typeof formState) => (event: ChangeEvent<HTMLInputElement>) => {
+    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit?.(formState);
+    onClose();
+  };
+
+  const requiredMark = <span className="text-red-500">*</span>;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{title ?? 'Add Faculty'}</h3>
+          <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Subject {requiredMark}
+            </span>
+            <input
+              type="text"
+              required
+              value={formState.subject}
+              onChange={handleChange('subject')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="e.g. Physics"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Faculty Name {requiredMark}
+            </span>
+            <input
+              type="text"
+              required
+              value={formState.name}
+              onChange={handleChange('name')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Faculty name"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Phone Number {requiredMark}
+            </span>
+            <input
+              type="tel"
+              required
+              value={formState.phone}
+              onChange={handleChange('phone')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="+91 9XXXX XXXXX"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Email {requiredMark}
+            </span>
+            <input
+              type="email"
+              required
+              value={formState.email}
+              onChange={handleChange('email')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="faculty@email.com"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+            >
+              Save Faculty
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function BatchFormModal({
+  open,
+  mode,
+  batches,
+  faculty,
+  batchLabel,
+  onClose,
+  onCreateBatch,
+  onUpdateBatch,
+}: {
+  open: boolean;
+  mode: 'add' | 'edit';
+  batches: BatchInfo[];
+  faculty: Teacher[];
+  batchLabel?: string;
+  onClose: () => void;
+  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+}) {
+  const [formState, setFormState] = useState({
+    name: '',
+    subject: '',
+    faculty: '',
+    assignments: [] as { subject: string; faculty: string }[],
+  });
+  const [error, setError] = useState<string | null>(null);
+  const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
+
+  useEffect(() => {
+    if (!open) return;
+    if (mode === 'edit' && batchLabel) {
+      const current = batches.find((batch) => batch.label === batchLabel);
+      const assignments = (current?.facultyAssigned ?? [])
+        .map((name) => {
+          const found = faculty.find((item) => item.name === name);
+          return found ? { subject: found.subject, faculty: found.name } : null;
+        })
+        .filter((item): item is { subject: string; faculty: string } => !!item);
+      setFormState({
+        name: current?.label ?? batchLabel,
+        subject: '',
+        faculty: '',
+        assignments,
+      });
+    } else {
+      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+    }
+    setError(null);
+  }, [open, mode, batchLabel, batches, faculty]);
+
+  if (!open) return null;
+
+  const facultyOptions = formState.subject
+    ? faculty.filter((item) => item.subject === formState.subject)
+    : [];
+
+  const addAssignment = () => {
+    if (!formState.subject || !formState.faculty) return;
+    setFormState((prev) => {
+      const exists = prev.assignments.some(
+        (item) => item.subject === prev.subject && item.faculty === prev.faculty
+      );
+      if (exists) {
+        return { ...prev, subject: '', faculty: '' };
+      }
+      return {
+        ...prev,
+        assignments: [...prev.assignments, { subject: prev.subject, faculty: prev.faculty }],
+        subject: '',
+        faculty: '',
+      };
+    });
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const selectedSubjects = Array.from(new Set(formState.assignments.map((item) => item.subject)));
+    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty)));
+    if (!formState.name.trim()) {
+      setError('Batch name is required.');
+      return;
+    }
+    if (selectedSubjects.length === 0 || selectedFaculty.length === 0) {
+      setError('Add at least one subject and faculty.');
+      return;
+    }
+    const result =
+      mode === 'edit'
+        ? onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty)
+        : onCreateBatch(formState.name.trim(), selectedSubjects, selectedFaculty);
+    if (!result.ok) {
+      setError(result.error ?? 'Unable to save batch.');
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{mode === 'edit' ? 'Edit Batch' : 'Create New Batch'}</h3>
+          <p className="text-sm text-white/80">Add batch details and faculty assignment.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>Batch Name *</span>
+            <input
+              type="text"
+              required
+              value={formState.name}
+              onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
+              disabled={mode === 'edit'}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-500"
+              placeholder="e.g. 11th JEE Evening"
+            />
+          </label>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">Subject & Faculty *</p>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+              <label className="space-y-2 text-sm font-medium text-gray-700">
+                <span>Subject</span>
+                <select
+                  value={formState.subject}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      subject: event.target.value,
+                      faculty: '',
+                    }))
+                  }
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>
+                      {subject}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm font-medium text-gray-700">
+                <span>Faculty</span>
+                <select
+                  value={formState.faculty}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, faculty: event.target.value }))}
+                  disabled={!formState.subject}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">{formState.subject ? 'Select faculty' : 'Select subject first'}</option>
+                  {facultyOptions.map((item) => (
+                    <option key={item.id} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={addAssignment}
+                className="mt-7 px-5 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {formState.assignments.length > 0 && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-gray-700">Selected</p>
+              <div className="space-y-1">
+                {formState.assignments.map((item, index) => (
+                  <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+                    <span>
+                      {item.subject} — <span className="font-semibold">{item.faculty}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          assignments: prev.assignments.filter((_, i) => i !== index),
+                        }))
+                      }
+                      className="text-xs text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+            >
+              {mode === 'edit' ? 'Save Batch' : 'Add Batch'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function StudentRatingsModal({
+  open,
+  student,
+  onClose,
+}: {
+  open: boolean;
+  student?: Student;
+  onClose: () => void;
+}) {
+  if (!open || !student) return null;
+
+  const ratings = student.ratings ?? {
+    attendance: 0,
+    tests: 0,
+    dppPerformance: 0,
+    behavior: 0,
+  };
+
+  const performanceData = [
+    { label: 'Attendance', value: ratings.attendance },
+    { label: 'Test Performance', value: ratings.tests },
+    { label: 'DPP Performance', value: ratings.dppPerformance },
+    { label: 'Class Behaviour', value: ratings.behavior },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{student.name}</h3>
+          <p className="text-sm text-white/80">Performance Breakdown</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {performanceData.map((item) => (
+            <div key={item.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+              <div className="text-sm font-medium text-gray-700">{item.label}</div>
+              <div className="flex items-center gap-2">
+                {renderPerformanceStars(item.value)}
+                <span className="text-sm font-semibold text-gray-700">{item.value}/5</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function NotesManagementTab({
+  onNavigate,
+  selectedBatch,
+  onChangeBatch,
+}: {
+  onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
+}) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -1034,7 +2056,9 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNa
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Notes Management</h2>
-            <p className="text-gray-600">Manage and upload study materials for {selectedBatch}</p>
+            <p className="text-gray-600">
+              {selectedBatch ? `Manage and upload study materials for ${selectedBatch}` : 'Manage and upload study materials across batches'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <motion.button 
@@ -1078,7 +2102,15 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNa
   );
 }
 
-function DPPsManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
+function DPPsManagementTab({
+  onNavigate,
+  selectedBatch,
+  onChangeBatch,
+}: {
+  onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
+}) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -1089,7 +2121,9 @@ function DPPsManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNav
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">DPP Management</h2>
-            <p className="text-gray-600">Create and manage daily practice problems for {selectedBatch}</p>
+            <p className="text-gray-600">
+              {selectedBatch ? `Create and manage daily practice problems for ${selectedBatch}` : 'Create and manage daily practice problems across batches'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <motion.button 
@@ -1133,7 +2167,15 @@ function DPPsManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNav
   );
 }
 
-function TestSeriesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
+function TestSeriesManagementTab({
+  onNavigate,
+  selectedBatch,
+  onChangeBatch,
+}: {
+  onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
+}) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -1144,7 +2186,9 @@ function TestSeriesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Test Series Management</h2>
-            <p className="text-gray-600">Create and manage test series for {selectedBatch}</p>
+            <p className="text-gray-600">
+              {selectedBatch ? `Create and manage test series for ${selectedBatch}` : 'Create and manage test series across batches'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <motion.button 
