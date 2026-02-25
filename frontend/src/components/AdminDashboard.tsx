@@ -236,7 +236,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.05, rotate: 1 }}
+            whileHover={{ scale: 1.05}}
             className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
@@ -244,7 +244,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
                 <motion.div 
-                  whileHover={{ scale: 1.2, rotate: 15 }}
+                  whileHover={{ scale: 1.2}}
                   className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
                 >
                   <stat.icon className="w-6 h-6 text-white" />
@@ -302,8 +302,6 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
               className={`flex items-center gap-4 p-4 bg-gradient-to-r ${activity.bgGradient} rounded-xl border border-white shadow-md hover:shadow-lg transition-all`}
             >
               <motion.div
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
                 className={`w-12 h-12 bg-gradient-to-br ${activity.gradient} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}
               >
                 <activity.icon className="w-6 h-6 text-white" />
@@ -335,7 +333,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
             className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all text-left group"
           >
             <motion.div
-              whileHover={{ scale: 1.2, rotate: 15 }}
+              whileHover={{ scale: 1.2}}
               className={`w-12 h-12 bg-gradient-to-br ${action.gradient} rounded-xl flex items-center justify-center mb-4 group-hover:shadow-lg transition-all`}
             >
               <action.icon className="w-6 h-6 text-white" />

@@ -185,7 +185,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                   </div>
                 </div>
                 <motion.div
-                  whileHover={{ scale: 1.1, rotate: 360 }}
+                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold border-4 border-yellow-200"
                 >
@@ -254,7 +254,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                     <p className="text-purple-100 mt-1">{editingRating.studentName}</p>
                   </div>
                   <motion.button
-                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileHover={{ scale: 1.1}}
                     whileTap={{ scale: 0.9 }}
                     onClick={handleCancel}
                     className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition"
@@ -381,7 +381,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                       </p>
                     </div>
                     <motion.div
-                      whileHover={{ scale: 1.1, rotate: 360 }}
+                      whileHover={{ scale: 1.1}}
                       transition={{ duration: 0.5 }}
                       className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-yellow-200 shadow-lg"
                     >

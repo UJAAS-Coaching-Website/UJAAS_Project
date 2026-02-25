@@ -156,7 +156,6 @@ export function StudentRankingsEnhanced() {
               </p>
             </div>
             <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="hidden md:block"
             >
@@ -205,10 +204,7 @@ export function StudentRankingsEnhanced() {
               >
                 {sort.label}
                 {sortBy === sort.id && (
-                  <motion.div
-                    animate={{ rotate: sortOrder === 'asc' ? 180 : 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
+                  <motion.div>
                     <ArrowUpDown className="w-4 h-4" />
                   </motion.div>
                 )}
@@ -320,7 +316,7 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-gray-100 to-gray-300 rounded-2xl p-6 shadow-xl relative mt-8">
               <div className="absolute -top-8 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1, rotate: 360 }}
+                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg"
                 >
@@ -348,7 +344,7 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-yellow-100 to-orange-300 rounded-2xl p-6 shadow-2xl relative">
               <div className="absolute -top-10 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1, rotate: 360 }}
+                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   animate={{ y: [0, -5, 0] }}
                   className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center border-4 border-white shadow-2xl"
@@ -377,7 +373,7 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-orange-100 to-red-300 rounded-2xl p-6 shadow-xl relative mt-8">
               <div className="absolute -top-8 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1, rotate: 360 }}
+                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg"
                 >
@@ -448,7 +444,7 @@ export function StudentRankingsEnhanced() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <motion.div
-                          whileHover={{ scale: 1.2, rotate: 360 }}
+                          whileHover={{ scale: 1.2}}
                           transition={{ duration: 0.5 }}
                           className={`w-10 h-10 bg-gradient-to-br ${getRankBadgeColor(rank)} rounded-full flex items-center justify-center text-white font-bold shadow-md`}
                         >

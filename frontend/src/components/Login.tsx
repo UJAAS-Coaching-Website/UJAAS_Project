@@ -41,9 +41,7 @@ export function Login({ onLogin }: LoginProps) {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 0],
-          }}
+            scale: [1, 1.2, 1]}}
           transition={{
             duration: 20,
             repeat: Infinity,
@@ -53,9 +51,7 @@ export function Login({ onLogin }: LoginProps) {
         />
         <motion.div
           animate={{
-            scale: [1, 1.3, 1],
-            rotate: [0, -90, 0],
-          }}
+            scale: [1, 1.3, 1]}}
           transition={{
             duration: 25,
             repeat: Infinity,

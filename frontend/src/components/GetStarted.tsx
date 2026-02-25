@@ -82,7 +82,6 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <motion.div
-                animate={{ rotate: [0, 360] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
                 <Award className="w-8 h-8" />
@@ -113,8 +112,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             className="absolute top-20 left-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
             animate={{
               x: [0, 100, 0],
-              y: [0, 50, 0],
-            }}
+              y: [0, 50, 0]}}
             transition={{
               duration: 20,
               repeat: Infinity,
@@ -125,8 +123,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             className="absolute top-40 right-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30"
             animate={{
               x: [0, -100, 0],
-              y: [0, 100, 0],
-            }}
+              y: [0, 100, 0]}}
             transition={{
               duration: 15,
               repeat: Infinity,

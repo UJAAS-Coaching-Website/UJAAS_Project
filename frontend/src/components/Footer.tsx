@@ -47,7 +47,7 @@ export function Footer() {
                 <motion.a
                   key={index}
                   href={social.link}
-                  whileHover={{ scale: 1.2, rotate: 5 }}
+                  whileHover={{ scale: 1.2}}
                   whileTap={{ scale: 0.9 }}
                   className={`w-9 h-9 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center ${social.color} transition-all hover:bg-white/20`}
                 >

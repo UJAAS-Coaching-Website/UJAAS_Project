@@ -196,8 +196,6 @@ function HomeTab({ user }: { user: User }) {
           </div>
           <motion.div 
             className="hidden sm:block"
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.5 }}
           >
             <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
               <UserIcon className="w-8 h-8" />
@@ -214,7 +212,7 @@ function HomeTab({ user }: { user: User }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.05, rotate: 1 }}
+            whileHover={{ scale: 1.05}}
             className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group`}
           >
             {/* Animated background effect */}
@@ -223,7 +221,7 @@ function HomeTab({ user }: { user: User }) {
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
                 <motion.div 
-                  whileHover={{ scale: 1.2, rotate: 15 }}
+                  whileHover={{ scale: 1.2}}
                   className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
                 >
                   <stat.icon className="w-6 h-6 text-white" />
@@ -338,8 +336,6 @@ function HomeTab({ user }: { user: User }) {
               className={`flex items-center gap-4 p-4 bg-gradient-to-r ${activity.bgGradient} rounded-xl border border-white shadow-md hover:shadow-lg transition-all`}
             >
               <motion.div 
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
                 className={`w-12 h-12 bg-gradient-to-br ${activity.gradient} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}
               >
                 <activity.icon className="w-6 h-6 text-white" />

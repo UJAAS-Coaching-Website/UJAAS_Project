@@ -110,7 +110,7 @@ export function NotesSection() {
       {/* Header */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-lg flex items-center justify-center">
             <BookOpen className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -129,7 +129,7 @@ export function NotesSection() {
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             />
           </div>
 
@@ -139,7 +139,7 @@ export function NotesSection() {
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="pl-11 pr-8 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white cursor-pointer min-w-[180px]"
+              className="pl-11 pr-8 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent appearance-none bg-white cursor-pointer min-w-[180px]"
             >
               {subjects.map(subject => (
                 <option key={subject} value={subject}>{subject}</option>
@@ -161,8 +161,8 @@ export function NotesSection() {
           >
             <div className="flex items-start gap-4">
               {/* Icon */}
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <FileText className="w-6 h-6 text-red-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FileText className="w-6 h-6 text-teal-600" />
               </div>
 
               {/* Content */}
@@ -172,10 +172,10 @@ export function NotesSection() {
                 </h3>
                 
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
                     {note.subject}
                   </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
                     {note.topic}
                   </span>
                 </div>

@@ -197,8 +197,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
         phone: editedDetails.phone,
         address: editedDetails.address,
         dateOfBirth: editedDetails.dateOfBirth || null,
-        parentContact: editedDetails.parentContact,
-      });
+        parentContact: editedDetails.parentContact});
       const latestUser = response.user as any;
       setProfileUser(latestUser);
       setEditedName(latestUser.name || '');
@@ -235,7 +234,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
           <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
+            whileHover={{ scale: 1.05}}
             className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
           >
             {profileUser.name.charAt(0).toUpperCase()}
@@ -633,7 +632,7 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
               <p className="text-white/80">Based on all evaluated criteria</p>
             </div>
             <motion.div
-              whileHover={{ scale: 1.1, rotate: 360 }}
+              whileHover={{ scale: 1.1}}
               transition={{ duration: 0.5 }}
               className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/30"
             >
