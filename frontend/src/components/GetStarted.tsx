@@ -149,14 +149,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
               </motion.div>
 
               <div className="flex items-center gap-4 mb-6">
-                <motion.div 
+                <motion.img 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                  className="w-16 h-16 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden"
-                >
-                  <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-                </motion.div>
+                  src={logo}
+                  alt="Logo"
+                  className="w-20 h-20 object-contain"
+                />
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold">
                   <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
                     UJAAS

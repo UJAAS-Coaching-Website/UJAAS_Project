@@ -26,9 +26,7 @@ export function Footer() {
             viewport={{ once: true }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl flex items-center justify-center overflow-hidden">
-                <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
-              </div>
+              <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
               <h3 className="text-2xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
                 UJAAS
               </h3>

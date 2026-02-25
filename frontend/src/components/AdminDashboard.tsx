@@ -191,7 +191,6 @@ export function AdminDashboard({
       <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
             <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -201,9 +200,7 @@ export function AdminDashboard({
               title="Go to admin home"
               className="flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
-                <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
-              </div>
+              <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
               <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
                 UJAAS Admin
               </span>

@@ -71,14 +71,14 @@ export function Login({ onLogin }: LoginProps) {
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
           {/* Logo and Header */}
           <div className="text-center mb-8">
-            <motion.div
+            <motion.img
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl mb-4 shadow-lg overflow-hidden"
-            >
-              <img src={logo} alt="UJAAS Logo" className="w-10 h-10 object-contain" />
-            </motion.div>
+              src={logo}
+              alt="UJAAS Logo"
+              className="w-24 h-24 object-contain mx-auto mb-4"
+            />
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
               UJAAS
             </h1>
