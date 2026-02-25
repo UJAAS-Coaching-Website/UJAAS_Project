@@ -321,7 +321,7 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                   onClick={() => setSelectedSubject(subject.id)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedSubject === subject.id
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -345,7 +345,7 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                   onClick={() => setSelectedTimeRange(range.id as any)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedTimeRange === range.id
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -452,7 +452,7 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => onViewDetailedAnalytics(result.id)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
                       >
                         View Details
                         <ChevronRight className="w-4 h-4" />

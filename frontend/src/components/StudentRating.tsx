@@ -215,7 +215,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleEditRating(student.id)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg shadow-md hover:shadow-lg transition"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg shadow-md hover:shadow-lg transition"
               >
                 <Star className="w-4 h-4" />
                 {rating?.overallScore ? 'Update Rating' : 'Rate Student'}
@@ -406,7 +406,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSaveRating}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >
                   <Save className="w-5 h-5" />
                   Save Rating

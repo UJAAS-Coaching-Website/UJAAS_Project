@@ -227,7 +227,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
       >
         {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
@@ -305,7 +305,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
             whileTap={{ scale: 0.95 }}
             className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg whitespace-nowrap ${
               activeSection === tab.id
-                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg'
+                ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                 : 'text-gray-600 bg-white hover:bg-gray-50 border border-gray-200'
             }`}
           >
@@ -623,7 +623,7 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24" />
         <div className="relative">
@@ -765,7 +765,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => setNotificationsEnabled(!notificationsEnabled)}
               className={`w-14 h-8 rounded-full transition-colors ${
-                notificationsEnabled ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-300'
+                notificationsEnabled ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500' : 'bg-gray-300'
               } relative`}
             >
               <motion.div
@@ -785,7 +785,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
               whileTap={{ scale: 0.95 }}
               onClick={() => setEmailUpdates(!emailUpdates)}
               className={`w-14 h-8 rounded-full transition-colors ${
-                emailUpdates ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-gray-300'
+                emailUpdates ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500' : 'bg-gray-300'
               } relative`}
             >
               <motion.div

@@ -373,7 +373,7 @@ function StudentsTab() {
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
           >
             <Plus className="w-5 h-5" />
             Add Student
@@ -382,13 +382,13 @@ function StudentsTab() {
 
         {/* Search */}
         <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-purple-600 transition" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-teal-600 transition" />
           <input
             type="text"
             placeholder="Search students..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition bg-gray-50 focus:bg-white"
+            className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-gray-50 focus:bg-white"
           />
         </div>
       </motion.div>
@@ -402,7 +402,7 @@ function StudentsTab() {
       >
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200">
+            <thead className="bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Student
@@ -428,11 +428,11 @@ function StudentsTab() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="hover:bg-purple-50/50 transition"
+                  className="hover:bg-teal-50/60 transition"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-semibold">
+                      <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
                         {student.name.charAt(0)}
                       </div>
                       <div>
@@ -446,7 +446,7 @@ function StudentsTab() {
                       {student.enrolledCourses.map((course, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 rounded-full"
+                          className="inline-flex px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-teal-100 via-cyan-100 to-blue-100 text-teal-800 rounded-full"
                         >
                           {course}
                         </span>
@@ -470,7 +470,7 @@ function StudentsTab() {
                           initial={{ width: 0 }}
                           animate={{ width: `${student.performance}%` }}
                           transition={{ delay: 0.5 + index * 0.05, duration: 1 }}
-                          className="bg-gradient-to-r from-purple-600 to-pink-600 h-2.5 rounded-full"
+                          className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 h-2.5 rounded-full"
                         />
                       </div>
                       <span className="text-sm font-semibold text-gray-900 min-w-[3ch]">{student.performance}%</span>
@@ -520,7 +520,7 @@ function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) 
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
           >
             <Plus className="w-5 h-5" />
             Upload Notes
@@ -547,7 +547,7 @@ function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) 
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-md hover:shadow-lg transition"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl shadow-md hover:shadow-lg transition"
         >
           <Download className="w-5 h-5" />
           Get Started
@@ -573,7 +573,7 @@ function DPPsManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
           >
             <Plus className="w-5 h-5" />
             Create DPP
@@ -626,7 +626,7 @@ function TestSeriesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => voi
           <motion.button 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
           >
             <Plus className="w-5 h-5" />
             Create Test Series

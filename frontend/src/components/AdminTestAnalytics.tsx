@@ -117,7 +117,7 @@ export function AdminTestAnalytics({
               </button>
               <button
                 onClick={onClose}
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="px-6 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 Close
               </button>

@@ -171,7 +171,7 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+              className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
               onClick={onViewResults}
             >
               View Results
@@ -230,7 +230,7 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
                   onClick={() => setSelectedFilter(filter.id as any)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedFilter === filter.id
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -257,7 +257,7 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
                   onClick={() => setSelectedSubject(subject.id)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedSubject === subject.id
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -415,7 +415,7 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : test.status === 'completed'
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl'
+                    : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
                 }`}
               >
                 {test.status === 'locked' ? (
