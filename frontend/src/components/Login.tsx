@@ -79,7 +79,7 @@ export function Login({ onLogin }: LoginProps) {
               alt="UJAAS Logo"
               className="w-24 h-24 object-contain mx-auto mb-4"
             />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold mb-2" style={{ color: 'rgb(159, 29, 14)' }}>
               UJAAS
             </h1>
             <p className="text-gray-600 text-sm">

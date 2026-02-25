@@ -57,7 +57,7 @@ export function StudentDashboard({
               className="flex items-center gap-2"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+              <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
                 UJAAS
               </span>
             </motion.div>

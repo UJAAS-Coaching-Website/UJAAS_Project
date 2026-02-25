@@ -201,7 +201,7 @@ export function TeacherDashboard({
               className="flex items-center gap-2"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-              <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
+              <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
                 UJAAS Teacher
               </span>
             </motion.button>

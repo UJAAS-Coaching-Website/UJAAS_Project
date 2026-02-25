@@ -158,7 +158,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                   className="w-20 h-20 object-contain"
                 />
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold">
-                  <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+                  <span style={{ color: 'rgb(159, 29, 14)' }}>
                     UJAAS
                   </span>
                 </h1>
