@@ -34,11 +34,21 @@ function App() {
 
   type StudentTab = (typeof studentTabs)[number];
   type AdminTab = (typeof adminTabs)[number];
+  const adminBatches = [
+    { label: '11th JEE', slug: '11th-jee' },
+    { label: '11th NEET', slug: '11th-neet' },
+    { label: '12th JEE', slug: '12th-jee' },
+    { label: '12th NEET', slug: '12th-neet' },
+    { label: 'Dropper JEE', slug: 'dropper-jee' },
+    { label: 'Dropper NEET', slug: 'dropper-neet' },
+  ] as const;
+  type AdminBatch = (typeof adminBatches)[number]['label'];
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [activeTab, setActiveTab] = useState<StudentTab | AdminTab>('home');
+  const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const isStudentTab = (tab?: string): tab is (typeof studentTabs)[number] =>
@@ -46,6 +56,19 @@ function App() {
 
   const isAdminTab = (tab?: string): tab is (typeof adminTabs)[number] =>
     !!tab && adminTabs.includes(tab as (typeof adminTabs)[number]);
+
+  const isAdminBatchSlug = (slug?: string): slug is (typeof adminBatches)[number]['slug'] =>
+    !!slug && adminBatches.some((batch) => batch.slug === slug);
+
+  const batchFromSlug = (slug?: string): AdminBatch | null => {
+    if (!slug) return null;
+    return adminBatches.find((batch) => batch.slug === slug)?.label ?? null;
+  };
+
+  const slugFromBatch = (label?: AdminBatch | null): string | null => {
+    if (!label) return null;
+    return adminBatches.find((batch) => batch.label === label)?.slug ?? null;
+  };
 
   const parsePath = () => {
     const path = window.location.pathname.replace(/\/+$/, '');
@@ -60,7 +83,22 @@ function App() {
       return { view: 'student' as const, tab: parts[1] || 'home' };
     }
     if (parts[0] === 'admin') {
-      return { view: 'admin' as const, tab: parts[1] || 'home' };
+      if (parts.length === 1) {
+        return { view: 'admin' as const };
+      }
+
+      const second = parts[1];
+      const third = parts[2];
+
+      if (isAdminBatchSlug(second)) {
+        return { view: 'admin' as const, batch: second, tab: third || 'home' };
+      }
+
+      if (isAdminTab(second)) {
+        return { view: 'admin' as const, tab: second };
+      }
+
+      return { view: 'admin' as const };
     }
     if (parts.length === 1) {
       const tab = parts[0];
@@ -79,8 +117,11 @@ function App() {
     return { view: 'get-started' as const };
   };
 
-  const tabToPath = (role: User['role'], tab: StudentTab | AdminTab) => {
-    return role === 'student' ? `/student/${tab}` : `/admin/${tab}`;
+  const tabToPath = (role: User['role'], tab: StudentTab | AdminTab, batch: AdminBatch | null = null) => {
+    if (role === 'student') return `/student/${tab}`;
+    const batchSlug = slugFromBatch(batch);
+    if (batchSlug) return `/admin/${batchSlug}/${tab}`;
+    return tab === 'home' ? '/admin' : `/admin/${tab}`;
   };
 
   const setTabFromPath = (currentUser: User | null) => {
@@ -98,6 +139,7 @@ function App() {
     }
 
     if (currentUser.role === 'student') {
+      setAdminBatch(null);
       const tab = isStudentTab(route.tab) ? route.tab : 'home';
       setActiveTab(tab);
       if (route.view !== 'student' || route.tab !== tab) {
@@ -106,18 +148,36 @@ function App() {
       return;
     }
 
+    const parsedBatch = route.view === 'admin' ? batchFromSlug(route.batch) : null;
     const adminTab = isAdminTab(route.tab) ? route.tab : 'home';
+    setAdminBatch(parsedBatch);
     setActiveTab(adminTab);
-    if (route.view !== 'admin' || route.tab !== adminTab) {
-      window.history.replaceState({ tab: adminTab }, '', tabToPath('admin', adminTab));
+    const canonicalAdminPath = tabToPath('admin', adminTab, parsedBatch);
+    if (window.location.pathname.replace(/\/+$/, '') !== canonicalAdminPath) {
+      window.history.replaceState({ tab: adminTab, batch: parsedBatch }, '', canonicalAdminPath);
     }
   };
 
   const navigateTab = (tab: StudentTab | AdminTab) => {
     if (!user) return;
     setActiveTab(tab);
-    const path = tabToPath(user.role, tab);
-    window.history.pushState({ tab }, '', path);
+    const path = tabToPath(user.role, tab, user.role === 'student' ? null : adminBatch);
+    window.history.pushState({ tab, batch: user.role === 'student' ? null : adminBatch }, '', path);
+  };
+
+  const handleAdminSelectBatch = (batch: AdminBatch) => {
+    if (user?.role === 'student') return;
+    setAdminBatch(batch);
+    setActiveTab('home');
+    const path = tabToPath('admin', 'home', batch);
+    window.history.pushState({ tab: 'home', batch }, '', path);
+  };
+
+  const handleAdminClearBatch = () => {
+    if (user?.role === 'student') return;
+    setAdminBatch(null);
+    setActiveTab('home');
+    window.history.pushState({ tab: 'home', batch: null }, '', '/admin');
   };
 
   useEffect(() => {
@@ -206,20 +266,34 @@ function App() {
       (route.view === 'student' || route.view === 'generic')
     ) {
       setActiveTab(route.tab);
+      setAdminBatch(null);
       return;
     }
     if (
       userData.role !== 'student' &&
-      isAdminTab(route.tab) &&
-      (route.view === 'admin' || route.view === 'generic')
+      route.view === 'admin'
     ) {
-      setActiveTab(route.tab);
+      const parsedBatch = batchFromSlug(route.batch);
+      const parsedTab = isAdminTab(route.tab) ? route.tab : 'home';
+      setAdminBatch(parsedBatch);
+      setActiveTab(parsedTab);
+      const canonicalAdminPath = tabToPath('admin', parsedTab, parsedBatch);
+      if (window.location.pathname.replace(/\/+$/, '') !== canonicalAdminPath) {
+        window.history.replaceState({ tab: parsedTab, batch: parsedBatch }, '', canonicalAdminPath);
+      }
       return;
     }
 
     const defaultTab = 'home';
     setActiveTab(defaultTab);
-    window.history.pushState({ tab: defaultTab }, '', tabToPath(userData.role, defaultTab));
+    if (userData.role === 'student') {
+      setAdminBatch(null);
+      window.history.pushState({ tab: defaultTab }, '', tabToPath('student', defaultTab));
+      return;
+    }
+
+    setAdminBatch(null);
+    window.history.pushState({ tab: defaultTab, batch: null }, '', '/admin');
   };
 
   const handleLogout = async () => {
@@ -229,6 +303,7 @@ function App() {
       // Proceed with local cleanup even if API call fails.
     }
     setUser(null);
+    setAdminBatch(null);
     setShowGetStarted(true);
     window.history.pushState({ view: 'get-started' }, '', '/get-started');
   };
@@ -321,6 +396,9 @@ function App() {
             user={user} 
             activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
             onNavigate={navigateTab}
+            selectedBatch={adminBatch}
+            onSelectBatch={handleAdminSelectBatch}
+            onClearBatch={handleAdminClearBatch}
             onLogout={handleLogout}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}

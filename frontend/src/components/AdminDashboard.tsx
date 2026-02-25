@@ -17,7 +17,8 @@ import {
   Star,
   Trophy,
   FileText,
-  LayoutDashboard
+  LayoutDashboard,
+  ChevronRight
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -33,6 +34,9 @@ interface AdminDashboardProps {
   user: User;
   activeTab: Tab;
   onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onSelectBatch: (batch: Batch) => void;
+  onClearBatch: () => void;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -41,6 +45,7 @@ interface AdminDashboardProps {
 }
 
 type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
+type Batch = '11th JEE' | '11th NEET' | '12th JEE' | '12th NEET' | 'Dropper JEE' | 'Dropper NEET';
 
 interface Student {
   id: string;
@@ -49,6 +54,7 @@ interface Student {
   enrolledCourses: string[];
   joinDate: string;
   performance: number;
+  batch: Batch;
 }
 
 const MOCK_STUDENTS: Student[] = [
@@ -58,7 +64,8 @@ const MOCK_STUDENTS: Student[] = [
     email: 'rahul@example.com',
     enrolledCourses: ['JEE Advanced', 'JEE Mains'],
     joinDate: '2025-09-01',
-    performance: 87
+    performance: 87,
+    batch: '11th JEE'
   },
   {
     id: '2',
@@ -66,7 +73,8 @@ const MOCK_STUDENTS: Student[] = [
     email: 'priya@example.com',
     enrolledCourses: ['NEET', 'JEE Mains'],
     joinDate: '2025-09-05',
-    performance: 92
+    performance: 92,
+    batch: '11th NEET'
   },
   {
     id: '3',
@@ -74,7 +82,8 @@ const MOCK_STUDENTS: Student[] = [
     email: 'amit@example.com',
     enrolledCourses: ['JEE Advanced'],
     joinDate: '2025-09-10',
-    performance: 78
+    performance: 78,
+    batch: '12th JEE'
   },
   {
     id: '4',
@@ -82,14 +91,38 @@ const MOCK_STUDENTS: Student[] = [
     email: 'sneha@example.com',
     enrolledCourses: ['NEET'],
     joinDate: '2025-09-12',
-    performance: 95
+    performance: 95,
+    batch: '12th NEET'
+  },
+  {
+    id: '5',
+    name: 'Karan Mehta',
+    email: 'karan@example.com',
+    enrolledCourses: ['JEE Mains'],
+    joinDate: '2025-09-14',
+    performance: 84,
+    batch: 'Dropper JEE'
+  },
+  {
+    id: '6',
+    name: 'Ananya Singh',
+    email: 'ananya@example.com',
+    enrolledCourses: ['NEET'],
+    joinDate: '2025-09-18',
+    performance: 90,
+    batch: 'Dropper NEET'
   },
 ];
+
+const DEMO_BATCHES: Batch[] = ['11th JEE', '11th NEET', '12th JEE', '12th NEET', 'Dropper JEE', 'Dropper NEET'];
 
 export function AdminDashboard({ 
   user, 
   activeTab,
   onNavigate,
+  selectedBatch,
+  onSelectBatch,
+  onClearBatch,
   onLogout,
   notifications,
   onMarkAsRead,
@@ -103,9 +136,13 @@ export function AdminDashboard({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <motion.div
+            <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onClearBatch}
+              title="Go to admin home"
               className="flex items-center gap-2"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -114,33 +151,37 @@ export function AdminDashboard({
               <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
                 UJAAS Admin
               </span>
-            </motion.div>
+            </motion.button>
 
             {/* Center Navigation Tabs */}
-            <div className="flex items-center gap-2">
-              {[
-                { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
-                { id: 'students', label: 'Students', icon: Users },
-                { id: 'content', label: 'Content', icon: BookOpen },
-                { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                { id: 'test-series', label: 'Test Series', icon: FileText }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => onNavigate(tab.id as Tab)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </motion.button>
-              ))}
-            </div>
+            {selectedBatch ? (
+              <div className="flex items-center gap-2">
+                {[
+                  { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
+                  { id: 'students', label: 'Students', icon: Users },
+                  { id: 'content', label: 'Content', icon: BookOpen },
+                  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+                  { id: 'test-series', label: 'Test Series', icon: FileText }
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => onNavigate(tab.id as Tab)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
+                      activeTab === tab.id
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            ) : (
+              <div />
+            )}
 
             {/* Profile Button */}
             <div className="flex items-center gap-4">
@@ -161,22 +202,30 @@ export function AdminDashboard({
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
-          key={activeTab}
+          key={`${selectedBatch || 'batch-selector'}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && <OverviewTab onNavigate={onNavigate} />}
-          {activeTab === 'students' && <StudentsTab />}
-          {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS} />}
-          {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-          {activeTab === 'content' && <NotesManagementTab onNavigate={onNavigate} />}
-          {activeTab === 'analytics' && <DPPsManagementTab onNavigate={onNavigate} />}
-          {activeTab === 'test-series' && <TestSeriesManagementTab onNavigate={onNavigate} />}
-          {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
-          {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
-          {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
-          {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
+          {!selectedBatch && activeTab !== 'profile' ? (
+            <BatchSelectionTab onSelectBatch={onSelectBatch} />
+          ) : (
+            <>
+              {activeTab === 'home' && (
+                <OverviewTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />
+              )}
+              {activeTab === 'students' && selectedBatch && <StudentsTab selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS.filter((student) => student.batch === selectedBatch)} />}
+              {activeTab === 'rankings' && <StudentRankingsEnhanced />}
+              {activeTab === 'content' && selectedBatch && <NotesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'analytics' && selectedBatch && <DPPsManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'test-series' && selectedBatch && <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
+              {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
+              {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
+              {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
+            </>
+          )}
         </motion.div>
       </main>
 
@@ -186,11 +235,59 @@ export function AdminDashboard({
   );
 }
 
-function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function BatchSelectionTab({ onSelectBatch }: { onSelectBatch: (batch: Batch) => void }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Batch</h2>
+        <p className="text-gray-600">Choose a batch to open the admin dashboard in that context.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {DEMO_BATCHES.map((batch, index) => (
+          <motion.button
+            key={batch}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onSelectBatch(batch)}
+            className="bg-white/90 text-left rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all group"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-cyan-700 font-semibold">Batch</p>
+                <h3 className="text-xl font-bold text-gray-900 mt-1">{batch}</h3>
+              </div>
+              <ChevronRight className="w-6 h-6 text-cyan-600 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OverviewTab({
+  onNavigate,
+  selectedBatch,
+  onChangeBatch,
+}: {
+  onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
+}) {
+  if (!selectedBatch) return null;
+
+  const batchStudents = MOCK_STUDENTS.filter((student) => student.batch === selectedBatch);
+  const averagePerformance = batchStudents.length
+    ? Math.round(batchStudents.reduce((sum, student) => sum + student.performance, 0) / batchStudents.length)
+    : 0;
+
   const stats = [
     { 
       label: 'Total Students', 
-      value: '156', 
+      value: `${batchStudents.length}`, 
       icon: Users, 
       gradient: 'from-blue-500 to-cyan-500',
       bgGradient: 'from-blue-50 to-cyan-50',
@@ -217,7 +314,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
     },
     { 
       label: 'Avg. Performance', 
-      value: '84%', 
+      value: `${averagePerformance}%`, 
       icon: BarChart3, 
       gradient: 'from-yellow-500 to-orange-500',
       bgGradient: 'from-yellow-50 to-orange-50',
@@ -228,6 +325,19 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-4 shadow-lg border border-white flex items-center justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-cyan-700 font-semibold">Current Batch</p>
+          <h2 className="text-xl font-bold text-gray-900">{selectedBatch}</h2>
+        </div>
+        <button
+          onClick={onChangeBatch}
+          className="px-4 py-2 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
+        >
+          Change Batch
+        </button>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
@@ -347,12 +457,13 @@ function OverviewTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   );
 }
 
-function StudentsTab() {
+function StudentsTab({ selectedBatch, onChangeBatch }: { selectedBatch: Batch; onChangeBatch: () => void }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredStudents = MOCK_STUDENTS.filter(student =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchQuery.toLowerCase())
+    student.batch === selectedBatch &&
+    (student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -366,16 +477,24 @@ function StudentsTab() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Student Management</h2>
-            <p className="text-gray-600">Manage and monitor student progress</p>
+            <p className="text-gray-600">Manage and monitor student progress for {selectedBatch}</p>
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            Add Student
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onChangeBatch}
+              className="px-4 py-3 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
+            >
+              Change Batch
+            </button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            >
+              <Plus className="w-5 h-5" />
+              Add Student
+            </motion.button>
+          </div>
         </div>
 
         {/* Search */}
@@ -502,7 +621,7 @@ function StudentsTab() {
   );
 }
 
-function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -513,16 +632,24 @@ function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) 
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Notes Management</h2>
-            <p className="text-gray-600">Manage and upload study materials for students</p>
+            <p className="text-gray-600">Manage and upload study materials for {selectedBatch}</p>
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            Upload Notes
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onChangeBatch}
+              className="px-4 py-3 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
+            >
+              Change Batch
+            </button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            >
+              <Plus className="w-5 h-5" />
+              Upload Notes
+            </motion.button>
+          </div>
         </div>
       </motion.div>
 
@@ -555,7 +682,7 @@ function NotesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) 
   );
 }
 
-function DPPsManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function DPPsManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -566,16 +693,24 @@ function DPPsManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">DPP Management</h2>
-            <p className="text-gray-600">Create and manage daily practice problems</p>
+            <p className="text-gray-600">Create and manage daily practice problems for {selectedBatch}</p>
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            Create DPP
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onChangeBatch}
+              className="px-4 py-3 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
+            >
+              Change Batch
+            </button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            >
+              <Plus className="w-5 h-5" />
+              Create DPP
+            </motion.button>
+          </div>
         </div>
       </motion.div>
 
@@ -608,7 +743,7 @@ function DPPsManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   );
 }
 
-function TestSeriesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function TestSeriesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (tab: Tab) => void; selectedBatch: Batch; onChangeBatch: () => void }) {
   return (
     <div className="space-y-6">
       <motion.div
@@ -619,16 +754,24 @@ function TestSeriesManagementTab({ onNavigate }: { onNavigate: (tab: Tab) => voi
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Test Series Management</h2>
-            <p className="text-gray-600">Create and manage test series for students</p>
+            <p className="text-gray-600">Create and manage test series for {selectedBatch}</p>
           </div>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-          >
-            <Plus className="w-5 h-5" />
-            Create Test Series
-          </motion.button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onChangeBatch}
+              className="px-4 py-3 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition font-medium"
+            >
+              Change Batch
+            </button>
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            >
+              <Plus className="w-5 h-5" />
+              Create Test Series
+            </motion.button>
+          </div>
         </div>
       </motion.div>
 
