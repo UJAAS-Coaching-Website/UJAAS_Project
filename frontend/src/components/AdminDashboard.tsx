@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { User } from '../App';
 import {
   LogOut,
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { StudentProfile } from './StudentProfile';
+import { AdminProfile } from './AdminProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { CreateTestSeries } from './CreateTestSeries';
@@ -47,7 +47,7 @@ interface AdminDashboardProps {
   onDeleteNotification: (id: string) => void;
 }
 
-type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
+type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student';
 type Batch = '11th JEE' | '11th NEET' | '12th JEE' | '12th NEET' | 'Dropper JEE' | 'Dropper NEET';
 type AdminSection = 'batches' | 'students' | 'faculty';
 
@@ -192,6 +192,10 @@ export function AdminDashboard({
   onMarkAllAsRead,
   onDeleteNotification
 }: AdminDashboardProps) {
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const openAddStudent = () => setIsAddStudentOpen(true);
+  const closeAddStudent = () => setIsAddStudentOpen(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
       {/* Navigation */}
@@ -227,7 +231,7 @@ export function AdminDashboard({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      adminSection === section.id
+                      adminSection === section.id && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -252,7 +256,7 @@ export function AdminDashboard({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      activeTab === tab.id
+                      activeTab === tab.id && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -297,9 +301,16 @@ export function AdminDashboard({
           ) : (
             <>
               {activeTab === 'home' && (
-                <OverviewTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />
+                <OverviewTab
+                  onNavigate={onNavigate}
+                  selectedBatch={selectedBatch}
+                  onChangeBatch={onClearBatch}
+                  onAddStudent={openAddStudent}
+                />
               )}
-              {activeTab === 'students' && selectedBatch && <StudentsTab selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'students' && selectedBatch && (
+                <StudentsTab selectedBatch={selectedBatch} onChangeBatch={onClearBatch} onAddStudent={openAddStudent} />
+              )}
               {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
               {activeTab === 'content' && selectedBatch && <NotesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
@@ -308,7 +319,7 @@ export function AdminDashboard({
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
               {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
               {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
-              {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
+              {activeTab === 'profile' && <AdminProfile user={user} onLogout={onLogout} />}
             </>
           )}
         </motion.div>
@@ -316,6 +327,12 @@ export function AdminDashboard({
 
       {/* Footer */}
       <Footer />
+
+      <AddStudentModal
+        open={isAddStudentOpen}
+        onClose={closeAddStudent}
+        defaultBatch={selectedBatch}
+      />
     </div>
   );
 }
@@ -543,10 +560,12 @@ function OverviewTab({
   onNavigate,
   selectedBatch,
   onChangeBatch,
+  onAddStudent,
 }: {
   onNavigate: (tab: Tab) => void;
   selectedBatch: Batch | null;
   onChangeBatch: () => void;
+  onAddStudent: () => void;
 }) {
   if (!selectedBatch) return null;
 
@@ -645,7 +664,7 @@ function OverviewTab({
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: Plus, label: 'Add Student', desc: 'Enroll a new student', gradient: 'from-blue-500 to-cyan-500', action: () => {} },
+          { icon: Plus, label: 'Add Student', desc: 'Enroll a new student', gradient: 'from-blue-500 to-cyan-500', action: onAddStudent },
           { icon: Plus, label: 'Upload Notes', desc: 'Add study materials', gradient: 'from-cyan-500 to-blue-500', action: () => onNavigate('upload-notes') },
           { icon: Plus, label: 'Create DPP', desc: 'Add practice tests', gradient: 'from-green-500 to-emerald-500', action: () => onNavigate('create-dpp') }
         ].map((action, index) => (
@@ -677,9 +696,11 @@ function OverviewTab({
 function StudentsTab({
   selectedBatch,
   onChangeBatch,
+  onAddStudent,
 }: {
   selectedBatch: Batch;
   onChangeBatch: () => void;
+  onAddStudent: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -706,6 +727,7 @@ function StudentsTab({
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={onAddStudent}
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
             >
               <Plus className="w-5 h-5" />
@@ -801,6 +823,201 @@ function StudentsTab({
             </tbody>
           </table>
         </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function AddStudentModal({
+  open,
+  onClose,
+  defaultBatch,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultBatch: Batch | null;
+}) {
+  const createInitialState = (batch: Batch | null) => ({
+    name: '',
+    email: '',
+    rollNumber: '',
+    batch: batch ?? '',
+    phoneNumber: '',
+    dateOfBirth: '',
+    address: '',
+    parentContact: '',
+  });
+
+  const [formState, setFormState] = useState(createInitialState(defaultBatch));
+
+  useEffect(() => {
+    if (!open) return;
+    setFormState(createInitialState(defaultBatch));
+  }, [open, defaultBatch]);
+
+  if (!open) return null;
+
+  const handleChange = (field: keyof typeof formState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onClose();
+  };
+
+  const requiredMark = <span className="text-red-500">*</span>;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">Add Student</h3>
+          <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Name {requiredMark}
+              </span>
+              <input
+                type="text"
+                required
+                value={formState.name}
+                onChange={handleChange('name')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="Student name"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Email {requiredMark}
+              </span>
+              <input
+                type="email"
+                required
+                value={formState.email}
+                onChange={handleChange('email')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="name@email.com"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Roll Number {requiredMark}
+              </span>
+              <input
+                type="text"
+                required
+                value={formState.rollNumber}
+                onChange={handleChange('rollNumber')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="UJAAS-###"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Batch {requiredMark}
+              </span>
+              <select
+                required
+                value={formState.batch}
+                onChange={handleChange('batch')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+              >
+                <option value="" disabled>
+                  Select batch
+                </option>
+                {DEMO_BATCHES.map((batch) => (
+                  <option key={batch} value={batch}>
+                    {batch}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Phone Number {requiredMark}
+              </span>
+              <input
+                type="tel"
+                required
+                value={formState.phoneNumber}
+                onChange={handleChange('phoneNumber')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="+91 9XXXX XXXXX"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700">
+              <span>
+                Date of Birth {requiredMark}
+              </span>
+              <input
+                type="date"
+                required
+                value={formState.dateOfBirth}
+                onChange={handleChange('dateOfBirth')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              />
+            </label>
+          </div>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Address {requiredMark}
+            </span>
+            <textarea
+              required
+              rows={3}
+              value={formState.address}
+              onChange={handleChange('address')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Street, city, state, postal code"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span>
+              Parent Contact {requiredMark}
+            </span>
+            <input
+              type="tel"
+              required
+              value={formState.parentContact}
+              onChange={handleChange('parentContact')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Parent/guardian phone number"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+            >
+              Save Student
+            </button>
+          </div>
+        </form>
       </motion.div>
     </div>
   );

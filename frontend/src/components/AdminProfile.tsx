@@ -17,7 +17,7 @@ import {
   LogOut
 } from 'lucide-react';
 
-interface StudentProfileProps {
+interface AdminProfileProps {
   user: {
     id: string;
     name: string;
@@ -75,7 +75,7 @@ function formatDateForDisplay(value?: string | null): string {
   });
 }
 
-export function StudentProfile({ user, onLogout }: StudentProfileProps) {
+export function AdminProfile({ user, onLogout }: AdminProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
   const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>('overview');
 

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { StudentProfile } from './StudentProfile';
+import { TeacherProfile } from './TeacherProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { CreateTestSeries } from './CreateTestSeries';
@@ -308,7 +308,7 @@ export function TeacherDashboard({
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
               {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
               {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
-              {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
+              {activeTab === 'profile' && <TeacherProfile user={user} onLogout={onLogout} />}
             </>
           )}
         </motion.div>
