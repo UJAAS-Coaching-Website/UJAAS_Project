@@ -25,10 +25,10 @@ Minimal backend scaffold.
 ## Notes
 - DB check logic lives in `backend/src/server.js`.
 - Auth endpoints:
-  - `POST /api/auth/signup`
   - `POST /api/auth/login`
   - `GET /api/auth/me`
   - `POST /api/auth/logout`
 - Seed login credentials:
   - Admin: `admin@ujaas.com` / `admin123`
+  - Teacher: `teacher@ujaas.com` / `teacher123`
   - Student: `student@ujaas.com` / `student123`

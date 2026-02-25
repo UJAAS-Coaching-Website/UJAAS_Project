@@ -25,7 +25,7 @@ WITH
       'Asha Teacher',
       'teacher@ujaas.com',
       'teacher',
-      'teacher_seed_salt:4cd0c38ba859d32b04943c9f6f1f4bc20a4c3af5670f6a0f7b377d4b9b9bec2e8cebe9f3778c12e09cf8ee5085fb3d986f438e56dc759f9a4f40a8dd9e4238f4'
+      'teacher_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
     )
     RETURNING id
   ),

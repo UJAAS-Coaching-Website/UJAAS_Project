@@ -28,7 +28,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: "student" | "admin";
+  role: "student" | "teacher" | "admin";
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
 }
@@ -105,15 +105,6 @@ export async function login(email: string, password: string): Promise<AuthRespon
   const result = await request<AuthResponse>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
-  });
-  localStorage.setItem("ujaasToken", result.token);
-  return result;
-}
-
-export async function signup(name: string, email: string, password: string): Promise<AuthResponse> {
-  const result = await request<AuthResponse>("/api/auth/signup", {
-    method: "POST",
-    body: JSON.stringify({ name, email, password }),
   });
   localStorage.setItem("ujaasToken", result.token);
   return result;

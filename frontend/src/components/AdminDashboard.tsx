@@ -31,6 +31,8 @@ import { motion } from 'motion/react';
 
 interface AdminDashboardProps {
   user: User;
+  activeTab: Tab;
+  onNavigate: (tab: Tab) => void;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -86,14 +88,14 @@ const MOCK_STUDENTS: Student[] = [
 
 export function AdminDashboard({ 
   user, 
+  activeTab,
+  onNavigate,
   onLogout,
   notifications,
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
       {/* Navigation */}
@@ -125,7 +127,7 @@ export function AdminDashboard({
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => onNavigate(tab.id as Tab)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
@@ -145,7 +147,7 @@ export function AdminDashboard({
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab('profile')}
+                onClick={() => onNavigate('profile')}
                 className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
               >
@@ -164,16 +166,16 @@ export function AdminDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && <OverviewTab onNavigate={setActiveTab} />}
+          {activeTab === 'home' && <OverviewTab onNavigate={onNavigate} />}
           {activeTab === 'students' && <StudentsTab />}
           {activeTab === 'ratings' && <StudentRating students={MOCK_STUDENTS} />}
           {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-          {activeTab === 'content' && <NotesManagementTab onNavigate={setActiveTab} />}
-          {activeTab === 'analytics' && <DPPsManagementTab onNavigate={setActiveTab} />}
-          {activeTab === 'test-series' && <TestSeriesManagementTab onNavigate={setActiveTab} />}
-          {activeTab === 'create-test' && <CreateTestSeries onBack={() => setActiveTab('test-series')} />}
-          {activeTab === 'create-dpp' && <CreateDPP onBack={() => setActiveTab('analytics')} />}
-          {activeTab === 'upload-notes' && <UploadNotes onBack={() => setActiveTab('content')} />}
+          {activeTab === 'content' && <NotesManagementTab onNavigate={onNavigate} />}
+          {activeTab === 'analytics' && <DPPsManagementTab onNavigate={onNavigate} />}
+          {activeTab === 'test-series' && <TestSeriesManagementTab onNavigate={onNavigate} />}
+          {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
+          {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
+          {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
           {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
         </motion.div>
       </main>

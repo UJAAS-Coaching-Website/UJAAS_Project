@@ -29,7 +29,7 @@ interface StudentProfileProps {
     id: string;
     name: string;
     email: string;
-    role?: 'student' | 'admin';
+    role?: 'student' | 'teacher' | 'admin';
     enrolledCourses?: string[];
     studentDetails?: StudentDetails | null;
   };

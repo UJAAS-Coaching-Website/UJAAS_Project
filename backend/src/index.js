@@ -4,7 +4,7 @@ import helmet from "helmet";
 import crypto from "node:crypto";
 import "dotenv/config";
 import { checkDb, pool } from "./server.js";
-import { hashPassword, parseCookies, signJwt, verifyJwt, verifyPassword } from "./auth.js";
+import { parseCookies, signJwt, verifyJwt, verifyPassword } from "./auth.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -196,71 +196,6 @@ app.use(
 );
 app.use(express.json());
 
-app.post("/api/auth/signup", async (req, res) => {
-  const { name, email, password } = req.body || {};
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: "name, email and password are required" });
-  }
-
-  if (String(password).length < 6) {
-    return res.status(400).json({ message: "password must be at least 6 characters" });
-  }
-
-  const client = await pool.connect();
-
-  try {
-    await client.query("BEGIN");
-
-    const existingUser = await client.query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()]);
-    if (existingUser.rowCount > 0) {
-      await client.query("ROLLBACK");
-      return res.status(409).json({ message: "email already exists" });
-    }
-
-    const passwordHash = hashPassword(password);
-    const createdUser = await client.query(
-      `
-      INSERT INTO users (name, email, role, password_hash)
-      VALUES ($1, $2, 'student', $3)
-      RETURNING id
-      `,
-      [name, email.toLowerCase(), passwordHash]
-    );
-
-    const userId = createdUser.rows[0].id;
-    const rollNumber = `UG${new Date().getFullYear()}${String(Date.now()).slice(-4)}`;
-
-    await client.query(
-      `
-      INSERT INTO students (user_id, roll_number, phone, address, date_of_birth, parent_contact, join_date)
-      VALUES ($1, $2, '', '', NULL, '', CURRENT_DATE)
-      `,
-      [userId, rollNumber]
-    );
-
-    await client.query(
-      `
-      INSERT INTO ratings (student_id, attendance, assignments, tests, participation, behavior, engagement)
-      VALUES ($1, 0, 0, 0, 0, 0, 0)
-      `,
-      [userId]
-    );
-
-    await client.query("COMMIT");
-
-    const user = await fetchUserProfileById(userId);
-    const { accessToken } = await issueAuthTokens({ userId, role: user.role, res });
-
-    return res.status(201).json({ token: accessToken, user });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    return res.status(500).json({ message: "signup failed", error: error.message });
-  } finally {
-    client.release();
-  }
-});
-
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body || {};
 
@@ -270,7 +205,7 @@ app.post("/api/auth/login", async (req, res) => {
 
   try {
     const userLookup = await pool.query(
-      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'admin')",
+      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'teacher', 'admin')",
       [email.toLowerCase()]
     );
     if (userLookup.rowCount === 0) {
@@ -298,7 +233,7 @@ app.get("/api/auth/me", async (req, res) => {
 
   try {
     const user = await fetchUserProfileById(payload.sub);
-    if (!user || (user.role !== "student" && user.role !== "admin")) {
+    if (!user || (user.role !== "student" && user.role !== "teacher" && user.role !== "admin")) {
       return res.status(401).json({ message: "unauthorized" });
     }
     return res.status(200).json({ user });
@@ -403,7 +338,7 @@ app.post("/api/auth/refresh", async (req, res) => {
     }
 
     const user = await fetchUserProfileById(payload.sub);
-    if (!user || (user.role !== "student" && user.role !== "admin")) {
+    if (!user || (user.role !== "student" && user.role !== "teacher" && user.role !== "admin")) {
       clearAuthCookies(res);
       return res.status(401).json({ message: "unauthorized" });
     }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { User } from '../App';
 import { 
   LogOut, 
@@ -23,6 +22,8 @@ import { motion } from 'motion/react';
 
 interface StudentDashboardProps {
   user: User;
+  activeTab: Tab;
+  onNavigate: (tab: Tab) => void;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -34,14 +35,14 @@ type Tab = 'home' | 'notes' | 'dpp' | 'test-series' | 'profile';
 
 export function StudentDashboard({ 
   user, 
+  activeTab,
+  onNavigate,
   onLogout, 
   notifications,
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification
 }: StudentDashboardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Navigation */}
@@ -72,7 +73,7 @@ export function StudentDashboard({
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => onNavigate(tab.id as Tab)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
@@ -92,7 +93,7 @@ export function StudentDashboard({
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab('profile')}
+                onClick={() => onNavigate('profile')}
                 className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
               >
