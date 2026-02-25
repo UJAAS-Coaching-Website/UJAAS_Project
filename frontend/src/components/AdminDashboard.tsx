@@ -621,60 +621,6 @@ function OverviewTab({
         ))}
       </div>
 
-      {/* Recent Activity */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          {[
-            {
-              icon: Users,
-              gradient: 'from-blue-500 to-cyan-500',
-              bgGradient: 'from-blue-50 to-cyan-50',
-              title: 'New student enrolled: Sneha Reddy',
-              time: '2 hours ago'
-            },
-            {
-              icon: BookOpen,
-              gradient: 'from-purple-500 to-pink-500',
-              bgGradient: 'from-purple-50 to-pink-50',
-              title: 'New notes uploaded: Wave Optics',
-              time: '5 hours ago'
-            },
-            {
-              icon: ClipboardList,
-              gradient: 'from-green-500 to-emerald-500',
-              bgGradient: 'from-green-50 to-emerald-50',
-              title: 'DPP created: Physics Kinematics #15',
-              time: 'Yesterday'
-            }
-          ].map((activity, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              whileHover={{ scale: 1.02, x: 5 }}
-              className={`flex items-center gap-4 p-4 bg-gradient-to-r ${activity.bgGradient} rounded-xl border border-white shadow-md hover:shadow-lg transition-all`}
-            >
-              <motion.div
-                className={`w-12 h-12 bg-gradient-to-br ${activity.gradient} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}
-              >
-                <activity.icon className="w-6 h-6 text-white" />
-              </motion.div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{activity.title}</p>
-                <p className="text-sm text-gray-600">{activity.time}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
