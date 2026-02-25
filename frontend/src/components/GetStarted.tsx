@@ -1,6 +1,5 @@
 import { motion } from 'motion/react';
 import { 
-  GraduationCap, 
   Award, 
   Users, 
   BookOpen, 
@@ -14,6 +13,7 @@ import {
   Zap
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import logo from '../assets/logo.svg';
 
 interface GetStartedProps {
   onGetStarted: () => void;
@@ -148,13 +148,24 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 <span className="text-sm font-medium text-teal-700">India's Leading Coaching Institute</span>
               </motion.div>
 
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
-                <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
-                  UJAAS
-                </span>
-                <br />
-                <span className="text-gray-800">Coaching Center</span>
-              </h1>
+              <div className="flex items-center gap-4 mb-6">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+                  className="w-16 h-16 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden"
+                >
+                  <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
+                </motion.div>
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold">
+                  <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
+                    UJAAS
+                  </span>
+                </h1>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-6">
+                Coaching Center
+              </h2>
 
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Empowering students with world-class education, expert faculty, and comprehensive study materials. Your success is our mission.

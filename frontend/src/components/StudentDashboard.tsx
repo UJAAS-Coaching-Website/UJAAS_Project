@@ -19,6 +19,7 @@ import { StudentProfile } from './StudentProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.svg';
 
 interface StudentDashboardProps {
   user: User;
@@ -55,8 +56,8 @@ export function StudentDashboard({
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-lg flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
+                <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 bg-clip-text text-transparent">
                 UJAAS

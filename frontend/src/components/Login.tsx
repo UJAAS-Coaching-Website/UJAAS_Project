@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { User } from '../App';
 import { login } from '../api/auth';
 import { 
-  GraduationCap, 
   Mail, 
   Lock, 
   AlertCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.svg';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -75,9 +75,9 @@ export function Login({ onLogin }: LoginProps) {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl mb-4 shadow-lg"
+              className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl mb-4 shadow-lg overflow-hidden"
             >
-              <GraduationCap className="w-9 h-9 text-white" />
+              <img src={logo} alt="UJAAS Logo" className="w-10 h-10 object-contain" />
             </motion.div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
               UJAAS

@@ -29,6 +29,7 @@ import { CreateTestSeries } from './CreateTestSeries';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
 import { motion } from 'motion/react';
+import logo from '../assets/logo.svg';
 
 interface TeacherDashboardProps {
   user: User;
@@ -200,8 +201,8 @@ export function TeacherDashboard({
               title="Go to teacher home"
               className="flex items-center gap-2"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
+                <img src={logo} alt="Logo" className="w-7 h-7 object-contain" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
                 UJAAS Teacher
