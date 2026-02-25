@@ -34,17 +34,23 @@ export function Footer() {
             <p className="text-gray-300 mb-4 text-sm leading-relaxed">
               UJAAS CAREER INSTITUTE
             </p>
+            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
+              We Believe In Excellence
+            </p>
+            <p className="text-gray-300 mb-4 text-sm leading-relaxed">
+              Because It's All About A Bright Future
+            </p>
             <div className="flex gap-3">
               {[
-                { icon: Facebook, link: '#', color: 'hover:text-blue-400' },
-                { icon: Twitter, link: '#', color: 'hover:text-sky-400' },
-                { icon: Instagram, link: '#', color: 'hover:text-pink-400' },
-                { icon: Linkedin, link: '#', color: 'hover:text-blue-500' },
-                { icon: Youtube, link: '#', color: 'hover:text-red-500' }
+                { icon: Facebook, link: 'https://www.facebook.com/100088932682619/', color: 'hover:text-blue-400' },
+                { icon: Instagram, link: 'https://www.instagram.com/ujas2.0careerinstitute/', color: 'hover:text-pink-400' },
+                { icon: Youtube, link: 'https://youtube.com/@ujas2.0careerinstitute?si=S7-TrfZ1Q1v4UCL-', color: 'hover:text-red-500' }
               ].map((social, index) => (
                 <motion.a
                   key={index}
                   href={social.link}
+                  target="_blank"
+                  rel="noreferrer"
                   whileHover={{ scale: 1.2}}
                   whileTap={{ scale: 0.9 }}
                   className={`w-9 h-9 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center ${social.color} transition-all hover:bg-white/20`}
@@ -157,31 +163,9 @@ export function Footer() {
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-400">
-              © {currentYear} UJAAS Coaching Center. All rights reserved.
+              © {currentYear} UJAAS Career Institute. All rights reserved.
             </p>
-            <div className="flex gap-6 text-sm">
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.05 }}
-                className="text-gray-400 hover:text-white transition"
-              >
-                Privacy Policy
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.05 }}
-                className="text-gray-400 hover:text-white transition"
-              >
-                Terms of Service
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.05 }}
-                className="text-gray-400 hover:text-white transition"
-              >
-                Cookie Policy
-              </motion.a>
-            </div>
+           
           </div>
         </motion.div>
       </div>

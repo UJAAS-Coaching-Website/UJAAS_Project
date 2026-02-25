@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { me, updateMyProfile } from '../api/auth';
+import { me } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User,
@@ -7,17 +7,10 @@ import {
   BookOpen,
   Calendar,
   Award,
-  TrendingUp,
-  Edit2,
-  Save,
-  X,
   Star,
   Target,
-  Clock,
-  CheckCircle,
   BarChart3,
   Settings,
-  Bell,
   Lock,
   Phone,
   MapPin,
@@ -51,6 +44,7 @@ interface StudentDetails {
     participation: number;
     behavior: number;
     engagement: number;
+    dppPerformance: number;
   };
 }
 
@@ -83,11 +77,7 @@ function formatDateForDisplay(value?: string | null): string {
 
 export function StudentProfile({ user, onLogout }: StudentProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
-  const [editedName, setEditedName] = useState(user.name || '');
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [activeSection, setActiveSection] = useState<'overview' | 'academics' | 'performance' | 'settings'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>('overview');
 
   const normalizeDetails = (details?: StudentDetails | null): StudentDetails => {
     if (!details) {
@@ -100,15 +90,28 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
         dateOfBirth: '2005-05-15',
         parentContact: '+91 98765 43211',
         ratings: {
-          attendance: 0,
-          assignments: 0,
-          tests: 0,
-          participation: 0,
-          behavior: 0,
-          engagement: 0
+          attendance: 4,
+          assignments: 4,
+          tests: 4,
+          participation: 4,
+          behavior: 4,
+          engagement: 4,
+          dppPerformance: 4
         }
       };
     }
+
+    const fallbackRatings = {
+      attendance: 4,
+      assignments: 4,
+      tests: 4,
+      participation: 4,
+      behavior: 4,
+      engagement: 4,
+      dppPerformance: 4
+    };
+
+    const hasMeaningfulRatings = !!details.ratings && Object.values(details.ratings).some((value) => value > 0);
 
     return {
       rollNumber: details.rollNumber || '',
@@ -118,14 +121,17 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
       address: details.address || '',
       dateOfBirth: normalizeDateForInput(details.dateOfBirth),
       parentContact: details.parentContact || '',
-      ratings: {
-        attendance: details.ratings?.attendance ?? 0,
-        assignments: details.ratings?.assignments ?? 0,
-        tests: details.ratings?.tests ?? 0,
-        participation: details.ratings?.participation ?? 0,
-        behavior: details.ratings?.behavior ?? 0,
-        engagement: details.ratings?.engagement ?? 0
-      }
+      ratings: hasMeaningfulRatings
+        ? {
+            attendance: details.ratings?.attendance ?? 0,
+            assignments: details.ratings?.assignments ?? 0,
+            tests: details.ratings?.tests ?? 0,
+            participation: details.ratings?.participation ?? 0,
+            behavior: details.ratings?.behavior ?? 0,
+            engagement: details.ratings?.engagement ?? 0,
+            dppPerformance: details.ratings?.dppPerformance ?? 0
+          }
+        : fallbackRatings
     };
   };
   
@@ -134,14 +140,10 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
     return normalizeDetails(user.studentDetails);
   });
 
-  const [editedDetails, setEditedDetails] = useState(studentDetails);
-
   useEffect(() => {
     setProfileUser(user);
-    setEditedName(user.name || '');
     const normalized = normalizeDetails(user.studentDetails);
     setStudentDetails(normalized);
-    setEditedDetails(normalized);
   }, [user]);
 
   useEffect(() => {
@@ -154,10 +156,8 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
 
         const latestUser = response.user as any;
         setProfileUser(latestUser);
-        setEditedName(latestUser.name || '');
         const normalized = normalizeDetails(latestUser.studentDetails);
         setStudentDetails(normalized);
-        setEditedDetails(normalized);
       } catch {
         // Keep existing profile state if refresh fails.
       }
@@ -170,52 +170,14 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
     };
   }, []);
 
-  // Calculate overall performance based on ratings
+  // Calculate overall rating (out of 5)
   const calculateOverallPerformance = () => {
     if (!studentDetails.ratings) return 0;
-    const { attendance, assignments, tests, participation, behavior, engagement } = studentDetails.ratings;
-    
-    // Weighted average: attendance(20%), assignments(20%), tests(30%), participation(10%), behavior(10%), engagement(10%)
-    const score = (
-      attendance * 0.20 +
-      assignments * 0.20 +
-      tests * 0.30 +
-      (participation * 10) * 0.10 +
-      (behavior * 10) * 0.10 +
-      (engagement * 10) * 0.10
-    );
-    
-    return Math.round(score);
-  };
+    const { attendance, tests, behavior, dppPerformance } = studentDetails.ratings;
 
-  const handleSave = async () => {
-    setSaveError('');
-    setIsSaving(true);
-    try {
-      const response = await updateMyProfile({
-        name: editedName,
-        phone: editedDetails.phone,
-        address: editedDetails.address,
-        dateOfBirth: editedDetails.dateOfBirth || null,
-        parentContact: editedDetails.parentContact});
-      const latestUser = response.user as any;
-      setProfileUser(latestUser);
-      setEditedName(latestUser.name || '');
-      const normalized = normalizeDetails(latestUser.studentDetails);
-      setStudentDetails(normalized);
-      setEditedDetails(normalized);
-      setIsEditing(false);
-    } catch (err: any) {
-      setSaveError(err?.message || 'Failed to save profile changes');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setEditedName(profileUser.name || '');
-    setEditedDetails(studentDetails);
-    setIsEditing(false);
+    const ratings = [attendance, tests, behavior, dppPerformance];
+    const total = ratings.reduce((sum, value) => sum + value, 0);
+    return Number((total / ratings.length).toFixed(1));
   };
 
   const overallPerformance = calculateOverallPerformance();
@@ -243,17 +205,7 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
               <div>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="text-3xl font-bold mb-2 bg-white/20 border border-white/40 rounded-lg px-3 py-1 text-white placeholder-indigo-100 focus:outline-none focus:ring-2 focus:ring-white/70"
-                    placeholder="Enter username"
-                  />
-                ) : (
-                  <h2 className="text-3xl font-bold mb-2">{profileUser.name}</h2>
-                )}
+                <h2 className="text-3xl font-bold mb-2">{profileUser.name}</h2>
                 <div className="flex flex-wrap gap-4 text-indigo-100">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
@@ -269,18 +221,6 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
                   </div>
                 </div>
               </div>
-              
-              {!isEditing && activeSection === 'overview' && profileUser.role !== 'admin' && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 rounded-lg transition"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Edit Profile</span>
-                </motion.button>
-              )}
             </div>
           </div>
         </div>
@@ -290,16 +230,12 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
           { id: 'overview', label: 'Overview', icon: User },
-          { id: 'academics', label: 'Academics', icon: BookOpen },
           { id: 'performance', label: 'Performance', icon: BarChart3 },
           { id: 'settings', label: 'Settings', icon: Settings }
         ].map((tab) => (
           <motion.button
             key={tab.id}
-            onClick={() => {
-              setActiveSection(tab.id as any);
-              setIsEditing(false);
-            }}
+            onClick={() => setActiveSection(tab.id as any)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg whitespace-nowrap ${
@@ -318,19 +254,9 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
       {activeSection === 'overview' && (
         <OverviewSection
           user={profileUser}
-          details={isEditing ? editedDetails : studentDetails}
-          isEditing={isEditing}
-          onDetailsChange={setEditedDetails}
-          onSave={handleSave}
-          onCancel={handleCancel}
+          details={studentDetails}
           overallPerformance={overallPerformance}
-          isSaving={isSaving}
-          saveError={saveError}
         />
-      )}
-
-      {activeSection === 'academics' && (
-        <AcademicsSection user={profileUser} details={studentDetails} />
       )}
 
       {activeSection === 'performance' && (
@@ -344,75 +270,53 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
   );
 }
 
-function OverviewSection({ 
-  user, 
-  details, 
-  isEditing, 
-  onDetailsChange, 
-  onSave, 
-  onCancel,
-  overallPerformance,
-  isSaving,
-  saveError
-}: { 
-  user: any; 
-  details: StudentDetails; 
-  isEditing: boolean; 
-  onDetailsChange: (details: StudentDetails) => void;
-  onSave: () => void | Promise<void>;
-  onCancel: () => void;
-  overallPerformance: number;
-  isSaving: boolean;
-  saveError: string;
-}) {
-  const stats = [
-    {
-      label: 'Overall Performance',
-      value: `${overallPerformance}%`,
-      icon: Star,
-      gradient: 'from-yellow-500 to-orange-500',
-      bgGradient: 'from-yellow-50 to-orange-50'
-    },
-    {
-      label: 'Enrolled Courses',
-      value: user.enrolledCourses?.length || 0,
-      icon: BookOpen,
-      gradient: 'from-blue-500 to-cyan-500',
-      bgGradient: 'from-blue-50 to-cyan-50'
-    },
-    {
-      label: 'Days Active',
-      value: details.joinDate
-        ? Math.floor((new Date().getTime() - new Date(`${details.joinDate}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24))
-        : 0,
-      icon: Calendar,
-      gradient: 'from-purple-500 to-pink-500',
-      bgGradient: 'from-purple-50 to-pink-50'
-    }
-  ];
+function renderRatingStars(rating: number) {
+  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)));
 
+  return (
+    <div className="flex items-center gap-1" aria-label={`Rating ${normalizedRating} out of 5`}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const isFilled = index < normalizedRating;
+
+        return (
+          <span
+            key={index}
+            className="inline-block text-[18px] leading-5"
+            style={{ color: isFilled ? '#f59e0b' : '#d1d5db' }}
+          >
+            {'\u2605'}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function OverviewSection({ 
+  details, 
+  overallPerformance
+}: { 
+  details: StudentDetails; 
+  overallPerformance: number;
+}) {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.05 }}
-            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.05 }}
+          className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 shadow-lg border border-white"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Star className="w-6 h-6 text-white" />
             </div>
-            <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-            <p className="text-sm text-gray-600">{stat.label}</p>
-          </motion.div>
-        ))}
+          </div>
+          <div className="mb-2">{renderRatingStars(overallPerformance)}</div>
+          <p className="text-sm text-gray-600">Overall Rating</p>
+        </motion.div>
       </div>
 
       {/* Personal Information */}
@@ -424,37 +328,7 @@ function OverviewSection({
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
-          {isEditing && (
-            <div className="flex gap-2">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onSave}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg transition shadow-md hover:shadow-lg"
-              >
-                <Save className="w-4 h-4" />
-                {isSaving ? 'Saving...' : 'Save'}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={onCancel}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg transition shadow-md hover:shadow-lg"
-              >
-                <X className="w-4 h-4" />
-                Cancel
-              </motion.button>
-            </div>
-          )}
         </div>
-
-        {saveError && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {saveError}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
@@ -476,119 +350,9 @@ function OverviewSection({
                 <field.icon className="w-4 h-4" />
                 {field.label}
               </label>
-              {isEditing && field.editable !== false ? (
-                <input
-                  type={field.type || 'text'}
-                  value={field.value}
-                  onChange={(e) => onDetailsChange({ ...details, [field.key]: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                />
-              ) : (
-                <p className="text-gray-900 font-medium px-4 py-2 bg-gray-50 rounded-lg group-hover:bg-indigo-50 transition">
-                  {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
-                </p>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function AcademicsSection({ user, details }: { user: any; details: StudentDetails }) {
-  return (
-    <div className="space-y-6">
-      {/* Enrolled Courses */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <BookOpen className="w-6 h-6 text-indigo-600" />
-          Enrolled Courses
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {user.enrolledCourses?.map((course: string, index: number) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05, y: -5 }}
-              className="p-5 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all"
-            >
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-3 shadow-lg">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2 text-lg">{course}</h4>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <p className="text-sm text-gray-600">Active</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Academic Timeline */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Calendar className="w-6 h-6 text-indigo-600" />
-          Academic Timeline
-        </h3>
-        <div className="space-y-4">
-          {[
-            { event: 'Enrolled in UJAAS', date: details.joinDate, status: 'completed' },
-            {
-              event: 'Completed Orientation',
-              date: details.joinDate
-                ? new Date(new Date(`${details.joinDate}T00:00:00`).getTime() + 7 * 24 * 60 * 60 * 1000)
-                    .toISOString()
-                    .split('T')[0]
-                : '',
-              status: 'completed'
-            },
-            { event: 'Mid-term Exams', date: '2025-12-15', status: 'upcoming' },
-            { event: 'Final Exams', date: '2026-05-20', status: 'upcoming' }
-          ].map((item, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.1 }}
-              className="flex items-start gap-4 p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl hover:shadow-md transition"
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                item.status === 'completed' 
-                  ? 'bg-gradient-to-br from-green-500 to-emerald-500' 
-                  : 'bg-gradient-to-br from-blue-500 to-cyan-500'
-              } shadow-lg`}>
-                {item.status === 'completed' ? (
-                  <CheckCircle className="w-5 h-5 text-white" />
-                ) : (
-                  <Clock className="w-5 h-5 text-white" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">{item.event}</h4>
-                <p className="text-sm text-gray-600">
-                  {formatDateForDisplay(item.date)}
-                </p>
-              </div>
-              <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                item.status === 'completed'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {item.status}
-              </span>
+              <p className="text-gray-900 font-medium px-4 py-2 bg-gray-50 rounded-lg group-hover:bg-indigo-50 transition">
+                {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -604,16 +368,15 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
     tests: 0,
     participation: 0,
     behavior: 0,
-    engagement: 0
+    engagement: 0,
+    dppPerformance: 0
   };
 
   const performanceData = [
-    { label: 'Attendance', value: ratings.attendance, max: 100, color: 'from-green-500 to-emerald-500', bgColor: 'from-green-50 to-emerald-50' },
-    { label: 'Assignments', value: ratings.assignments, max: 100, color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
-    { label: 'Test Performance', value: ratings.tests, max: 100, color: 'from-purple-500 to-pink-500', bgColor: 'from-purple-50 to-pink-50' },
-    { label: 'Class Participation', value: ratings.participation, max: 10, color: 'from-yellow-500 to-orange-500', bgColor: 'from-yellow-50 to-orange-50' },
-    { label: 'Behavior', value: ratings.behavior, max: 10, color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' },
-    { label: 'Engagement', value: ratings.engagement, max: 10, color: 'from-pink-500 to-rose-500', bgColor: 'from-pink-50 to-rose-50' }
+    { label: 'Attendance', value: ratings.attendance, max: 5, color: 'from-green-500 to-emerald-500', bgColor: 'from-green-50 to-emerald-50' },
+    { label: 'Test Performance', value: ratings.tests, max: 5, color: 'from-purple-500 to-pink-500', bgColor: 'from-purple-50 to-pink-50' },
+    { label: 'DPP Performance', value: ratings.dppPerformance, max: 5, color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
+    { label: 'Class Behaviour', value: ratings.behavior, max: 5, color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' }
   ];
 
   return (
@@ -628,7 +391,7 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
         <div className="relative">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-bold mb-2">Overall Performance</h3>
+              <h3 className="text-2xl font-bold mb-2">Overall Rating</h3>
               <p className="text-white/80">Based on all evaluated criteria</p>
             </div>
             <motion.div
@@ -638,10 +401,11 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
             >
               <div className="text-center">
                 <div className="text-4xl font-bold">{overallPerformance}</div>
-                <div className="text-xs">/ 100</div>
+                <div className="text-xs">/ 5</div>
               </div>
             </motion.div>
           </div>
+          <div className="mt-4">{renderRatingStars(overallPerformance)}</div>
         </div>
       </motion.div>
 
@@ -679,11 +443,6 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
                   className={`h-3 rounded-full bg-gradient-to-r ${item.color} shadow-sm`}
                 />
               </div>
-              <div className="mt-2 text-right">
-                <span className="text-sm text-gray-600">
-                  {Math.round((item.value / item.max) * 100)}%
-                </span>
-              </div>
             </motion.div>
           ))}
         </div>
@@ -701,22 +460,22 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
           Performance Insights
         </h3>
         <div className="space-y-3">
-          {overallPerformance >= 90 && (
+          {overallPerformance >= 4.5 && (
             <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg">
               <p className="text-green-800 font-medium">🎉 Excellent Performance! Keep up the great work!</p>
             </div>
           )}
-          {overallPerformance >= 70 && overallPerformance < 90 && (
+          {overallPerformance >= 3.5 && overallPerformance < 4.5 && (
             <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-500 rounded-lg">
               <p className="text-blue-800 font-medium">👍 Good Performance! You're doing well!</p>
             </div>
           )}
-          {overallPerformance >= 50 && overallPerformance < 70 && (
+          {overallPerformance >= 2.5 && overallPerformance < 3.5 && (
             <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-lg">
               <p className="text-yellow-800 font-medium">📈 Keep Improving! There's room for growth!</p>
             </div>
           )}
-          {overallPerformance < 50 && overallPerformance > 0 && (
+          {overallPerformance < 2.5 && overallPerformance > 0 && (
             <div className="p-4 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-lg">
               <p className="text-red-800 font-medium">💪 Focus Required! Let's work on improvement together!</p>
             </div>
@@ -733,8 +492,6 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
 }
 
 function SettingsSection({ onLogout }: { onLogout: () => void }) {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailUpdates, setEmailUpdates] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = () => {
@@ -744,59 +501,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Notification Settings */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <Bell className="w-6 h-6 text-indigo-600" />
-          Notification Settings
-        </h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl">
-            <div>
-              <h4 className="font-semibold text-gray-900">Push Notifications</h4>
-              <p className="text-sm text-gray-600">Receive notifications about updates and announcements</p>
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-              className={`w-14 h-8 rounded-full transition-colors ${
-                notificationsEnabled ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500' : 'bg-gray-300'
-              } relative`}
-            >
-              <motion.div
-                animate={{ x: notificationsEnabled ? 24 : 2 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
-              />
-            </motion.button>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-xl">
-            <div>
-              <h4 className="font-semibold text-gray-900">Email Updates</h4>
-              <p className="text-sm text-gray-600">Receive weekly summary emails</p>
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setEmailUpdates(!emailUpdates)}
-              className={`w-14 h-8 rounded-full transition-colors ${
-                emailUpdates ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500' : 'bg-gray-300'
-              } relative`}
-            >
-              <motion.div
-                animate={{ x: emailUpdates ? 24 : 2 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-md"
-              />
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Security Settings */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -848,23 +552,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
             <div>
               <h4 className="font-semibold text-orange-700">Logout</h4>
               <p className="text-sm text-orange-600">Sign out of your account</p>
-            </div>
-          </div>
-        </motion.button>
-
-        {/* Delete Account */}
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full p-4 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl text-left hover:border-red-400 transition"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <X className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-red-700">Delete Account</h4>
-              <p className="text-sm text-red-600">Permanently delete your account and all data</p>
             </div>
           </div>
         </motion.button>

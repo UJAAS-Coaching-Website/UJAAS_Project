@@ -55,6 +55,7 @@ interface Student {
   id: string;
   name: string;
   email: string;
+  rollNumber: string;
   enrolledCourses: string[];
   joinDate: string;
   performance: number;
@@ -103,6 +104,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '1',
     name: 'Rahul Kumar',
     email: 'rahul@example.com',
+    rollNumber: 'UJAAS-001',
     enrolledCourses: ['JEE Advanced', 'JEE Mains'],
     joinDate: '2025-09-01',
     performance: 87,
@@ -113,6 +115,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '2',
     name: 'Priya Sharma',
     email: 'priya@example.com',
+    rollNumber: 'UJAAS-002',
     enrolledCourses: ['NEET', 'JEE Mains'],
     joinDate: '2025-09-05',
     performance: 92,
@@ -123,6 +126,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '3',
     name: 'Amit Patel',
     email: 'amit@example.com',
+    rollNumber: 'UJAAS-003',
     enrolledCourses: ['JEE Advanced'],
     joinDate: '2025-09-10',
     performance: 78,
@@ -133,6 +137,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '4',
     name: 'Sneha Reddy',
     email: 'sneha@example.com',
+    rollNumber: 'UJAAS-004',
     enrolledCourses: ['NEET'],
     joinDate: '2025-09-12',
     performance: 95,
@@ -143,6 +148,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '5',
     name: 'Karan Mehta',
     email: 'karan@example.com',
+    rollNumber: 'UJAAS-005',
     enrolledCourses: ['JEE Mains'],
     joinDate: '2025-09-14',
     performance: 84,
@@ -153,6 +159,7 @@ const MOCK_STUDENTS: Student[] = [
     id: '6',
     name: 'Ananya Singh',
     email: 'ananya@example.com',
+    rollNumber: 'UJAAS-006',
     enrolledCourses: ['NEET'],
     joinDate: '2025-09-18',
     performance: 90,
@@ -389,8 +396,8 @@ function StudentsDirectoryTab() {
             <thead className="bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Student</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Roll No</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Batch</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Courses</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Rating</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -415,19 +422,10 @@ function StudentsDirectoryTab() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{student.batch}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {student.enrolledCourses.map((course, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-teal-100 via-cyan-100 to-blue-100 text-teal-800 rounded-full"
-                        >
-                          {course}
-                        </span>
-                      ))}
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                    {student.rollNumber}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-cyan-700">{student.batch}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {renderPerformanceStars(student.rating)}
                   </td>
@@ -744,10 +742,7 @@ function StudentsTab({
                   Student
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Courses
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Join Date
+                  Roll No
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Rating
@@ -777,27 +772,8 @@ function StudentsTab({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {student.enrolledCourses.map((course, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex px-2.5 py-1 text-xs font-medium bg-gradient-to-r from-teal-100 via-cyan-100 to-blue-100 text-teal-800 rounded-full"
-                        >
-                          {course}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(student.joinDate).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">
+                    {student.rollNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {renderPerformanceStars(student.rating)}
