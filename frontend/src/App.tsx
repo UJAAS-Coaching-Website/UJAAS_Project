@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { TeacherDashboard } from './components/TeacherDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
@@ -88,6 +89,28 @@ function App() {
     if (parts[0] === 'student') {
       return { view: 'student' as const, tab: parts[1] || 'home' };
     }
+    if (parts[0] === 'teacher') {
+      if (parts.length === 1) {
+        return { view: 'teacher' as const, section: 'batches' as AdminLandingSection };
+      }
+
+      const second = parts[1];
+      const third = parts[2];
+
+      if (isAdminBatchSlug(second)) {
+        return { view: 'teacher' as const, batch: second, tab: third || 'home' };
+      }
+
+      if (isAdminLandingSection(second)) {
+        return { view: 'teacher' as const, section: second };
+      }
+
+      if (isAdminTab(second)) {
+        return { view: 'teacher' as const, tab: second };
+      }
+
+      return { view: 'teacher' as const, section: 'batches' as AdminLandingSection };
+    }
     if (parts[0] === 'admin') {
       if (parts.length === 1) {
         return { view: 'admin' as const, section: 'batches' as AdminLandingSection };
@@ -129,6 +152,11 @@ function App() {
 
   const tabToPath = (role: User['role'], tab: StudentTab | AdminTab, batch: AdminBatch | null = null) => {
     if (role === 'student') return `/student/${tab}`;
+    if (role === 'teacher') {
+      const batchSlug = slugFromBatch(batch);
+      if (batchSlug) return `/teacher/${batchSlug}/${tab}`;
+      return tab === 'home' ? '/teacher' : `/teacher/${tab}`;
+    }
     const batchSlug = slugFromBatch(batch);
     if (batchSlug) return `/admin/${batchSlug}/${tab}`;
     return tab === 'home' ? '/admin' : `/admin/${tab}`;
@@ -136,6 +164,9 @@ function App() {
 
   const adminSectionToPath = (section: AdminLandingSection) =>
     section === 'batches' ? '/admin' : `/admin/${section}`;
+
+  const teacherSectionToPath = (section: AdminLandingSection) =>
+    section === 'batches' ? '/teacher' : `/teacher/${section}`;
 
   const setTabFromPath = (currentUser: User | null) => {
     const route = parsePath();
@@ -162,19 +193,28 @@ function App() {
       return;
     }
 
-    const parsedBatch = route.view === 'admin' ? batchFromSlug(route.batch) : null;
-    const parsedSection = route.view === 'admin' && isAdminLandingSection(route.section) ? route.section : 'batches';
+    const isTeacherRole = currentUser.role === 'teacher';
+    const isRoleMismatch =
+      (currentUser.role === 'teacher' && route.view === 'admin') ||
+      (currentUser.role === 'admin' && route.view === 'teacher');
+    const parsedBatch = route.view === 'admin' || route.view === 'teacher' ? batchFromSlug(route.batch) : null;
+    const parsedSection =
+      (route.view === 'admin' || route.view === 'teacher') && isAdminLandingSection(route.section) ? route.section : 'batches';
     const adminTab = isAdminTab(route.tab) ? route.tab : 'home';
     setAdminBatch(parsedBatch);
     setAdminLandingSection(parsedSection);
     setActiveTab(adminTab);
-    const canonicalAdminPath = parsedBatch
-      ? tabToPath('admin', adminTab, parsedBatch)
+    const canonicalPath = parsedBatch
+      ? tabToPath(isTeacherRole ? 'teacher' : 'admin', adminTab, parsedBatch)
       : adminTab === 'profile'
-      ? '/admin/profile'
+      ? isTeacherRole
+        ? '/teacher/profile'
+        : '/admin/profile'
+      : isTeacherRole
+      ? teacherSectionToPath(parsedSection)
       : adminSectionToPath(parsedSection);
-    if (window.location.pathname.replace(/\/+$/, '') !== canonicalAdminPath) {
-      window.history.replaceState({ tab: adminTab, batch: parsedBatch, section: parsedSection }, '', canonicalAdminPath);
+    if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
+      window.history.replaceState({ tab: adminTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
     }
   };
 
@@ -184,6 +224,12 @@ function App() {
     const path =
       user.role === 'student'
         ? tabToPath('student', tab)
+        : user.role === 'teacher'
+        ? adminBatch
+          ? tabToPath('teacher', tab, adminBatch)
+          : tab === 'profile'
+          ? '/teacher/profile'
+          : teacherSectionToPath(adminLandingSection)
         : adminBatch
         ? tabToPath('admin', tab, adminBatch)
         : tab === 'profile'
@@ -201,7 +247,7 @@ function App() {
     setAdminBatch(batch);
     setAdminLandingSection('batches');
     setActiveTab('home');
-    const path = tabToPath('admin', 'home', batch);
+    const path = tabToPath(user?.role === 'teacher' ? 'teacher' : 'admin', 'home', batch);
     window.history.pushState({ tab: 'home', batch, section: 'batches' }, '', path);
   };
 
@@ -210,7 +256,11 @@ function App() {
     setAdminBatch(null);
     setAdminLandingSection('batches');
     setActiveTab('home');
-    window.history.pushState({ tab: 'home', batch: null, section: 'batches' }, '', '/admin');
+    window.history.pushState(
+      { tab: 'home', batch: null, section: 'batches' },
+      '',
+      user?.role === 'teacher' ? '/teacher' : '/admin'
+    );
   };
 
   const handleAdminNavigateSection = (section: AdminLandingSection) => {
@@ -218,7 +268,7 @@ function App() {
     setAdminLandingSection(section);
     setAdminBatch(null);
     setActiveTab('home');
-    const path = adminSectionToPath(section);
+    const path = user?.role === 'teacher' ? teacherSectionToPath(section) : adminSectionToPath(section);
     window.history.pushState({ tab: 'home', batch: null, section }, '', path);
   };
 
@@ -312,23 +362,28 @@ function App() {
       setAdminLandingSection('batches');
       return;
     }
-    if (
-      userData.role !== 'student' &&
-      route.view === 'admin'
-    ) {
+    if (userData.role !== 'student' && (route.view === 'admin' || route.view === 'teacher')) {
       const parsedBatch = batchFromSlug(route.batch);
       const parsedSection = isAdminLandingSection(route.section) ? route.section : 'batches';
       const parsedTab = isAdminTab(route.tab) ? route.tab : 'home';
       setAdminBatch(parsedBatch);
       setAdminLandingSection(parsedSection);
       setActiveTab(parsedTab);
-      const canonicalAdminPath = parsedBatch
-        ? tabToPath('admin', parsedTab, parsedBatch)
+      const isTeacherRole = userData.role === 'teacher';
+      const isRoleMismatch =
+        (userData.role === 'teacher' && route.view === 'admin') ||
+        (userData.role === 'admin' && route.view === 'teacher');
+      const canonicalPath = parsedBatch
+        ? tabToPath(isTeacherRole ? 'teacher' : 'admin', parsedTab, parsedBatch)
         : parsedTab === 'profile'
-        ? '/admin/profile'
+        ? isTeacherRole
+          ? '/teacher/profile'
+          : '/admin/profile'
+        : isTeacherRole
+        ? teacherSectionToPath(parsedSection)
         : adminSectionToPath(parsedSection);
-      if (window.location.pathname.replace(/\/+$/, '') !== canonicalAdminPath) {
-        window.history.replaceState({ tab: parsedTab, batch: parsedBatch, section: parsedSection }, '', canonicalAdminPath);
+      if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
+        window.history.replaceState({ tab: parsedTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
       }
       return;
     }
@@ -344,7 +399,11 @@ function App() {
 
     setAdminBatch(null);
     setAdminLandingSection('batches');
-    window.history.pushState({ tab: defaultTab, batch: null, section: 'batches' }, '', '/admin');
+    window.history.pushState(
+      { tab: defaultTab, batch: null, section: 'batches' },
+      '',
+      userData.role === 'teacher' ? '/teacher' : '/admin'
+    );
   };
 
   const handleLogout = async () => {
@@ -429,6 +488,30 @@ function App() {
             user={user} 
             activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
             onNavigate={navigateTab}
+            onLogout={handleLogout}
+            notifications={notifications}
+            onMarkAsRead={handleMarkAsRead}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onDeleteNotification={handleDeleteNotification}
+          />
+        </motion.div>
+      ) : user.role === 'teacher' ? (
+        <motion.div
+          key="teacher"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <TeacherDashboard 
+            user={user} 
+            activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
+            onNavigate={navigateTab}
+            adminSection={adminLandingSection}
+            onNavigateSection={handleAdminNavigateSection}
+            selectedBatch={adminBatch}
+            onSelectBatch={handleAdminSelectBatch}
+            onClearBatch={handleAdminClearBatch}
             onLogout={handleLogout}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}

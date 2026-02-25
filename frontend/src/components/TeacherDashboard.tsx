@@ -30,12 +30,12 @@ import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
 import { motion } from 'motion/react';
 
-interface AdminDashboardProps {
+interface TeacherDashboardProps {
   user: User;
   activeTab: Tab;
   onNavigate: (tab: Tab) => void;
-  adminSection: AdminSection;
-  onNavigateSection: (section: AdminSection) => void;
+  adminSection: TeacherSection;
+  onNavigateSection: (section: TeacherSection) => void;
   selectedBatch: Batch | null;
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
@@ -48,7 +48,7 @@ interface AdminDashboardProps {
 
 type Tab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
 type Batch = '11th JEE' | '11th NEET' | '12th JEE' | '12th NEET' | 'Dropper JEE' | 'Dropper NEET';
-type AdminSection = 'batches' | 'students' | 'faculty';
+type TeacherSection = 'batches' | 'students' | 'faculty';
 
 interface Student {
   id: string;
@@ -169,7 +169,7 @@ const MOCK_FACULTY: Teacher[] = [
   { id: 'f4', name: 'Nidhi Maam', email: 'nidhi@example.com', subject: 'Biology', experience: '7 years' },
 ];
 
-export function AdminDashboard({ 
+export function TeacherDashboard({ 
   user, 
   activeTab,
   onNavigate,
@@ -183,7 +183,7 @@ export function AdminDashboard({
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification
-}: AdminDashboardProps) {
+}: TeacherDashboardProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
       {/* Navigation */}
@@ -197,14 +197,14 @@ export function AdminDashboard({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onClearBatch}
-              title="Go to admin home"
+              title="Go to teacher home"
               className="flex items-center gap-2"
             >
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-lg flex items-center justify-center shadow-lg">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
-                UJAAS Admin
+                UJAAS Teacher
               </span>
             </motion.button>
 
@@ -218,7 +218,7 @@ export function AdminDashboard({
                 ].map((section) => (
                   <motion.button
                     key={section.id}
-                    onClick={() => onNavigateSection(section.id as AdminSection)}
+                    onClick={() => onNavigateSection(section.id as TeacherSection)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
@@ -320,7 +320,7 @@ function BatchSelectionTab({ onSelectBatch }: { onSelectBatch: (batch: Batch) =>
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Batch</h2>
-        <p className="text-gray-600">Choose a batch to open the admin dashboard in that context.</p>
+        <p className="text-gray-600">Choose a batch to open the teacher dashboard in that context.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {DEMO_BATCHES.map((batch, index) => (
