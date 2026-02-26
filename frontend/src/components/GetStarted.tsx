@@ -11,17 +11,21 @@ import {
   Send,
   Star,
   Trophy,
+  Calendar,
 } from 'lucide-react';
 import { Footer } from './Footer';
 import logo from '../assets/logo.svg';
+import { LandingData } from '../App';
 
 interface GetStartedProps {
   onGetStarted: () => void;
   isNewUser?: boolean;
   userName?: string;
+  landingData: LandingData;
+  onSubmitQuery: (query: { name: string; email: string; phone: string; course: string; message: string }) => void;
 }
 
-export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProps) {
+export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onSubmitQuery }: GetStartedProps) {
   const [currentAchiever, setCurrentAchiever] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
@@ -31,90 +35,12 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
     message: ''
   });
 
-  const faculty = [
-    {
-      name: 'Dr. Rajesh Kumar',
-      subject: 'Physics',
-      qualification: 'Ph.D. Physics, IIT Delhi',
-      experience: '15+ Years',
-      image: 'https://images.unsplash.com/photo-1659353887617-8cf154b312c5?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Prof. Priya Sharma',
-      subject: 'Mathematics',
-      qualification: 'M.Sc. Mathematics, IIT Bombay',
-      experience: '12+ Years',
-      image: 'https://images.unsplash.com/photo-1593442808882-775dfcd90699?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Dr. Anand Verma',
-      subject: 'Chemistry',
-      qualification: 'Ph.D. Chemistry, DU',
-      experience: '18+ Years',
-      image: 'https://images.unsplash.com/photo-1758685734511-4f49ce9a382b?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Dr. Sneha Patel',
-      subject: 'Biology',
-      qualification: 'MBBS, MD',
-      experience: '10+ Years',
-      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Prof. Arun Singh',
-      subject: 'Mathematics',
-      qualification: 'M.Sc. Mathematics, IIT Kanpur',
-      experience: '14+ Years',
-      image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop'
-    },
-    {
-      name: 'Dr. Meera Reddy',
-      subject: 'Physics',
-      qualification: 'Ph.D. Physics, IISc Bangalore',
-      experience: '16+ Years',
-      image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop'
-    }
-  ];
-
-  const achievers = [
-    {
-      name: 'Rahul Kumar',
-      achievement: 'JEE Advanced AIR 234',
-      course: 'JEE Advanced 2025',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop',
-      score: '324/360'
-    },
-    {
-      name: 'Priya Sharma',
-      achievement: 'NEET AIR 567',
-      course: 'NEET 2025',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop',
-      score: '695/720'
-    },
-    {
-      name: 'Amit Patel',
-      achievement: 'JEE Mains 99.8%ile',
-      course: 'JEE Mains 2025',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop',
-      score: '298/300'
-    }
-  ];
-
-  const courses = [
-    'JEE MAINS / ADVANCED',
-    'NEET',
-    'BOARDS',
-    'GUJCET',
-    '11TH SCIENCE',
-    '12TH SCIENCE',
-    '7TH TO 10TH FOUNDATION',
-    'DROPPER BATCH'
-  ];
+  const { faculty, achievers, courses, contact } = landingData;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    alert('Thank you! We will contact you soon.');
+    onSubmitQuery(formData);
+    alert('Thank you! Your interest has been registered. Our team will contact you soon.');
     setFormData({ name: '', email: '', phone: '', course: '', message: '' });
   };
 
@@ -223,7 +149,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
                   <p className="text-teal-600 font-semibold mb-2">{member.subject}</p>
-                  <p className="text-sm text-gray-600 mb-2">{member.qualification}</p>
+                  <p className="text-sm text-gray-600 mb-2">{member.designation}</p>
                   <div className="flex items-center gap-2 text-sm text-gray-700">
                     <Award className="w-4 h-4 text-cyan-600" />
                     <span>{member.experience}</span>
@@ -261,42 +187,49 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
               <ChevronRight className="w-6 h-6 text-teal-600" />
             </button>
 
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <div className="grid md:grid-cols-2 gap-0">
-                <div className="h-64 md:h-auto bg-gradient-to-br from-teal-200 to-cyan-200 flex items-center justify-center">
-                  <img
-                    src={achievers[currentAchiever].image}
-                    alt={achievers[currentAchiever].name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-8 flex flex-col justify-center">
-                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full px-4 py-2 mb-4 w-fit">
-                    <Trophy className="w-5 h-5 text-yellow-600" />
-                    <span className="text-sm font-semibold text-yellow-700">Top Achiever</span>
+            {achievers.length > 0 ? (
+              <>
+                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                  <div className="grid md:grid-cols-2 gap-0">
+                    <div className="h-64 md:h-auto bg-gradient-to-br from-teal-200 to-cyan-200 flex items-center justify-center">
+                      <img
+                        src={achievers[currentAchiever]?.image}
+                        alt={achievers[currentAchiever]?.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="p-8 flex flex-col justify-center">
+                      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full px-4 py-2 mb-4 w-fit">
+                        <Trophy className="w-5 h-5 text-yellow-600" />
+                        <span className="text-sm font-semibold text-yellow-700">Top Achiever</span>
+                      </div>
+                      <h3 className="text-3xl font-bold text-gray-900 mb-2">{achievers[currentAchiever]?.name}</h3>
+                      <p className="text-xl text-teal-600 font-semibold mb-2">{achievers[currentAchiever]?.achievement}</p>
+                      <div className="inline-flex items-center gap-2 text-2xl font-bold text-cyan-600">
+                        <Calendar className="w-6 h-6" />
+                        Year: {achievers[currentAchiever]?.year}
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-2">{achievers[currentAchiever].name}</h3>
-                  <p className="text-xl text-teal-600 font-semibold mb-2">{achievers[currentAchiever].achievement}</p>
-                  <p className="text-gray-600 mb-2">{achievers[currentAchiever].course}</p>
-                  <div className="inline-flex items-center gap-2 text-2xl font-bold text-cyan-600">
-                    <Star className="w-6 h-6 fill-cyan-600" />
-                    Score: {achievers[currentAchiever].score}
-                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="flex justify-center gap-2 mt-6">
-              {achievers.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentAchiever(idx)}
-                  className={`h-2 rounded-full transition-all ${
-                    currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
+                <div className="flex justify-center gap-2 mt-6">
+                  {achievers.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentAchiever(idx)}
+                      className={`h-2 rounded-full transition-all ${
+                        currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-20 bg-white rounded-2xl shadow-xl">
+                <p className="text-gray-500 italic">No achievers added yet.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -402,17 +335,17 @@ export function GetStarted({ onGetStarted, isNewUser, userName }: GetStartedProp
             <div className="text-center p-6 bg-teal-50 rounded-xl">
               <Phone className="w-8 h-8 text-teal-600 mx-auto mb-3" />
               <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
-              <p className="text-sm text-gray-600">+91 98765 43210</p>
+              <p className="text-sm text-gray-600">{contact.phone}</p>
             </div>
             <div className="text-center p-6 bg-cyan-50 rounded-xl">
               <Mail className="w-8 h-8 text-cyan-600 mx-auto mb-3" />
               <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
-              <p className="text-sm text-gray-600">info@ujaas.com</p>
+              <p className="text-sm text-gray-600">{contact.email}</p>
             </div>
             <div className="text-center p-6 bg-blue-50 rounded-xl">
               <MapPin className="w-8 h-8 text-blue-600 mx-auto mb-3" />
               <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
-              <p className="text-sm text-gray-600">123 Education St, Delhi</p>
+              <p className="text-sm text-gray-600">{contact.address}</p>
             </div>
           </div>
         </div>

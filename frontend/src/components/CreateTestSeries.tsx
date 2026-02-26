@@ -1,78 +1,92 @@
 import { useState } from 'react';
 import { 
   ArrowLeft, 
-  Plus, 
   Trash2, 
   Calendar, 
   Clock, 
   FileText,
   CheckCircle,
   AlertCircle,
-  Book,
   Target,
-  Upload
+  Users,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QuestionUploadForm, Question } from './QuestionUploadForm';
 
-interface Question {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  marks: number;
-  subject: string;
+interface BatchInfo {
+  label: string;
+  slug: string;
 }
 
 interface CreateTestSeriesProps {
   onBack: () => void;
+  batches: BatchInfo[];
 }
 
-export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
+export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
   const [step, setStep] = useState(1);
   const [testData, setTestData] = useState({
     title: '',
-    description: '',
-    course: '',
-    subject: '',
+    format: 'JEE MAIN' as 'JEE MAIN' | 'NEET' | 'Custom',
+    selectedBatches: [] as string[],
     duration: 180,
-    totalMarks: 100,
-    passingMarks: 40,
-    startDate: '',
-    endDate: '',
+    totalMarks: 300,
+    passingMarks: 120,
+    scheduleDate: '',
+    scheduleTime: '09:00',
     instructions: ''
   });
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<Question>({
-    id: Date.now().toString(),
-    question: '',
-    options: ['', '', '', ''],
-    correctAnswer: 0,
-    marks: 4,
-    subject: ''
-  });
-
   const [showSuccess, setShowSuccess] = useState(false);
+  const [activeSubject, setActiveSubject] = useState('Physics');
+  const [activeSection, setActiveSection] = useState<'Section A' | 'Section B'>('Section A');
 
-  const courses = ['JEE Main', 'JEE Advanced', 'NEET', 'Foundation Course'];
-  const subjects = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
-
-  const handleAddQuestion = () => {
-    if (currentQuestion.question && currentQuestion.options.every(opt => opt.trim())) {
-      setQuestions([...questions, { ...currentQuestion, id: Date.now().toString() }]);
-      setCurrentQuestion({
-        id: Date.now().toString(),
-        question: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        marks: 4,
-        subject: currentQuestion.subject
-      });
+  useEffect(() => {
+    const validSubjects = getSubjects();
+    if (!validSubjects.includes(activeSubject)) {
+      setActiveSubject(validSubjects[0]);
     }
+  }, [testData.format]);
+
+  const formats = ['JEE MAIN', 'NEET', 'Custom'];
+  
+  const getSubjects = () => {
+    if (testData.format === 'JEE MAIN') return ['Physics', 'Chemistry', 'Mathematics'];
+    if (testData.format === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
+    return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
   };
+
+  const currentSubjects = getSubjects();
+
+  const handleAddQuestion = (question: Question) => {
+    const enrichedQuestion = {
+      ...question,
+      subject: activeSubject,
+      metadata: {
+        section: testData.format === 'Custom' ? undefined : activeSection
+      }
+    };
+    setQuestions([...questions, enrichedQuestion]);
+  };
+
+  const filteredQuestions = questions.filter(q => 
+    q.subject === activeSubject && 
+    (testData.format === 'Custom' || (q as any).metadata?.section === activeSection)
+  );
 
   const handleRemoveQuestion = (id: string) => {
     setQuestions(questions.filter(q => q.id !== id));
+  };
+
+  const toggleBatch = (label: string) => {
+    setTestData(prev => ({
+      ...prev,
+      selectedBatches: prev.selectedBatches.includes(label)
+        ? prev.selectedBatches.filter(b => b !== label)
+        : [...prev.selectedBatches, label]
+    }));
   };
 
   const handleSubmit = () => {
@@ -82,8 +96,15 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
     }, 2000);
   };
 
-  const isStep1Valid = testData.title && testData.course && testData.subject && testData.startDate && testData.endDate;
-  const isStep2Valid = questions.length >= 5;
+  const isStep1Valid = testData.title && testData.selectedBatches.length > 0 && testData.scheduleDate;
+  
+  const getRequiredCount = () => {
+    if (testData.format === 'JEE MAIN') return 90;
+    if (testData.format === 'NEET') return 200;
+    return 5;
+  };
+
+  const isStep2Valid = questions.length >= getRequiredCount();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 py-8">
@@ -96,7 +117,7 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
         >
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-teal-600 transition mb-4"
+            className="flex items-center gap-2 text-gray-600 hover:text-teal-600 transition mb-4 font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Dashboard
@@ -108,15 +129,18 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
                 <FileText className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Create Test Series</h1>
-                <p className="text-gray-600">Design comprehensive tests for your students</p>
+                <h1 className="text-3xl font-bold text-gray-900">Create {testData.format} Test</h1>
+                <p className="text-gray-600">
+                  {testData.format === 'Custom' 
+                    ? 'Design a custom test with flexible configuration' 
+                    : `Follow standard ${testData.format} examination pattern`}
+                </p>
               </div>
             </div>
 
-            {/* Progress Steps */}
             <div className="flex items-center gap-4 mt-6">
               {[
-                { num: 1, label: 'Test Details' },
+                { num: 1, label: 'Test Config' },
                 { num: 2, label: 'Add Questions' },
                 { num: 3, label: 'Review & Publish' }
               ].map((s, idx) => (
@@ -146,7 +170,6 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
           </div>
         </motion.div>
 
-        {/* Step 1: Test Details */}
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div
@@ -156,149 +179,154 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <Book className="w-6 h-6 text-teal-600" />
-                  Basic Information
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+                <h2 className="text-xl font-bold text-gray-900 mb-8 flex items-center gap-2">
+                  <Settings className="w-6 h-6 text-teal-600" />
+                  Test Configuration
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Test Title *
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Test Name *
                     </label>
                     <input
                       type="text"
                       value={testData.title}
                       onChange={(e) => setTestData({ ...testData, title: e.target.value })}
-                      placeholder="e.g., JEE Main Mock Test - Physics"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
+                      placeholder="e.g., Full Syllabus Mock Test #01"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                      Test Format *
+                    </label>
+                    <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-fit">
+                      {formats.map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => {
+                            const duration = f === 'JEE MAIN' ? 180 : f === 'NEET' ? 200 : 180;
+                            const marks = f === 'JEE MAIN' ? 300 : f === 'NEET' ? 720 : 300;
+                            setTestData({ ...testData, format: f as any, duration, totalMarks: marks });
+                          }}
+                          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+                            testData.format === f
+                              ? 'bg-white text-teal-600 shadow-md'
+                              : 'text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Select Batches *
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {batches.map((batch) => (
+                        <button
+                          key={batch.slug}
+                          onClick={() => toggleBatch(batch.label)}
+                          className={`px-4 py-2 rounded-xl border-2 transition-all font-semibold text-sm ${
+                            testData.selectedBatches.includes(batch.label)
+                              ? 'border-teal-500 bg-teal-50 text-teal-700'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          {batch.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={testData.scheduleDate}
+                      onChange={(e) => setTestData({ ...testData, scheduleDate: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Course *
+                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Start Time *
                     </label>
-                    <select
-                      value={testData.course}
-                      onChange={(e) => setTestData({ ...testData, course: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    >
-                      <option value="">Select Course</option>
-                      {courses.map(course => (
-                        <option key={course} value={course}>{course}</option>
-                      ))}
-                    </select>
+                    <input
+                      type="time"
+                      value={testData.scheduleTime}
+                      onChange={(e) => setTestData({ ...testData, scheduleTime: e.target.value })}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Subject *
-                    </label>
-                    <select
-                      value={testData.subject}
-                      onChange={(e) => setTestData({ ...testData, subject: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    >
-                      <option value="">Select Subject</option>
-                      {subjects.map(subject => (
-                        <option key={subject} value={subject}>{subject}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
                       Duration (minutes)
                     </label>
                     <input
                       type="number"
                       value={testData.duration}
                       onChange={(e) => setTestData({ ...testData, duration: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
                       Total Marks
                     </label>
                     <input
                       type="number"
                       value={testData.totalMarks}
+                      readOnly={testData.format !== 'Custom'}
                       onChange={(e) => setTestData({ ...testData, totalMarks: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Passing Marks
-                    </label>
-                    <input
-                      type="number"
-                      value={testData.passingMarks}
-                      onChange={(e) => setTestData({ ...testData, passingMarks: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={testData.startDate}
-                      onChange={(e) => setTestData({ ...testData, startDate: e.target.value })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
+                      className={`w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${testData.format !== 'Custom' ? 'bg-gray-50' : ''}`}
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={testData.description}
-                      onChange={(e) => setTestData({ ...testData, description: e.target.value })}
-                      rows={3}
-                      placeholder="Brief description of the test..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Instructions
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Instructions / Remarks
                     </label>
                     <textarea
                       value={testData.instructions}
                       onChange={(e) => setTestData({ ...testData, instructions: e.target.value })}
                       rows={4}
-                      placeholder="Test instructions for students..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
+                      placeholder="Enter test instructions or special remarks..."
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-6">
+                <div className="flex justify-end mt-8">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => isStep1Valid && setStep(2)}
                     disabled={!isStep1Valid}
-                    className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Continue to Questions
+                    Continue to Add Questions
+                    <ArrowLeft className="w-5 h-5 rotate-180" />
                   </motion.button>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Step 2: Add Questions */}
           {step === 2 && (
             <motion.div
               key="step2"
@@ -307,115 +335,82 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              {/* Question Form */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <Target className="w-6 h-6 text-teal-600" />
-                  Add Question {questions.length + 1}
-                </h2>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Question Text *
-                    </label>
-                    <textarea
-                      value={currentQuestion.question}
-                      onChange={(e) => setCurrentQuestion({ ...currentQuestion, question: e.target.value })}
-                      rows={3}
-                      placeholder="Enter your question here..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentQuestion.options.map((option, index) => (
-                      <div key={index}>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Option {String.fromCharCode(65 + index)} *
-                        </label>
-                        <input
-                          type="text"
-                          value={option}
-                          onChange={(e) => {
-                            const newOptions = [...currentQuestion.options];
-                            newOptions[index] = e.target.value;
-                            setCurrentQuestion({ ...currentQuestion, options: newOptions });
-                          }}
-                          placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Correct Answer *
-                      </label>
-                      <select
-                        value={currentQuestion.correctAnswer}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, correctAnswer: parseInt(e.target.value) })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                      >
-                        {currentQuestion.options.map((_, index) => (
-                          <option key={index} value={index}>
-                            Option {String.fromCharCode(65 + index)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Marks
-                      </label>
-                      <input
-                        type="number"
-                        value={currentQuestion.marks}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, marks: parseInt(e.target.value) })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Subject
-                      </label>
-                      <select
-                        value={currentQuestion.subject}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, subject: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition"
-                      >
-                        <option value="">Select Subject</option>
-                        {subjects.map(subject => (
-                          <option key={subject} value={subject}>{subject}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleAddQuestion}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+              <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
+                {currentSubjects.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setActiveSubject(s);
+                      setActiveSection('Section A');
+                    }}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                      activeSubject === s
+                        ? 'bg-teal-600 text-white shadow-lg scale-105'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
                   >
-                    <Plus className="w-5 h-5" />
-                    Add Question
-                  </motion.button>
-                </div>
+                    {s}
+                  </button>
+                ))}
               </div>
 
-              {/* Questions List */}
-              {questions.length > 0 && (
+              {testData.format !== 'Custom' && (
+                <div className="flex gap-4">
+                  {(['Section A', 'Section B'] as const).map((sec) => (
+                    <button
+                      key={sec}
+                      onClick={() => setActiveSection(sec)}
+                      className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${
+                        activeSection === sec
+                          ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                          : 'border-white bg-white/50 text-gray-500'
+                      }`}
+                    >
+                      {sec} 
+                      <span className="ml-2 text-xs opacity-60">
+                        ({questions.filter(q => q.subject === activeSubject && (q as any).metadata?.section === sec).length} questions)
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {testData.format !== 'Custom' && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-bold mb-1">Standard {testData.format} Pattern:</p>
+                    {testData.format === 'JEE MAIN' ? (
+                      <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 10 Numerical Value Questions (+4, 0) - Students attempt 5'}</p>
+                    ) : (
+                      <p>{activeSection === 'Section A' ? 'Section A: 35 Compulsory MCQs (+4, -1)' : 'Section B: 15 MCQs (+4, -1) - Students attempt 10'}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <QuestionUploadForm 
+                onAddQuestion={handleAddQuestion} 
+                buttonLabel={`Add to ${activeSubject} - ${activeSection}`}
+                showMarks={testData.format === 'Custom'}
+                showSubject={testData.format === 'Custom'}
+                subjects={currentSubjects}
+                fixedType={
+                  testData.format === 'JEE MAIN' 
+                    ? (activeSection === 'Section A' ? 'MCQ' : 'Numerical')
+                    : testData.format === 'NEET' ? 'MCQ' : undefined
+                }
+                defaultMarks={4}
+                fixedSubject={activeSubject}
+              />
+
+              {filteredQuestions.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Added Questions ({questions.length})
+                    Added in {activeSubject} {testData.format !== 'Custom' && `- ${activeSection}`} ({filteredQuestions.length})
                   </h3>
                   <div className="space-y-3">
-                    {questions.map((q, index) => (
+                    {filteredQuestions.map((q, index) => (
                       <motion.div
                         key={q.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -428,9 +423,12 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
                         <div className="flex-1">
                           <p className="text-gray-900 font-medium mb-2">{q.question}</p>
                           <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                            <span className="px-2 py-1 bg-white rounded">Correct: {String.fromCharCode(65 + q.correctAnswer)}</span>
-                            <span className="px-2 py-1 bg-white rounded">Marks: {q.marks}</span>
-                            {q.subject && <span className="px-2 py-1 bg-white rounded">{q.subject}</span>}
+                            <span className="px-2 py-1 bg-white rounded border border-teal-100 text-teal-700 font-medium uppercase">
+                              Type: {q.type}
+                            </span>
+                            <span className="px-2 py-1 bg-white rounded border border-teal-100 text-teal-700 font-medium">
+                              Marks: {q.marks}
+                            </span>
                           </div>
                         </div>
                         <button
@@ -445,7 +443,6 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
                 </div>
               )}
 
-              {/* Navigation */}
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setStep(1)}
@@ -453,31 +450,24 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
                 >
                   Previous
                 </button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => isStep2Valid && setStep(3)}
-                  disabled={!isStep2Valid}
-                  className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Review & Publish
-                </motion.button>
-              </div>
-
-              {questions.length < 5 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 text-yellow-800">
-                    <AlertCircle className="w-5 h-5" />
-                    <p className="text-sm font-medium">
-                      Add at least 5 questions to continue (Current: {questions.length})
-                    </p>
-                  </div>
+                <div className="flex flex-col items-end gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => isStep2Valid && setStep(3)}
+                    disabled={!isStep2Valid}
+                    className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Review & Publish
+                  </motion.button>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Total: {questions.length} / {getRequiredCount()} questions added
+                  </p>
                 </div>
-              )}
+              </div>
             </motion.div>
           )}
 
-          {/* Step 3: Review */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -490,29 +480,43 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Review Test Details</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="p-4 bg-teal-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Title</p>
+                  <div className="p-4 bg-teal-50 rounded-xl border border-teal-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Title</p>
                     <p className="font-semibold text-gray-900">{testData.title}</p>
                   </div>
-                  <div className="p-4 bg-cyan-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Course</p>
-                    <p className="font-semibold text-gray-900">{testData.course}</p>
+                  <div className="p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Format</p>
+                    <p className="font-semibold text-gray-900">{testData.format}</p>
                   </div>
-                  <div className="p-4 bg-blue-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Subject</p>
-                    <p className="font-semibold text-gray-900">{testData.subject}</p>
+                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Target Batches</p>
+                    <p className="font-semibold text-gray-900">{testData.selectedBatches.join(', ')}</p>
                   </div>
-                  <div className="p-4 bg-teal-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Total Questions</p>
+                  <div className="p-4 bg-teal-50 rounded-xl border border-teal-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Total Questions</p>
                     <p className="font-semibold text-gray-900">{questions.length}</p>
                   </div>
-                  <div className="p-4 bg-cyan-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Duration</p>
+                  <div className="p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Duration</p>
                     <p className="font-semibold text-gray-900">{testData.duration} minutes</p>
                   </div>
-                  <div className="p-4 bg-blue-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Total Marks</p>
+                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Total Marks</p>
                     <p className="font-semibold text-gray-900">{testData.totalMarks}</p>
+                  </div>
+                </div>
+
+                <div className="mb-6 p-6 bg-gray-50 rounded-2xl">
+                  <h3 className="font-bold text-gray-900 mb-4">Questions Distribution</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {currentSubjects.map(s => (
+                      <div key={s} className="text-center">
+                        <div className="text-2xl font-bold text-teal-600">
+                          {questions.filter(q => q.subject === s).length}
+                        </div>
+                        <div className="text-xs text-gray-500 uppercase font-bold">{s}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -538,7 +542,6 @@ export function CreateTestSeries({ onBack }: CreateTestSeriesProps) {
           )}
         </AnimatePresence>
 
-        {/* Success Modal */}
         <AnimatePresence>
           {showSuccess && (
             <motion.div

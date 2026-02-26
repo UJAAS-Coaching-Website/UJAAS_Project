@@ -17,6 +17,45 @@ export interface User {
   studentDetails?: StudentDetails | null;
 }
 
+export interface LandingFaculty {
+  name: string;
+  subject: string;
+  designation: string;
+  experience: string;
+  image: string;
+}
+
+export interface LandingAchiever {
+  name: string;
+  achievement: string;
+  year: string;
+  image: string;
+}
+
+export interface LandingContact {
+  phone: string;
+  email: string;
+  address: string;
+}
+
+export interface LandingQuery {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  course: string;
+  message?: string;
+  date: string;
+  status: 'new' | 'contacted' | 'completed';
+}
+
+export interface LandingData {
+  courses: string[];
+  faculty: LandingFaculty[];
+  achievers: LandingAchiever[];
+  contact: LandingContact;
+}
+
 function App() {
   const studentTabs = ['home', 'notes', 'dpp', 'test-series', 'profile'] as const;
   const adminTabs = [
@@ -47,10 +86,136 @@ function App() {
     { label: 'Dropper JEE', slug: 'dropper-jee' },
     { label: 'Dropper NEET', slug: 'dropper-neet' },
   ];
-  const adminLandingSections = ['batches', 'students', 'faculty', 'test-series'] as const;
+  const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
   type AdminLandingSection = (typeof adminLandingSections)[number];
 
   const [user, setUser] = useState<User | null>(null);
+
+  const [queries, setQueries] = useState<LandingQuery[]>(() => {
+    const stored = localStorage.getItem('ujaasQueries');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ujaasQueries', JSON.stringify(queries));
+  }, [queries]);
+
+  const handleAddQuery = (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
+    const newQuery: LandingQuery = {
+      ...query,
+      id: Math.random().toString(36).substr(2, 9),
+      date: new Date().toISOString(),
+      status: 'new'
+    };
+    setQueries(prev => [newQuery, ...prev]);
+  };
+
+  const [landingData, setLandingData] = useState<LandingData>(() => {
+    const defaultData = {
+      courses: [
+        'JEE MAINS / ADVANCED',
+        'NEET',
+        'BOARDS',
+        'GUJCET',
+        '11TH SCIENCE',
+        '12TH SCIENCE',
+        '7TH TO 10TH FOUNDATION',
+        'DROPPER BATCH'
+      ],
+      faculty: [
+        {
+          name: 'Dr. Rajesh Kumar',
+          subject: 'Physics',
+          designation: 'Demo Designation',
+          experience: '15+ Years',
+          image: 'https://images.unsplash.com/photo-1659353887617-8cf154b312c5?w=400&h=400&fit=crop'
+        },
+        {
+          name: 'Prof. Priya Sharma',
+          subject: 'Mathematics',
+          designation: 'Demo Designation',
+          experience: '12+ Years',
+          image: 'https://images.unsplash.com/photo-1593442808882-775dfcd90699?w=400&h=400&fit=crop'
+        },
+        {
+          name: 'Dr. Anand Verma',
+          subject: 'Chemistry',
+          designation: 'Demo Designation',
+          experience: '18+ Years',
+          image: 'https://images.unsplash.com/photo-1758685734511-4f49ce9a382b?w=400&h=400&fit=crop'
+        },
+        {
+          name: 'Dr. Sneha Patel',
+          subject: 'Biology',
+          designation: 'Demo Designation',
+          experience: '10+ Years',
+          image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop'
+        },
+        {
+          name: 'Prof. Arun Singh',
+          subject: 'Mathematics',
+          designation: 'Demo Designation',
+          experience: '14+ Years',
+          image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop'
+        },
+        {
+          name: 'Dr. Meera Reddy',
+          subject: 'Physics',
+          designation: 'Demo Designation',
+          experience: '16+ Years',
+          image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop'
+        }
+      ],
+      achievers: [
+        {
+          name: 'Rahul Kumar',
+          achievement: 'JEE Advanced AIR 234',
+          year: '2025',
+          image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop'
+        },
+        {
+          name: 'Priya Sharma',
+          achievement: 'NEET AIR 567',
+          year: '2025',
+          image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop'
+        },
+        {
+          name: 'Amit Patel',
+          achievement: 'JEE Mains 99.8%ile',
+          year: '2025',
+          image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop'
+        }
+      ],
+      contact: {
+        phone: '+91 98765 43210',
+        email: 'info@ujaas.com',
+        address: '123 Education St, Delhi'
+      }
+    };
+
+    const stored = localStorage.getItem('ujaasLandingData');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          ...defaultData,
+          ...parsed,
+          courses: Array.isArray(parsed.courses) ? parsed.courses : defaultData.courses,
+          faculty: Array.isArray(parsed.faculty) ? parsed.faculty : defaultData.faculty,
+          achievers: Array.isArray(parsed.achievers) ? parsed.achievers : defaultData.achievers,
+          contact: parsed.contact || defaultData.contact,
+        };
+      } catch (e) {
+        console.error('Failed to parse landing data', e);
+      }
+    }
+    return defaultData;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ujaasLandingData', JSON.stringify(landingData));
+  }, [landingData]);
+
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
     const stored = localStorage.getItem('ujaasAdminBatches');
     if (!stored) return initialAdminBatches;
@@ -336,20 +501,23 @@ function App() {
   const navigateTab = (tab: StudentTab | AdminTab) => {
     if (!user) return;
     setActiveTab(tab);
-    const path =
-      user.role === 'student'
-        ? tabToPath('student', tab)
-        : user.role === 'teacher'
-        ? adminBatch
-          ? tabToPath('teacher', tab, adminBatch)
-          : tab === 'profile'
-          ? '/teacher/profile'
-          : teacherSectionToPath(adminLandingSection)
-        : adminBatch
-        ? tabToPath('admin', tab, adminBatch)
-        : tab === 'profile'
-        ? '/admin/profile'
-        : adminSectionToPath(adminLandingSection);
+    
+    let path = '';
+    if (user.role === 'student') {
+      path = tabToPath('student', tab);
+    } else {
+      const role = user.role === 'teacher' ? 'teacher' : 'admin';
+      if (adminBatch) {
+        path = tabToPath(role, tab, adminBatch);
+      } else if (tab === 'profile') {
+        path = `/${role}/profile`;
+      } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'upload-notice' || tab === 'upload-notes') {
+        path = `/${role}/${adminLandingSection}/${tab}`;
+      } else {
+        path = user.role === 'teacher' ? teacherSectionToPath(adminLandingSection) : adminSectionToPath(adminLandingSection);
+      }
+    }
+
     window.history.pushState(
       { tab, batch: user.role === 'student' ? null : adminBatch, section: user.role === 'student' ? undefined : adminLandingSection },
       '',
@@ -382,9 +550,10 @@ function App() {
     if (user?.role === 'student') return;
     setAdminLandingSection(section);
     setAdminBatch(null);
-    setActiveTab('home');
+    const targetTab = section === 'test-series' ? 'test-series' : 'home';
+    setActiveTab(targetTab);
     const path = user?.role === 'teacher' ? teacherSectionToPath(section) : adminSectionToPath(section);
-    window.history.pushState({ tab: 'home', batch: null, section }, '', path);
+    window.history.pushState({ tab: targetTab, batch: null, section }, '', path);
   };
 
   useEffect(() => {
@@ -583,7 +752,13 @@ function App() {
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.5 }}
         >
-          <GetStarted onGetStarted={handleGetStarted} isNewUser={false} userName="" />
+          <GetStarted 
+            onGetStarted={handleGetStarted} 
+            isNewUser={false} 
+            userName="" 
+            landingData={landingData} 
+            onSubmitQuery={handleAddQuery}
+          />
         </motion.div>
       ) : !user ? (
         <motion.div
@@ -665,6 +840,10 @@ function App() {
             onMarkAsRead={handleMarkAsRead}
             onMarkAllAsRead={handleMarkAllAsRead}
             onDeleteNotification={handleDeleteNotification}
+            landingData={landingData}
+            onUpdateLandingData={setLandingData}
+            queries={queries}
+            onUpdateQueries={setQueries}
           />
         </motion.div>
       )}
