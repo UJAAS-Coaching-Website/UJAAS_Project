@@ -264,6 +264,62 @@ export function TeacherDashboard({
   });
   const [showFullTimetable, setShowFullTimetable] = useState(false);
 
+  // Content Management State
+  const [subjects, setSubjects] = useState([
+    { id: 's1', name: 'Physics', color: '#3b82f6' },
+    { id: 's2', name: 'Chemistry', color: '#10b981' },
+    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
+    { id: 's4', name: 'Biology', color: '#f43f5e' },
+  ]);
+
+  const [chapters, setChapters] = useState<Record<string, string[]>>({
+    'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
+    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
+    'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
+    'Biology': ['Cell Division', 'Genetics', 'Evolution'],
+  });
+
+  const [notes, setNotes] = useState([
+    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
+    { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
+  ]);
+
+  const [dpps, setDpps] = useState([
+    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
+    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
+  ]);
+
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newChapterName, setNewChapterName] = useState('');
+  const [activeSubjectForChapter, setActiveSubjectForChapter] = useState<string | null>(null);
+
+  const handleAddSubject = (e: FormEvent) => {
+    e.preventDefault();
+    if (newSubjectName.trim()) {
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      setSubjects([...subjects, { id: `s${Date.now()}`, name: newSubjectName.trim(), color: randomColor }]);
+      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
+      setNewSubjectName('');
+      setIsAddSubjectModalOpen(false);
+    }
+  };
+
+  const handleAddChapter = (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeSubjectForChapter) return;
+    if (newChapterName.trim()) {
+      setChapters({
+        ...chapters,
+        [activeSubjectForChapter]: [...(chapters[activeSubjectForChapter] || []), newChapterName.trim()]
+      });
+      setNewChapterName('');
+      setIsAddChapterModalOpen(false);
+    }
+  };
+
   const openAddStudent = (batch: Batch | null = null) => {
     setStudentModal({ open: true, initialData: undefined, defaultBatch: batch, title: 'Add Student' });
   };
@@ -523,6 +579,15 @@ export function TeacherDashboard({
                   selectedBatch={selectedBatch} 
                   onChangeBatch={onClearBatch} 
                   onViewTimetable={() => setShowFullTimetable(true)}
+                  subjects={subjects}
+                  chapters={chapters}
+                  notes={notes}
+                  dpps={dpps}
+                  onAddSubject={() => setIsAddSubjectModalOpen(true)}
+                  onAddChapter={(subject) => {
+                    setActiveSubjectForChapter(subject);
+                    setIsAddChapterModalOpen(true);
+                  }}
                 />
               )}
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
@@ -537,97 +602,210 @@ export function TeacherDashboard({
       {/* Footer */}
       <Footer />
 
-      <AddStudentModal
-        open={studentModal.open}
-        onClose={closeStudentModal}
-        defaultBatch={studentModal.defaultBatch}
-        batches={batches}
-        initialData={studentModal.initialData}
-        title={studentModal.title}
-        onSubmit={handleSaveStudent}
-      />
+      {/* Modal Layer - Forced to top of stacking context */}
+      <div className="relative z-[10000] isolate">
+        <AddStudentModal
+          open={studentModal.open}
+          onClose={closeStudentModal}
+          defaultBatch={studentModal.defaultBatch}
+          batches={batches}
+          initialData={studentModal.initialData}
+          title={studentModal.title}
+          onSubmit={handleSaveStudent}
+        />
 
-      <AddFacultyModal
-        open={facultyModal.open}
-        onClose={closeFacultyModal}
-        initialData={facultyModal.initialData}
-        title={facultyModal.title}
-        onSubmit={handleSaveFaculty}
-      />
+        <AddFacultyModal
+          open={facultyModal.open}
+          onClose={closeFacultyModal}
+          initialData={facultyModal.initialData}
+          title={facultyModal.title}
+          onSubmit={handleSaveFaculty}
+        />
 
-      <BatchFormModal
-        open={batchModal.open}
-        batchLabel={batchModal.batchLabel}
-        batches={batches}
-        faculty={faculty}
-        onClose={closeBatchModal}
-        onUpdateBatch={onUpdateBatch}
-      />
+        <BatchFormModal
+          open={batchModal.open}
+          batchLabel={batchModal.batchLabel}
+          batches={batches}
+          faculty={faculty}
+          onClose={closeBatchModal}
+          onUpdateBatch={onUpdateBatch}
+        />
 
-      <StudentRatingsModal
-        open={ratingModal.open}
-        student={ratingModal.student}
-        onClose={closeStudentRatings}
-      />
+        <StudentRatingsModal
+          open={ratingModal.open}
+          student={ratingModal.student}
+          onClose={closeStudentRatings}
+        />
 
-      {/* Timetable Modal - Placed at root level for proper overlay over navbar */}
-      <AnimatePresence>
-        {showFullTimetable && (
-          <motion.div
-            key="timetable-modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-            onClick={() => setShowFullTimetable(false)}
-          >
+        {/* Timetable Modal */}
+        <AnimatePresence>
+          {showFullTimetable && (
             <motion.div
-              key="timetable-modal-content"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
-              onClick={e => e.stopPropagation()}
+              key="timetable-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              onClick={() => setShowFullTimetable(false)}
             >
-              {/* Sticky Header */}
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
-                <button 
-                  onClick={() => setShowFullTimetable(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X className="w-6 h-6 text-gray-500" />
-                </button>
-              </div>
-
-              {/* Image Container - Strictly contained */}
-              <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                <div className="w-full h-full flex items-center justify-center">
-                  <img 
-                    src={demotimetable} 
-                    alt="Full Time Table" 
-                    className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white"
-                  />
+              <motion.div
+                key="timetable-modal-content"
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Sticky Header */}
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                  <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                  <button 
+                    onClick={() => setShowFullTimetable(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="w-6 h-6 text-gray-500" />
+                  </button>
                 </div>
-              </div>
 
-              {/* Sticky Footer */}
-              <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
-                <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
-                <button 
-                  onClick={() => setShowFullTimetable(false)}
-                  className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                >
-                  Close
-                </button>
-              </div>
+                {/* Image Container - Strictly contained */}
+                <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img 
+                      src={demotimetable} 
+                      alt="Full Time Table" 
+                      className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Sticky Footer */}
+                <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
+                  <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </button>
+                  <button 
+                    onClick={() => setShowFullTimetable(false)}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+
+        {/* Add Subject Modal */}
+        <AnimatePresence>
+          {isAddSubjectModalOpen && (
+            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setIsAddSubjectModalOpen(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                  <h3 className="text-xl font-bold">Add New Subject</h3>
+                  <p className="text-teal-50 text-sm">Create a new subject folder</p>
+                </div>
+                <form onSubmit={handleAddSubject} className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Subject Name</label>
+                    <input
+                      autoFocus
+                      type="text"
+                      required
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      placeholder="e.g., Organic Chemistry"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddSubjectModalOpen(false)}
+                      className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    >
+                      Create Subject
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Add Chapter Modal */}
+        <AnimatePresence>
+          {isAddChapterModalOpen && (
+            <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setIsAddChapterModalOpen(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                  <h3 className="text-xl font-bold">Add New Chapter</h3>
+                  <p className="text-teal-50 text-sm">Add to {activeSubjectForChapter}</p>
+                </div>
+                <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
+                    <input
+                      autoFocus
+                      type="text"
+                      required
+                      value={newChapterName}
+                      onChange={(e) => setNewChapterName(e.target.value)}
+                      placeholder="e.g., Rotation Mechanics"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddChapterModalOpen(false)}
+                      className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    >
+                      Create Chapter
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -1458,28 +1636,63 @@ function NotesManagementTab({
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const MOCK_DATA = {
-    timeTable: { id: 'tt1', title: 'Batch Weekly Schedule', date: '2025-09-15', type: 'JPG', image: demotimetable },
-    subjects: [
-      { id: 's1', name: 'Physics', color: '#3b82f6' }, // blue-500
-      { id: 's2', name: 'Chemistry', color: '#10b981' }, // emerald-500
-      { id: 's3', name: 'Mathematics', color: '#f59e0b' }, // amber-500
-      { id: 's4', name: 'Biology', color: '#f43f5e' }, // rose-500
-    ],
-    chapters: {
-      'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
-      'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
-      'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
-      'Biology': ['Cell Division', 'Genetics', 'Evolution'],
-    } as Record<string, string[]>,
-    notes: [
-      { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-      { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
-    ],
-    dpps: [
-      { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-      { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
-    ]
+  const [subjects, setSubjects] = useState([
+    { id: 's1', name: 'Physics', color: '#3b82f6' },
+    { id: 's2', name: 'Chemistry', color: '#10b981' },
+    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
+    { id: 's4', name: 'Biology', color: '#f43f5e' },
+  ]);
+
+  const [chapters, setChapters] = useState<Record<string, string[]>>({
+    'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
+    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
+    'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
+    'Biology': ['Cell Division', 'Genetics', 'Evolution'],
+  });
+
+  const [notes, setNotes] = useState([
+    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
+    { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
+  ]);
+
+  const [dpps, setDpps] = useState([
+    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
+    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
+  ]);
+
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newChapterName, setNewChapterName] = useState('');
+
+  const handleAddSubject = (e: FormEvent) => {
+    e.preventDefault();
+    if (newSubjectName.trim()) {
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      setSubjects([...subjects, { 
+        id: `s${Date.now()}`, 
+        name: newSubjectName.trim(), 
+        color: randomColor 
+      }]);
+      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
+      setNewSubjectName('');
+      setIsAddSubjectModalOpen(false);
+    }
+  };
+
+  const handleAddChapter = (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubject) return;
+    if (newChapterName.trim()) {
+      setChapters({
+        ...chapters,
+        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
+      });
+      setNewChapterName('');
+      setIsAddChapterModalOpen(false);
+    }
   };
 
   const navigateToSubject = (subject: string) => {
@@ -1504,7 +1717,7 @@ function NotesManagementTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative z-0">
       {/* Header & Breadcrumbs */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1526,11 +1739,11 @@ function NotesManagementTab({
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className={currentView === 'root' ? 'text-teal-600 font-semibold' : ''}>Root</span>
+                <span className={currentView === 'root' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('root'); setSelectedSubject(null); setSelectedChapter(null); }}>Root</span>
                 {selectedSubject && (
                   <>
                     <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
+                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('subject'); setSelectedChapter(null); }}>{selectedSubject}</span>
                   </>
                 )}
                 {selectedChapter && (
@@ -1544,34 +1757,168 @@ function NotesManagementTab({
           </div>
           <div className="flex items-center gap-3">
             {currentView === 'root' && (
+              <>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onViewTimetable}
+                  className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Time Table
+                </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsAddSubjectModalOpen(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Subject
+                </motion.button>
+              </>
+            )}
+            {currentView === 'subject' && (
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={onViewTimetable}
-                className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
+                onClick={() => setIsAddChapterModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
               >
-                <Calendar className="w-5 h-5" />
-                Time Table
+                <Plus className="w-5 h-5" />
+                Add Chapter
               </motion.button>
             )}
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onNavigate('upload-notes')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-            >
-              <Upload className="w-5 h-5" />
-              Upload Content
-            </motion.button>
+            {currentView === 'chapter' && (
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onNavigate('upload-notes')}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+              >
+                <Upload className="w-5 h-5" />
+                Upload Content
+              </motion.button>
+            )}
           </div>
         </div>
       </motion.div>
 
+      {/* Add Subject Modal */}
+      <AnimatePresence>
+        {isAddSubjectModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddSubjectModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Subject</h3>
+                <p className="text-teal-50 text-sm">Create a new subject folder</p>
+              </div>
+              <form onSubmit={handleAddSubject} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    placeholder="e.g., Organic Chemistry"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSubjectModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Create Subject
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Chapter Modal */}
+      <AnimatePresence>
+        {isAddChapterModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddChapterModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Chapter</h3>
+                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
+              </div>
+              <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newChapterName}
+                    onChange={(e) => setNewChapterName(e.target.value)}
+                    placeholder="e.g., Rotation Mechanics"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddChapterModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Create Chapter
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {currentView === 'root' && (
         <>
                     {/* Subject Folders */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
-                      {MOCK_DATA.subjects.map((sub, index) => (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
+                      {subjects.map((sub, index) => (
                         <motion.button
                           key={sub.id}
                           initial={{ opacity: 0, y: 20 }}
@@ -1590,7 +1937,7 @@ function NotesManagementTab({
                           </div>
                           <div className="text-center">
                             <h4 className="font-bold text-gray-900">{sub.name}</h4>
-                            <p className="text-xs text-gray-500 mt-1">{MOCK_DATA.chapters[sub.name]?.length || 0} Chapters</p>
+                            <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
                           </div>
                         </motion.button>
                       ))}
@@ -1598,9 +1945,9 @@ function NotesManagementTab({
                   </>
                 )}
           
-                {currentView === 'subject' && selectedSubject && MOCK_DATA.chapters[selectedSubject] && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {MOCK_DATA.chapters[selectedSubject].map((chapter, index) => (
+                {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
+                    {chapters[selectedSubject].map((chapter, index) => (
                       <motion.button
                         key={chapter}
                         initial={{ opacity: 0, x: -20 }}
@@ -1623,7 +1970,7 @@ function NotesManagementTab({
                 )}
           
                 {currentView === 'chapter' && selectedChapter && (
-                  <div className="space-y-6">
+                  <div className="space-y-6 relative z-0">
                     {/* Internal Navigation */}
                     <div className="flex items-center gap-4 border-b border-gray-200">
                       <button
@@ -1652,7 +1999,7 @@ function NotesManagementTab({
           
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {activeContentType === 'notes' ? (
-                        MOCK_DATA.notes
+                        notes
                           .filter(n => n.chapter === selectedChapter)
                           .map((note, index) => (
                           <motion.div
@@ -1680,7 +2027,7 @@ function NotesManagementTab({
                           </motion.div>
                         ))
                       ) : (
-                        MOCK_DATA.dpps
+                        dpps
                           .filter(d => d.chapter === selectedChapter)
                           .map((dpp, index) => (
                           <motion.div

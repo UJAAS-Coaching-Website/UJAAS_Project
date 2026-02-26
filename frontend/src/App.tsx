@@ -31,6 +31,7 @@ function App() {
     'create-test',
     'create-dpp',
     'upload-notice',
+    'upload-notes',
     'profile',
   ] as const;
 

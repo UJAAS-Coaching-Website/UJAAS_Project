@@ -20,11 +20,8 @@ interface UploadNotesProps {
 export function UploadNotes({ onBack }: UploadNotesProps) {
   const [notesData, setNotesData] = useState({
     title: '',
-    subject: '',
-    topic: '',
     description: '',
-    tags: '',
-    course: ''
+    tags: ''
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -32,9 +29,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
-
-  const subjects = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
-  const courses = ['JEE Main', 'JEE Advanced', 'NEET', 'Foundation Course'];
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -110,7 +104,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
     }, 200);
   };
 
-  const isFormValid = notesData.title && notesData.subject && notesData.course && files.length > 0;
+  const isFormValid = notesData.title && files.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-cyan-50 py-8">
@@ -155,8 +149,8 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               Notes Information
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 gap-6">
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Notes Title *
                 </label>
@@ -171,51 +165,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Course *
-                </label>
-                <select
-                  value={notesData.course}
-                  onChange={(e) => setNotesData({ ...notesData, course: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                >
-                  <option value="">Select Course</option>
-                  {courses.map(course => (
-                    <option key={course} value={course}>{course}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Subject *
-                </label>
-                <select
-                  value={notesData.subject}
-                  onChange={(e) => setNotesData({ ...notesData, subject: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                >
-                  <option value="">Select Subject</option>
-                  {subjects.map(subject => (
-                    <option key={subject} value={subject}>{subject}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Topic/Chapter
-                </label>
-                <input
-                  type="text"
-                  value={notesData.topic}
-                  onChange={(e) => setNotesData({ ...notesData, topic: e.target.value })}
-                  placeholder="e.g., Interference and Diffraction"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Description
                 </label>
                 <textarea
@@ -227,7 +176,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                 />
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Tags (comma separated)
                 </label>
@@ -355,7 +304,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
           )}
 
           {/* Validation Warning */}
-          {(!isFormValid && (notesData.title || notesData.subject)) && (
+          {(!isFormValid && notesData.title) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -365,8 +314,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                   </p>
                   <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
                     {!notesData.title && <li>Add a title for the notes</li>}
-                    {!notesData.subject && <li>Select a subject</li>}
-                    {!notesData.course && <li>Select a course</li>}
                     {files.length === 0 && <li>Upload at least one file</li>}
                   </ul>
                 </div>
@@ -390,7 +337,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
-              Upload Notes
+              Upload Content
             </motion.button>
           </div>
         </motion.div>
