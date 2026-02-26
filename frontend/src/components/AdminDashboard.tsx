@@ -78,6 +78,10 @@ interface Student {
   performance: number;
   rating: number;
   batch: Batch;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  address?: string;
+  parentContact?: string;
   ratings?: {
     attendance: number;
     tests: number;
@@ -100,7 +104,10 @@ type StudentFormState = {
   email: string;
   rollNumber: string;
   batch: Batch;
-  courses: string[];
+  phoneNumber: string;
+  dateOfBirth: string;
+  address: string;
+  parentContact: string;
 };
 
 type TeacherFormState = {
@@ -111,34 +118,31 @@ type TeacherFormState = {
   phone: string;
 };
 
-type BatchFormState = {
-  label: string;
-  subjects: string[];
-  faculty: string[];
-};
-
 function renderPerformanceStars(rating: number) {
+  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)));
+
   return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => {
-        const fill = Math.max(0, Math.min(100, (rating - (star - 1)) * 100));
+    <div className="flex items-center gap-1" aria-label={`Rating ${normalizedRating} out of 5`}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const starNumber = index + 1;
+        const fillPercentage = normalizedRating >= starNumber ? 100 : 0;
+
         return (
           <span
-            key={star}
+            key={starNumber}
             className="inline-block w-4 text-center text-[16px] leading-4"
             style={{
-              background: `linear-gradient(90deg, #f59e0b ${fill}%, #d1d5db ${fill}%)`,
+              background: `linear-gradient(90deg, #f59e0b ${fillPercentage}%, #d1d5db ${fillPercentage}%)`,
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               color: 'transparent',
             }}
           >
-            ★
+            {'\u2605'}
           </span>
         );
       })}
-      <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -240,30 +244,47 @@ export function AdminDashboard({
 
   const handleSaveStudent = (data: StudentFormState) => {
     if (data.id) {
-      setStudents(students.map(s => s.id === data.id ? { ...s, ...data, enrolledCourses: data.courses } : s));
+      setStudents(prev => prev.map(s => s.id === data.id ? { 
+        ...s, 
+        name: data.name,
+        email: data.email,
+        rollNumber: data.rollNumber,
+        batch: data.batch,
+        phoneNumber: data.phoneNumber,
+        dateOfBirth: data.dateOfBirth,
+        address: data.address,
+        parentContact: data.parentContact
+      } : s));
     } else {
       const newStudent: Student = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        enrolledCourses: data.courses,
+        id: `student-${Date.now()}`,
+        name: data.name,
+        email: data.email,
+        rollNumber: data.rollNumber,
+        batch: data.batch,
+        phoneNumber: data.phoneNumber,
+        dateOfBirth: data.dateOfBirth,
+        address: data.address,
+        parentContact: data.parentContact,
+        enrolledCourses: [data.batch],
         joinDate: new Date().toISOString().split('T')[0],
         performance: 0,
         rating: 0,
       };
-      setStudents([...students, newStudent]);
+      setStudents(prev => [...prev, newStudent]);
     }
     closeStudentModal();
   };
 
   const handleSaveFaculty = (data: TeacherFormState) => {
     if (data.id) {
-      setFaculty(faculty.map(f => f.id === data.id ? { ...f, ...data } : f));
+      setFaculty(prev => prev.map(f => f.id === data.id ? { ...f, ...data } : f));
     } else {
       const newTeacher: Teacher = {
         ...data,
-        id: Math.random().toString(36).substr(2, 9),
+        id: `faculty-${Date.now()}`,
       };
-      setFaculty([...faculty, newTeacher]);
+      setFaculty(prev => [...prev, newTeacher]);
     }
     closeFacultyModal();
   };
@@ -280,10 +301,12 @@ export function AdminDashboard({
     }
   };
 
-  const openStudentRatings = (student: Student) => {
-    // This would typically open a modal or navigate to a details page
-    console.log('Viewing student ratings:', student.name);
-  };
+  const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student }>({
+    open: false,
+  });
+
+  const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
+  const closeStudentRatings = () => setRatingModal({ open: false });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pt-20">
@@ -508,6 +531,12 @@ export function AdminDashboard({
           onClose={closeBatchModal}
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
+        />
+
+        <StudentRatingsModal
+          open={ratingModal.open}
+          student={ratingModal.student}
+          onClose={closeStudentRatings}
         />
 
         {/* Timetable Modal */}
@@ -788,7 +817,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         </div>
         <form onSubmit={handleAddCourse} className="flex gap-4 mb-8">
           <input type="text" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} placeholder="Course name..." className="flex-1 px-4 py-3 rounded-xl border border-gray-200" />
-          <button type="submit" className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-bold flex items-center gap-2"><Plus className="w-5 h-5" />Add</button>
+          <button type="submit" className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition"><Plus className="w-5 h-5" />Add</button>
         </form>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.courses.map((c, i) => (
@@ -810,7 +839,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
             <h2 className="text-3xl font-bold text-gray-900">Manage Faculty</h2>
           </div>
-          <button onClick={() => { setIsAddingFaculty(!isAddingFaculty); setEditingFacultyIndex(null); }} className="px-4 py-2 bg-cyan-600 text-white rounded-lg font-bold flex items-center gap-2">
+          <button onClick={() => { setIsAddingFaculty(!isAddingFaculty); setEditingFacultyIndex(null); }} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
             {isAddingFaculty ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingFaculty ? 'Cancel' : 'Add Faculty'}
           </button>
         </div>
@@ -821,18 +850,18 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" />
-            <button type="submit" className="md:col-span-2 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button>
+            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
           </form>
         )}
         {editingFacultyIndex !== null && (
-          <form onSubmit={handleSaveEditedFaculty} className="bg-cyan-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" />
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Update</button>
+              <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Update</button>
               <button type="button" onClick={() => setEditingFacultyIndex(null)} className="flex-1 py-3 bg-gray-200 rounded-xl">Cancel</button>
             </div>
           </form>
@@ -845,8 +874,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
                 <button onClick={() => onUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) })} className="p-2 bg-red-50 text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
               </div>
               <div className="flex items-center gap-4">
-                <img src={m.image} className="w-16 h-16 rounded-full object-cover border-2 border-cyan-100" />
-                <div><h3 className="font-bold text-gray-900">{m.name}</h3><p className="text-sm text-cyan-600">{m.subject}</p><p className="text-xs text-gray-500">{m.designation}</p></div>
+                <img src={m.image} className="w-16 h-16 rounded-full object-cover border-2 border-teal-100" />
+                <div><h3 className="font-bold text-gray-900">{m.name}</h3><p className="text-sm text-teal-600">{m.subject}</p><p className="text-xs text-gray-500">{m.designation}</p></div>
               </div>
             </div>
           ))}
@@ -863,7 +892,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
             <h2 className="text-3xl font-bold text-gray-900">Manage Achievers</h2>
           </div>
-          <button onClick={() => setIsAddingAchiever(!isAddingAchiever)} className="px-4 py-2 bg-cyan-600 text-white rounded-lg font-bold flex items-center gap-2">
+          <button onClick={() => setIsAddingAchiever(!isAddingAchiever)} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
             {isAddingAchiever ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingAchiever ? 'Cancel' : 'Add Achiever'}
           </button>
         </div>
@@ -873,7 +902,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="year" required placeholder="Year" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" />
-            <button type="submit" className="md:col-span-2 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button>
+            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
           </form>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -903,7 +932,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           <input name="email" type="email" defaultValue={data.contact.email} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
           <textarea name="address" rows={3} defaultValue={data.contact.address} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
           <div className="flex gap-4">
-            <button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button>
+            <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
             <button type="button" onClick={() => setActiveSubSection('overview')} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button>
           </div>
         </form>
@@ -950,10 +979,10 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
         </motion.button>
       ))}
       <motion.button onClick={onAddBatch} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group">
-        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-cyan-50 transition-colors">
-          <Plus className="w-7 h-7 text-gray-400 group-hover:text-cyan-600" />
+        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-teal-50 transition-colors">
+          <Plus className="w-7 h-7 text-gray-400 group-hover:text-teal-600" />
         </div>
-        <span className="text-lg font-bold text-gray-500 group-hover:text-cyan-600">Create New Batch</span>
+        <span className="text-lg font-bold text-gray-500 group-hover:text-teal-600">Create New Batch</span>
       </motion.button>
     </div>
   );
@@ -976,7 +1005,7 @@ function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App')
               <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-4 text-sm text-gray-500">{new Date(q.date).toLocaleDateString()}</td>
                 <td className="py-4"><div className="font-bold text-gray-900">{q.name}</div><div className="text-xs text-gray-500">{q.phone}</div></td>
-                <td className="py-4"><span className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold uppercase">{q.course}</span></td>
+                <td className="py-4"><span className="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold uppercase">{q.course}</span></td>
                 <td className="py-4 max-w-xs"><p className="text-sm text-gray-700 break-words">{q.message || '—'}</p></td>
                 <td className="py-4">
                   <select value={q.status} onChange={(e) => handleStatusChange(q.id, e.target.value as any)} className={`text-xs font-bold rounded-lg px-2 py-1 ${q.status === 'new' ? 'bg-orange-100 text-orange-700' : q.status === 'contacted' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
@@ -996,7 +1025,8 @@ function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App')
 function OverviewTab({ selectedBatch, onEditBatch, students }: { selectedBatch: Batch; onEditBatch: (l: string) => void; students: Student[] }) {
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
+                <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-teal-600 rounded-xl font-bold border border-teal-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Students', value: students.filter(s => s.batch === selectedBatch).length, icon: Users, color: 'from-blue-500 to-cyan-500' },
@@ -1054,7 +1084,7 @@ function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch }: { s
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map((t) => (
           <button key={t.id} onClick={() => handleToggle(t.name)} className={`p-6 rounded-3xl border-2 transition-all text-left ${assigned.includes(t.name) ? 'border-cyan-500 bg-cyan-50 shadow-md' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${assigned.includes(t.name) ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-400'}`}><GraduationCap className="w-6 h-6" /></div>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${assigned.includes(t.name) ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}><GraduationCap className="w-6 h-6" /></div>
             <h3 className="text-xl font-bold text-gray-900">{t.name}</h3><p className="text-sm font-semibold text-cyan-600 uppercase tracking-wider">{t.subject}</p>
           </button>
         ))}
@@ -1399,12 +1429,12 @@ function NotesManagementTab({
                         className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors">
-                            <Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" />
+                          <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-teal-600 transition-colors">
+                            <Folder className="w-5 h-5 text-teal-600 group-hover:text-white" />
                           </div>
                           <span className="font-bold text-gray-900">{chapter}</span>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
                       </motion.button>
                     ))}
                   </div>
@@ -1459,7 +1489,7 @@ function NotesManagementTab({
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
                                   <div className="flex gap-1">
-                                    <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
                                     <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                                   </div>
                                 </div>
@@ -1510,7 +1540,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
-        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -1536,14 +1566,14 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all teachers and subject experts</p></div>
-        <button onClick={onAddFaculty} className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Teacher</button>
+        <button onClick={onAddFaculty} className="px-6 py-3  bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Teacher</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map(t => (
           <div key={t.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group">
             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEditFaculty(t)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button><button onClick={() => onDeleteFaculty(t.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button></div>
-            <div className="w-12 h-12 bg-cyan-100 rounded-2xl flex items-center justify-center mb-4"><GraduationCap className="w-6 h-6 text-cyan-600" /></div>
-            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3><p className="text-sm font-semibold text-cyan-600 uppercase mb-4">{t.subject}</p><div className="text-xs text-gray-500">{t.email}</div>
+            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4"><GraduationCap className="w-6 h-6 text-teal-600" /></div>
+            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3><p className="text-sm font-semibold text-teal-600 uppercase mb-4">{t.subject}</p><div className="text-xs text-gray-500">{t.email}</div>
           </div>
         ))}
       </div>
@@ -1568,7 +1598,602 @@ function TestSeriesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: {
   );
 }
 
-// STUB MODALS (to keep file complete and functional)
-function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, title, onSubmit }: any) { if (!open) return null; return <div className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4"><div className="bg-white rounded-3xl p-8 max-w-md w-full"><h2 className="text-2xl font-bold mb-6">{title}</h2><form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit({ id: initialData?.id, name: f.get('name'), email: f.get('email'), rollNumber: f.get('roll'), batch: f.get('batch'), courses: [f.get('batch')] }); }} className="space-y-4"><input name="name" defaultValue={initialData?.name} placeholder="Student Name" required className="w-full px-4 py-2 border rounded-xl" /><input name="email" type="email" defaultValue={initialData?.email} placeholder="Email" required className="w-full px-4 py-2 border rounded-xl" /><input name="roll" defaultValue={initialData?.rollNumber} placeholder="Roll Number" required className="w-full px-4 py-2 border rounded-xl" /><select name="batch" defaultValue={initialData?.batch || defaultBatch || ''} className="w-full px-4 py-2 border rounded-xl">{batches.map((b:any) => <option key={b.slug} value={b.label}>{b.label}</option>)}</select><div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancel</button><button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button></div></form></div></div>; }
-function AddFacultyModal({ open, onClose, initialData, title, onSubmit }: any) { if (!open) return null; return <div className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4"><div className="bg-white rounded-3xl p-8 max-w-md w-full"><h2 className="text-2xl font-bold mb-6">{title}</h2><form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit({ id: initialData?.id, name: f.get('name'), email: f.get('email'), subject: f.get('subject'), phone: f.get('phone') }); }} className="space-y-4"><input name="name" defaultValue={initialData?.name} placeholder="Name" required className="w-full px-4 py-2 border rounded-xl" /><input name="email" type="email" defaultValue={initialData?.email} placeholder="Email" required className="w-full px-4 py-2 border rounded-xl" /><input name="subject" defaultValue={initialData?.subject} placeholder="Subject" required className="w-full px-4 py-2 border rounded-xl" /><input name="phone" defaultValue={initialData?.phone} placeholder="Phone (optional)" className="w-full px-4 py-2 border rounded-xl" /><div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancel</button><button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button></div></form></div></div>; }
-function BatchFormModal({ open, mode, onClose, onCreateBatch, onUpdateBatch, batchLabel, faculty }: any) { if (!open) return null; return <div className="fixed inset-0 bg-black/50 z-[10001] flex items-center justify-center p-4"><div className="bg-white rounded-3xl p-8 max-w-md w-full"><h2 className="text-2xl font-bold mb-6">{mode === 'create' ? 'Create New Batch' : 'Edit Batch'}</h2><form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); if (mode === 'create') onCreateBatch(f.get('label') as string, ['Physics'], []); else onUpdateBatch(batchLabel, { subjects: ['Physics'] }); onClose(); }} className="space-y-4"><input name="label" defaultValue={batchLabel} placeholder="Batch Name (e.g. 12th NEET)" required className="w-full px-4 py-2 border rounded-xl" /><div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancel</button><button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">{mode === 'create' ? 'Create' : 'Save'}</button></div></form></div></div>; }
+function AddStudentModal({
+  open,
+  onClose,
+  defaultBatch,
+  batches,
+  initialData,
+  title,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaultBatch: Batch | null;
+  batches: BatchInfo[];
+  initialData?: Student;
+  title?: string;
+  onSubmit?: (data: StudentFormState) => void;
+}) {
+  const createInitialState = (batch: Batch | null, initial?: Student): StudentFormState => ({
+    id: initial?.id,
+    name: initial?.name ?? '',
+    email: initial?.email ?? '',
+    rollNumber: initial?.rollNumber ?? '',
+    batch: initial?.batch ?? batch ?? '',
+    phoneNumber: initial?.phoneNumber ?? '',
+    dateOfBirth: initial?.dateOfBirth ?? '',
+    address: initial?.address ?? '',
+    parentContact: initial?.parentContact ?? '',
+  });
+
+  const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
+
+  useEffect(() => {
+    if (!open) return;
+    setFormState(createInitialState(defaultBatch, initialData));
+  }, [open, defaultBatch, initialData]);
+
+  if (!open) return null;
+
+  const handleChange = (field: keyof StudentFormState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit?.(formState);
+    onClose();
+  };
+
+  const requiredMark = <span className="text-red-500">*</span>;
+
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{title ?? 'Add Student'}</h3>
+          <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Name {requiredMark}</span>
+              <input
+                type="text"
+                required
+                value={formState.name}
+                onChange={handleChange('name')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="Student name"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Email {requiredMark}</span>
+              <input
+                type="email"
+                required
+                value={formState.email}
+                onChange={handleChange('email')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="name@email.com"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Roll Number {requiredMark}</span>
+              <input
+                type="text"
+                required
+                value={formState.rollNumber}
+                onChange={handleChange('rollNumber')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="UJAAS-###"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Batch {requiredMark}</span>
+              <select
+                required
+                value={formState.batch}
+                onChange={handleChange('batch')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+              >
+                <option value="" disabled>Select batch</option>
+                {batches.map((batch) => (
+                  <option key={batch.slug} value={batch.label}>{batch.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Phone Number {requiredMark}</span>
+              <input
+                type="tel"
+                required
+                value={formState.phoneNumber}
+                onChange={handleChange('phoneNumber')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="+91 9XXXX XXXXX"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Date of Birth {requiredMark}</span>
+              <input
+                type="date"
+                required
+                value={formState.dateOfBirth}
+                onChange={handleChange('dateOfBirth')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              />
+            </label>
+          </div>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Address {requiredMark}</span>
+            <textarea
+              required
+              rows={3}
+              value={formState.address}
+              onChange={handleChange('address')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Street, city, state, postal code"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Parent Contact {requiredMark}</span>
+            <input
+              type="tel"
+              required
+              value={formState.parentContact}
+              onChange={handleChange('parentContact')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Parent/guardian phone number"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+            >
+              Save Student
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function AddFacultyModal({
+  open,
+  onClose,
+  initialData,
+  title,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialData?: Teacher;
+  title?: string;
+  onSubmit?: (data: TeacherFormState) => void;
+}) {
+  const [formState, setFormState] = useState<TeacherFormState>({
+    id: initialData?.id,
+    subject: initialData?.subject ?? '',
+    name: initialData?.name ?? '',
+    phone: initialData?.phone ?? '',
+    email: initialData?.email ?? '',
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormState({
+      id: initialData?.id,
+      subject: initialData?.subject ?? '',
+      name: initialData?.name ?? '',
+      phone: initialData?.phone ?? '',
+      email: initialData?.email ?? '',
+    });
+  }, [open, initialData]);
+
+  if (!open) return null;
+
+  const handleChange = (field: keyof TeacherFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit?.(formState);
+    onClose();
+  };
+
+  const requiredMark = <span className="text-red-500">*</span>;
+
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{title ?? 'Add Faculty'}</h3>
+          <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Subject {requiredMark}</span>
+            <input
+              type="text"
+              required
+              value={formState.subject}
+              onChange={handleChange('subject')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="e.g. Physics"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Faculty Name {requiredMark}</span>
+            <input
+              type="text"
+              required
+              value={formState.name}
+              onChange={handleChange('name')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Faculty name"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Phone Number {requiredMark}</span>
+            <input
+              type="tel"
+              required
+              value={formState.phone}
+              onChange={handleChange('phone')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="+91 9XXXX XXXXX"
+            />
+          </label>
+
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Email {requiredMark}</span>
+            <input
+              type="email"
+              required
+              value={formState.email}
+              onChange={handleChange('email')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="faculty@email.com"
+            />
+          </label>
+
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+            >
+              Save Faculty
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function BatchFormModal({
+  open,
+  mode,
+  batches,
+  faculty,
+  batchLabel,
+  onClose,
+  onCreateBatch,
+  onUpdateBatch,
+}: {
+  open: boolean;
+  mode: 'create' | 'edit';
+  batches: BatchInfo[];
+  faculty: Teacher[];
+  batchLabel?: string;
+  onClose: () => void;
+  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+}) {
+  const [formState, setFormState] = useState({
+    name: '',
+    subject: '',
+    faculty: '',
+    assignments: [] as { subject: string; faculty: string }[],
+  });
+  const [error, setError] = useState<string | null>(null);
+  const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
+
+  useEffect(() => {
+    if (!open) return;
+    if (mode === 'edit' && batchLabel) {
+      const current = batches.find((batch) => batch.label === batchLabel);
+      const assignments = (current?.facultyAssigned ?? [])
+        .map((name) => {
+          const found = faculty.find((item) => item.name === name);
+          return found ? { subject: found.subject, faculty: found.name } : null;
+        })
+        .filter((item): item is { subject: string; faculty: string } => !!item);
+      setFormState({
+        name: current?.label ?? batchLabel,
+        subject: '',
+        faculty: '',
+        assignments,
+      });
+    } else {
+      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+    }
+    setError(null);
+  }, [open, mode, batchLabel, batches, faculty]);
+
+  if (!open) return null;
+
+  const facultyOptions = formState.subject
+    ? faculty.filter((item) => item.subject === formState.subject)
+    : [];
+
+  const addAssignment = () => {
+    if (!formState.subject || !formState.faculty) return;
+    setFormState((prev) => {
+      const exists = prev.assignments.some(
+        (item) => item.subject === prev.subject && item.faculty === prev.faculty
+      );
+      if (exists) {
+        return { ...prev, subject: '', faculty: '' };
+      }
+      return {
+        ...prev,
+        assignments: [...prev.assignments, { subject: prev.subject, faculty: prev.faculty }],
+        subject: '',
+        faculty: '',
+      };
+    });
+  };
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const selectedSubjects = Array.from(new Set(formState.assignments.map((item) => item.subject)));
+    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty)));
+    if (!formState.name.trim()) {
+      setError('Batch name is required.');
+      return;
+    }
+    if (selectedSubjects.length === 0 || selectedFaculty.length === 0) {
+      setError('Add at least one subject and faculty.');
+      return;
+    }
+    const result =
+      mode === 'edit'
+        ? onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty)
+        : onCreateBatch(formState.name.trim(), selectedSubjects, selectedFaculty);
+    if (!result.ok) {
+      setError(result.error ?? 'Unable to save batch.');
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{mode === 'edit' ? 'Edit Batch' : 'Create New Batch'}</h3>
+          <p className="text-sm text-white/80">Add batch details and faculty assignment.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <label className="space-y-2 text-sm font-medium text-gray-700 block">
+            <span className="block">Batch Name *</span>
+            <input
+              type="text"
+              required
+              value={formState.name}
+              onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
+              disabled={mode === 'edit'}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-500"
+              placeholder="e.g. 11th JEE Evening"
+            />
+          </label>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">Subject & Faculty *</p>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-start">
+              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+                <span className="block">Subject</span>
+                <select
+                  value={formState.subject}
+                  onChange={(event) =>
+                    setFormState((prev) => ({
+                      ...prev,
+                      subject: event.target.value,
+                      faculty: '',
+                    }))
+                  }
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+                <span className="block">Faculty</span>
+                <select
+                  value={formState.faculty}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, faculty: event.target.value }))}
+                  disabled={!formState.subject}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">{formState.subject ? 'Select faculty' : 'Select subject first'}</option>
+                  {facultyOptions.map((item) => (
+                    <option key={item.id} value={item.name}>{item.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={addAssignment}
+                className="mt-7 px-5 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {formState.assignments.length > 0 && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-gray-700">Selected</p>
+              <div className="space-y-1">
+                {formState.assignments.map((item, index) => (
+                  <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+                    <span>
+                      {item.subject} — <span className="font-semibold">{item.faculty}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          assignments: prev.assignments.filter((_, i) => i !== index),
+                        }))
+                      }
+                      className="text-xs text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+            >
+              {mode === 'edit' ? 'Save Batch' : 'Add Batch'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function StudentRatingsModal({
+  open,
+  student,
+  onClose,
+}: {
+  open: boolean;
+  student?: Student;
+  onClose: () => void;
+}) {
+  if (!open || !student) return null;
+
+  const ratings = student.ratings ?? {
+    attendance: 0,
+    tests: 0,
+    dppPerformance: 0,
+    behavior: 0,
+  };
+
+  const performanceData = [
+    { label: 'Attendance', value: ratings.attendance },
+    { label: 'Test Performance', value: ratings.tests },
+    { label: 'DPP Performance', value: ratings.dppPerformance },
+    { label: 'Class Behaviour', value: ratings.behavior },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">{student.name}</h3>
+          <p className="text-sm text-white/80">Performance Breakdown</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {performanceData.map((item) => (
+            <div key={item.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+              <div className="text-sm font-medium text-gray-700">{item.label}</div>
+              <div className="flex items-center gap-2">
+                {renderPerformanceStars(item.value)}
+                <span className="text-sm font-semibold text-gray-700">{item.value}/5</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
