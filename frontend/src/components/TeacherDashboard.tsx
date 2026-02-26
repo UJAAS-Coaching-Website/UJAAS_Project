@@ -454,7 +454,6 @@ export function TeacherDashboard({
                 {[
                   { id: 'batches', label: 'Batches', icon: BookOpen },
                   { id: 'students', label: 'Students', icon: Users },
-                  { id: 'faculty', label: 'Faculty', icon: GraduationCap },
                   { id: 'test-series', label: 'Test Series', icon: FileText },
                 ].map((section) => (
                   <motion.button
@@ -463,7 +462,7 @@ export function TeacherDashboard({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      (adminSection === section.id || (section.id === 'test-series' && activeTab === 'test-series'))
+                      (adminSection === section.id || (section.id === 'test-series' && activeTab === 'test-series')) && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -478,7 +477,6 @@ export function TeacherDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
-                  { id: 'faculty', label: 'Batch Faculty', icon: GraduationCap },
                   { id: 'content', label: 'Content', icon: BookOpen },
                 ].map((tab) => (
                   <motion.button
@@ -487,7 +485,7 @@ export function TeacherDashboard({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      activeTab === tab.id
+                      activeTab === tab.id && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -537,14 +535,6 @@ export function TeacherDashboard({
                   onViewStudent={openStudentRatings}
                 />
               )}
-              {adminSection === 'faculty' && (
-                <FacultyDirectoryTab
-                  faculty={faculty}
-                  onAddFaculty={openAddFaculty}
-                  onEditFaculty={openEditFaculty}
-                  onDeleteFaculty={handleDeleteFaculty}
-                />
-              )}
               {adminSection === 'test-series' && (
                 <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={null as unknown as Batch} onChangeBatch={() => {}} />
               )}
@@ -568,9 +558,6 @@ export function TeacherDashboard({
                   onDeleteStudent={handleDeleteStudent}
                   onViewStudent={openStudentRatings}
                 />
-              )}
-              {activeTab === 'faculty' && selectedBatch && (
-                <BatchFacultyTab selectedBatch={selectedBatch} batches={batches} faculty={faculty} onUpdateBatch={onUpdateBatch} />
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
@@ -1245,18 +1232,7 @@ function StudentsTab({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Student Management</h2>
-            <p className="text-gray-600">Manage and monitor student progress for {selectedBatch}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onAddStudent}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-            >
-              <Plus className="w-5 h-5" />
-              Add Student
-            </motion.button>
+            <p className="text-gray-600">View and monitor student progress for {selectedBatch}</p>
           </div>
         </div>
 
@@ -1293,9 +1269,6 @@ function StudentsTab({
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Rating
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
@@ -1324,32 +1297,6 @@ function StudentsTab({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {renderPerformanceStars(student.rating)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-2">
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onEditStudent(student);
-                        }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </motion.button>
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onDeleteStudent(student.id);
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </motion.button>
-                    </div>
                   </td>
                 </motion.tr>
               ))}
