@@ -47,7 +47,7 @@ export function StudentDashboard({
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-50">
+      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -105,6 +105,7 @@ export function StudentDashboard({
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="h-20" /> {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
