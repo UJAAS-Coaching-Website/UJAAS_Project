@@ -391,13 +391,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                         <p className="font-semibold text-gray-900">{result.testTitle}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-gray-600">{result.subject}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                            result.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
-                            result.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {result.difficulty}
-                          </span>
                         </div>
                       </div>
                     </td>

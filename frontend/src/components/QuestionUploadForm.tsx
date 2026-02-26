@@ -1,4 +1,4 @@
-import { useState, FormEvent, ChangeEvent } from 'react';
+import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { 
   Plus, 
   X,
@@ -62,8 +62,6 @@ export function QuestionUploadForm({
       subject: fixedSubject || prev.subject
     }));
   }, [fixedType, defaultMarks, fixedSubject]);
-
-  const difficulties: ('Easy' | 'Medium' | 'Hard')[] = ['Easy', 'Medium', 'Hard'];
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option', index?: number) => {
     const file = e.target.files?.[0];
@@ -149,20 +147,6 @@ export function QuestionUploadForm({
               </div>
             </div>
           )}
-          <div className={fixedType ? "md:col-span-2" : ""}>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Difficulty
-            </label>
-            <select
-              value={currentQuestion.difficulty}
-              onChange={(e) => setCurrentQuestion({ ...currentQuestion, difficulty: e.target.value as any })}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-            >
-              {difficulties.map(diff => (
-                <option key={diff} value={diff}>{diff}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
         {/* Conditional Marks and Subject */}

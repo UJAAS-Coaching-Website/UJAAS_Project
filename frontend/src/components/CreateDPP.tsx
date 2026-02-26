@@ -158,21 +158,6 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Difficulty Level
-                    </label>
-                    <select
-                      value={dppData.difficulty}
-                      onChange={(e) => setDppData({ ...dppData, difficulty: e.target.value as any })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                    >
-                      {['Easy', 'Medium', 'Hard'].map(diff => (
-                        <option key={diff} value={diff}>{diff}</option>
-                      ))}
-                    </select>
-                  </div>
-
                   <div className="md:col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Instructions for Students
@@ -248,9 +233,6 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                                     : q.correctAnswer
                               }
                             </span>
-                            <span className={`px-2 py-1 rounded font-medium ${getDifficultyColor(q.difficulty)}`}>
-                              {q.difficulty}
-                            </span>
                           </div>
                         </div>
                         <button
@@ -316,15 +298,6 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                       <p className="text-sm text-gray-600">Questions</p>
                     </div>
                     <p className="font-semibold text-gray-900">{questions.length}</p>
-                  </div>
-                  <div className="p-4 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Zap className="w-4 h-4 text-teal-600" />
-                      <p className="text-sm text-gray-600">Difficulty</p>
-                    </div>
-                    <p className={`font-semibold ${getDifficultyColor(dppData.difficulty)}`}>
-                      {dppData.difficulty}
-                    </p>
                   </div>
                 </div>
 

@@ -177,15 +177,6 @@ export function DPPSection() {
                       <Clock className="w-4 h-4" />
                       <span>{dpp.duration} min</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        dpp.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                        dpp.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {dpp.difficulty}
-                      </span>
-                    </div>
                   </div>
 
                   {dpp.completed && dpp.score !== undefined && (
