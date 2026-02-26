@@ -67,7 +67,7 @@ interface AdminDashboardProps {
   publishedTests: import('../App').PublishedTest[];
   onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
   onPreviewTest: (testId: string) => void;
-  onUpdateTestQuestion: (testId: string, questionId: string, updatedData: Partial<any>) => void;
+  onUpdatePublishedTest: (testId: string, updates: Partial<import('../App').PublishedTest>) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
@@ -180,7 +180,7 @@ export function AdminDashboard({
   publishedTests,
   onPublishTest,
   onPreviewTest,
-  onUpdateTestQuestion,
+  onUpdatePublishedTest,
   selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -430,13 +430,16 @@ export function AdminDashboard({
                 questions={selectedPreviewTest.questions}
                 onSubmit={() => onNavigate('test-series')}
                 onExit={() => onNavigate('test-series')}
-                onSave={(testId, updatedQuestions) => {
-                  // Update all questions in the test
-                  updatedQuestions.forEach(q => {
-                    onUpdateTestQuestion(testId, q.id, q);
+                onSave={(testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                  onUpdatePublishedTest(testId, {
+                    questions: updatedQuestions,
+                    title: updatedTitle,
+                    batches: updatedBatches
                   });
                 }}
                 isPreview={true}
+                availableBatches={batches}
+                initialBatches={selectedPreviewTest.batches}
               />
             </div>
           ) : activeTab === 'create-dpp' ? (

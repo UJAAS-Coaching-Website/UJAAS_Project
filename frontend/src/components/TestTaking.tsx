@@ -13,7 +13,9 @@ import {
   Award,
   Edit,
   Image as ImageIcon,
-  Check
+  Check,
+  Settings,
+  Users
 } from 'lucide-react';
 
 interface Question {
@@ -36,15 +38,17 @@ interface TestTakingProps {
   questions: Question[];
   onSubmit: (answers: Record<string, number | null>, timeSpent: number) => void;
   onExit: () => void;
-  onSave?: (testId: string, questions: Question[]) => void;
+  onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
   initialAnswers?: Record<string, number | null>;
   initialTimeSpent?: number;
   isPreview?: boolean;
+  availableBatches?: { label: string; slug: string }[];
+  initialBatches?: string[];
 }
 
 export function TestTaking({
   testId,
-  testTitle,
+  testTitle: initialTitle,
   duration,
   questions: initialQuestions,
   onSubmit,
@@ -52,9 +56,14 @@ export function TestTaking({
   onSave,
   initialAnswers = {},
   initialTimeSpent = 0,
-  isPreview = false
+  isPreview = false,
+  availableBatches = [],
+  initialBatches = []
 }: TestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
+  const [testTitle, setTestTitle] = useState(initialTitle);
+  const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
+  const [showSettings, setShowSettings] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | null>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
@@ -99,7 +108,7 @@ export function TestTaking({
 
   const handleConfirmExit = (save: boolean) => {
     if (save && onSave) {
-      onSave(testId, questions);
+      onSave(testId, questions, testTitle, selectedBatches);
     }
     onExit();
   };
@@ -188,7 +197,18 @@ export function TestTaking({
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">{testTitle}</h1>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{testTitle}</h1>
+                {isPreview && (
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Edit Test Settings"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -199,9 +219,15 @@ export function TestTaking({
                   {totalMarks} Marks
                 </span>
                 {isPreview && (
-                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-200">
-                    Admin Preview Mode
-                  </span>
+                  <>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                      {selectedBatches.join(', ') || 'No batches assigned'}
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-200">
+                      Admin Preview Mode
+                    </span>
+                  </>
                 )}
               </div>
             </div>
@@ -759,6 +785,75 @@ export function TestTaking({
                 >
                   Cancel
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Global Settings Modal */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Test Settings</h3>
+                <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-gray-700">Test Title</label>
+                  <input
+                    type="text"
+                    value={testTitle}
+                    onChange={(e) => {
+                      setTestTitle(e.target.value);
+                      setHasChanges(true);
+                    }}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-gray-700">Target Batches</label>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
+                    {availableBatches.map(batch => (
+                      <button
+                        key={batch.slug}
+                        onClick={() => {
+                          const next = selectedBatches.includes(batch.label)
+                            ? selectedBatches.filter(b => b !== batch.label)
+                            : [...selectedBatches, batch.label];
+                          setSelectedBatches(next);
+                          setHasChanges(true);
+                        }}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                          selectedBatches.includes(batch.label)
+                            ? 'bg-blue-50 border-blue-500 text-blue-700'
+                            : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                        }`}
+                      >
+                        {batch.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowSettings(false)}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  Confirm Settings
+                </motion.button>
               </div>
             </motion.div>
           </div>
