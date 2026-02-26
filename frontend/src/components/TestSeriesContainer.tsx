@@ -44,18 +44,23 @@ interface TestState {
   result?: any;
 }
 
-export function TestSeriesContainer() {
+interface TestSeriesContainerProps {
+  user: any;
+  publishedTests: import('../App').PublishedTest[];
+}
+
+export function TestSeriesContainer({ user, publishedTests }: TestSeriesContainerProps) {
   const [testState, setTestState] = useState<TestState>({ mode: 'list' });
 
-  const handleStartTest = (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string) => {
-    const questions = generateMockQuestions(questionCount, subject);
+  const handleStartTest = (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, questions?: any[]) => {
+    const questionsToUse = questions || generateMockQuestions(questionCount, subject);
     setTestState({
       mode: 'taking',
       testId,
       testTitle,
       duration,
       totalMarks,
-      questions,
+      questions: questionsToUse,
       savedAnswers: {},
       timeSpent: 0
     });
@@ -234,6 +239,8 @@ export function TestSeriesContainer() {
         handleSubmitTest(mockAnswers, 3600);
       }}
       onViewResults={() => setTestState({ mode: 'viewResults' })}
+      publishedTests={publishedTests}
+      userBatch={user.batch}
     />
   );
 }

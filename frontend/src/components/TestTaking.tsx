@@ -31,6 +31,7 @@ interface TestTakingProps {
   onExit: () => void;
   initialAnswers?: Record<string, number | null>;
   initialTimeSpent?: number;
+  isPreview?: boolean;
 }
 
 export function TestTaking({
@@ -41,7 +42,8 @@ export function TestTaking({
   onSubmit,
   onExit,
   initialAnswers = {},
-  initialTimeSpent = 0
+  initialTimeSpent = 0,
+  isPreview = false
 }: TestTakingProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | null>>(initialAnswers);
@@ -50,6 +52,8 @@ export function TestTaking({
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    if (isPreview) return;
+    
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -61,7 +65,7 @@ export function TestTaking({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [isPreview]);
 
   const handleAutoSubmit = () => {
     const timeSpent = (duration * 60) - timeLeft;
@@ -132,23 +136,26 @@ export function TestTaking({
 
             {/* Timer */}
             <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
+              isPreview ? 'bg-gray-50 border-gray-300' :
               timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
               timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
               'bg-blue-50 border-blue-300'
             }`}>
               <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                isPreview ? 'text-gray-400' :
                 timeLeft <= 300 ? 'text-red-600' :
                 timeLeft <= 600 ? 'text-yellow-600' :
                 'text-blue-600'
               }`} />
               <div>
-                <p className="text-xs text-gray-600">Time Left</p>
+                <p className="text-xs text-gray-600">{isPreview ? 'Status' : 'Time Left'}</p>
                 <p className={`text-lg sm:text-2xl font-bold ${
+                  isPreview ? 'text-gray-500' :
                   timeLeft <= 300 ? 'text-red-600' :
                   timeLeft <= 600 ? 'text-yellow-600' :
                   'text-blue-600'
                 }`}>
-                  {formatTime(timeLeft)}
+                  {isPreview ? 'PREVIEW' : formatTime(timeLeft)}
                 </p>
               </div>
             </div>
@@ -241,10 +248,11 @@ export function TestTaking({
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowSubmitDialog(true)}
-                  className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => isPreview ? onExit() : setShowSubmitDialog(true)}
+                  className={`px-8 py-3 bg-gradient-to-r ${isPreview ? 'from-gray-600 to-gray-700' : 'from-green-600 to-emerald-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2`}
                 >
-                  Submit Test
+                  {isPreview ? <X className="w-5 h-5" /> : null}
+                  {isPreview ? 'Exit Preview' : 'Submit Test'}
                 </motion.button>
               ) : (
                 <motion.button

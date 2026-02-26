@@ -56,6 +56,20 @@ export interface LandingData {
   contact: LandingContact;
 }
 
+export interface PublishedTest {
+  id: string;
+  title: string;
+  format: string;
+  batches: string[];
+  duration: number;
+  totalMarks: number;
+  scheduleDate: string;
+  scheduleTime: string;
+  questions: any[];
+  instructions?: string;
+  status: 'upcoming' | 'live' | 'completed';
+}
+
 function App() {
   const studentTabs = ['home', 'notes', 'dpp', 'test-series', 'profile'] as const;
   const adminTabs = [
@@ -216,6 +230,34 @@ function App() {
   useEffect(() => {
     localStorage.setItem('ujaasLandingData', JSON.stringify(landingData));
   }, [landingData]);
+
+  const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
+    const stored = localStorage.getItem('ujaasPublishedTests');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ujaasPublishedTests', JSON.stringify(publishedTests));
+  }, [publishedTests]);
+
+  const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
+
+  const handlePublishTest = (test: Omit<PublishedTest, 'id' | 'status'>) => {
+    const newTest: PublishedTest = {
+      ...test,
+      id: `test-${Date.now()}`,
+      status: 'upcoming'
+    };
+    setPublishedTests(prev => [newTest, ...prev]);
+  };
+
+  const handlePreviewTest = (testId: string) => {
+    const test = publishedTests.find(t => t.id === testId);
+    if (test) {
+      setSelectedPreviewTest(test);
+      navigateTab('preview-test');
+    }
+  };
 
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
     const stored = localStorage.getItem('ujaasAdminBatches');
@@ -867,6 +909,10 @@ function App() {
             onUpdateLandingData={setLandingData}
             queries={queries}
             onUpdateQueries={setQueries}
+            publishedTests={publishedTests}
+            onPublishTest={handlePublishTest}
+            onPreviewTest={handlePreviewTest}
+            selectedPreviewTest={selectedPreviewTest}
           />
         </motion.div>
       )}

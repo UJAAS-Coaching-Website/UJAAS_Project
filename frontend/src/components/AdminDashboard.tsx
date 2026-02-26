@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Download,
   Calendar,
+  Clock,
   Star,
   Trophy,
   FileText,
@@ -36,6 +37,7 @@ import { Footer } from './Footer';
 import { CreateTestSeries } from './CreateTestSeries';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
+import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
@@ -62,6 +64,10 @@ interface AdminDashboardProps {
   onUpdateLandingData: (data: LandingData) => void;
   queries: import('../App').LandingQuery[];
   onUpdateQueries: (queries: import('../App').LandingQuery[]) => void;
+  publishedTests: import('../App').PublishedTest[];
+  onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
+  onPreviewTest: (testId: string) => void;
+  selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
 type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student';
@@ -169,7 +175,11 @@ export function AdminDashboard({
   landingData,
   onUpdateLandingData,
   queries,
-  onUpdateQueries
+  onUpdateQueries,
+  publishedTests,
+  onPublishTest,
+  onPreviewTest,
+  selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [faculty, setFaculty] = useState<Teacher[]>([]);
@@ -408,7 +418,19 @@ export function AdminDashboard({
         >
           {/* Layered Rendering Logic */}
           {activeTab === 'create-test' ? (
-            <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} />
+            <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} onPublish={onPublishTest} />
+          ) : activeTab === 'preview-test' && selectedPreviewTest ? (
+            <div className="fixed inset-0 z-[10002] bg-white overflow-y-auto">
+              <TestTaking 
+                testId={selectedPreviewTest.id}
+                testTitle={selectedPreviewTest.title}
+                duration={selectedPreviewTest.duration}
+                questions={selectedPreviewTest.questions}
+                onSubmit={() => onNavigate('test-series')}
+                onExit={() => onNavigate('test-series')}
+                isPreview={true}
+              />
+            </div>
           ) : activeTab === 'create-dpp' ? (
             <CreateDPP onBack={() => onNavigate('content')} />
           ) : activeTab === 'profile' ? (
@@ -448,7 +470,13 @@ export function AdminDashboard({
                 />
               )}
               {adminSection === 'test-series' && (
-                <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={null as unknown as Batch} onChangeBatch={() => {}} />
+                <TestSeriesManagementTab 
+                  onNavigate={onNavigate} 
+                  selectedBatch={null as unknown as Batch} 
+                  onChangeBatch={() => {}} 
+                  publishedTests={publishedTests}
+                  onPreviewTest={onPreviewTest}
+                />
               )}
               {adminSection === 'queries' && (
                 <QueriesManagementTab queries={queries} onUpdate={onUpdateQueries} />
@@ -1584,19 +1612,59 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
   );
 }
 
-function TestSeriesManagementTab({ onNavigate, selectedBatch, onChangeBatch }: { onNavigate: (t: Tab) => void; selectedBatch: Batch | null; onChangeBatch: () => void }) {
+function TestSeriesManagementTab({ 
+  onNavigate, 
+  selectedBatch, 
+  publishedTests, 
+  onPreviewTest 
+}: { 
+  onNavigate: (t: Tab) => void; 
+  selectedBatch: Batch | null; 
+  onChangeBatch: () => void;
+  publishedTests: import('../App').PublishedTest[];
+  onPreviewTest: (testId: string) => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex justify-between items-center">
         <div><h2 className="text-2xl font-bold text-gray-900">Test Series Management</h2><p className="text-gray-600">{selectedBatch ? `For ${selectedBatch}` : 'Across all batches'}</p></div>
         <button onClick={() => onNavigate('create-test')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-500 text-white rounded-xl font-bold shadow-md"><Plus className="w-5 h-5" />Create Test Series</button>
       </div>
-      <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center">
-        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"><FileText className="w-10 h-10 text-blue-600" /></div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Create New Test</h3>
-        <p className="text-gray-600 mb-6">Standard patterns for JEE Main, NEET and custom tests</p>
-        <button onClick={() => onNavigate('create-test')} className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Get Started</button>
-      </div>
+
+      {publishedTests.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {publishedTests.map((test) => (
+            <div key={test.id} className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col">
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                  test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' : 
+                  test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>{test.format}</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
+              <div className="space-y-2 mb-6 flex-1">
+                <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{new Date(test.scheduleDate).toLocaleDateString()} at {test.scheduleTime}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ')}</div>
+              </div>
+              <button 
+                onClick={() => onPreviewTest(test.id)}
+                className="w-full py-3 bg-gray-50 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition border border-gray-100 flex items-center justify-center gap-2"
+              >
+                <BookOpen className="w-4 h-4" /> Preview Test
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4"><FileText className="w-10 h-10 text-blue-600" /></div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Create New Test</h3>
+          <p className="text-gray-600 mb-6">Standard patterns for JEE Main, NEET and custom tests</p>
+          <button onClick={() => onNavigate('create-test')} className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Get Started</button>
+        </div>
+      )}
     </div>
   );
 }

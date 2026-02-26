@@ -31,6 +31,7 @@ interface TestSeries {
   passingMarks: number;
   savedAnswers?: Record<string, number | null>;
   timeSpent?: number;
+  realQuestions?: any[];
 }
 
 const MOCK_TEST_SERIES: TestSeries[] = [
@@ -125,17 +126,46 @@ const MOCK_TEST_SERIES: TestSeries[] = [
 ];
 
 interface TestSeriesProps {
-  onStartTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string) => void;
+  onStartTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, questions?: any[]) => void;
   onContinueTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, savedAnswers: Record<string, number | null>, timeSpent: number) => void;
   onViewAnalytics: (testId: string) => void;
   onViewResults: () => void;
+  publishedTests?: import('../App').PublishedTest[];
+  userBatch?: string;
 }
 
-export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics, onViewResults }: TestSeriesProps) {
+export function TestSeriesSection({ 
+  onStartTest, 
+  onContinueTest, 
+  onViewAnalytics, 
+  onViewResults,
+  publishedTests = [],
+  userBatch
+}: TestSeriesProps) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'locked'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
 
-  const filteredTests = MOCK_TEST_SERIES.filter(test => {
+  const mappedPublishedTests: TestSeries[] = (publishedTests || [])
+    .filter(t => !userBatch || t.batches.includes(userBatch))
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      subject: t.format === 'JEE MAIN' ? 'All Subjects' : t.format === 'NEET' ? 'All Subjects' : 'Custom',
+      duration: t.duration,
+      totalMarks: t.totalMarks,
+      questions: t.questions.length,
+      difficulty: 'Medium',
+      status: 'not-started',
+      attempts: 0,
+      scheduledDate: t.scheduleDate,
+      enrolled: 100,
+      passingMarks: Math.floor(t.totalMarks * 0.4),
+      realQuestions: t.questions
+    }));
+
+  const allTests = [...mappedPublishedTests, ...MOCK_TEST_SERIES];
+
+  const filteredTests = allTests.filter(test => {
     const statusFilter = 
       selectedFilter === 'all' ? true :
       selectedFilter === 'completed' ? test.status === 'completed' :
@@ -148,9 +178,9 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
   });
 
   const stats = {
-    total: MOCK_TEST_SERIES.length,
-    completed: MOCK_TEST_SERIES.filter(t => t.status === 'completed').length,
-    pending: MOCK_TEST_SERIES.filter(t => t.status === 'not-started' || t.status === 'in-progress').length,
+    total: allTests.length,
+    completed: allTests.filter(t => t.status === 'completed').length,
+    pending: allTests.filter(t => t.status === 'not-started' || t.status === 'in-progress').length,
     avgScore: 82
   };
 
@@ -398,7 +428,8 @@ export function TestSeriesSection({ onStartTest, onContinueTest, onViewAnalytics
                       test.duration,
                       test.totalMarks,
                       test.questions,
-                      test.subject
+                      test.subject,
+                      test.realQuestions
                     );
                   }
                 }}

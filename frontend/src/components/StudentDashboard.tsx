@@ -30,6 +30,7 @@ interface StudentDashboardProps {
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
   onDeleteNotification: (id: string) => void;
+  publishedTests: import('../App').PublishedTest[];
 }
 
 type Tab = 'home' | 'notes' | 'dpp' | 'test-series' | 'profile';
@@ -42,7 +43,8 @@ export function StudentDashboard({
   notifications,
   onMarkAsRead,
   onMarkAllAsRead,
-  onDeleteNotification
+  onDeleteNotification,
+  publishedTests
 }: StudentDashboardProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -115,7 +117,7 @@ export function StudentDashboard({
           {activeTab === 'home' && <HomeTab user={user} />}
           {activeTab === 'notes' && <NotesSection />}
           {activeTab === 'dpp' && <DPPSection />}
-          {activeTab === 'test-series' && <TestSeriesContainer />}
+          {activeTab === 'test-series' && <TestSeriesContainer user={user} publishedTests={publishedTests} />}
           {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
         </motion.div>
       </main>

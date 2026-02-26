@@ -22,9 +22,10 @@ interface BatchInfo {
 interface CreateTestSeriesProps {
   onBack: () => void;
   batches: BatchInfo[];
+  onPublish?: (test: any) => void;
 }
 
-export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
+export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSeriesProps) {
   const [step, setStep] = useState(1);
   const [testData, setTestData] = useState({
     title: '',
@@ -181,6 +182,19 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
   };
 
   const handleSubmit = () => {
+    if (onPublish) {
+      onPublish({
+        title: testData.title,
+        format: testData.format,
+        batches: testData.selectedBatches,
+        duration: testData.duration,
+        totalMarks: testData.totalMarks,
+        scheduleDate: testData.scheduleDate,
+        scheduleTime: testData.scheduleTime,
+        questions: questions,
+        instructions: testData.instructions
+      });
+    }
     setShowSuccess(true);
     setTimeout(() => {
       onBack();
