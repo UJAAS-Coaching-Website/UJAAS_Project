@@ -118,22 +118,26 @@ type BatchFormState = {
 };
 
 function renderPerformanceStars(rating: number) {
-  const fillPercentage = (rating / 5) * 100;
   return (
     <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <span
-          key={star}
-          className="inline-block w-4 text-center text-[16px] leading-4"
-          style={{
-            background: `linear-gradient(90deg, #f59e0b ${fillPercentage}%, #d1d5db ${fillPercentage}%)`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          ★
-        </span>
-      ))}
+      {[1, 2, 3, 4, 5].map((star) => {
+        const fill = Math.max(0, Math.min(100, (rating - (star - 1)) * 100));
+        return (
+          <span
+            key={star}
+            className="inline-block w-4 text-center text-[16px] leading-4"
+            style={{
+              background: `linear-gradient(90deg, #f59e0b ${fill}%, #d1d5db ${fill}%)`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              color: 'transparent',
+            }}
+          >
+            ★
+          </span>
+        );
+      })}
       <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
@@ -163,19 +167,9 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [faculty, setFaculty] = useState<Teacher[]>([]);
-  const [subjects, setSubjects] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [chapters, setChapters] = useState<{ id: string; name: string; subjectId: string; batch: string }[]>([]);
-  const [notes, setNotes] = useState<{ id: string; title: string; chapterId: string; type: string; url: string; batch: string }[]>([]);
-  const [dpps, setDpps] = useState<{ id: string; title: string; chapterId: string; questions: number; duration: number; batch: string }[]>([]);
-  
-  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
-  const [isAddFacultyModalOpen, setIsAddFacultyModalOpen] = useState(false);
-  const [isAddBatchModalOpen, setIsAddBatchModalOpen] = useState(false);
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
-  const [activeSubjectForChapter, setActiveSubjectForChapter] = useState<string | null>(null);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
+  const timeTableInputRef = useRef<HTMLInputElement>(null);
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; defaultBatch: Batch | null; initialData?: Student; title: string }>({
     open: false,
@@ -199,36 +193,38 @@ export function AdminDashboard({
       { id: '1', name: 'Rahul Sharma', email: 'rahul@example.com', rollNumber: '2024001', enrolledCourses: ['JEE Main'], joinDate: '2024-01-15', performance: 85, rating: 4.5, batch: '12th JEE' },
       { id: '2', name: 'Priya Patel', email: 'priya@example.com', rollNumber: '2024002', enrolledCourses: ['NEET'], joinDate: '2024-01-20', performance: 92, rating: 4.8, batch: '12th NEET' },
       { id: '3', name: 'Amit Kumar', email: 'amit@example.com', rollNumber: '2024003', enrolledCourses: ['JEE Advanced'], joinDate: '2024-02-05', performance: 78, rating: 4.2, batch: 'Dropper JEE' },
+      { id: '4', name: 'Sneha Mehta', email: 'sneha.m@example.com', rollNumber: '2024004', enrolledCourses: ['JEE Main', 'NEET'], joinDate: '2024-02-12', performance: 88, rating: 4.6, batch: '11th JEE' },
+      { id: '5', name: 'Karan Desai', email: 'karan.d@example.com', rollNumber: '2024005', enrolledCourses: ['NEET'], joinDate: '2024-03-03', performance: 79, rating: 4.1, batch: '11th NEET' },
+      { id: '6', name: 'Ananya Kapoor', email: 'ananya.k@example.com', rollNumber: '2024006', enrolledCourses: ['JEE Advanced', 'NEET'], joinDate: '2024-03-10', performance: 91, rating: 4.9, batch: '12th JEE' },
     ]);
 
     setFaculty([
       { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics' },
       { id: 't2', name: 'Prof. S. Gupta', email: 's.gupta@example.com', subject: 'Chemistry' },
       { id: 't3', name: 'Dr. R.K. Yadav', email: 'rk.yadav@example.com', subject: 'Mathematics' },
-    ]);
-
-    setSubjects([
-      { id: 's1', name: 'Physics', color: '#3b82f6' },
-      { id: 's2', name: 'Chemistry', color: '#10b981' },
-      { id: 's3', name: 'Mathematics', color: '#8b5cf6' },
-    ]);
-
-    setChapters([
-      { id: 'c1', name: 'Kinematics', subjectId: 's1', batch: '12th JEE' },
-      { id: 'c2', name: 'Atomic Structure', subjectId: 's2', batch: '12th JEE' },
-      { id: 'c3', name: 'Calculus', subjectId: 's3', batch: '12th JEE' },
-    ]);
-
-    setNotes([
-      { id: 'n1', title: 'Projectile Motion Notes', chapterId: 'c1', type: 'PDF', url: '#', batch: '12th JEE' },
-      { id: 'n2', title: 'Bohr\'s Model Summary', chapterId: 'c2', type: 'PDF', url: '#', batch: '12th JEE' },
-    ]);
-
-    setDpps([
-      { id: 'd1', title: 'Kinematics Practice Set 1', chapterId: 'c1', questions: 15, duration: 45, batch: '12th JEE' },
-      { id: 'd2', title: 'Organic Basics DPP', chapterId: 'c2', questions: 10, duration: 30, batch: '12th JEE' },
+      { id: 't4', name: 'Ms. Tanya Bose', email: 'tanya.bose@example.com', subject: 'Biology' },
+      { id: 't5', name: 'Mr. Arjun Malhotra', email: 'arjun.m@example.com', subject: 'Mathematics' },
+      { id: 't6', name: 'Dr. Leena Rao', email: 'leena.rao@example.com', subject: 'Chemistry' },
     ]);
   }, []);
+
+  const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setTimeTableImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleTimeTableDelete = () => {
+    if (window.confirm('Are you sure you want to delete the timetable?')) {
+      setTimeTableImage(null);
+      setShowFullTimetable(false);
+    }
+  };
 
   const openAddStudent = (batch: Batch | null) => setStudentModal({ open: true, defaultBatch: batch, title: 'Add Student' });
   const openEditStudent = (student: Student) => setStudentModal({ open: true, defaultBatch: student.batch, initialData: student, title: 'Edit Student' });
@@ -292,7 +288,7 @@ export function AdminDashboard({
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pt-20">
       {/* Top Navbar */}
-      <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-[9999] shadow-md transition-all">
+      <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-[1000] shadow-md transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo and Branding */}
@@ -465,20 +461,11 @@ export function AdminDashboard({
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
               {activeTab === 'content' && (
-                <NotesManagementTab 
-                  onNavigate={onNavigate} 
-                  selectedBatch={selectedBatch} 
-                  onChangeBatch={onClearBatch} 
+                <NotesManagementTab
+                  onNavigate={onNavigate}
+                  selectedBatch={selectedBatch}
+                  onChangeBatch={onClearBatch}
                   onViewTimetable={() => setShowFullTimetable(true)}
-                  subjects={subjects}
-                  chapters={chapters}
-                  notes={notes}
-                  dpps={dpps}
-                  onAddSubject={() => setIsAddSubjectModalOpen(true)}
-                  onAddChapter={(subject) => {
-                    setActiveSubjectForChapter(subject);
-                    setIsAddChapterModalOpen(true);
-                  }}
                 />
               )}
               {activeTab === 'upload-notice' && (
@@ -522,6 +509,105 @@ export function AdminDashboard({
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
         />
+
+        {/* Timetable Modal */}
+        <AnimatePresence>
+          {showFullTimetable && (
+            <motion.div
+              key="timetable-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              onClick={() => setShowFullTimetable(false)}
+            >
+              <motion.div
+                key="timetable-modal-content"
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Sticky Header */}
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                  <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                  <button
+                    onClick={() => setShowFullTimetable(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="w-6 h-6 text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Image Container - Strictly contained */}
+                <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
+                  {timeTableImage ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={timeTableImage}
+                        alt="Full Time Table"
+                        className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 w-full">
+                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
+                      <button
+                        onClick={() => timeTableInputRef.current?.click()}
+                        className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+                      >
+                        Upload Now
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sticky Footer */}
+                <div className="p-4 bg-white border-t border-gray-100 flex flex-wrap justify-between items-center gap-3 shrink-0 z-20">
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      ref={timeTableInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleTimeTableUpload}
+                    />
+                    <button
+                      onClick={() => timeTableInputRef.current?.click()}
+                      className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition text-sm"
+                    >
+                      {timeTableImage ? 'Change Image' : 'Upload Image'}
+                    </button>
+                    {timeTableImage && (
+                      <button
+                        onClick={handleTimeTableDelete}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition text-sm"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {timeTableImage && (
+                      <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
+                        <Download className="w-4 h-4" />
+                        Download PDF
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowFullTimetable(false)}
+                      className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -831,7 +917,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         <div className="w-12 h-12 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
           <Layout className="w-6 h-6 text-white" />
         </div>
-        <div><h2 className="text-3xl font-bold text-gray-900">LPM Management</h2><p className="text-gray-600">Customize the content of your public landing page</p></div>
+        <div><h2 className="text-3xl font-bold text-gray-900">Landing Page Management</h2><p className="text-gray-600">Customize the content of your public landing page</p></div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
@@ -884,13 +970,14 @@ function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App')
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Date</th><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Course</th><th className="pb-4 font-bold text-gray-700">Status</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Date</th><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Course</th><th className="pb-4 font-bold text-gray-700">Message</th><th className="pb-4 font-bold text-gray-700">Status</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
             {queries.map((q) => (
               <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-4 text-sm text-gray-500">{new Date(q.date).toLocaleDateString()}</td>
                 <td className="py-4"><div className="font-bold text-gray-900">{q.name}</div><div className="text-xs text-gray-500">{q.phone}</div></td>
                 <td className="py-4"><span className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold uppercase">{q.course}</span></td>
+                <td className="py-4 max-w-xs"><p className="text-sm text-gray-700 break-words">{q.message || '—'}</p></td>
                 <td className="py-4">
                   <select value={q.status} onChange={(e) => handleStatusChange(q.id, e.target.value as any)} className={`text-xs font-bold rounded-lg px-2 py-1 ${q.status === 'new' ? 'bg-orange-100 text-orange-700' : q.status === 'contacted' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                     <option value="new">New</option><option value="contacted">Contacted</option><option value="completed">Completed</option>
@@ -976,31 +1063,442 @@ function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch }: { s
   );
 }
 
-function NotesManagementTab({ onNavigate, selectedBatch, subjects, chapters, notes, dpps, onAddSubject, onAddChapter }: { onNavigate: (t: Tab) => void; selectedBatch: Batch; subjects: any[]; chapters: any[]; notes: any[]; dpps: any[]; onAddSubject: () => void; onAddChapter: (sId: string) => void; onViewTimetable: () => void; onChangeBatch: () => void }) {
+function NotesManagementTab({
+  onNavigate,
+  selectedBatch,
+  onChangeBatch,
+  onViewTimetable,
+}: {
+  onNavigate: (tab: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
+  onViewTimetable: () => void;
+}) {
+  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
+
+  const [subjects, setSubjects] = useState([
+    { id: 's1', name: 'Physics', color: '#3b82f6' },
+    { id: 's2', name: 'Chemistry', color: '#10b981' },
+    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
+    { id: 's4', name: 'Biology', color: '#f43f5e' },
+  ]);
+
+  const [chapters, setChapters] = useState<Record<string, string[]>>({
+    'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
+    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
+    'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
+    'Biology': ['Cell Division', 'Genetics', 'Evolution'],
+  });
+
+  const [notes, setNotes] = useState([
+    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
+    { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
+  ]);
+
+  const [dpps, setDpps] = useState([
+    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
+    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
+  ]);
+
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newChapterName, setNewChapterName] = useState('');
+
+  const handleAddSubject = (e: FormEvent) => {
+    e.preventDefault();
+    if (newSubjectName.trim()) {
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      setSubjects([...subjects, { 
+        id: `s${Date.now()}`, 
+        name: newSubjectName.trim(), 
+        color: randomColor 
+      }]);
+      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
+      setNewSubjectName('');
+      setIsAddSubjectModalOpen(false);
+    }
+  };
+
+  const handleAddChapter = (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubject) return;
+    if (newChapterName.trim()) {
+      setChapters({
+        ...chapters,
+        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
+      });
+      setNewChapterName('');
+      setIsAddChapterModalOpen(false);
+    }
+  };
+
+  const navigateToSubject = (subject: string) => {
+    setSelectedSubject(subject);
+    setCurrentView('subject');
+  };
+
+  const navigateToChapter = (chapter: string) => {
+    setSelectedChapter(chapter);
+    setCurrentView('chapter');
+    setActiveContentType('notes');
+  };
+
+  const goBack = () => {
+    if (currentView === 'chapter') {
+      setCurrentView('subject');
+      setSelectedChapter(null);
+    } else if (currentView === 'subject') {
+      setCurrentView('root');
+      setSelectedSubject(null);
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">Academic Content</h2><div className="flex gap-3"><button onClick={() => onNavigate('create-test')} className="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><FileText className="w-5 h-5" />New Test</button><button onClick={() => onNavigate('create-dpp')} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />New DPP</button></div></div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {subjects.map(s => (
-            <div key={s.id} className="bg-white rounded-3xl p-6 shadow-lg border border-gray-50">
-              <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: s.color }}><Folder className="w-5 h-5" /></div><h3 className="text-xl font-bold text-gray-900">{s.name}</h3></div><button onClick={() => onAddChapter(s.id)} className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Plus className="w-5 h-5" /></button></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {chapters.filter(c => c.subjectId === s.id && c.batch === selectedBatch).map(c => (
-                  <div key={c.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-cyan-200 transition-colors group">
-                    <h4 className="font-bold text-gray-800 mb-3">{c.name}</h4>
-                    <div className="flex gap-2"><span className="text-xs bg-white px-2 py-1 rounded-lg border border-gray-100 font-bold text-gray-500 uppercase">{notes.filter(n => n.chapterId === c.id).length} Notes</span><span className="text-xs bg-white px-2 py-1 rounded-lg border border-gray-100 font-bold text-gray-500 uppercase">{dpps.filter(d => d.chapterId === c.id).length} DPPs</span></div>
-                  </div>
-                ))}
+    <div className="space-y-6 relative z-0">
+      {/* Header & Breadcrumbs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            {currentView !== 'root' && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={goBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
+              </motion.button>
+            )}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span className={currentView === 'root' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('root'); setSelectedSubject(null); setSelectedChapter(null); }}>Root</span>
+                {selectedSubject && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('subject'); setSelectedChapter(null); }}>{selectedSubject}</span>
+                  </>
+                )}
+                {selectedChapter && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
+                  </>
+                )}
               </div>
             </div>
-          ))}
-          <button onClick={onAddSubject} className="w-full py-4 bg-white/50 border-2 border-dashed border-gray-200 rounded-3xl text-gray-500 font-bold hover:bg-white hover:border-cyan-200 transition-all flex items-center justify-center gap-2"><Plus className="w-5 h-5" /> Add New Subject</button>
+          </div>
+          <div className="flex items-center gap-3">
+            {currentView === 'root' && (
+              <>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onViewTimetable}
+                  className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Time Table
+                </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsAddSubjectModalOpen(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Subject
+                </motion.button>
+              </>
+            )}
+            {currentView === 'subject' && (
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsAddChapterModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Add Chapter
+              </motion.button>
+            )}
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate('upload-notice')}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+            >
+              <Bell className="w-5 h-5" />
+              Upload Notice
+            </motion.button>
+          </div>
         </div>
-        <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-50"><h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><Calendar className="w-5 h-5 text-orange-500" /> Batch Timetable</h3><img src={demotimetable} className="w-full rounded-2xl border border-gray-100" /></div>
-        </div>
-      </div>
+      </motion.div>
+
+      {/* Add Subject Modal */}
+      <AnimatePresence>
+        {isAddSubjectModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddSubjectModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Subject</h3>
+                <p className="text-teal-50 text-sm">Create a new subject folder</p>
+              </div>
+              <form onSubmit={handleAddSubject} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    placeholder="e.g., Organic Chemistry"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSubjectModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Create Subject
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Chapter Modal */}
+      <AnimatePresence>
+        {isAddChapterModalOpen && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddChapterModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Chapter</h3>
+                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
+              </div>
+              <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newChapterName}
+                    onChange={(e) => setNewChapterName(e.target.value)}
+                    placeholder="e.g., Rotation Mechanics"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddChapterModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Create Chapter
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {currentView === 'root' && (
+        <>
+                    {/* Subject Folders */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
+                      {subjects.map((sub, index) => (
+                        <motion.button
+                          key={sub.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          whileHover={{ y: -5, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => navigateToSubject(sub.name)}
+                          className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group"
+                        >
+                          <div 
+                            className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
+                            style={{ backgroundColor: sub.color }}
+                          >
+                            <Folder className="w-8 h-8 text-white" />
+                          </div>
+                          <div className="text-center">
+                            <h4 className="font-bold text-gray-900">{sub.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+          
+                {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
+                    {chapters[selectedSubject].map((chapter, index) => (
+                      <motion.button
+                        key={chapter}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ x: 10 }}
+                        onClick={() => navigateToChapter(chapter)}
+                        className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors">
+                            <Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" />
+                          </div>
+                          <span className="font-bold text-gray-900">{chapter}</span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+          
+                {currentView === 'chapter' && selectedChapter && (
+                  <div className="space-y-6 relative z-0">
+                    {/* Internal Navigation */}
+                    <div className="flex items-center gap-4 border-b border-gray-200">
+                      <button
+                        onClick={() => setActiveContentType('notes')}
+                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
+                          activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Study Notes
+                        {activeContentType === 'notes' && (
+                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setActiveContentType('dpps')}
+                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
+                          activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Daily Practice Problems (DPPs)
+                        {activeContentType === 'dpps' && (
+                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                        )}
+                      </button>
+                    </div>
+          
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {activeContentType === 'notes' ? (
+                        notes
+                          .filter(n => n.chapter === selectedChapter)
+                          .map((note, index) => (
+                          <motion.div
+                            key={note.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
+                                <FileText className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
+                                  <div className="flex gap-1">
+                                    <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        dpps
+                          .filter(d => d.chapter === selectedChapter)
+                          .map((dpp, index) => (
+                          <motion.div
+                            key={dpp.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
+                                <ClipboardList className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
+                                  <div className="flex gap-1">
+                                    <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
     </div>
   );
 }
@@ -1016,11 +1514,12 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Batch</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Batch</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map(s => (
               <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
                 <td className="py-4"><div className="font-bold text-gray-900">{s.name}</div><div className="text-xs text-gray-500">{s.email}</div></td>
+                <td className="py-4">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4"><span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{s.batch}</span></td>
                 <td className="py-4 flex gap-2"><button onClick={() => onEditStudent(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={() => onDeleteStudent(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
               </tr>

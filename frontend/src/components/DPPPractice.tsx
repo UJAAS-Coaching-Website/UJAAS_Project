@@ -100,7 +100,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
   const score = isSubmitted ? calculateScore() : 0;
 
   return (
-    <div className="fixed inset-0 bg-white z-50 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-white z-[2000] overflow-hidden flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -289,7 +289,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
 
       {/* Confirm Submit Modal */}
       {showConfirmSubmit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-xl font-bold text-gray-900 mb-2">Submit Test?</h3>
             <p className="text-gray-600 mb-6">
