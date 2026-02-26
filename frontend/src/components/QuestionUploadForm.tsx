@@ -19,6 +19,7 @@ export interface Question {
   marks?: number;
   subject?: string;
   explanation?: string;
+  explanationImage?: string;
 }
 
 interface QuestionUploadFormProps {
@@ -72,12 +73,14 @@ export function QuestionUploadForm({
         options: (fixedType || prev.type) === 'Numerical' ? undefined : ['', '', '', ''],
         optionImages: (fixedType || prev.type) === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
         correctAnswer: (fixedType || prev.type) === 'MSQ' ? [] : (fixedType || prev.type) === 'Numerical' ? '' : 0,
-        questionImage: undefined
+        questionImage: undefined,
+        explanation: '',
+        explanationImage: undefined
       }));
     }
   }, [fixedType, defaultMarks, fixedSubject, editingQuestion]);
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option', index?: number) => {
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -85,6 +88,8 @@ export function QuestionUploadForm({
         const result = event.target?.result as string;
         if (type === 'question') {
           setCurrentQuestion({ ...currentQuestion, questionImage: result });
+        } else if (type === 'explanation') {
+          setCurrentQuestion({ ...currentQuestion, explanationImage: result });
         } else if (type === 'option' && index !== undefined) {
           const newOptionImages = [...(currentQuestion.optionImages || [])];
           newOptionImages[index] = result;
@@ -125,11 +130,12 @@ export function QuestionUploadForm({
           ...currentQuestion,
           id: Date.now().toString(),
           question: '',
-          options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
-          optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-          questionImage: undefined
-        });
-      }
+                  options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
+                  optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
+                  questionImage: undefined,
+                  explanation: '',
+                  explanationImage: undefined
+                });      }
     }
   };
 
@@ -335,6 +341,42 @@ export function QuestionUploadForm({
             />
           </div>
         )}
+
+        <div className="space-y-4 pt-2">
+          <label className="block text-sm font-semibold text-gray-700 flex items-center justify-between">
+            Explanation / Solution
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => handleImageUpload(e, 'explanation')}
+              />
+              <button type="button" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100 flex items-center gap-1.5 text-xs font-bold">
+                <ImageIcon className="w-4 h-4" />
+                Add Solution Image
+              </button>
+            </div>
+          </label>
+          <textarea
+            value={currentQuestion.explanation || ''}
+            onChange={(e) => setCurrentQuestion({ ...currentQuestion, explanation: e.target.value })}
+            rows={2}
+            placeholder="Add solution explanation here..."
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+          />
+          {currentQuestion.explanationImage && (
+            <div className="relative inline-block">
+              <img src={currentQuestion.explanationImage} alt="Solution" className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm" />
+              <button 
+                onClick={() => setCurrentQuestion({ ...currentQuestion, explanationImage: undefined })}
+                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="pt-4 flex items-center gap-3">
           <motion.button

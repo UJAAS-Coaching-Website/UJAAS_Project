@@ -29,6 +29,7 @@ interface Question {
   marks: number;
   type: 'MCQ' | 'MSQ' | 'Numerical';
   explanation?: string;
+  explanationImage?: string;
 }
 
 interface TestTakingProps {
@@ -113,7 +114,7 @@ export function TestTaking({
     onExit();
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option', index?: number) => {
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -121,6 +122,8 @@ export function TestTaking({
         const result = event.target?.result as string;
         if (type === 'question') {
           setEditForm({ ...editForm, questionImage: result });
+        } else if (type === 'explanation') {
+          setEditForm({ ...editForm, explanationImage: result });
         } else if (type === 'option' && index !== undefined) {
           const newOptionImages = [...(editForm.optionImages || [])];
           newOptionImages[index] = result;
@@ -455,9 +458,14 @@ export function TestTaking({
                         <AlertCircle className="w-5 h-5" />
                         <h3 className="font-bold">Explanation</h3>
                       </div>
-                      <p className="text-gray-700 leading-relaxed italic">
+                      <p className="text-gray-700 leading-relaxed italic mb-4">
                         {question.explanation || "No explanation provided for this question."}
                       </p>
+                      {question.explanationImage && (
+                        <div className="rounded-xl overflow-hidden border border-blue-100 inline-block bg-white p-2">
+                          <img src={question.explanationImage} alt="Solution" className="max-h-64 w-auto object-contain" />
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -544,7 +552,20 @@ export function TestTaking({
                     )}
 
                     <label className="block pt-4">
-                      <span className="block text-sm font-bold text-gray-700 mb-2">Explanation</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="block text-sm font-bold text-gray-700">Explanation</span>
+                        <div className="flex items-center gap-4">
+                          <label className="relative cursor-pointer">
+                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'explanation')} className="absolute inset-0 opacity-0" />
+                            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-xs">
+                              <ImageIcon className="w-3.5 h-3.5" /> {editForm.explanationImage ? 'Change Solution Image' : 'Add Solution Image'}
+                            </div>
+                          </label>
+                          {editForm.explanationImage && (
+                            <button onClick={() => setEditForm({ ...editForm, explanationImage: undefined })} className="text-[10px] text-red-600 font-bold hover:underline">Remove</button>
+                          )}
+                        </div>
+                      </div>
                       <textarea
                         value={editForm.explanation}
                         onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
@@ -552,6 +573,11 @@ export function TestTaking({
                         placeholder="Explain why the answer is correct..."
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition"
                       />
+                      {editForm.explanationImage && (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block">
+                          <img src={editForm.explanationImage} alt="Solution Preview" className="max-h-32 w-auto object-contain" />
+                        </div>
+                      )}
                     </label>
                   </div>
 
@@ -796,7 +822,7 @@ export function TestTaking({
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl"
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Test Settings</h3>

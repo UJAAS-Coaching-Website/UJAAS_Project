@@ -541,7 +541,7 @@ export function AdminDashboard({
       </main>
 
       {/* Footer */}
-      <Footer />
+      {activeTab !== 'preview-test' && <Footer />}
 
       {/* Modals */}
       <div className="relative z-[10000] isolate">
