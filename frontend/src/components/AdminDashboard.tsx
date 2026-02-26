@@ -52,6 +52,7 @@ interface AdminDashboardProps {
   batches: BatchInfo[];
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+  onDeleteBatch: (label: string) => { ok: boolean; error?: string };
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -159,6 +160,7 @@ export function AdminDashboard({
   batches,
   onCreateBatch,
   onUpdateBatch,
+  onDeleteBatch,
   onLogout,
   notifications,
   onMarkAsRead,
@@ -531,6 +533,7 @@ export function AdminDashboard({
           onClose={closeBatchModal}
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
+          onDeleteBatch={onDeleteBatch}
         />
 
         <StudentRatingsModal
@@ -1921,6 +1924,7 @@ function BatchFormModal({
   onClose,
   onCreateBatch,
   onUpdateBatch,
+  onDeleteBatch,
 }: {
   open: boolean;
   mode: 'create' | 'edit';
@@ -1930,6 +1934,7 @@ function BatchFormModal({
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+  onDeleteBatch: (label: string) => { ok: boolean; error?: string };
 }) {
   const [formState, setFormState] = useState({
     name: '',
@@ -2007,6 +2012,18 @@ function BatchFormModal({
       return;
     }
     onClose();
+  };
+
+  const handleDelete = () => {
+    if (!batchLabel) return;
+    if (window.confirm(`Are you sure you want to delete the batch "${batchLabel}"?`)) {
+      const result = onDeleteBatch(batchLabel);
+      if (result.ok) {
+        onClose();
+      } else {
+        setError(result.error ?? 'Unable to delete batch.');
+      }
+    }
   };
 
   return (
@@ -2113,7 +2130,16 @@ function BatchFormModal({
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+            {mode === 'edit' && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="px-6 py-3 min-h-[44px] rounded-xl border border-red-200 text-red-600 font-medium leading-none whitespace-nowrap hover:bg-red-50 transition mr-auto"
+              >
+                Delete Batch
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

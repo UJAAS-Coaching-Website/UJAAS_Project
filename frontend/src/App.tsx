@@ -357,6 +357,27 @@ function App() {
     return result;
   };
 
+  const deleteAdminBatch = (label: string) => {
+    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
+    setAdminBatches((prev) => {
+      const index = prev.findIndex((batch) => batch.label === label);
+      if (index === -1) {
+        result = { ok: false, error: 'Batch not found.' };
+        return prev;
+      }
+      const next = prev.filter((batch) => batch.label !== label);
+      result = { ok: true };
+      
+      // Clear selected batch if it was the one deleted
+      if (adminBatch === label) {
+        setAdminBatch(null);
+      }
+      
+      return next;
+    });
+    return result;
+  };
+
   const parsePath = () => {
     const path = window.location.pathname.replace(/\/+$/, '');
     if (path === '' || path === '/' || path === '/get-started') {
@@ -835,6 +856,7 @@ function App() {
             batches={adminBatches}
             onCreateBatch={addAdminBatch}
             onUpdateBatch={updateAdminBatch}
+            onDeleteBatch={deleteAdminBatch}
             onLogout={handleLogout}
             notifications={notifications}
             onMarkAsRead={handleMarkAsRead}
