@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { useState, useEffect, type ChangeEvent } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Clock,
   ChevronLeft,
@@ -10,16 +10,23 @@ import {
   X,
   Save,
   BookOpen,
-  Award
+  Award,
+  Edit,
+  Image as ImageIcon,
+  Check
 } from 'lucide-react';
 
 interface Question {
   id: string;
-  text: string;
-  options: string[];
-  correctAnswer: number;
+  question: string;
+  options?: string[];
+  optionImages?: (string | undefined)[];
+  questionImage?: string;
+  correctAnswer: number | number[] | string;
   subject: string;
   marks: number;
+  type: 'MCQ' | 'MSQ' | 'Numerical';
+  explanation?: string;
 }
 
 interface TestTakingProps {
@@ -29,6 +36,7 @@ interface TestTakingProps {
   questions: Question[];
   onSubmit: (answers: Record<string, number | null>, timeSpent: number) => void;
   onExit: () => void;
+  onSave?: (testId: string, questions: Question[]) => void;
   initialAnswers?: Record<string, number | null>;
   initialTimeSpent?: number;
   isPreview?: boolean;
@@ -38,18 +46,81 @@ export function TestTaking({
   testId,
   testTitle,
   duration,
-  questions,
+  questions: initialQuestions,
   onSubmit,
   onExit,
+  onSave,
   initialAnswers = {},
   initialTimeSpent = 0,
   isPreview = false
 }: TestTakingProps) {
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number | null>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Question>>({});
+
+  const question = questions[currentQuestion];
+  const questionCount = questions.length;
+  const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+
+  // Group questions by subject and section for navigation
+  const subjects = Array.from(new Set(questions.map(q => q.subject)));
+  const currentSubject = question?.subject;
+  const sections = Array.from(new Set(questions.filter(q => q.subject === currentSubject).map(q => (q as any).metadata?.section || 'Default'))).sort();
+  const currentSection = (question as any).metadata?.section || 'Default';
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditForm(questions[currentQuestion]);
+    }
+  }, [isEditing, currentQuestion, questions]);
+
+  const handleSaveEdit = () => {
+    if (editForm.id) {
+      setQuestions(prev => prev.map(q => q.id === editForm.id ? { ...q, ...editForm } as Question : q));
+      setHasChanges(true);
+      setIsEditing(false);
+    }
+  };
+
+  const handleExitRequest = () => {
+    if (isPreview && hasChanges) {
+      setShowExitConfirm(true);
+    } else {
+      onExit();
+    }
+  };
+
+  const handleConfirmExit = (save: boolean) => {
+    if (save && onSave) {
+      onSave(testId, questions);
+    }
+    onExit();
+  };
+
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option', index?: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (type === 'question') {
+          setEditForm({ ...editForm, questionImage: result });
+        } else if (type === 'option' && index !== undefined) {
+          const newOptionImages = [...(editForm.optionImages || [])];
+          newOptionImages[index] = result;
+          setEditForm({ ...editForm, optionImages: newOptionImages });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     if (isPreview) return;
@@ -109,18 +180,14 @@ export function TestTaking({
 
   const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null).length;
   const notAnsweredCount = questions.length - answeredCount;
-  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0);
-  const questionCount = questions.length;
-
-  const question = questions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">{testTitle}</h1>
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
                 <span className="flex items-center gap-1">
@@ -131,36 +198,102 @@ export function TestTaking({
                   <Award className="w-3 h-3 sm:w-4 sm:h-4" />
                   {totalMarks} Marks
                 </span>
+                {isPreview && (
+                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-bold uppercase tracking-wider border border-amber-200">
+                    Admin Preview Mode
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Timer */}
-            <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
-              isPreview ? 'bg-gray-50 border-gray-300' :
-              timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
-              timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
-              'bg-blue-50 border-blue-300'
-            }`}>
-              <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                isPreview ? 'text-gray-400' :
-                timeLeft <= 300 ? 'text-red-600' :
-                timeLeft <= 600 ? 'text-yellow-600' :
-                'text-blue-600'
-              }`} />
-              <div>
-                <p className="text-xs text-gray-600">{isPreview ? 'Status' : 'Time Left'}</p>
-                <p className={`text-lg sm:text-2xl font-bold ${
-                  isPreview ? 'text-gray-500' :
-                  timeLeft <= 300 ? 'text-red-600' :
-                  timeLeft <= 600 ? 'text-yellow-600' :
-                  'text-blue-600'
+            <div className="flex items-center gap-3">
+              {/* Timer - only for students */}
+              {!isPreview && (
+                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
+                  timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
+                  timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
+                  'bg-blue-50 border-blue-300'
                 }`}>
-                  {isPreview ? 'PREVIEW' : formatTime(timeLeft)}
-                </p>
-              </div>
+                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                    timeLeft <= 300 ? 'text-red-600' :
+                    timeLeft <= 600 ? 'text-yellow-600' :
+                    'text-blue-600'
+                  }`} />
+                  <div>
+                    <p className="text-xs text-gray-600">Time Left</p>
+                    <p className={`text-lg sm:text-2xl font-bold ${
+                      timeLeft <= 300 ? 'text-red-600' :
+                      timeLeft <= 600 ? 'text-yellow-600' :
+                      'text-blue-600'
+                    }`}>
+                      {formatTime(timeLeft)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isPreview && (
+                <button
+                  onClick={handleExitRequest}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                  Exit Preview
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Subject and Section Tabs (Preview Mode Only) */}
+        {isPreview && (
+          <div className="flex flex-col gap-4 mb-6">
+            {/* Subject Tabs */}
+            <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
+              {subjects.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    const firstIdx = questions.findIndex(q => q.subject === s);
+                    if (firstIdx > -1) setCurrentQuestion(firstIdx);
+                  }}
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                    currentSubject === s
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Section Tabs */}
+            {sections.length > 1 && (
+              <div className="flex gap-3">
+                {sections.map((sec) => (
+                  <button
+                    key={sec}
+                    onClick={() => {
+                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
+                      if (firstIdx > -1) setCurrentQuestion(firstIdx);
+                    }}
+                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${
+                      currentSection === sec
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                        : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
+                    }`}
+                  >
+                    {sec} 
+                    <span className="ml-2 text-xs opacity-60">
+                      ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
@@ -171,60 +304,247 @@ export function TestTaking({
               key={currentQuestion}
               className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8"
             >
-              {/* Question Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
-                      {question.subject}
-                    </span>
-                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                      {question.marks} marks
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-900 leading-relaxed">
-                    {question.text}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => toggleFlag(question.id)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    flaggedQuestions.has(question.id)
-                      ? 'bg-amber-100 text-amber-600'
-                      : 'bg-gray-100 text-gray-400 hover:text-amber-600'
-                  }`}
-                >
-                  <Flag className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Options */}
-              <div className="space-y-3">
-                {question.options.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => selectAnswer(question.id, index)}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                      answers[question.id] === index
-                        ? 'border-blue-500 bg-blue-50 shadow-md'
-                        : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        answers[question.id] === index
-                          ? 'border-blue-500 bg-blue-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {answers[question.id] === index && (
-                          <div className="w-2 h-2 bg-white rounded-full" />
+              {!isEditing ? (
+                <>
+                  {/* Question Header */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex-1">
+                      <div className="flex items-center flex-wrap gap-3 mb-4">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                          {question.subject}
+                        </span>
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                          {question.marks} marks
+                        </span>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
+                          {question.type}
+                        </span>
+                        {isPreview && (
+                          <button
+                            onClick={() => setIsEditing(true)}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold hover:bg-amber-200 transition-colors"
+                          >
+                            <Edit className="w-3.5 h-3.5" /> Edit
+                          </button>
                         )}
                       </div>
-                      <span className="text-gray-900 font-medium">{option}</span>
+                      <h2 className="text-xl font-semibold text-gray-900 leading-relaxed mb-4">
+                        {question.question}
+                      </h2>
+                      {question.questionImage && (
+                        <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block">
+                          <img src={question.questionImage} alt="Question" className="max-h-64 w-auto object-contain" />
+                        </div>
+                      )}
                     </div>
-                  </button>
-                ))}
-              </div>
+                    {!isPreview && (
+                      <button
+                        onClick={() => toggleFlag(question.id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          flaggedQuestions.has(question.id)
+                            ? 'bg-amber-100 text-amber-600'
+                            : 'bg-gray-100 text-gray-400 hover:text-amber-600'
+                        }`}
+                      >
+                        <Flag className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Options */}
+                  <div className="space-y-3">
+                    {question.type !== 'Numerical' ? (
+                      question.options?.map((option, index) => {
+                        const isCorrect = isPreview && (
+                          question.type === 'MCQ' ? question.correctAnswer === index :
+                          Array.isArray(question.correctAnswer) && (question.correctAnswer as number[]).includes(index)
+                        );
+                        
+                        return (
+                          <div key={index} className="space-y-2">
+                            <button
+                              onClick={() => !isPreview && selectAnswer(question.id, index)}
+                              disabled={isPreview}
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                                isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
+                                answers[question.id] === index
+                                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isCorrect ? 'border-green-500 bg-green-500' :
+                                  answers[question.id] === index
+                                    ? 'border-blue-500 bg-blue-500'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {(answers[question.id] === index || isCorrect) && (
+                                    <div className="w-2 h-2 bg-white rounded-full" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <span className="text-gray-900 font-medium">{option}</span>
+                                  {question.optionImages?.[index] && (
+                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block">
+                                      <img src={question.optionImages[index]} alt={`Option ${index}`} className="max-h-32 w-auto object-contain" />
+                                    </div>
+                                  )}
+                                </div>
+                                {isCorrect && (
+                                  <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">CORRECT</span>
+                                )}
+                              </div>
+                            </button>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="bg-amber-50 p-6 rounded-2xl border-2 border-dashed border-amber-200">
+                        <p className="text-sm font-bold text-amber-800 mb-2">Numerical Answer</p>
+                        {isPreview ? (
+                          <div className="flex items-center gap-3">
+                            <div className="px-6 py-3 bg-white rounded-xl border-2 border-green-500 font-bold text-green-700 text-xl">
+                              {question.correctAnswer}
+                            </div>
+                            <span className="text-xs font-bold text-green-600">CORRECT ANSWER</span>
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            value={answers[question.id] || ''}
+                            onChange={(e) => selectAnswer(question.id, e.target.value as any)}
+                            className="w-full max-w-xs px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                            placeholder="Enter numerical value"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Explanation Section */}
+                  {isPreview && (
+                    <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
+                      <div className="flex items-center gap-2 mb-3 text-blue-700">
+                        <AlertCircle className="w-5 h-5" />
+                        <h3 className="font-bold">Explanation</h3>
+                      </div>
+                      <p className="text-gray-700 leading-relaxed italic">
+                        {question.explanation || "No explanation provided for this question."}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Edit Form */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold text-gray-900">Edit Question</h3>
+                    <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                      <X className="w-5 h-5 text-gray-500" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block">
+                      <span className="block text-sm font-bold text-gray-700 mb-2">Question Text</span>
+                      <textarea
+                        value={editForm.question}
+                        onChange={(e) => setEditForm({ ...editForm, question: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition"
+                      />
+                    </label>
+
+                    <div className="flex items-center gap-4">
+                      <label className="relative cursor-pointer">
+                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'question')} className="absolute inset-0 opacity-0" />
+                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-sm">
+                          <ImageIcon className="w-4 h-4" /> {editForm.questionImage ? 'Change Image' : 'Add Image'}
+                        </div>
+                      </label>
+                      {editForm.questionImage && (
+                        <button onClick={() => setEditForm({ ...editForm, questionImage: undefined })} className="text-xs text-red-600 font-bold hover:underline">Remove Image</button>
+                      )}
+                    </div>
+
+                    {editForm.type !== 'Numerical' && (
+                      <div className="space-y-4 pt-4">
+                        <p className="text-sm font-bold text-gray-700">Options & Correct Answer</p>
+                        {editForm.options?.map((opt, idx) => (
+                          <div key={idx} className="flex gap-3">
+                            <div className="pt-3">
+                              <input 
+                                type={editForm.type === 'MCQ' ? 'radio' : 'checkbox'} 
+                                checked={editForm.type === 'MCQ' ? editForm.correctAnswer === idx : Array.isArray(editForm.correctAnswer) && editForm.correctAnswer.includes(idx)}
+                                onChange={() => {
+                                  if (editForm.type === 'MCQ') {
+                                    setEditForm({ ...editForm, correctAnswer: idx });
+                                  } else {
+                                    const current = Array.isArray(editForm.correctAnswer) ? [...editForm.correctAnswer] : [];
+                                    const next = current.includes(idx) ? current.filter(i => i !== idx) : [...current, idx];
+                                    setEditForm({ ...editForm, correctAnswer: next });
+                                  }
+                                }}
+                                className="w-5 h-5 text-blue-600"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <input
+                                value={opt}
+                                onChange={(e) => {
+                                  const next = [...(editForm.options || [])];
+                                  next[idx] = e.target.value;
+                                  setEditForm({ ...editForm, options: next });
+                                }}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
+                                placeholder={`Option ${idx + 1}`}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {editForm.type === 'Numerical' && (
+                      <label className="block pt-4">
+                        <span className="block text-sm font-bold text-gray-700 mb-2">Correct Numerical Answer</span>
+                        <input
+                          value={editForm.correctAnswer as string}
+                          onChange={(e) => setEditForm({ ...editForm, correctAnswer: e.target.value })}
+                          className="w-full max-w-xs px-4 py-2 border-2 border-gray-200 rounded-xl outline-none focus:border-blue-500"
+                        />
+                      </label>
+                    )}
+
+                    <label className="block pt-4">
+                      <span className="block text-sm font-bold text-gray-700 mb-2">Explanation</span>
+                      <textarea
+                        value={editForm.explanation}
+                        onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
+                        rows={3}
+                        placeholder="Explain why the answer is correct..."
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 outline-none transition"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={handleSaveEdit}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all"
+                    >
+                      <Check className="w-4 h-4" /> Save Changes
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Navigation */}
@@ -273,125 +593,177 @@ export function TestTaking({
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Question Palette</h3>
 
-              {/* Stats */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Answered</span>
-                  <span className="text-lg font-bold text-green-600">{answeredCount}</span>
+              {/* Stats - only for students */}
+              {!isPreview && (
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Answered</span>
+                    <span className="text-lg font-bold text-green-600">{answeredCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Not Answered</span>
+                    <span className="text-lg font-bold text-gray-600">{notAnsweredCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Flagged</span>
+                    <span className="text-lg font-bold text-amber-600">{flaggedQuestions.size}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Not Answered</span>
-                  <span className="text-lg font-bold text-gray-600">{notAnsweredCount}</span>
+              )}
+
+              {/* Question Grid - Filtered by Active Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <div className="flex flex-col">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Current Palette</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-blue-600 uppercase">{currentSubject}</span>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{currentSection}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Flagged</span>
-                  <span className="text-lg font-bold text-amber-600">{flaggedQuestions.size}</span>
+
+                <div className="grid grid-cols-5 gap-2">
+                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
+                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
+                    .map((q) => (
+                      <motion.button
+                        key={q.id}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setCurrentQuestion(q.globalIndex)}
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${
+                          currentQuestion === q.globalIndex
+                            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                            : getQuestionStatus(q.globalIndex) === 'answered'
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : flaggedQuestions.has(q.id)
+                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {q.globalIndex + 1}
+                        {flaggedQuestions.has(q.id) && (
+                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
+                        )}
+                      </motion.button>
+                    ))}
                 </div>
               </div>
 
-              {/* Question Grid */}
-              <div className="grid grid-cols-5 gap-2">
-                {questions.map((q, index) => (
-                  <motion.button
-                    key={index}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setCurrentQuestion(index)}
-                    className={`aspect-square rounded-lg font-semibold text-sm relative ${
-                      currentQuestion === index
-                        ? 'bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-2'
-                        : getQuestionStatus(index) === 'answered'
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {index + 1}
-                    {flaggedQuestions.has(q.id) && (
-                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" />
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-
-              {/* Legend */}
-              <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-100 rounded" />
-                  <span className="text-xs text-gray-600">Answered</span>
+              {/* Legend - only for students */}
+              {!isPreview && (
+                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-100 rounded" />
+                    <span className="text-xs text-gray-600">Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-100 rounded" />
+                    <span className="text-xs text-gray-600">Not Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
+                    <span className="text-xs text-gray-600">Current</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-gray-100 rounded" />
-                  <span className="text-xs text-gray-600">Not Answered</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-600 rounded" />
-                  <span className="text-xs text-gray-600">Current</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Submit Dialog */}
-      {showSubmitDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-4">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-amber-600" />
+      <AnimatePresence>
+        {/* Submit Dialog */}
+        {showSubmitDialog && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-10 h-10 text-blue-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Submit Test?</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Submit Test?</h3>
-            </div>
 
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-700">Total Questions:</span>
-                <span className="font-bold text-gray-900">{questions.length}</span>
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between p-3 bg-green-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Answered</span>
+                  <span className="font-bold text-green-600">{answeredCount}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-red-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Not Answered</span>
+                  <span className="font-bold text-red-600">{notAnsweredCount}</span>
+                </div>
               </div>
-              <div className="flex justify-between p-3 bg-green-50 rounded-lg">
-                <span className="text-gray-700">Answered:</span>
-                <span className="font-bold text-green-600">{answeredCount}</span>
-              </div>
-              <div className="flex justify-between p-3 bg-red-50 rounded-lg">
-                <span className="text-gray-700">Not Answered:</span>
-                <span className="font-bold text-red-600">{notAnsweredCount}</span>
-              </div>
-            </div>
 
-            {notAnsweredCount > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-amber-800">
-                  You have {notAnsweredCount} unanswered question{notAnsweredCount > 1 ? 's' : ''}. Are you sure you want to submit?
-                </p>
+              <div className="flex flex-col gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  Yes, Submit Now
+                </motion.button>
+                <button
+                  onClick={() => setShowSubmitDialog(false)}
+                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Go Back
+                </button>
               </div>
-            )}
+            </motion.div>
+          </div>
+        )}
 
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowSubmitDialog(false)}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleSubmit}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-              >
-                Submit
-              </motion.button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+        {/* Exit Preview Confirmation */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Save className="w-10 h-10 text-amber-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Save Changes?</h3>
+                <p className="text-gray-600 mt-2">You have made edits to this test. Would you like to keep these changes?</p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleConfirmExit(true)}
+                  className="w-full py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  Save & Exit
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleConfirmExit(false)}
+                  className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  Discard Changes
+                </motion.button>
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

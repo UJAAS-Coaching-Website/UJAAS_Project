@@ -16,9 +16,9 @@ export interface Question {
   options?: string[];
   optionImages?: (string | undefined)[];
   correctAnswer: number | number[] | string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
   marks?: number;
   subject?: string;
+  explanation?: string;
 }
 
 interface QuestionUploadFormProps {

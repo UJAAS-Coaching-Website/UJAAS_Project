@@ -67,6 +67,7 @@ interface AdminDashboardProps {
   publishedTests: import('../App').PublishedTest[];
   onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
   onPreviewTest: (testId: string) => void;
+  onUpdateTestQuestion: (testId: string, questionId: string, updatedData: Partial<any>) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
@@ -179,6 +180,7 @@ export function AdminDashboard({
   publishedTests,
   onPublishTest,
   onPreviewTest,
+  onUpdateTestQuestion,
   selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -428,6 +430,12 @@ export function AdminDashboard({
                 questions={selectedPreviewTest.questions}
                 onSubmit={() => onNavigate('test-series')}
                 onExit={() => onNavigate('test-series')}
+                onSave={(testId, updatedQuestions) => {
+                  // Update all questions in the test
+                  updatedQuestions.forEach(q => {
+                    onUpdateTestQuestion(testId, q.id, q);
+                  });
+                }}
                 isPreview={true}
               />
             </div>
@@ -1650,7 +1658,7 @@ function TestSeriesManagementTab({
               </div>
               <button 
                 onClick={() => onPreviewTest(test.id)}
-                className="w-full py-3 bg-gray-50 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition border border-gray-100 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
               >
                 <BookOpen className="w-4 h-4" /> Preview Test
               </button>

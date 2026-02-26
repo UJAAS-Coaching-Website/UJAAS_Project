@@ -259,6 +259,31 @@ function App() {
     }
   };
 
+  const updateTestQuestion = (testId: string, questionId: string, updatedData: Partial<any>) => {
+    setPublishedTests(prev => prev.map(test => {
+      if (test.id !== testId) return test;
+      return {
+        ...test,
+        questions: test.questions.map(q => {
+          if (q.id !== questionId) return q;
+          return { ...q, ...updatedData };
+        })
+      };
+    }));
+    
+    // Also update selected preview test if it matches
+    setSelectedPreviewTest(prev => {
+      if (!prev || prev.id !== testId) return prev;
+      return {
+        ...prev,
+        questions: prev.questions.map(q => {
+          if (q.id !== questionId) return q;
+          return { ...q, ...updatedData };
+        })
+      };
+    });
+  };
+
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
     const stored = localStorage.getItem('ujaasAdminBatches');
     if (!stored) return initialAdminBatches;
@@ -912,6 +937,7 @@ function App() {
             publishedTests={publishedTests}
             onPublishTest={handlePublishTest}
             onPreviewTest={handlePreviewTest}
+            onUpdateTestQuestion={updateTestQuestion}
             selectedPreviewTest={selectedPreviewTest}
           />
         </motion.div>
