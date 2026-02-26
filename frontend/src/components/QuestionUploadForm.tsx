@@ -3,7 +3,8 @@ import {
   Plus, 
   X,
   Image as ImageIcon,
-  Target
+  Target,
+  CheckCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -29,6 +30,8 @@ interface QuestionUploadFormProps {
   fixedType?: 'MCQ' | 'MSQ' | 'Numerical';
   defaultMarks?: number;
   fixedSubject?: string;
+  editingQuestion?: Question | null;
+  onCancelEdit?: () => void;
 }
 
 export function QuestionUploadForm({ 
@@ -39,7 +42,9 @@ export function QuestionUploadForm({
   subjects = [],
   fixedType,
   defaultMarks = 4,
-  fixedSubject
+  fixedSubject,
+  editingQuestion,
+  onCancelEdit
 }: QuestionUploadFormProps) {
   const [currentQuestion, setCurrentQuestion] = useState<Question>({
     id: Date.now().toString(),
@@ -53,15 +58,24 @@ export function QuestionUploadForm({
     subject: fixedSubject || subjects[0] || ''
   });
 
-  // Update effect if fixed props change
+  // Update effect if fixed props change or editingQuestion changes
   useEffect(() => {
-    setCurrentQuestion(prev => ({
-      ...prev,
-      type: fixedType || prev.type,
-      marks: defaultMarks,
-      subject: fixedSubject || prev.subject
-    }));
-  }, [fixedType, defaultMarks, fixedSubject]);
+    if (editingQuestion) {
+      setCurrentQuestion(editingQuestion);
+    } else {
+      setCurrentQuestion(prev => ({
+        ...prev,
+        type: fixedType || prev.type,
+        marks: defaultMarks,
+        subject: fixedSubject || prev.subject,
+        question: '',
+        options: (fixedType || prev.type) === 'Numerical' ? undefined : ['', '', '', ''],
+        optionImages: (fixedType || prev.type) === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
+        correctAnswer: (fixedType || prev.type) === 'MSQ' ? [] : (fixedType || prev.type) === 'Numerical' ? '' : 0,
+        questionImage: undefined
+      }));
+    }
+  }, [fixedType, defaultMarks, fixedSubject, editingQuestion]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option', index?: number) => {
     const file = e.target.files?.[0];
@@ -103,15 +117,19 @@ export function QuestionUploadForm({
     );
 
     if (isValid) {
-      onAddQuestion({ ...currentQuestion, id: Date.now().toString() });
-      setCurrentQuestion({
-        ...currentQuestion,
-        id: Date.now().toString(),
-        question: '',
-        options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
-        optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-        questionImage: undefined
-      });
+      onAddQuestion(currentQuestion);
+      if (editingQuestion) {
+        onCancelEdit?.();
+      } else {
+        setCurrentQuestion({
+          ...currentQuestion,
+          id: Date.now().toString(),
+          question: '',
+          options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
+          optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
+          questionImage: undefined
+        });
+      }
     }
   };
 
@@ -318,16 +336,25 @@ export function QuestionUploadForm({
           </div>
         )}
 
-        <div className="pt-4">
+        <div className="pt-4 flex items-center gap-3">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleAdd}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-amber-600 to-orange-600' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all`}
           >
-            <Plus className="w-5 h-5" />
-            {buttonLabel}
+            {editingQuestion ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+            {editingQuestion ? 'Update Question' : buttonLabel}
           </motion.button>
+          
+          {editingQuestion && (
+            <button
+              onClick={onCancelEdit}
+              className="px-6 py-3 text-gray-600 hover:bg-gray-100 rounded-xl font-semibold transition"
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
       </div>
     </div>

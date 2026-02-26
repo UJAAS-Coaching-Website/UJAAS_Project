@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   Trash2, 
@@ -39,7 +39,14 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
   });
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleEditClick = (q: Question) => {
+    setEditingQuestion(q);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const [activeSubject, setActiveSubject] = useState('Physics');
   const [activeSection, setActiveSection] = useState<'Section A' | 'Section B'>('Section A');
 
@@ -49,6 +56,10 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
       setActiveSubject(validSubjects[0]);
     }
   }, [testData.format]);
+
+  useEffect(() => {
+    setEditingQuestion(null);
+  }, [activeSubject, activeSection]);
 
   const formats = ['JEE MAIN', 'NEET', 'Custom'];
   
@@ -68,7 +79,17 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
         section: testData.format === 'Custom' ? undefined : activeSection
       }
     };
-    setQuestions([...questions, enrichedQuestion]);
+    
+    setQuestions(prev => {
+      const exists = prev.findIndex(q => q.id === question.id);
+      if (exists > -1) {
+        const next = [...prev];
+        next[exists] = enrichedQuestion;
+        return next;
+      }
+      return [...prev, enrichedQuestion];
+    });
+    setEditingQuestion(null);
   };
 
   const filteredQuestions = questions.filter(q => 
@@ -78,6 +99,76 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
 
   const handleRemoveQuestion = (id: string) => {
     setQuestions(questions.filter(q => q.id !== id));
+  };
+
+  const fillDemoQuestions = () => {
+    const demoQuestions: any[] = [];
+    const subjects = getSubjects();
+    const timestamp = Date.now();
+    
+    if (testData.format === 'JEE MAIN') {
+      subjects.forEach(subject => {
+        // 20 MCQ (Section A)
+        for (let i = 1; i <= 20; i++) {
+          demoQuestions.push({
+            id: `demo-${subject}-A-${i}-${timestamp}`,
+            type: 'MCQ',
+            question: `${subject} - Practice Question ${i} (Section A)`,
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctAnswer: 0,
+            difficulty: 'Medium',
+            marks: 4,
+            subject: subject,
+            metadata: { section: 'Section A' }
+          });
+        }
+        // 10 Numerical (Section B)
+        for (let i = 1; i <= 10; i++) {
+          demoQuestions.push({
+            id: `demo-${subject}-B-${i}-${timestamp}`,
+            type: 'Numerical',
+            question: `${subject} - Numerical Practice ${i} (Section B)`,
+            correctAnswer: '10',
+            difficulty: 'Medium',
+            marks: 4,
+            subject: subject,
+            metadata: { section: 'Section B' }
+          });
+        }
+      });
+    } else if (testData.format === 'NEET') {
+      subjects.forEach(subject => {
+        // NEET: 50 questions per subject area (usually 35 A + 15 B)
+        for (let i = 1; i <= 50; i++) {
+          demoQuestions.push({
+            id: `demo-${subject}-${i}-${timestamp}`,
+            type: 'MCQ',
+            question: `${subject} - NEET Practice Question ${i}`,
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctAnswer: 0,
+            difficulty: 'Medium',
+            marks: 4,
+            subject: subject,
+            metadata: { section: i <= 35 ? 'Section A' : 'Section B' }
+          });
+        }
+      });
+    } else {
+      // Custom - fill up to required count (default 5)
+      for (let i = 1; i <= 5; i++) {
+        demoQuestions.push({
+          id: `demo-custom-${i}-${timestamp}`,
+          type: 'MCQ',
+          question: `Custom Practice Question ${i}`,
+          options: ['Option A', 'Option B', 'Option C', 'Option D'],
+          correctAnswer: 0,
+          difficulty: 'Medium',
+          marks: 4,
+          subject: subjects[0]
+        });
+      }
+    }
+    setQuestions(demoQuestions);
   };
 
   const toggleBatch = (label: string) => {
@@ -335,23 +426,32 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
-                {currentSubjects.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => {
-                      setActiveSubject(s);
-                      setActiveSection('Section A');
-                    }}
-                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                      activeSubject === s
-                        ? 'bg-teal-600 text-white shadow-lg scale-105'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto flex-1 w-full">
+                  {currentSubjects.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setActiveSubject(s);
+                        setActiveSection('Section A');
+                      }}
+                      className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                        activeSubject === s
+                          ? 'bg-teal-600 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={fillDemoQuestions}
+                  className="px-5 py-2.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors border border-amber-200 whitespace-nowrap"
+                >
+                  Fill Demo Questions
+                </button>
               </div>
 
               {testData.format !== 'Custom' && (
@@ -389,20 +489,24 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
                 </div>
               )}
 
-              <QuestionUploadForm 
-                onAddQuestion={handleAddQuestion} 
-                buttonLabel={`Add to ${activeSubject} - ${activeSection}`}
-                showMarks={testData.format === 'Custom'}
-                showSubject={testData.format === 'Custom'}
-                subjects={currentSubjects}
-                fixedType={
-                  testData.format === 'JEE MAIN' 
-                    ? (activeSection === 'Section A' ? 'MCQ' : 'Numerical')
-                    : testData.format === 'NEET' ? 'MCQ' : undefined
-                }
-                defaultMarks={4}
-                fixedSubject={activeSubject}
-              />
+              <div ref={formRef} className="scroll-mt-8">
+                <QuestionUploadForm 
+                  onAddQuestion={handleAddQuestion} 
+                  buttonLabel={`Add to ${activeSubject} - ${activeSection}`}
+                  showMarks={testData.format === 'Custom'}
+                  showSubject={testData.format === 'Custom'}
+                  subjects={currentSubjects}
+                  fixedType={
+                    testData.format === 'JEE MAIN' 
+                      ? (activeSection === 'Section A' ? 'MCQ' : 'Numerical')
+                      : testData.format === 'NEET' ? 'MCQ' : undefined
+                  }
+                  defaultMarks={4}
+                  fixedSubject={activeSubject}
+                  editingQuestion={editingQuestion}
+                  onCancelEdit={() => setEditingQuestion(null)}
+                />
+              </div>
 
               {filteredQuestions.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
@@ -415,9 +519,17 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
                         key={q.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-4 p-4 bg-teal-50 rounded-xl border border-teal-100"
+                        onClick={() => handleEditClick(q)}
+                        className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer group ${
+                          editingQuestion?.id === q.id 
+                            ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' 
+                            : 'bg-teal-50 border-teal-100 hover:border-teal-300 hover:shadow-md'
+                        }`}
+                        title="Click to edit question"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-lg flex items-center justify-center font-semibold">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-semibold ${
+                          editingQuestion?.id === q.id ? 'bg-amber-600' : 'bg-teal-600'
+                        } text-white`}>
                           {index + 1}
                         </div>
                         <div className="flex-1">
@@ -429,10 +541,18 @@ export function CreateTestSeries({ onBack, batches }: CreateTestSeriesProps) {
                             <span className="px-2 py-1 bg-white rounded border border-teal-100 text-teal-700 font-medium">
                               Marks: {q.marks}
                             </span>
+                            {editingQuestion?.id === q.id && (
+                              <span className="px-2 py-1 bg-amber-600 text-white rounded font-bold animate-pulse">
+                                EDITING...
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveQuestion(q.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveQuestion(q.id);
+                          }}
                           className="text-red-600 hover:bg-red-100 p-2 rounded-lg transition"
                         >
                           <Trash2 className="w-5 h-5" />

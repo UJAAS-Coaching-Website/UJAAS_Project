@@ -72,6 +72,7 @@ function App() {
     'upload-notice',
     'upload-notes',
     'profile',
+    'preview-test',
   ] as const;
 
   type StudentTab = (typeof studentTabs)[number];
