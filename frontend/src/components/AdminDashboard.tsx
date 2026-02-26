@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { User } from '../App';
 import {
   LogOut,
@@ -18,7 +18,13 @@ import {
   Trophy,
   FileText,
   LayoutDashboard,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft,
+  Folder,
+  Image as ImageIcon,
+  Upload,
+  X,
+  Bell
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -28,8 +34,9 @@ import { Footer } from './Footer';
 import { CreateTestSeries } from './CreateTestSeries';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import demotimetable from '../assets/demotimetable.jpg';
 
 interface AdminDashboardProps {
   user: User;
@@ -50,7 +57,7 @@ interface AdminDashboardProps {
   onDeleteNotification: (id: string) => void;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student';
+type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student';
 type Batch = string;
 type AdminSection = 'batches' | 'students' | 'faculty' | 'test-series';
 type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
@@ -260,6 +267,27 @@ export function AdminDashboard({
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student }>({
     open: false,
   });
+  const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
+  const timeTableInputRef = useRef<HTMLInputElement>(null);
+
+  const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setTimeTableImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleTimeTableDelete = () => {
+    if (window.confirm('Are you sure you want to delete the timetable?')) {
+      setTimeTableImage(null);
+      setShowFullTimetable(false);
+    }
+  };
 
   const openAddStudent = (batch: Batch | null = null) => {
     setStudentModal({ open: true, initialData: undefined, defaultBatch: batch, title: 'Add Student' });
@@ -373,7 +401,7 @@ export function AdminDashboard({
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50">
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-50">
+      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <motion.button
@@ -527,10 +555,72 @@ export function AdminDashboard({
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-              {activeTab === 'content' && selectedBatch && <NotesManagementTab onNavigate={onNavigate} selectedBatch={selectedBatch} onChangeBatch={onClearBatch} />}
+              {activeTab === 'content' && selectedBatch && (
+                <NotesManagementTab 
+                  onNavigate={onNavigate} 
+                  selectedBatch={selectedBatch} 
+                  onChangeBatch={onClearBatch} 
+                  onViewTimetable={() => setShowFullTimetable(true)}
+                />
+              )}
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
               {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
-              {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
+              {activeTab === 'upload-notice' && (
+                <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white max-w-2xl mx-auto">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                      <Bell className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Upload Batch Notice</h2>
+                      <p className="text-gray-600">Post a text update with an accompanying image</p>
+                    </div>
+                  </div>
+                  
+                  <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onNavigate('content'); }}>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Notice</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="Type the notice message here..."
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Upload Image</label>
+                      <div className="p-8 bg-orange-50 border-2 border-dashed border-orange-200 rounded-2xl text-center group hover:bg-orange-100 transition-colors cursor-pointer relative">
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={() => {}} 
+                        />
+                        <ImageIcon className="w-10 h-10 text-orange-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                        <p className="text-sm text-gray-600 font-medium">Click or drag to upload notice image</p>
+                        <p className="text-xs text-gray-400 mt-1">Supports JPG, PNG, WEBP</p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button 
+                        type="button"
+                        onClick={() => onNavigate('content')}
+                        className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                      >
+                        Post Notice
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
               {activeTab === 'profile' && <AdminProfile user={user} onLogout={onLogout} />}
             </>
           )}
@@ -574,6 +664,105 @@ export function AdminDashboard({
         student={ratingModal.student}
         onClose={closeStudentRatings}
       />
+
+      {/* Timetable Modal - Placed at root level for proper overlay over navbar */}
+      <AnimatePresence>
+        {showFullTimetable && (
+          <motion.div
+            key="timetable-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+            onClick={() => setShowFullTimetable(false)}
+          >
+            <motion.div
+              key="timetable-modal-content"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Sticky Header */}
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                <button 
+                  onClick={() => setShowFullTimetable(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Image Container - Strictly contained */}
+              <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
+                {timeTableImage ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img 
+                      src={timeTableImage} 
+                      alt="Full Time Table" 
+                      className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-20 w-full">
+                    <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
+                    <button 
+                      onClick={() => timeTableInputRef.current?.click()}
+                      className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+                    >
+                      Upload Now
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="p-4 bg-white border-t border-gray-100 flex flex-wrap justify-between items-center gap-3 shrink-0 z-20">
+                <div className="flex gap-2">
+                  <input 
+                    type="file" 
+                    ref={timeTableInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleTimeTableUpload}
+                  />
+                  <button 
+                    onClick={() => timeTableInputRef.current?.click()}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition text-sm"
+                  >
+                    {timeTableImage ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {timeTableImage && (
+                    <button 
+                      onClick={handleTimeTableDelete}
+                      className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition text-sm"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {timeTableImage && (
+                    <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
+                      <Download className="w-4 h-4" />
+                      Download PDF
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setShowFullTimetable(false)}
+                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2041,63 +2230,271 @@ function NotesManagementTab({
   onNavigate,
   selectedBatch,
   onChangeBatch,
+  onViewTimetable,
 }: {
   onNavigate: (tab: Tab) => void;
   selectedBatch: Batch | null;
   onChangeBatch: () => void;
+  onViewTimetable: () => void;
 }) {
+  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
+
+  const MOCK_DATA = {
+    timeTable: { id: 'tt1', title: 'Batch Weekly Schedule', date: '2025-09-15', type: 'JPG', image: demotimetable },
+    subjects: [
+      { id: 's1', name: 'Physics', color: '#3b82f6' }, // blue-500
+      { id: 's2', name: 'Chemistry', color: '#10b981' }, // emerald-500
+      { id: 's3', name: 'Mathematics', color: '#f59e0b' }, // amber-500
+      { id: 's4', name: 'Biology', color: '#f43f5e' }, // rose-500
+    ],
+    chapters: {
+      'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
+      'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
+      'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
+      'Biology': ['Cell Division', 'Genetics', 'Evolution'],
+    } as Record<string, string[]>,
+    notes: [
+      { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
+      { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
+    ],
+    dpps: [
+      { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
+      { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
+    ]
+  };
+
+  const navigateToSubject = (subject: string) => {
+    setSelectedSubject(subject);
+    setCurrentView('subject');
+  };
+
+  const navigateToChapter = (chapter: string) => {
+    setSelectedChapter(chapter);
+    setCurrentView('chapter');
+    setActiveContentType('notes');
+  };
+
+  const goBack = () => {
+    if (currentView === 'chapter') {
+      setCurrentView('subject');
+      setSelectedChapter(null);
+    } else if (currentView === 'subject') {
+      setCurrentView('root');
+      setSelectedSubject(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header & Breadcrumbs */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
       >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Notes Management</h2>
-            <p className="text-gray-600">
-              {selectedBatch ? `Manage and upload study materials for ${selectedBatch}` : 'Manage and upload study materials across batches'}
-            </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            {currentView !== 'root' && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={goBack}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
+              </motion.button>
+            )}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span className={currentView === 'root' ? 'text-teal-600 font-semibold' : ''}>Root</span>
+                {selectedSubject && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
+                  </>
+                )}
+                {selectedChapter && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-3">
+            {currentView === 'root' && (
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onViewTimetable}
+                className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
+              >
+                <Calendar className="w-5 h-5" />
+                Time Table
+              </motion.button>
+            )}
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+              onClick={() => onNavigate('upload-notice')}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
             >
-              <Plus className="w-5 h-5" />
-              Upload Notes
+              <Bell className="w-5 h-5" />
+              Upload Notice
             </motion.button>
           </div>
         </div>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.3, type: "spring" }}
-          className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-4"
-        >
-          <BookOpen className="w-10 h-10 text-purple-600" />
-        </motion.div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Notes Management</h3>
-        <p className="text-gray-600 mb-6">Upload and organize study materials for your students</p>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl shadow-md hover:shadow-lg transition"
-        >
-          <Download className="w-5 h-5" />
-          Get Started
-        </motion.button>
-      </motion.div>
+      {currentView === 'root' && (
+        <>
+                    {/* Subject Folders */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
+                      {MOCK_DATA.subjects.map((sub, index) => (
+                        <motion.button
+                          key={sub.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          whileHover={{ y: -5, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => navigateToSubject(sub.name)}
+                          className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group"
+                        >
+                          <div 
+                            className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
+                            style={{ backgroundColor: sub.color }}
+                          >
+                            <Folder className="w-8 h-8 text-white" />
+                          </div>
+                          <div className="text-center">
+                            <h4 className="font-bold text-gray-900">{sub.name}</h4>
+                            <p className="text-xs text-gray-500 mt-1">{MOCK_DATA.chapters[sub.name]?.length || 0} Chapters</p>
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+          
+                {currentView === 'subject' && selectedSubject && MOCK_DATA.chapters[selectedSubject] && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {MOCK_DATA.chapters[selectedSubject].map((chapter, index) => (
+                      <motion.button
+                        key={chapter}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        whileHover={{ x: 10 }}
+                        onClick={() => navigateToChapter(chapter)}
+                        className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors">
+                            <Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" />
+                          </div>
+                          <span className="font-bold text-gray-900">{chapter}</span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+          
+                {currentView === 'chapter' && selectedChapter && (
+                  <div className="space-y-6">
+                    {/* Internal Navigation */}
+                    <div className="flex items-center gap-4 border-b border-gray-200">
+                      <button
+                        onClick={() => setActiveContentType('notes')}
+                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
+                          activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Study Notes
+                        {activeContentType === 'notes' && (
+                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setActiveContentType('dpps')}
+                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
+                          activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Daily Practice Problems (DPPs)
+                        {activeContentType === 'dpps' && (
+                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                        )}
+                      </button>
+                    </div>
+          
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {activeContentType === 'notes' ? (
+                        MOCK_DATA.notes
+                          .filter(n => n.chapter === selectedChapter)
+                          .map((note, index) => (
+                          <motion.div
+                            key={note.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
+                                <FileText className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">{note.size} • {note.date}</span>
+                                  <div className="flex gap-1">
+                                    <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        MOCK_DATA.dpps
+                          .filter(d => d.chapter === selectedChapter)
+                          .map((dpp, index) => (
+                          <motion.div
+                            key={dpp.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
+                                <ClipboardList className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-gray-500">{dpp.questions} Questions • {dpp.date}</span>
+                                  <div className="flex gap-1">
+                                    <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
     </div>
   );
 }

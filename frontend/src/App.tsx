@@ -30,7 +30,7 @@ function App() {
     'rankings',
     'create-test',
     'create-dpp',
-    'upload-notes',
+    'upload-notice',
     'profile',
   ] as const;
 
