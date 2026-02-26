@@ -630,7 +630,7 @@ export function AdminDashboard({
                 />
               )}
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
-              {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
+              {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('content')} />}
               {activeTab === 'upload-notice' && (
                 <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white max-w-2xl mx-auto">
                   <div className="flex items-center gap-4 mb-8">

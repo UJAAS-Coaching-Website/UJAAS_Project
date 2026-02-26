@@ -592,7 +592,7 @@ export function TeacherDashboard({
                 />
               )}
               {activeTab === 'create-test' && <CreateTestSeries onBack={() => onNavigate('test-series')} />}
-              {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('analytics')} />}
+              {activeTab === 'create-dpp' && <CreateDPP onBack={() => onNavigate('content')} />}
               {activeTab === 'upload-notes' && <UploadNotes onBack={() => onNavigate('content')} />}
               {activeTab === 'profile' && <TeacherProfile user={user} onLogout={onLogout} />}
             </>
@@ -1758,26 +1758,15 @@ function NotesManagementTab({
           </div>
           <div className="flex items-center gap-3">
             {currentView === 'root' && (
-              <>
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={onViewTimetable}
-                  className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
-                >
-                  <Calendar className="w-5 h-5" />
-                  Time Table
-                </motion.button>
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsAddSubjectModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Subject
-                </motion.button>
-              </>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onViewTimetable}
+                className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
+              >
+                <Calendar className="w-5 h-5" />
+                Time Table
+              </motion.button>
             )}
             {currentView === 'subject' && (
               <motion.button 
@@ -1791,74 +1780,30 @@ function NotesManagementTab({
               </motion.button>
             )}
             {currentView === 'chapter' && (
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('upload-notes')}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-              >
-                <Upload className="w-5 h-5" />
-                Upload Content
-              </motion.button>
+              <div className="flex items-center gap-3">
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onNavigate('upload-notes')}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Content
+                </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onNavigate('create-dpp')}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
+                >
+                  <Plus className="w-5 h-5" />
+                  Upload DPP
+                </motion.button>
+              </div>
             )}
           </div>
         </div>
       </motion.div>
-
-      {/* Add Subject Modal */}
-      <AnimatePresence>
-        {isAddSubjectModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddSubjectModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
-                <h3 className="text-xl font-bold">Add New Subject</h3>
-                <p className="text-teal-50 text-sm">Create a new subject folder</p>
-              </div>
-              <form onSubmit={handleAddSubject} className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    placeholder="e.g., Organic Chemistry"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddSubjectModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Subject
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Add Chapter Modal */}
       <AnimatePresence>

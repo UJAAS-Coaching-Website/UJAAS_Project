@@ -117,10 +117,10 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
         >
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition mb-4"
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition mb-4 font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Dashboard
+            Back
           </button>
           
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
