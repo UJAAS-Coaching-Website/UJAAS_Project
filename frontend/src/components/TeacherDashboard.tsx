@@ -439,7 +439,8 @@ export function TeacherDashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              style={{ zIndex: 2000 }}
               onClick={() => setShowFullTimetable(false)}
             >
               <motion.div
@@ -697,7 +698,7 @@ function TestSeriesManagementTab({ onNavigate, selectedBatch }: { onNavigate: (t
 function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, title, onSubmit }: any) { 
   if (!open) return null; 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 2000 }}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">{title}</h2>
@@ -718,7 +719,7 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
 function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) { 
   if (!open) return null; 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 2000 }}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
@@ -734,7 +735,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
 function StudentRatingsModal({ open, student, onClose }: any) { 
   if (!open || !student) return null; 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 2000 }}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white text-center">
         <div className="w-20 h-20 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4"><Star className="w-10 h-10 text-cyan-600" /></div>

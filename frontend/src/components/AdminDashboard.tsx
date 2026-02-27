@@ -422,7 +422,7 @@ export function AdminDashboard({
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} onPublish={onPublishTest} />
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
-            <div className="fixed inset-0 z-[10002] bg-white overflow-y-auto">
+            <div className="fixed inset-0 bg-white overflow-y-auto" style={{ zIndex: 10002 }}>
               <TestTaking 
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
@@ -589,7 +589,8 @@ export function AdminDashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+              style={{ zIndex: 10001 }}
               onClick={() => setShowFullTimetable(false)}
             >
               <motion.div
@@ -1320,7 +1321,7 @@ function NotesManagementTab({
       {/* Add Subject Modal */}
       <AnimatePresence>
         {isAddSubjectModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 1000 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1375,7 +1376,7 @@ function NotesManagementTab({
       {/* Add Chapter Modal */}
       <AnimatePresence>
         {isAddChapterModalOpen && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 1000 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1731,7 +1732,7 @@ function AddStudentModal({
   const requiredMark = <span className="text-red-500">*</span>;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8" style={{ zIndex: 10001 }}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -1912,7 +1913,7 @@ function AddFacultyModal({
   const requiredMark = <span className="text-red-500">*</span>;
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8" style={{ zIndex: 10001 }}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -2106,7 +2107,7 @@ function BatchFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8" style={{ zIndex: 10001 }}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -2265,7 +2266,7 @@ function StudentRatingsModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center px-4 py-8">
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8" style={{ zIndex: 10001 }}>
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
