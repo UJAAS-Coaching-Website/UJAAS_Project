@@ -735,7 +735,7 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           </button>
           <button 
             type="submit"
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+            className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
           >
             Post Notice
           </button>
@@ -1210,6 +1210,40 @@ function NotesManagementTab({
     }
   };
 
+  const handleDeleteSubject = (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete the subject "${name}"? This will also remove its chapters.`)) {
+      setSubjects(subjects.filter(s => s.id !== id));
+      const nextChapters = { ...chapters };
+      delete nextChapters[name];
+      setChapters(nextChapters);
+    }
+  };
+
+  const handleDeleteChapter = (chapterName: string) => {
+    if (!selectedSubject) return;
+    if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
+      setChapters({
+        ...chapters,
+        [selectedSubject]: chapters[selectedSubject].filter(c => c !== chapterName)
+      });
+      // Also cleanup notes and dpps for this chapter
+      setNotes(notes.filter(n => n.chapter !== chapterName));
+      setDpps(dpps.filter(d => d.chapter !== chapterName));
+    }
+  };
+
+  const handleDeleteNote = (id: string) => {
+    if (confirm('Are you sure you want to delete this note?')) {
+      setNotes(notes.filter(n => n.id !== id));
+    }
+  };
+
+  const handleDeleteDPP = (id: string) => {
+    if (confirm('Are you sure you want to delete this DPP?')) {
+      setDpps(dpps.filter(d => d.id !== id));
+    }
+  };
+
   const navigateToSubject = (subject: string) => {
     setSelectedSubject(subject);
     setCurrentView('subject');
@@ -1432,7 +1466,7 @@ function NotesManagementTab({
                     {/* Subject Folders */}
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
                       {subjects.map((sub, index) => (
-                        <motion.button
+                        <motion.div
                           key={sub.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -1440,8 +1474,18 @@ function NotesManagementTab({
                           whileHover={{ y: -5, scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => navigateToSubject(sub.name)}
-                          className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group"
+                          className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
                         >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteSubject(sub.id, sub.name);
+                            }}
+                            style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}
+                            className="p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 shadow-sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                           <div 
                             className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
                             style={{ backgroundColor: sub.color }}
@@ -1452,7 +1496,7 @@ function NotesManagementTab({
                             <h4 className="font-bold text-gray-900">{sub.name}</h4>
                             <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
                           </div>
-                        </motion.button>
+                        </motion.div>
                       ))}
                     </div>
                   </>
@@ -1476,7 +1520,18 @@ function NotesManagementTab({
                           </div>
                           <span className="font-bold text-gray-900">{chapter}</span>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChapter(chapter);
+                            }}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
+                        </div>
                       </motion.button>
                     ))}
                   </div>
@@ -1532,7 +1587,12 @@ function NotesManagementTab({
                                   <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
                                   <div className="flex gap-1">
                                     <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                    <button 
+                                      onClick={() => handleDeleteNote(note.id)}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -1560,7 +1620,12 @@ function NotesManagementTab({
                                   <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
                                   <div className="flex gap-1">
                                     <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                    <button 
+                                      onClick={() => handleDeleteDPP(dpp.id)}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </div>
                                 </div>
                               </div>
