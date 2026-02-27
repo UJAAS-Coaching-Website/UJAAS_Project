@@ -27,7 +27,10 @@ import {
   Image as ImageIcon,
   Upload,
   X,
-  Bell
+  Bell,
+  Eye,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -219,6 +222,11 @@ export function AdminDashboard({
     batch: null
   });
 
+  const [queryModal, setQueryModal] = useState<{ open: boolean; query: import('../App').LandingQuery | null }>({
+    open: false,
+    query: null
+  });
+
   useEffect(() => {
     // Simulated data fetch
     setStudents([
@@ -380,6 +388,23 @@ export function AdminDashboard({
   const openAddBatch = () => setBatchModal({ open: true, mode: 'create' });
   const openEditBatch = (label: string) => setBatchModal({ open: true, mode: 'edit', batchLabel: label });
   const closeBatchModal = () => setBatchModal({ ...batchModal, open: false });
+
+  const openQueryDetails = (query: import('../App').LandingQuery) => setQueryModal({ open: true, query });
+  const closeQueryDetails = () => setQueryModal({ open: false, query: null });
+
+  const handleDeleteQuery = (id: string) => {
+    if (confirm('Are you sure you want to delete this query?')) {
+      onUpdateQueries(queries.filter(q => q.id !== id));
+      if (queryModal.query?.id === id) closeQueryDetails();
+    }
+  };
+
+  const handleQueryStatusChange = (id: string, status: 'new' | 'contacted' | 'completed') => {
+    onUpdateQueries(queries.map(q => q.id === id ? { ...q, status } : q));
+    if (queryModal.query?.id === id) {
+      setQueryModal(prev => ({ ...prev, query: prev.query ? { ...prev.query, status } : null }));
+    }
+  };
 
   const handleSaveStudent = (data: StudentFormState) => {
     if (data.id) {
@@ -671,7 +696,12 @@ export function AdminDashboard({
                 />
               )}
               {adminSection === 'queries' && (
-                <QueriesManagementTab queries={queries} onUpdate={onUpdateQueries} />
+                <QueriesManagementTab 
+                  queries={queries} 
+                  onViewQuery={openQueryDetails}
+                  onDeleteQuery={handleDeleteQuery}
+                  onStatusChange={handleQueryStatusChange}
+                />
               )}
             </>
           ) : (
@@ -780,6 +810,104 @@ export function AdminDashboard({
               onClose={closeStudentRatings}
               onSaveProfile={handleSaveStudentProfile}
             />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {queryModal.open && queryModal.query && (
+            <div className="fixed inset-0 z-layer-10001 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                onClick={closeQueryDetails}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+              >
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
+                  <div>
+                    <h3 className="text-xl font-bold">Query Details</h3>
+                    <p className="text-teal-50 text-sm opacity-90">{new Date(queryModal.query.date).toLocaleString()}</p>
+                  </div>
+                  <button 
+                    onClick={closeQueryDetails} 
+                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</p>
+                      <p className="text-gray-900 font-semibold flex items-center gap-2">
+                        <Users className="w-4 h-4 text-teal-600" /> {queryModal.query.name}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Interested Course</p>
+                      <p className="text-gray-900 font-semibold flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-blue-600" /> {queryModal.query.course}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
+                      <p className="text-gray-900 font-semibold flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-purple-600" /> {queryModal.query.email}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>
+                      <p className="text-gray-900 font-semibold flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-emerald-600" /> {queryModal.query.phone}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Message</p>
+                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 italic text-gray-700 leading-relaxed">
+                      {queryModal.query.message || 'No message provided.'}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Update Status</p>
+                      <div className="flex gap-2">
+                        {(['new', 'contacted', 'completed'] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => handleQueryStatusChange(queryModal.query!.id, s)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
+                              queryModal.query!.status === s
+                                ? 'bg-teal-600 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteQuery(queryModal.query!.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete Query
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
@@ -1259,13 +1387,17 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
   );
 }
 
-function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App').LandingQuery[]; onUpdate: (queries: import('../App').LandingQuery[]) => void }) {
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this query?')) {
-      onUpdate(queries.filter(q => q.id !== id));
-    }
-  };
-  const handleStatusChange = (id: string, status: 'new' | 'contacted' | 'completed') => onUpdate(queries.map(q => q.id === id ? { ...q, status } : q));
+function QueriesManagementTab({ 
+  queries, 
+  onViewQuery, 
+  onDeleteQuery, 
+  onStatusChange 
+}: { 
+  queries: import('../App').LandingQuery[]; 
+  onViewQuery: (q: import('../App').LandingQuery) => void;
+  onDeleteQuery: (id: string) => void;
+  onStatusChange: (id: string, status: 'new' | 'contacted' | 'completed') => void;
+}) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex items-center gap-4 mb-8">
@@ -1274,20 +1406,65 @@ function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App')
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Date</th><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Course</th><th className="pb-4 font-bold text-gray-700">Message</th><th className="pb-4 font-bold text-gray-700">Status</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+          <thead>
+            <tr className="text-left border-b border-gray-100">
+              <th className="pb-4 px-4 font-bold text-gray-700">Date</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Course</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Message</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Status</th>
+              <th className="pb-4 px-4 font-bold text-gray-700 text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-gray-50">
             {queries.map((q) => (
-              <tr key={q.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-4 text-sm text-gray-500">{new Date(q.date).toLocaleDateString()}</td>
-                <td className="py-4"><div className="font-bold text-gray-900">{q.name}</div><div className="text-xs text-gray-500">{q.phone}</div></td>
-                <td className="py-4"><span className="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold uppercase">{q.course}</span></td>
-                <td className="py-4 max-w-xs"><p className="text-sm text-gray-700 break-words">{q.message || '—'}</p></td>
-                <td className="py-4">
-                  <select value={q.status} onChange={(e) => handleStatusChange(q.id, e.target.value as any)} className={`text-xs font-bold rounded-lg px-2 py-1 ${q.status === 'new' ? 'bg-orange-100 text-orange-700' : q.status === 'contacted' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                    <option value="new">New</option><option value="contacted">Contacted</option><option value="completed">Completed</option>
-                  </select>
+              <tr 
+                key={q.id} 
+                onClick={() => onViewQuery(q)}
+                className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
+              >
+                <td className="py-4 px-4 text-sm text-gray-500 whitespace-nowrap">{new Date(q.date).toLocaleDateString()}</td>
+                <td className="py-4 px-4">
+                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors whitespace-nowrap">{q.name}</div>
+                  <div className="text-xs text-gray-500">{q.phone}</div>
                 </td>
-                <td className="py-4"><button onClick={() => handleDelete(q.id)} className="p-2 text-red-500"><Trash2 className="w-5 h-5" /></button></td>
+                <td className="py-4 px-4">
+                  <span className="px-3 py-1 bg-teal-100 text-teal-700 rounded-full text-xs font-bold uppercase whitespace-nowrap">
+                    {q.course}
+                  </span>
+                </td>
+                <td className="py-4 px-4 max-w-xs">
+                  <p className="text-sm text-gray-700 break-words line-clamp-2" title={q.message}>
+                    {q.message || '—'}
+                  </p>
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-md ${
+                    q.status === 'new' ? 'bg-orange-100 text-orange-700' : 
+                    q.status === 'contacted' ? 'bg-blue-100 text-blue-700' : 
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    {q.status}
+                  </span>
+                </td>
+                <td className="py-4 px-4 text-right">
+                  <div className="flex justify-end gap-1">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onViewQuery(q); }} 
+                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onDeleteQuery(q.id); }} 
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      title="Delete Query"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1327,18 +1504,38 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
         <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Roll No</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="text-left border-b border-gray-100">
+              <th className="pb-4 px-4 font-bold text-gray-700">Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Roll No</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Performance</th>
+              <th className="pb-4 px-4 font-bold text-gray-700 text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-gray-50">
             {students.filter(s => s.batch === selectedBatch).map((s) => (
-              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
-                <td className="py-4">
-                  <div className="font-bold text-gray-900">{s.name}</div>
+              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                <td className="py-4 px-4">
+                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
                   <div className="text-xs text-gray-500">{s.email}</div>
                 </td>
-                <td className="py-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
-                <td className="py-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
+                <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
+                <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
+                <td className="py-4 px-4 flex gap-1 justify-end">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} 
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1920,17 +2117,41 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Batch</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+          <thead>
+            <tr className="text-left border-b border-gray-100">
+              <th className="pb-4 px-4 font-bold text-gray-700">Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Performance</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Batch</th>
+              <th className="pb-4 px-4 font-bold text-gray-700 text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map(s => (
-              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
-                <td className="py-4">
-                  <div className="font-bold text-gray-900">{s.name}</div>
+              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                <td className="py-4 px-4">
+                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
                   <div className="text-xs text-gray-500">{s.email}</div>
                 </td>
-                <td className="py-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4"><span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{s.batch}</span></td>
-                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
+                <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
+                <td className="py-4 px-4">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold whitespace-nowrap">
+                    {s.batch}
+                  </span>
+                </td>
+                <td className="py-4 px-4 flex gap-1 justify-end">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} 
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
