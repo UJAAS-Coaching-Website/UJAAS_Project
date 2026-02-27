@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -105,6 +105,23 @@ function App() {
   type AdminLandingSection = (typeof adminLandingSections)[number];
 
   const [user, setUser] = useState<User | null>(null);
+  const hasShownStorageWarning = useRef(false);
+
+  const safeSetLocalStorage = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.error(`Failed to persist ${key} in localStorage`, error);
+      if (
+        key === 'ujaasLandingData' &&
+        !hasShownStorageWarning.current &&
+        typeof window !== 'undefined'
+      ) {
+        hasShownStorageWarning.current = true;
+        window.alert('Storage is full. New faculty/achiever images will work now but may not be saved after refresh. Use smaller images.');
+      }
+    }
+  };
 
   const [queries, setQueries] = useState<LandingQuery[]>(() => {
     const stored = localStorage.getItem('ujaasQueries');
@@ -112,7 +129,7 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ujaasQueries', JSON.stringify(queries));
+    safeSetLocalStorage('ujaasQueries', JSON.stringify(queries));
   }, [queries]);
 
   const handleAddQuery = (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
@@ -228,7 +245,7 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ujaasLandingData', JSON.stringify(landingData));
+    safeSetLocalStorage('ujaasLandingData', JSON.stringify(landingData));
   }, [landingData]);
 
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
@@ -237,7 +254,7 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('ujaasPublishedTests', JSON.stringify(publishedTests));
+    safeSetLocalStorage('ujaasPublishedTests', JSON.stringify(publishedTests));
   }, [publishedTests]);
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
@@ -681,14 +698,14 @@ function App() {
         },
       ];
       setNotifications(defaultNotifications);
-      localStorage.setItem('ujaasNotifications', JSON.stringify(defaultNotifications));
+      safeSetLocalStorage('ujaasNotifications', JSON.stringify(defaultNotifications));
     }
 
     initializeSession();
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('ujaasAdminBatches', JSON.stringify(adminBatches));
+    safeSetLocalStorage('ujaasAdminBatches', JSON.stringify(adminBatches));
   }, [adminBatches]);
 
   useEffect(() => {
@@ -707,7 +724,7 @@ function App() {
   // Save notifications to localStorage whenever they change
   useEffect(() => {
     if (notifications.length > 0) {
-      localStorage.setItem('ujaasNotifications', JSON.stringify(notifications));
+      safeSetLocalStorage('ujaasNotifications', JSON.stringify(notifications));
     }
   }, [notifications]);
 

@@ -137,7 +137,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             <p className="text-gray-600 text-lg">Learn from the Best in the Field</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {faculty.map((member, idx) => (
               <div
                 key={idx}
@@ -213,10 +213,12 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                       <div className="p-5">
                         <h3 className="text-xl font-bold text-gray-900 mb-1">{achiever.name}</h3>
                         <p className="text-teal-600 font-semibold mb-2">{achiever.achievement}</p>
-                        <div className="inline-flex items-center gap-2 text-base font-bold text-cyan-600">
-                          <Calendar className="w-5 h-5" />
-                          Year: {achiever.year}
-                        </div>
+                        {achiever.year?.trim() ? (
+                          <div className="inline-flex items-center gap-2 text-base font-bold text-cyan-600">
+                            <Calendar className="w-5 h-5" />
+                            Year: {achiever.year}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   ))}

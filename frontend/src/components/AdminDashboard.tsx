@@ -1069,6 +1069,21 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const [isAddingFaculty, setIsAddingFaculty] = useState(false);
   const [editingFacultyIndex, setEditingFacultyIndex] = useState<number | null>(null);
   const [isAddingAchiever, setIsAddingAchiever] = useState(false);
+  const maxImageUploadSizeBytes = 600 * 1024;
+
+  const readImageAsDataUrl = (file: File, onReady: (url: string) => void, fallbackUrl: string) => {
+    if (file && file.size > 0) {
+      if (file.size > maxImageUploadSizeBytes) {
+        window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+        return;
+      }
+      const r = new FileReader();
+      r.onloadend = () => onReady(r.result as string);
+      r.readAsDataURL(file);
+      return;
+    }
+    onReady(fallbackUrl);
+  };
 
   const handleAddCourse = (e: FormEvent) => {
     e.preventDefault();
@@ -1099,11 +1114,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       setIsAddingFaculty(false);
     };
-    if (file && file.size > 0) {
-      const r = new FileReader();
-      r.onloadend = () => save(r.result as string);
-      r.readAsDataURL(file);
-    } else save('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
   };
 
   const handleSaveEditedFaculty = (e: FormEvent) => {
@@ -1124,11 +1135,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       onUpdate({ ...data, faculty: next });
       setEditingFacultyIndex(null);
     };
-    if (file && file.size > 0) {
-      const r = new FileReader();
-      r.onloadend = () => save(r.result as string);
-      r.readAsDataURL(file);
-    } else save(existing);
+    readImageAsDataUrl(file, save, existing);
   };
 
   const handleAddAchiever = (e: FormEvent) => {
@@ -1147,11 +1154,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       setIsAddingAchiever(false);
     };
-    if (file && file.size > 0) {
-      const r = new FileReader();
-      r.onloadend = () => save(r.result as string);
-      r.readAsDataURL(file);
-    } else save('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
   };
 
   if (activeSubSection === 'courses') {
@@ -1264,7 +1267,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           <form onSubmit={handleAddAchiever} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="year" required placeholder="Year" className="px-4 py-2 rounded-lg border border-gray-200" />
+            <input name="year" placeholder="Year (optional)" className="px-4 py-2 rounded-lg border border-gray-200" />
             <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" />
             <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
           </form>
@@ -1284,7 +1287,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               </button>
               <div className="flex items-center gap-4">
                 <img src={a.image} className="w-16 h-16 rounded-xl object-cover border-2 border-cyan-100" />
-                <div><h3 className="font-bold text-gray-900">{a.name}</h3><p className="text-sm text-cyan-600">{a.achievement}</p><p className="text-xs text-gray-500">Year: {a.year}</p></div>
+                <div>
+                  <h3 className="font-bold text-gray-900">{a.name}</h3>
+                  <p className="text-sm text-cyan-600">{a.achievement}</p>
+                  {a.year?.trim() ? <p className="text-xs text-gray-500">Year: {a.year}</p> : null}
+                </div>
               </div>
             </div>
           ))}
