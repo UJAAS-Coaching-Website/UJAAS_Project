@@ -57,7 +57,7 @@ interface AdminDashboardProps {
   onClearBatch: () => void;
   batches: BatchInfo[];
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
   onLogout: () => void;
   notifications: Notification[];
@@ -72,6 +72,7 @@ interface AdminDashboardProps {
   onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
   onPreviewTest: (testId: string) => void;
   onUpdatePublishedTest: (testId: string, updates: Partial<import('../App').PublishedTest>) => void;
+  onDeletePublishedTest: (testId: string) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
@@ -108,6 +109,7 @@ interface Teacher {
   email: string;
   subject: string;
   phone?: string;
+  rating?: number;
 }
 
 type StudentFormState = {
@@ -190,6 +192,7 @@ export function AdminDashboard({
   onPublishTest,
   onPreviewTest,
   onUpdatePublishedTest,
+  onDeletePublishedTest,
   selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -350,12 +353,12 @@ export function AdminDashboard({
     ]);
 
     setFaculty([
-      { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics' },
-      { id: 't2', name: 'Prof. S. Gupta', email: 's.gupta@example.com', subject: 'Chemistry' },
-      { id: 't3', name: 'Dr. R.K. Yadav', email: 'rk.yadav@example.com', subject: 'Mathematics' },
-      { id: 't4', name: 'Ms. Tanya Bose', email: 'tanya.bose@example.com', subject: 'Biology' },
-      { id: 't5', name: 'Mr. Arjun Malhotra', email: 'arjun.m@example.com', subject: 'Mathematics' },
-      { id: 't6', name: 'Dr. Leena Rao', email: 'leena.rao@example.com', subject: 'Chemistry' },
+      { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics', rating: 4.8 },
+      { id: 't2', name: 'Prof. S. Gupta', email: 's.gupta@example.com', subject: 'Chemistry', rating: 4.5 },
+      { id: 't3', name: 'Dr. R.K. Yadav', email: 'rk.yadav@example.com', subject: 'Mathematics', rating: 4.9 },
+      { id: 't4', name: 'Ms. Tanya Bose', email: 'tanya.bose@example.com', subject: 'Biology', rating: 4.2 },
+      { id: 't5', name: 'Mr. Arjun Malhotra', email: 'arjun.m@example.com', subject: 'Mathematics', rating: 4.6 },
+      { id: 't6', name: 'Dr. Leena Rao', email: 'leena.rao@example.com', subject: 'Chemistry', rating: 4.7 },
     ]);
   }, []);
 
@@ -691,6 +694,7 @@ export function AdminDashboard({
                   onChangeBatch={() => {}} 
                   publishedTests={publishedTests}
                   onPreviewTest={onPreviewTest}
+                  onDeletePublishedTest={onDeletePublishedTest}
                 />
               )}
               {adminSection === 'queries' && (
@@ -2240,7 +2244,14 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
           <div key={t.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group">
             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEditFaculty(t)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button><button onClick={() => onDeleteFaculty(t.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button></div>
             <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4"><GraduationCap className="w-6 h-6 text-teal-600" /></div>
-            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3><p className="text-sm font-semibold text-teal-600 uppercase mb-4">{t.subject}</p><div className="text-xs text-gray-500">{t.email}</div>
+            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
+            <p className="text-sm font-semibold text-teal-600 uppercase mb-2">{t.subject}</p>
+            {t.rating && (
+              <div className="mb-4">
+                {renderPerformanceStars(t.rating)}
+              </div>
+            )}
+            <div className="text-xs text-gray-500">{t.email}</div>
           </div>
         ))}
       </div>
@@ -2252,14 +2263,22 @@ function TestSeriesManagementTab({
   onNavigate, 
   selectedBatch, 
   publishedTests, 
-  onPreviewTest 
+  onPreviewTest,
+  onDeletePublishedTest
 }: { 
   onNavigate: (t: Tab) => void; 
   selectedBatch: Batch | null; 
   onChangeBatch: () => void;
   publishedTests: import('../App').PublishedTest[];
   onPreviewTest: (testId: string) => void;
+  onDeletePublishedTest: (testId: string) => void;
 }) {
+  const handleDelete = (testId: string, testTitle: string) => {
+    if (window.confirm(`Are you sure you want to delete the test series "${testTitle}"? This action cannot be undone.`)) {
+      onDeletePublishedTest(testId);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex justify-between items-center">
@@ -2270,13 +2289,22 @@ function TestSeriesManagementTab({
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {publishedTests.map((test) => (
-            <div key={test.id} className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col">
+            <div key={test.id} className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                  test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' : 
-                  test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                }`}>{test.format}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' : 
+                    test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  }`}>{test.format}</span>
+                  <button 
+                    onClick={() => handleDelete(test.id, test.title)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete Test Series"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
               <div className="space-y-2 mb-6 flex-1">
@@ -2782,7 +2810,7 @@ function BatchFormModal({
   batchLabel?: string;
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
 }) {
   const [formState, setFormState] = useState({
@@ -2854,7 +2882,7 @@ function BatchFormModal({
     }
     const result =
       mode === 'edit'
-        ? onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty)
+        ? onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty, batchLabel)
         : onCreateBatch(formState.name.trim(), selectedSubjects, selectedFaculty);
     if (!result.ok) {
       setError(result.error ?? 'Unable to save batch.');
@@ -2896,8 +2924,7 @@ function BatchFormModal({
               required
               value={formState.name}
               onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
-              disabled={mode === 'edit'}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-500"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
               placeholder="e.g. 11th JEE Evening"
             />
           </label>

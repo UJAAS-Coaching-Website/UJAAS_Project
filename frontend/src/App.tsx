@@ -288,6 +288,16 @@ function App() {
     });
   };
 
+  const handleDeletePublishedTest = (testId: string) => {
+    setPublishedTests(prev => prev.filter(test => test.id !== testId));
+    if (selectedPreviewTest?.id === testId) {
+      setSelectedPreviewTest(null);
+      if (activeTab === 'preview-test') {
+        setActiveTab('test-series');
+      }
+    }
+  };
+
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
     const stored = localStorage.getItem('ujaasAdminBatches');
     if (!stored) return initialAdminBatches;
@@ -399,8 +409,9 @@ function App() {
     return result;
   };
 
-  const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+  const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
     const trimmedLabel = label.trim();
+    const targetLabel = oldLabel || trimmedLabel;
     const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
     const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
 
@@ -410,18 +421,30 @@ function App() {
 
     let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
     setAdminBatches((prev) => {
-      const index = prev.findIndex((batch) => batch.label === trimmedLabel);
+      const index = prev.findIndex((batch) => batch.label === targetLabel);
       if (index === -1) {
         result = { ok: false, error: 'Batch not found.' };
+        return prev;
+      }
+
+      const exists = prev.some((batch, idx) => idx !== index && batch.label.toLowerCase() === trimmedLabel.toLowerCase());
+      if (exists) {
+        result = { ok: false, error: 'A batch with this name already exists.' };
         return prev;
       }
 
       const next = [...prev];
       next[index] = {
         ...next[index],
+        label: trimmedLabel,
         subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
         facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
       };
+      
+      if (adminBatch === targetLabel) {
+        setAdminBatch(trimmedLabel);
+      }
+      
       result = { ok: true };
       return next;
     });
@@ -942,6 +965,7 @@ function App() {
             onPublishTest={handlePublishTest}
             onPreviewTest={handlePreviewTest}
             onUpdatePublishedTest={updatePublishedTest}
+            onDeletePublishedTest={handleDeletePublishedTest}
             selectedPreviewTest={selectedPreviewTest}
           />
         </motion.div>

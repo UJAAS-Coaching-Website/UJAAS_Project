@@ -49,7 +49,7 @@ interface TeacherDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
