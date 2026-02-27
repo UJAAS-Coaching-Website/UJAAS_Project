@@ -87,16 +87,16 @@ interface Student {
   performance: number;
   rating: number;
   batch: Batch;
-  phoneNumber?: string;
-  dateOfBirth?: string;
-  address?: string;
-  parentContact?: string;
-  ratings?: {
+  phoneNumber: string;
+  dateOfBirth: string;
+  address: string;
+  parentContact: string;
+  subjectRatings?: Record<string, {
     attendance: number;
     tests: number;
     dppPerformance: number;
     behavior: number;
-  };
+  }>;
 }
 
 interface Teacher {
@@ -128,13 +128,17 @@ type TeacherFormState = {
 };
 
 function renderPerformanceStars(rating: number) {
-  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)));
+  const normalizedRating = Math.max(0, Math.min(5, rating));
 
   return (
-    <div className="flex items-center gap-1" aria-label={`Rating ${normalizedRating} out of 5`}>
-      {Array.from({ length: 5 }, (_, index) => {
-        const starNumber = index + 1;
-        const fillPercentage = normalizedRating >= starNumber ? 100 : 0;
+    <div className="flex items-center gap-1" aria-label={`Rating ${normalizedRating.toFixed(1)} out of 5`}>
+      {[1, 2, 3, 4, 5].map((starNumber) => {
+        let fillPercentage = 0;
+        if (normalizedRating >= starNumber) {
+          fillPercentage = 100;
+        } else if (normalizedRating > starNumber - 1) {
+          fillPercentage = (normalizedRating - (starNumber - 1)) * 100;
+        }
 
         return (
           <span
@@ -152,6 +156,7 @@ function renderPerformanceStars(rating: number) {
           </span>
         );
       })}
+      <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -217,12 +222,123 @@ export function AdminDashboard({
   useEffect(() => {
     // Simulated data fetch
     setStudents([
-      { id: '1', name: 'Rahul Sharma', email: 'rahul@example.com', rollNumber: '2024001', enrolledCourses: ['JEE Main'], joinDate: '2024-01-15', performance: 85, rating: 4.5, batch: '12th JEE' },
-      { id: '2', name: 'Priya Patel', email: 'priya@example.com', rollNumber: '2024002', enrolledCourses: ['NEET'], joinDate: '2024-01-20', performance: 92, rating: 4.8, batch: '12th NEET' },
-      { id: '3', name: 'Amit Kumar', email: 'amit@example.com', rollNumber: '2024003', enrolledCourses: ['JEE Advanced'], joinDate: '2024-02-05', performance: 78, rating: 4.2, batch: 'Dropper JEE' },
-      { id: '4', name: 'Sneha Mehta', email: 'sneha.m@example.com', rollNumber: '2024004', enrolledCourses: ['JEE Main', 'NEET'], joinDate: '2024-02-12', performance: 88, rating: 4.6, batch: '11th JEE' },
-      { id: '5', name: 'Karan Desai', email: 'karan.d@example.com', rollNumber: '2024005', enrolledCourses: ['NEET'], joinDate: '2024-03-03', performance: 79, rating: 4.1, batch: '11th NEET' },
-      { id: '6', name: 'Ananya Kapoor', email: 'ananya.k@example.com', rollNumber: '2024006', enrolledCourses: ['JEE Advanced', 'NEET'], joinDate: '2024-03-10', performance: 91, rating: 4.9, batch: '12th JEE' },
+      { 
+        id: '1', 
+        name: 'Rahul Sharma', 
+        email: 'rahul@example.com', 
+        rollNumber: '2024001', 
+        enrolledCourses: ['JEE Main'], 
+        joinDate: '2024-01-15', 
+        performance: 85, 
+        rating: 4.5, 
+        batch: '12th JEE',
+        phoneNumber: '+91 99999 11111',
+        dateOfBirth: '2007-04-12',
+        address: 'Sector 15, Vasundhara, Ghaziabad',
+        parentContact: '+91 99999 22222',
+        subjectRatings: {
+          'Physics': { attendance: 4.8, tests: 4.5, dppPerformance: 4.6, behavior: 4.9 },
+          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.5 },
+          'Mathematics': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 }
+        }
+      },
+      { 
+        id: '2', 
+        name: 'Priya Patel', 
+        email: 'priya@example.com', 
+        rollNumber: '2024002', 
+        enrolledCourses: ['NEET'], 
+        joinDate: '2024-01-20', 
+        performance: 92, 
+        rating: 4.8, 
+        batch: '12th NEET',
+        phoneNumber: '+91 88888 11111',
+        dateOfBirth: '2007-06-18',
+        address: 'MG Road, Pune, Maharashtra',
+        parentContact: '+91 88888 22222',
+        subjectRatings: {
+          'Biology': { attendance: 5.0, tests: 4.9, dppPerformance: 4.9, behavior: 5.0 },
+          'Physics': { attendance: 4.5, tests: 4.2, dppPerformance: 4.4, behavior: 4.6 },
+          'Chemistry': { attendance: 4.8, tests: 4.7, dppPerformance: 4.7, behavior: 4.9 }
+        }
+      },
+      { 
+        id: '3', 
+        name: 'Amit Kumar', 
+        email: 'amit@example.com', 
+        rollNumber: '2024003', 
+        enrolledCourses: ['JEE Advanced'], 
+        joinDate: '2024-02-05', 
+        performance: 78, 
+        rating: 4.2, 
+        batch: 'Dropper JEE',
+        phoneNumber: '+91 77777 11111',
+        dateOfBirth: '2006-09-22',
+        address: 'Indira Nagar, Bengaluru, Karnataka',
+        parentContact: '+91 77777 22222',
+        subjectRatings: {
+          'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.9, behavior: 4.2 },
+          'Mathematics': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.5 }
+        }
+      },
+      { 
+        id: '4', 
+        name: 'Sneha Mehta', 
+        email: 'sneha.m@example.com', 
+        rollNumber: '2024004', 
+        enrolledCourses: ['JEE Main', 'NEET'], 
+        joinDate: '2024-02-12', 
+        performance: 88, 
+        rating: 4.6, 
+        batch: '11th JEE', 
+        phoneNumber: '+91 98989 11111', 
+        dateOfBirth: '2008-01-05', 
+        address: 'Satellite Road, Ahmedabad, Gujarat', 
+        parentContact: '+91 98989 22222',
+        subjectRatings: {
+          'Physics': { attendance: 4.5, tests: 4.6, dppPerformance: 4.4, behavior: 4.8 },
+          'Mathematics': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.7 }
+        }
+      },
+      { 
+        id: '5', 
+        name: 'Karan Desai', 
+        email: 'karan.d@example.com', 
+        rollNumber: '2024005', 
+        enrolledCourses: ['NEET'], 
+        joinDate: '2024-03-03', 
+        performance: 79, 
+        rating: 4.1, 
+        batch: '11th NEET', 
+        phoneNumber: '+91 97979 11111', 
+        dateOfBirth: '2008-03-15', 
+        address: 'Banjara Hills, Hyderabad, Telangana', 
+        parentContact: '+91 97979 22222',
+        subjectRatings: {
+          'Biology': { attendance: 4.0, tests: 3.9, dppPerformance: 4.1, behavior: 4.3 },
+          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.0, behavior: 4.2 }
+        }
+      },
+      { 
+        id: '6', 
+        name: 'Ananya Kapoor', 
+        email: 'ananya.k@example.com', 
+        rollNumber: '2024006', 
+        enrolledCourses: ['JEE Advanced', 'NEET'], 
+        joinDate: '2024-03-10', 
+        performance: 91, 
+        rating: 4.9, 
+        batch: '12th JEE', 
+        phoneNumber: '+91 96969 11111', 
+        dateOfBirth: '2007-11-30', 
+        address: 'Civil Lines, Delhi', 
+        parentContact: '+91 96969 22222',
+        subjectRatings: {
+          'Physics': { attendance: 5.0, tests: 4.9, dppPerformance: 4.8, behavior: 5.0 },
+          'Mathematics': { attendance: 4.9, tests: 5.0, dppPerformance: 4.9, behavior: 4.9 },
+          'Chemistry': { attendance: 4.8, tests: 4.8, dppPerformance: 4.9, behavior: 4.8 }
+        }
+      },
     ]);
 
     setFaculty([
@@ -633,7 +749,7 @@ export function AdminDashboard({
           onUpdateBatch={onUpdateBatch}
           onDeleteBatch={onDeleteBatch}
         />
-        <BatchStudentPickerModal
+        <BatchFacultyPickerModal
           open={batchStudentPicker.open}
           selectedBatch={batchStudentPicker.batch}
           students={students}
@@ -649,11 +765,15 @@ export function AdminDashboard({
           onAssign={handleAssignExistingFacultyToBatch}
         />
 
-        <StudentRatingsModal
-          open={ratingModal.open}
-          student={ratingModal.student}
-          onClose={closeStudentRatings}
-        />
+        <AnimatePresence>
+          {ratingModal.open && (
+            <StudentRatingsModal
+              open={ratingModal.open}
+              student={ratingModal.student}
+              onClose={closeStudentRatings}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Timetable Modal */}
         <AnimatePresence>
@@ -1204,7 +1324,15 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
           <tbody className="divide-y divide-gray-50">
             {students.filter(s => s.batch === selectedBatch).map((s) => (
               <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-4"><div className="font-bold text-gray-900">{s.name}</div><div className="text-xs text-gray-500">{s.email}</div></td>
+                <td className="py-4">
+                  <button 
+                    onClick={() => onViewStudent(s)}
+                    className="group flex flex-col items-start text-left hover:opacity-80 transition-all"
+                  >
+                    <div className="font-bold text-gray-900 group-hover:text-teal-600 group-hover:underline">{s.name}</div>
+                    <div className="text-xs text-gray-500">{s.email}</div>
+                  </button>
+                </td>
                 <td className="py-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 flex gap-2"><button onClick={() => onEditStudent(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={() => onDeleteStudent(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
@@ -1793,7 +1921,15 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
           <tbody className="divide-y divide-gray-50">
             {filtered.map(s => (
               <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                <td className="py-4"><div className="font-bold text-gray-900">{s.name}</div><div className="text-xs text-gray-500">{s.email}</div></td>
+                <td className="py-4">
+                  <button 
+                    onClick={() => onViewStudent(s)}
+                    className="group flex flex-col items-start text-left hover:opacity-80 transition-all"
+                  >
+                    <div className="font-bold text-gray-900 group-hover:text-teal-600 group-hover:underline">{s.name}</div>
+                    <div className="text-xs text-gray-500">{s.email}</div>
+                  </button>
+                </td>
                 <td className="py-4">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4"><span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{s.batch}</span></td>
                 <td className="py-4 flex gap-2"><button onClick={() => onEditStudent(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={() => onDeleteStudent(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
@@ -2596,21 +2732,26 @@ function StudentRatingsModal({
   student?: Student;
   onClose: () => void;
 }) {
+  const [showRatings, setShowRatings] = useState(false);
+
+  useEffect(() => {
+    if (open) setShowRatings(false);
+  }, [open]);
+
   if (!open || !student) return null;
 
-  const ratings = student.ratings ?? {
-    attendance: 0,
-    tests: 0,
-    dppPerformance: 0,
-    behavior: 0,
+  const calculateSubjectRating = (r: { attendance: number; tests: number; dppPerformance: number; behavior: number }) => {
+    return (r.attendance + r.tests + r.dppPerformance + r.behavior) / 4;
   };
 
-  const performanceData = [
-    { label: 'Attendance', value: ratings.attendance },
-    { label: 'Test Performance', value: ratings.tests },
-    { label: 'DPP Performance', value: ratings.dppPerformance },
-    { label: 'Class Behaviour', value: ratings.behavior },
-  ];
+  const calculateFinalRating = () => {
+    if (!student.subjectRatings || Object.keys(student.subjectRatings).length === 0) return 0;
+    const subjects = Object.values(student.subjectRatings);
+    const total = subjects.reduce((acc, curr) => acc + calculateSubjectRating(curr), 0);
+    return total / subjects.length;
+  };
+
+  const finalRating = calculateFinalRating();
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -2618,30 +2759,126 @@ function StudentRatingsModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
-          <h3 className="text-xl font-semibold">{student.name}</h3>
-          <p className="text-sm text-white/80">Performance Breakdown</p>
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
+          <div>
+            <h3 className="text-2xl font-bold">{student.name}</h3>
+            <p className="text-teal-50 opacity-90">{student.batch} • {student.rollNumber}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto">
-          {performanceData.map((item) => (
-            <div key={item.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-              <div className="text-sm font-medium text-gray-700">{item.label}</div>
-              <div className="flex items-center gap-2">
-                {renderPerformanceStars(item.value)}
-                <span className="text-sm font-semibold text-gray-700">{item.value}/5</span>
+        <div className="flex-1 overflow-y-auto p-8">
+          {!showRatings ? (
+            <div className="space-y-8">
+              {/* Basic Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.email}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" /> {student.phoneNumber || 'Not provided'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Date of Birth</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-purple-600" /> {student.dateOfBirth || 'Not provided'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Parent's Contact</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-orange-600" /> {student.parentContact || 'Not provided'}</p>
+                </div>
+                <div className="md:col-span-2 space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Residential Address</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-emerald-600" /> {student.address || 'Not provided'}</p>
+                </div>
               </div>
+
+              {/* Summary Rating */}
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-gray-900 text-lg">Overall Performance</h4>
+                  <p className="text-sm text-gray-500">Based on all academic factors</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2 justify-end mb-1">
+                    {renderPerformanceStars(finalRating)}
+                  </div>
+                  <p className="text-2xl font-black text-gray-900">{finalRating.toFixed(1)}<span className="text-sm text-gray-400 font-bold">/5.0</span></p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowRatings(true)}
+                className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Star className="w-5 h-5 fill-current" /> View Detailed Ratings
+              </button>
             </div>
-          ))}
+          ) : (
+            <div className="space-y-8">
+              <div className="flex items-center justify-between mb-2">
+                <button onClick={() => setShowRatings(false)} className="text-teal-600 font-bold flex items-center gap-1 hover:underline">
+                  <ChevronLeft className="w-4 h-4" /> Back to Profile
+                </button>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Final Average</p>
+                  <p className="text-xl font-black text-gray-900">{finalRating.toFixed(1)}/5.0</p>
+                </div>
+              </div>
+
+              {student.subjectRatings && Object.keys(student.subjectRatings).length > 0 ? (
+                <div className="space-y-6">
+                  {Object.entries(student.subjectRatings).map(([subject, r]) => {
+                    const subAvg = calculateSubjectRating(r);
+                    return (
+                      <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+                          <h5 className="font-bold text-gray-900">{subject}</h5>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-500 px-2 py-1 bg-white rounded-lg border border-gray-100">Avg: {subAvg.toFixed(1)}</span>
+                            {renderPerformanceStars(subAvg)}
+                          </div>
+                        </div>
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {[
+                            { label: 'Attendance', val: r.attendance },
+                            { label: 'Test Performance', val: r.tests },
+                            { label: 'DPP Performance', val: r.dppPerformance },
+                            { label: 'Class Behaviour', val: r.behavior }
+                          ].map(param => (
+                            <div key={param.label} className="flex flex-col gap-1">
+                              <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                                <span>{param.label}</span>
+                                <span>{param.val}/5</span>
+                              </div>
+                              {renderPerformanceStars(param.val)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                  <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No rating data available for this student.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="px-6 pb-6 flex justify-end">
+        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
-            type="button"
             onClick={onClose}
-            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
           >
             Close
           </button>
