@@ -579,27 +579,65 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const [subjects] = useState([
+  const [subjects, setSubjects] = useState([
     { id: 's1', name: 'Physics', color: '#3b82f6' },
     { id: 's2', name: 'Chemistry', color: '#10b981' },
     { id: 's3', name: 'Mathematics', color: '#f59e0b' },
     { id: 's4', name: 'Biology', color: '#f43f5e' },
   ]);
 
-  const [chapters] = useState<Record<string, string[]>>({
+  const [chapters, setChapters] = useState<Record<string, string[]>>({
     'Physics': ['Kinematics', 'Laws of Motion'],
     'Chemistry': ['Atomic Structure', 'Chemical Bonding'],
   });
 
-  const [notes] = useState([
+  const [notes, setNotes] = useState([
     { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
   ]);
 
-  const [dpps] = useState([
+  const [dpps, setDpps] = useState([
     { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
   ]);
 
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
+  const [newChapterName, setNewChapterName] = useState('');
+
+  const handleAddChapter = (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubject) return;
+    if (newChapterName.trim()) {
+      setChapters({
+        ...chapters,
+        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
+      });
+      setNewChapterName('');
+      setIsAddChapterModalOpen(false);
+    }
+  };
+
+  const handleDeleteChapter = (chapterName: string) => {
+    if (!selectedSubject) return;
+    if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
+      setChapters({
+        ...chapters,
+        [selectedSubject]: chapters[selectedSubject].filter(c => c !== chapterName)
+      });
+      setNotes(notes.filter(n => n.chapter !== chapterName));
+      setDpps(dpps.filter(d => d.chapter !== chapterName));
+    }
+  };
+
+  const handleDeleteNote = (id: string) => {
+    if (confirm('Are you sure you want to delete this note?')) {
+      setNotes(notes.filter(n => n.id !== id));
+    }
+  };
+
+  const handleDeleteDPP = (id: string) => {
+    if (confirm('Are you sure you want to delete this DPP?')) {
+      setDpps(dpps.filter(d => d.id !== id));
+    }
+  };
 
   const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
   const navigateToChapter = (chapter: string) => { setSelectedChapter(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
@@ -636,10 +674,19 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
       {currentView === 'root' && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
           {subjects.map((sub, index) => (
-            <motion.button key={sub.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} whileHover={{ y: -5, scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => navigateToSubject(sub.name)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group">
+            <motion.div
+              key={sub.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigateToSubject(sub.name)}
+              className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
+            >
               <div className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform" style={{ backgroundColor: sub.color }}><Folder className="w-8 h-8 text-white" /></div>
               <div className="text-center"><h4 className="font-bold text-gray-900">{sub.name}</h4><p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p></div>
-            </motion.button>
+            </motion.div>
           ))}
         </div>
       )}
@@ -649,7 +696,18 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
           {chapters[selectedSubject]?.map((chapter, index) => (
             <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} whileHover={{ x: 10 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
               <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
-              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteChapter(chapter);
+                  }}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
+              </div>
             </motion.button>
           ))}
         </div>
@@ -666,13 +724,76 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
               <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group">
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 bg-gradient-to-br ${activeContentType === 'notes' ? 'from-cyan-500 to-blue-500' : 'from-emerald-500 to-teal-500'} rounded-xl flex items-center justify-center shrink-0`}><FileText className="w-6 h-6 text-white" /></div>
-                  <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4><div className="flex items-center justify-between"><span className="text-xs text-gray-500">{(item as any).size || (item as any).questions + ' Questions'} • {item.date}</span><div className="flex gap-1"><button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button><button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></div></div></div>
+                  <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4><div className="flex items-center justify-between"><span className="text-xs text-gray-500">{(item as any).size || (item as any).questions + ' Questions'} • {item.date}</span><div className="flex gap-1">
+                    <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                    <button 
+                      onClick={() => activeContentType === 'notes' ? handleDeleteNote(item.id) : handleDeleteDPP(item.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div></div></div>
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Add Chapter Modal */}
+      <AnimatePresence>
+        {isAddChapterModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddChapterModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Chapter</h3>
+                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
+              </div>
+              <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newChapterName}
+                    onChange={(e) => setNewChapterName(e.target.value)}
+                    placeholder="e.g., Rotation Mechanics"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddChapterModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Create Chapter
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
