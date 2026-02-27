@@ -10,7 +10,6 @@ import {
   Phone,
   Send,
   Star,
-  Trophy,
   Calendar,
 } from 'lucide-react';
 import { Footer } from './Footer';
@@ -51,6 +50,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const prevAchiever = () => {
     setCurrentAchiever((prev) => (prev - 1 + achievers.length) % achievers.length);
   };
+
+  const visibleAchievers = achievers.length <= 3
+    ? achievers.map((achiever, idx) => ({ achiever, idx }))
+    : Array.from({ length: 3 }, (_, offset) => {
+        const idx = (currentAchiever + offset) % achievers.length;
+        return { achiever: achievers[idx], idx };
+      });
+  const shouldPaginateAchievers = achievers.length > 3;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -173,57 +180,64 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           </div>
 
           <div className="relative max-w-4xl mx-auto">
-            <button
-              onClick={prevAchiever}
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
-            >
-              <ChevronLeft className="w-6 h-6 text-teal-600" />
-            </button>
+            {shouldPaginateAchievers && (
+              <>
+                <button
+                  onClick={prevAchiever}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
+                >
+                  <ChevronLeft className="w-6 h-6 text-teal-600" />
+                </button>
 
-            <button
-              onClick={nextAchiever}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
-            >
-              <ChevronRight className="w-6 h-6 text-teal-600" />
-            </button>
+                <button
+                  onClick={nextAchiever}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
+                >
+                  <ChevronRight className="w-6 h-6 text-teal-600" />
+                </button>
+              </>
+            )}
 
             {achievers.length > 0 ? (
               <>
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                  <div className="grid md:grid-cols-2 gap-0">
-                    <div className="h-64 md:h-auto bg-gradient-to-br from-teal-200 to-cyan-200 flex items-center justify-center">
-                      <img
-                        src={achievers[currentAchiever]?.image}
-                        alt={achievers[currentAchiever]?.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-8 flex flex-col justify-center">
-                      <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-full px-4 py-2 mb-4 w-fit">
-                        <Trophy className="w-5 h-5 text-yellow-600" />
-                        <span className="text-sm font-semibold text-yellow-700">Top Achiever</span>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {visibleAchievers.map(({ achiever, idx }) => (
+                    <div
+                      key={`${achiever.name}-${idx}`}
+                      className="bg-white rounded-2xl shadow-xl overflow-hidden"
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200">
+                        <img
+                          src={achiever.image}
+                          alt={achiever.name}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <h3 className="text-3xl font-bold text-gray-900 mb-2">{achievers[currentAchiever]?.name}</h3>
-                      <p className="text-xl text-teal-600 font-semibold mb-2">{achievers[currentAchiever]?.achievement}</p>
-                      <div className="inline-flex items-center gap-2 text-2xl font-bold text-cyan-600">
-                        <Calendar className="w-6 h-6" />
-                        Year: {achievers[currentAchiever]?.year}
+                      <div className="p-5">
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">{achiever.name}</h3>
+                        <p className="text-teal-600 font-semibold mb-2">{achiever.achievement}</p>
+                        <div className="inline-flex items-center gap-2 text-base font-bold text-cyan-600">
+                          <Calendar className="w-5 h-5" />
+                          Year: {achiever.year}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-center gap-2 mt-6">
-                  {achievers.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentAchiever(idx)}
-                      className={`h-2 rounded-full transition-all ${
-                        currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
-                      }`}
-                    />
                   ))}
                 </div>
+
+                {shouldPaginateAchievers && (
+                  <div className="flex justify-center gap-2 mt-6">
+                    {achievers.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentAchiever(idx)}
+                        className={`h-2 rounded-full transition-all ${
+                          currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-20 bg-white rounded-2xl shadow-xl">
