@@ -3129,7 +3129,7 @@ function StudentRatingsModal({
 
     const subjectRatingsHtml =
       student.subjectRatings && Object.keys(student.subjectRatings).length > 0
-        ? Object.entries(student.subjectRatings)
+        ? `<div class="subjects-grid">${Object.entries(student.subjectRatings)
             .map(([subject, r]) => {
               const subjectAverage = calculateSubjectRating(r);
               return `
@@ -3153,7 +3153,7 @@ function StudentRatingsModal({
                 </section>
               `;
             })
-            .join('')
+            .join('')}</div>`
         : '<p class="empty">No rating data available for this student.</p>';
 
     const printableHtml = `
@@ -3164,47 +3164,50 @@ function StudentRatingsModal({
           <title>Student Details - ${escapeHtml(profileValues.name || student.name)}</title>
           <style>
             * { box-sizing: border-box; }
+            @page { size: A4 portrait; margin: 8mm; }
             body {
               margin: 0;
-              padding: 24px;
+              padding: 10px;
               font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
               color: #0f172a;
               background: #ffffff;
+              font-size: 11px;
+              line-height: 1.25;
             }
             .page {
-              max-width: 900px;
+              max-width: 780px;
               margin: 0 auto;
             }
             .header {
               border-bottom: 2px solid #0d9488;
-              padding-bottom: 12px;
-              margin-bottom: 18px;
+              padding-bottom: 6px;
+              margin-bottom: 8px;
             }
             h1 {
-              margin: 0 0 4px;
-              font-size: 24px;
+              margin: 0 0 2px;
+              font-size: 18px;
             }
             .subtext {
               margin: 0;
               color: #334155;
-              font-size: 13px;
+              font-size: 10px;
             }
             h2 {
-              margin: 22px 0 10px;
-              font-size: 18px;
+              margin: 10px 0 6px;
+              font-size: 14px;
               color: #0f766e;
             }
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 8px;
+              margin-top: 4px;
             }
             th, td {
               border: 1px solid #e2e8f0;
-              padding: 10px 12px;
+              padding: 5px 7px;
               text-align: left;
               vertical-align: top;
-              font-size: 13px;
+              font-size: 10px;
             }
             th {
               background: #f1f5f9;
@@ -3221,30 +3224,37 @@ function StudentRatingsModal({
             .subject-card {
               border: 1px solid #e2e8f0;
               border-radius: 10px;
-              padding: 12px;
-              margin-bottom: 14px;
+              padding: 8px;
+              margin-bottom: 6px;
               page-break-inside: avoid;
+              break-inside: avoid;
             }
             .subject-card h3 {
               margin: 0;
-              font-size: 15px;
+              font-size: 12px;
             }
             .subject-avg {
-              margin: 4px 0 6px;
+              margin: 2px 0 4px;
               color: #334155;
-              font-size: 13px;
+              font-size: 10px;
               font-weight: 600;
             }
+            .subjects-grid {
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 6px;
+            }
             .empty {
-              padding: 12px;
+              padding: 8px;
               border: 1px dashed #cbd5e1;
               border-radius: 8px;
               color: #475569;
-              font-size: 13px;
+              font-size: 10px;
             }
             @media print {
               body { padding: 0; }
               .page { max-width: 100%; }
+              .subjects-grid { gap: 4px; }
             }
           </style>
         </head>
