@@ -3150,6 +3150,37 @@ function StudentRatingsModal({
               border-bottom: 2px solid #0d9488;
               padding-bottom: 6px;
               margin-bottom: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 10px;
+            }
+            .brand {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .brand-logo {
+              width: 38px;
+              height: 38px;
+              object-fit: contain;
+              flex-shrink: 0;
+            }
+            .brand-title {
+              margin: 0;
+              font-size: 15px;
+              line-height: 1.2;
+              color: #0f172a;
+              font-weight: 700;
+            }
+            .brand-location {
+              margin: 1px 0 0;
+              color: #334155;
+              font-size: 10px;
+              font-weight: 600;
+            }
+            .header-report {
+              text-align: right;
             }
             h1 {
               margin: 0 0 2px;
@@ -3247,8 +3278,17 @@ function StudentRatingsModal({
         <body>
           <div class="page">
             <div class="header">
-              <h1>Student Details Report</h1>
-              <p class="subtext">Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
+              <div class="brand">
+                <img src="${logo}" alt="UJAAS Logo" class="brand-logo" />
+                <div>
+                  <p class="brand-title">UJAAS Career Institue</p>
+                  <p class="brand-location">Navsari</p>
+                </div>
+              </div>
+              <div class="header-report">
+                <h1>Student Details Report</h1>
+                <p class="subtext">Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
+              </div>
             </div>
 
             <h2>Student Profile</h2>

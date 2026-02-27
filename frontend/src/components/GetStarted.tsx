@@ -337,7 +337,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center justify-center gap-2"
               >
                 <Send className="w-5 h-5" />
-                Submit Registration
+                Submit Interest
               </button>
             </div>
           </form>

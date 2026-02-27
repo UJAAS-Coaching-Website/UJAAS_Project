@@ -82,9 +82,6 @@ export function Login({ onLogin }: LoginProps) {
             <h1 className="text-3xl font-bold mb-2" style={{ color: 'rgb(159, 29, 14)' }}>
               UJAAS
             </h1>
-            <p className="text-gray-600 text-sm">
-              Ultimate Guidance & Academic Support
-            </p>
           </div>
 
           <div className="mb-6 text-center">

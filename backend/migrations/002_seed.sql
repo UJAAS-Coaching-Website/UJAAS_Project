@@ -11,7 +11,7 @@ WITH
     INSERT INTO users (id, name, email, role, password_hash)
     VALUES (
       uuid_generate_v4(),
-      'Admin User',
+      'Administrator',
       'admin@ujaas.com',
       'admin',
       'admin_seed_salt:0b7d88c3a05e53e82430f7d7f76931abd3d21f710df4c3746b5db71edc669fd16b48dc2263e709e521f32558ceac43ee4468481fc39f4eefa0dd4a2fb52c7d42'
