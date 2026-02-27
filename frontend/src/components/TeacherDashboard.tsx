@@ -473,7 +473,6 @@ export function TeacherDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
-                  { id: 'content', label: 'Content', icon: BookOpen },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -555,6 +554,9 @@ export function TeacherDashboard({
                 <OverviewTab
                   selectedBatch={selectedBatch}
                   students={students}
+                  onNavigate={onNavigate}
+                  onClearBatch={onClearBatch}
+                  onViewTimetable={() => setShowFullTimetable(true)}
                 />
               )}
               {activeTab === 'students' && (
@@ -570,14 +572,6 @@ export function TeacherDashboard({
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-              {activeTab === 'content' && (
-                <NotesManagementTab 
-                  onNavigate={onNavigate} 
-                  selectedBatch={selectedBatch} 
-                  onChangeBatch={onClearBatch} 
-                  onViewTimetable={() => setShowFullTimetable(true)}
-                />
-              )}
             </>
           )}
         </motion.div>
@@ -718,45 +712,88 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
   );
 }
 
-function OverviewTab({ selectedBatch, students }: { selectedBatch: Batch | null; students: Student[]; }) {
+function OverviewTab({ 
+  selectedBatch, 
+  students,
+  onNavigate,
+  onClearBatch,
+  onViewTimetable
+}: { 
+  selectedBatch: Batch | null; 
+  students: Student[];
+  onNavigate: (tab: Tab) => void;
+  onClearBatch: () => void;
+  onViewTimetable: () => void;
+}) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { label: 'Batch Students', value: batchStudents.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
-          { label: 'Avg. Attendance', value: '94%', icon: Calendar, color: 'from-teal-500 to-emerald-500' },
-          { label: 'Performance', value: 'Excellent', icon: TrendingUp, color: 'from-purple-500 to-pink-500' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl shadow-lg border border-gray-50 flex items-center gap-4">
-            <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-md`}><stat.icon className="w-6 h-6" /></div>
-            <div><p className="text-sm font-medium text-gray-500">{stat.label}</p><p className="text-2xl font-bold text-gray-900">{stat.value}</p></div>
+    <div className="space-y-6">
+      {/* Dashboard Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/50 shadow-sm">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedBatch}</h2>
+          <p className="text-gray-500 font-medium">Batch Academic Overview & Content</p>
+        </div>
+      </div>
+
+      {/* Batch Content Section */}
+      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-white/20">
+        <div className="p-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-emerald-600" />
           </div>
-        ))}
+          <h3 className="text-xl font-bold text-gray-900">Academic Content</h3>
+        </div>
+        <div className="p-1">
+          <NotesManagementTab
+            onNavigate={onNavigate}
+            selectedBatch={selectedBatch}
+            onChangeBatch={onClearBatch}
+            onViewTimetable={onViewTimetable}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+  const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Batch Students</h2><p className="text-gray-500">{selectedBatch}</p></div>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
+          <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
+        </div>
         <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Roll No</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
+          <thead>
+            <tr className="text-left border-b border-gray-100">
+              <th className="pb-4 px-4 font-bold text-gray-700">Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Roll No</th>
+              <th className="pb-4 px-4 font-bold text-gray-700">Performance</th>
+              <th className="pb-4 px-4 font-bold text-gray-700 text-right">Actions</th>
+            </tr>
+          </thead>
           <tbody className="divide-y divide-gray-50">
             {students.filter(s => s.batch === selectedBatch).map((s) => (
-              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
-                <td className="py-4"><div className="font-bold text-gray-900">{s.name}</div><div className="text-xs text-gray-500">{s.email}</div></td>
-                <td className="py-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
-                <td className="py-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
+              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                <td className="py-4 px-4">
+                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
+                  <div className="text-xs text-gray-500">{s.email}</div>
+                </td>
+                <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
+                <td className="py-4 px-4">{renderPerformanceStars(s.rating)}</td>
+                <td className="py-4 px-4 text-right">
+                  <div className="flex justify-end gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -579,8 +579,6 @@ export function AdminDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
-                  { id: 'faculty', label: 'Batch Faculty', icon: GraduationCap },
-                  { id: 'content', label: 'Content', icon: BookOpen },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -712,6 +710,13 @@ export function AdminDashboard({
                   selectedBatch={selectedBatch}
                   onEditBatch={openEditBatch}
                   students={students}
+                  faculty={faculty}
+                  batches={batches}
+                  onNavigate={onNavigate}
+                  onClearBatch={onClearBatch}
+                  onViewTimetable={() => setShowFullTimetable(true)}
+                  onUpdateBatch={onUpdateBatch}
+                  onOpenAddFaculty={() => openBatchFacultyPicker(selectedBatch)}
                 />
               )}
               {activeTab === 'students' && (
@@ -725,25 +730,8 @@ export function AdminDashboard({
                   onViewStudent={openStudentRatings}
                 />
               )}
-              {activeTab === 'faculty' && (
-                <BatchFacultyTab
-                  selectedBatch={selectedBatch}
-                  batches={batches}
-                  faculty={faculty}
-                  onUpdateBatch={onUpdateBatch}
-                  onOpenAddFaculty={() => openBatchFacultyPicker(selectedBatch)}
-                />
-              )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-              {activeTab === 'content' && (
-                <NotesManagementTab
-                  onNavigate={onNavigate}
-                  selectedBatch={selectedBatch}
-                  onChangeBatch={onClearBatch}
-                  onViewTimetable={() => setShowFullTimetable(true)}
-                />
-              )}
               {activeTab === 'upload-notice' && (
                 <NoticeUploadForm onNavigate={onNavigate} />
               )}
@@ -1474,33 +1462,135 @@ function QueriesManagementTab({
   );
 }
 
-function OverviewTab({ selectedBatch, onEditBatch, students }: { selectedBatch: Batch | null; onEditBatch: (l: string) => void; students: Student[] }) {
+function OverviewTab({ 
+  selectedBatch, 
+  onEditBatch, 
+  students,
+  faculty,
+  batches,
+  onNavigate,
+  onClearBatch,
+  onViewTimetable,
+  onUpdateBatch,
+  onOpenAddFaculty
+}: { 
+  selectedBatch: Batch | null; 
+  onEditBatch: (l: string) => void; 
+  students: Student[];
+  faculty: Teacher[];
+  batches: BatchInfo[];
+  onNavigate: (tab: Tab) => void;
+  onClearBatch: () => void;
+  onViewTimetable: () => void;
+  onUpdateBatch: any;
+  onOpenAddFaculty: () => void;
+}) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
+  
+  // Faculty logic
+  const currentBatch = batches.find(b => b.label === selectedBatch);
+  const assigned = currentBatch?.facultyAssigned ?? [];
+  const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
+  
+  const handleRemoveFacultyFromBatch = (facultyName: string) => {
+    if (!currentBatch) return;
+    if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
+    const nextAssigned = assigned.filter((name) => name !== facultyName);
+    onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { label: 'Batch Students', value: batchStudents.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
-          { label: 'Avg. Attendance', value: '94%', icon: Calendar, color: 'from-teal-500 to-emerald-500' },
-          { label: 'Performance', value: 'Excellent', icon: TrendingUp, color: 'from-purple-500 to-pink-500' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl shadow-lg border border-gray-50 flex items-center gap-4">
-            <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-md`}><stat.icon className="w-6 h-6" /></div>
-            <div><p className="text-sm font-medium text-gray-500">{stat.label}</p><p className="text-2xl font-bold text-gray-900">{stat.value}</p></div>
+    <div className="space-y-6">
+      {/* Dashboard Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/50 shadow-sm">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedBatch}</h2>
+          <p className="text-gray-500 font-medium">Batch Management & Academic Overview</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => onEditBatch(selectedBatch)} className="px-5 py-2.5 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition text-sm">Settings</button>
+        </div>
+      </div>
+
+      {/* Batch Faculty Section */}
+      <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">Batch Faculty</h3>
           </div>
-        ))}
+          <button 
+            onClick={onOpenAddFaculty}
+            className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
+          >
+            Assign Teacher
+          </button>
+        </div>
+        
+        {assignedFaculty.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {assignedFaculty.map(t => (
+              <div key={t.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 relative group hover:bg-white hover:shadow-md transition-all">
+                <button 
+                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                  className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove from batch"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-gray-900 text-sm truncate">{t.name}</h4>
+                    <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
+            <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm font-medium">No faculty assigned to this batch.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Batch Content Section */}
+      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-white/20">
+        <div className="p-5 flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-emerald-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Academic Content</h3>
+        </div>
+        <div className="p-1">
+          <NotesManagementTab
+            onNavigate={onNavigate}
+            selectedBatch={selectedBatch}
+            onChangeBatch={onClearBatch}
+            onViewTimetable={onViewTimetable}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+  const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Batch Students</h2><p className="text-gray-500">{selectedBatch}</p></div>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
+          <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
+        </div>
         <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
