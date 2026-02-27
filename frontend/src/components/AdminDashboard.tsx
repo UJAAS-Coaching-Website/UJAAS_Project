@@ -3177,6 +3177,9 @@ function StudentRatingsModal({
             .page {
               max-width: 780px;
               margin: 0 auto;
+              position: relative;
+              min-height: 1000px;
+              padding-bottom: 90px;
             }
             .header {
               border-bottom: 2px solid #0d9488;
@@ -3251,6 +3254,24 @@ function StudentRatingsModal({
               color: #475569;
               font-size: 10px;
             }
+            .signatory {
+              position: absolute;
+              right: 0;
+              bottom: 8px;
+              text-align: center;
+              width: 180px;
+            }
+            .sign-line {
+              border-top: 1px solid #334155;
+              margin-bottom: 4px;
+            }
+            .sign-title {
+              margin: 0;
+              font-size: 10px;
+              font-weight: 700;
+              color: #0f172a;
+              letter-spacing: 0.02em;
+            }
             @media print {
               body { padding: 0; }
               .page { max-width: 100%; }
@@ -3272,6 +3293,11 @@ function StudentRatingsModal({
 
             <h2>Detailed Ratings</h2>
             ${subjectRatingsHtml}
+
+            <div class="signatory">
+              <div class="sign-line"></div>
+              <p class="sign-title">Authorized Signatory</p>
+            </div>
           </div>
         </body>
       </html>
