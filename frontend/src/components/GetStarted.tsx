@@ -114,8 +114,8 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 key={idx}
                 className="bg-white rounded-xl p-6 text-center shadow-lg"
               >
-                <BookOpen className="w-8 h-8 text-teal-600 mx-auto mb-3" />
-                <h3 className="font-bold text-gray-900 text-sm leading-tight">{course}</h3>
+                <BookOpen className="w-5 h-5 text-teal-600 mx-auto mb-3" />
+                <h3 className="font-bold text-gray-900 text-xl leading-tight">{course}</h3>
               </div>
             ))}
           </div>
@@ -139,7 +139,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 key={idx}
                 className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition"
               >
-                <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 flex items-center justify-center">
+                <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 overflow-hidden">
                   <img
                     src={member.image}
                     alt={member.name}
