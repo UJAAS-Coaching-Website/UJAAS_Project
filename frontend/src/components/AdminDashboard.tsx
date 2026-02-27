@@ -1064,7 +1064,7 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 }
 
 function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate: (data: LandingData) => void }) {
-  const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers' | 'contact'>('overview');
+  const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers'>('overview');
   const [newCourse, setNewCourse] = useState('');
   const [isAddingFaculty, setIsAddingFaculty] = useState(false);
   const [editingFacultyIndex, setEditingFacultyIndex] = useState<number | null>(null);
@@ -1080,20 +1080,6 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
 
   const handleRemoveCourse = (index: number) => {
     onUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) });
-  };
-
-  const handleUpdateContact = (e: FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    onUpdate({
-      ...data,
-      contact: {
-        phone: formData.get('phone') as string,
-        email: formData.get('email') as string,
-        address: formData.get('address') as string,
-      }
-    });
-    setActiveSubSection('overview');
   };
 
   const handleAddFaculty = (e: FormEvent) => {
@@ -1307,26 +1293,6 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     );
   }
 
-  if (activeSubSection === 'contact') {
-    return (
-      <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-        <div className="flex items-center gap-4 mb-8">
-          <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
-          <h2 className="text-3xl font-bold text-gray-900">Manage Contact Info</h2>
-        </div>
-        <form onSubmit={handleUpdateContact} className="max-w-xl space-y-6">
-          <input name="phone" defaultValue={data.contact.phone} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
-          <input name="email" type="email" defaultValue={data.contact.email} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
-          <textarea name="address" rows={3} defaultValue={data.contact.address} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
-          <div className="flex gap-4">
-            <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
-            <button type="button" onClick={() => setActiveSubSection('overview')} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex items-center gap-4 mb-8">
@@ -1340,7 +1306,6 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           { id: 'courses', title: 'Courses', description: 'Manage available courses' },
           { id: 'faculty', title: 'Faculty', icon: GraduationCap, description: 'Update faculty showcase' },
           { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
-          { id: 'contact', title: 'Contact Info', description: 'Update address and phone' },
         ].map((item) => (
           <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-lg font-bold mb-2">{item.title}</h3>

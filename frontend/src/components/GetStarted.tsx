@@ -5,9 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogIn,
-  Mail,
-  MapPin,
-  Phone,
   Send,
   Star,
   Calendar,
@@ -34,7 +31,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
     message: ''
   });
 
-  const { faculty, achievers, courses, contact } = landingData;
+  const { faculty, achievers, courses } = landingData;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,23 +342,6 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             </div>
           </form>
 
-          <div className="grid md:grid-cols-3 gap-10 mt-24">
-            <div className="text-center p-6 bg-teal-50 rounded-xl">
-              <Phone className="w-8 h-8 text-teal-600 mx-auto mb-3" />
-              <h4 className="font-semibold text-gray-900 mb-1">Phone</h4>
-              <p className="text-sm text-gray-600">{contact.phone}</p>
-            </div>
-            <div className="text-center p-6 bg-cyan-50 rounded-xl">
-              <Mail className="w-8 h-8 text-cyan-600 mx-auto mb-3" />
-              <h4 className="font-semibold text-gray-900 mb-1">Email</h4>
-              <p className="text-sm text-gray-600">{contact.email}</p>
-            </div>
-            <div className="text-center p-6 bg-blue-50 rounded-xl">
-              <MapPin className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-              <h4 className="font-semibold text-gray-900 mb-1">Address</h4>
-              <p className="text-sm text-gray-600">{contact.address}</p>
-            </div>
-          </div>
         </div>
       </section>
 
