@@ -87,8 +87,7 @@ export function NotificationCenter({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0"
-              style={{ zIndex: 3000 }}
+              className="fixed inset-0 z-layer-3000"
             />
 
             {/* Panel */}
@@ -97,8 +96,7 @@ export function NotificationCenter({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
-              style={{ zIndex: 3000 }}
+              className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-layer-3000"
             >
               {/* Header */}
               <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-4">
