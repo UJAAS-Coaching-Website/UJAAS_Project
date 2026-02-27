@@ -1,4 +1,4 @@
-import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
+import { useState, ChangeEvent, useEffect } from 'react';
 import { 
   Plus, 
   X,
@@ -17,6 +17,7 @@ export interface Question {
   optionImages?: (string | undefined)[];
   correctAnswer: number | number[] | string;
   marks?: number;
+  negativeMarks?: number;
   subject?: string;
   explanation?: string;
   explanationImage?: string;
@@ -30,6 +31,7 @@ interface QuestionUploadFormProps {
   subjects?: string[];
   fixedType?: 'MCQ' | 'MSQ' | 'Numerical';
   defaultMarks?: number;
+  defaultNegativeMarks?: number;
   fixedSubject?: string;
   editingQuestion?: Question | null;
   onCancelEdit?: () => void;
@@ -43,6 +45,7 @@ export function QuestionUploadForm({
   subjects = [],
   fixedType,
   defaultMarks = 4,
+  defaultNegativeMarks = 0,
   fixedSubject,
   editingQuestion,
   onCancelEdit
@@ -56,6 +59,7 @@ export function QuestionUploadForm({
     correctAnswer: (fixedType || 'MCQ') === 'MSQ' ? [] : (fixedType || 'MCQ') === 'Numerical' ? '' : 0,
     difficulty: 'Medium',
     marks: defaultMarks,
+    negativeMarks: defaultNegativeMarks,
     subject: fixedSubject || subjects[0] || ''
   });
 
@@ -68,6 +72,7 @@ export function QuestionUploadForm({
         ...prev,
         type: fixedType || prev.type,
         marks: defaultMarks,
+        negativeMarks: defaultNegativeMarks,
         subject: fixedSubject || prev.subject,
         question: '',
         options: (fixedType || prev.type) === 'Numerical' ? undefined : ['', '', '', ''],
@@ -78,7 +83,7 @@ export function QuestionUploadForm({
         explanationImage: undefined
       }));
     }
-  }, [fixedType, defaultMarks, fixedSubject, editingQuestion]);
+  }, [fixedType, defaultMarks, defaultNegativeMarks, fixedSubject, editingQuestion]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
@@ -111,15 +116,23 @@ export function QuestionUploadForm({
   };
 
   const handleAdd = () => {
-    const isValid = currentQuestion.question && (
-      currentQuestion.type === 'Numerical' 
-        ? currentQuestion.correctAnswer !== '' 
-        : (currentQuestion.options?.every(opt => opt.trim()) && (
-            currentQuestion.type === 'MCQ' 
-              ? typeof currentQuestion.correctAnswer === 'number'
-              : (currentQuestion.correctAnswer as number[]).length > 0
-          ))
-    );
+    const hasQuestionContent =
+      currentQuestion.question.trim().length > 0 || !!currentQuestion.questionImage;
+    const hasValidOptions =
+      currentQuestion.type === 'Numerical'
+        ? true
+        : (currentQuestion.options || []).every((opt, index) => {
+            const hasText = opt.trim().length > 0;
+            const hasImage = !!currentQuestion.optionImages?.[index];
+            return hasText || hasImage;
+          });
+    const hasValidAnswer =
+      currentQuestion.type === 'Numerical'
+        ? String(currentQuestion.correctAnswer).trim().length > 0
+        : currentQuestion.type === 'MCQ'
+        ? typeof currentQuestion.correctAnswer === 'number'
+        : (currentQuestion.correctAnswer as number[]).length > 0;
+    const isValid = hasQuestionContent && hasValidOptions && hasValidAnswer;
 
     if (isValid) {
       onAddQuestion(currentQuestion);
@@ -177,16 +190,41 @@ export function QuestionUploadForm({
         {(showMarks || showSubject) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {showMarks && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Marks
-                </label>
-                <input
-                  type="number"
-                  value={currentQuestion.marks}
-                  onChange={(e) => setCurrentQuestion({ ...currentQuestion, marks: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Positive Marks
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={currentQuestion.marks ?? 0}
+                    onChange={(e) =>
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        marks: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Negative Marks
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={currentQuestion.negativeMarks ?? 0}
+                    onChange={(e) =>
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        negativeMarks: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                </div>
               </div>
             )}
             {showSubject && (

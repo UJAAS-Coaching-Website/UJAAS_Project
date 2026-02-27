@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   ArrowLeft, 
   Trash2, 
@@ -18,6 +18,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 interface BatchInfo {
   label: string;
   slug: string;
+  subjects?: string[];
 }
 
 interface CreateTestSeriesProps {
@@ -51,25 +52,45 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   };
   const [activeSubject, setActiveSubject] = useState('Physics');
   const [activeSection, setActiveSection] = useState<'Section A' | 'Section B'>('Section A');
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   useBodyScrollLock(showSuccess);
+
+  const allWebsiteSubjects = useMemo(() => {
+    const defaults = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+    const fromBatches = batches.flatMap((batch) => batch.subjects ?? []);
+    return Array.from(new Set([...defaults, ...fromBatches.map((subject) => subject.trim()).filter(Boolean)]));
+  }, [batches]);
+
+  const [customSubjects, setCustomSubjects] = useState<string[]>(allWebsiteSubjects);
 
   useEffect(() => {
     const validSubjects = getSubjects();
     if (!validSubjects.includes(activeSubject)) {
       setActiveSubject(validSubjects[0]);
     }
-  }, [testData.format]);
+  }, [testData.format, customSubjects, allWebsiteSubjects, activeSubject]);
 
   useEffect(() => {
     setEditingQuestion(null);
   }, [activeSubject, activeSection]);
+
+  useEffect(() => {
+    if (customSubjects.length === 0) {
+      setCustomSubjects(allWebsiteSubjects);
+      return;
+    }
+    const unknownSubjects = customSubjects.filter((subject) => !allWebsiteSubjects.includes(subject));
+    if (unknownSubjects.length > 0) {
+      setCustomSubjects((prev) => prev.filter((subject) => allWebsiteSubjects.includes(subject)));
+    }
+  }, [allWebsiteSubjects, customSubjects]);
 
   const formats = ['JEE MAIN', 'NEET', 'Custom'];
   
   const getSubjects = () => {
     if (testData.format === 'JEE MAIN') return ['Physics', 'Chemistry', 'Mathematics'];
     if (testData.format === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
-    return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+    return customSubjects.length > 0 ? customSubjects : allWebsiteSubjects;
   };
 
   const currentSubjects = getSubjects();
@@ -121,6 +142,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
             correctAnswer: 0,
             difficulty: 'Medium',
             marks: 4,
+            negativeMarks: 1,
             subject: subject,
             metadata: { section: 'Section A' }
           });
@@ -134,6 +156,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
             correctAnswer: '10',
             difficulty: 'Medium',
             marks: 4,
+            negativeMarks: 0,
             subject: subject,
             metadata: { section: 'Section B' }
           });
@@ -156,6 +179,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
             correctAnswer: 0,
             difficulty: 'Medium',
             marks: 4,
+            negativeMarks: 1,
             subject: subject
           });
         }
@@ -168,13 +192,14 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
           type: 'MCQ',
           question: `Custom Practice Question ${i}`,
           options: ['Option A', 'Option B', 'Option C', 'Option D'],
-          correctAnswer: 0,
-          difficulty: 'Medium',
-          marks: 4,
-          subject: subjects[0]
-        });
+            correctAnswer: 0,
+            difficulty: 'Medium',
+            marks: 4,
+            negativeMarks: 1,
+            subject: subjects[(i - 1) % subjects.length]
+          });
+        }
       }
-    }
     setQuestions(demoQuestions);
   };
 
@@ -213,6 +238,20 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
     if (testData.format === 'JEE MAIN') return 90;
     if (testData.format === 'NEET') return 180;
     return 5;
+  };
+
+  const toggleCustomSubject = (subject: string) => {
+    setCustomSubjects((prev) => {
+      if (prev.includes(subject)) {
+        if (prev.length === 1) return prev;
+        const next = prev.filter((item) => item !== subject);
+        if (activeSubject === subject) {
+          setActiveSubject(next[0]);
+        }
+        return next;
+      }
+      return [...prev, subject];
+    });
   };
 
   const isStep2Valid = questions.length >= getRequiredCount();
@@ -446,24 +485,71 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto flex-1 w-full">
-                  {currentSubjects.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        setActiveSubject(s);
-                        setActiveSection('Section A');
-                      }}
-                      className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                        activeSubject === s
-                          ? 'bg-teal-600 text-white shadow-lg scale-105'
-                          : 'bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div className="flex-1 w-full">
+                  {testData.format === 'Custom' ? (
+                    <div className="bg-white/60 backdrop-blur rounded-2xl border border-white shadow-sm p-3">
+                      <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">Subjects (Multi Select)</label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsSubjectDropdownOpen((prev) => !prev)}
+                          className="w-full text-left px-4 py-2.5 bg-white rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-teal-400 transition"
+                        >
+                          {customSubjects.length > 0 ? customSubjects.join(', ') : 'Select subjects'}
+                        </button>
+                        {isSubjectDropdownOpen && (
+                          <div className="absolute z-20 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto p-2">
+                            {allWebsiteSubjects.map((subject) => (
+                              <label key={subject} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={customSubjects.includes(subject)}
+                                  onChange={() => toggleCustomSubject(subject)}
+                                  className="w-4 h-4 text-teal-600 rounded border-gray-300"
+                                />
+                                <span>{subject}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 mt-3 overflow-x-auto">
+                        {currentSubjects.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setActiveSubject(s)}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                              activeSubject === s
+                                ? 'bg-teal-600 text-white'
+                                : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto w-full">
+                      {currentSubjects.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => {
+                            setActiveSubject(s);
+                            setActiveSection('Section A');
+                          }}
+                          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                            activeSubject === s
+                              ? 'bg-teal-600 text-white shadow-lg scale-105'
+                              : 'bg-white text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -514,7 +600,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                   onAddQuestion={handleAddQuestion} 
                   buttonLabel={`Add to ${activeSubject}${testData.format === 'JEE MAIN' ? ` - ${activeSection}` : ''}`}
                   showMarks={testData.format === 'Custom'}
-                  showSubject={testData.format === 'Custom'}
+                  showSubject={false}
                   subjects={currentSubjects}
                   fixedType={
                     testData.format === 'JEE MAIN' 
@@ -522,6 +608,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                       : testData.format === 'NEET' ? 'MCQ' : undefined
                   }
                   defaultMarks={4}
+                  defaultNegativeMarks={testData.format === 'JEE MAIN' || testData.format === 'NEET' ? 1 : 0}
                   fixedSubject={activeSubject}
                   editingQuestion={editingQuestion}
                   onCancelEdit={() => setEditingQuestion(null)}
@@ -559,7 +646,10 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                               Type: {q.type}
                             </span>
                             <span className="px-2 py-1 bg-white rounded border border-teal-100 text-teal-700 font-medium">
-                              Marks: {q.marks}
+                              Marks: +{q.marks ?? 0}
+                            </span>
+                            <span className="px-2 py-1 bg-white rounded border border-teal-100 text-rose-700 font-medium">
+                              Negative: -{(q as any).negativeMarks ?? 0}
                             </span>
                             {editingQuestion?.id === q.id && (
                               <span className="px-2 py-1 bg-amber-600 text-white rounded font-bold animate-pulse">

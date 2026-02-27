@@ -14,19 +14,20 @@ const generateMockQuestions = (count: number, subject: string) => {
   
   for (let i = 0; i < count; i++) {
     const currentSubject = subjects[i % subjects.length];
-    questions.push({
-      id: `q${i + 1}`,
-      text: `${currentSubject} Question ${i + 1}: This is a sample question testing your understanding of ${currentSubject.toLowerCase()} concepts. Choose the correct option.`,
+      questions.push({
+        id: `q${i + 1}`,
+        text: `${currentSubject} Question ${i + 1}: This is a sample question testing your understanding of ${currentSubject.toLowerCase()} concepts. Choose the correct option.`,
       options: [
         'Option A: First possible answer',
         'Option B: Second possible answer',
         'Option C: Third possible answer',
         'Option D: Fourth possible answer'
-      ],
-      correctAnswer: Math.floor(Math.random() * 4),
-      subject: currentSubject,
-      marks: 4
-    });
+        ],
+        correctAnswer: Math.floor(Math.random() * 4),
+        subject: currentSubject,
+        marks: 4,
+        negativeMarks: 1
+      });
   }
   
   return questions;
@@ -100,6 +101,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
           obtainedMarks += q.marks;
         } else {
           wrongAnswers++;
+          obtainedMarks -= q.negativeMarks ?? 0;
         }
       } else {
         unattempted++;
@@ -136,6 +138,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
           subjectData.marks += q.marks;
         } else {
           subjectData.wrong++;
+          subjectData.marks -= q.negativeMarks ?? 0;
         }
       } else {
         subjectData.unattempted++;
