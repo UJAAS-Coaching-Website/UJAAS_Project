@@ -485,6 +485,13 @@ export function AdminDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
+  const handleSaveStudentProfile = (
+    studentId: string,
+    updates: Pick<Student, 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+  ) => {
+    setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
+    setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+  };
 
   useBodyScrollLock(
     studentModal.open ||
@@ -749,7 +756,7 @@ export function AdminDashboard({
           onUpdateBatch={onUpdateBatch}
           onDeleteBatch={onDeleteBatch}
         />
-        <BatchFacultyPickerModal
+        <BatchStudentPickerModal
           open={batchStudentPicker.open}
           selectedBatch={batchStudentPicker.batch}
           students={students}
@@ -771,6 +778,7 @@ export function AdminDashboard({
               open={ratingModal.open}
               student={ratingModal.student}
               onClose={closeStudentRatings}
+              onSaveProfile={handleSaveStudentProfile}
             />
           )}
         </AnimatePresence>
@@ -1289,17 +1297,17 @@ function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App')
   );
 }
 
-function OverviewTab({ selectedBatch, onEditBatch, students }: { selectedBatch: Batch; onEditBatch: (l: string) => void; students: Student[] }) {
+function OverviewTab({ selectedBatch, onEditBatch, students }: { selectedBatch: Batch | null; onEditBatch: (l: string) => void; students: Student[] }) {
+  if (!selectedBatch) return null;
+  const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="space-y-8">
-                <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-teal-600 rounded-xl font-bold border border-teal-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: 'Total Students', value: students.filter(s => s.batch === selectedBatch).length, icon: Users, color: 'from-blue-500 to-cyan-500' },
-          { label: 'Avg. Attendance', value: '92%', icon: Calendar, color: 'from-teal-500 to-emerald-500' },
-          { label: 'Pending DPPs', value: '12', icon: ClipboardList, color: 'from-orange-500 to-red-500' },
-          { label: 'Performance', value: 'High', icon: TrendingUp, color: 'from-purple-500 to-pink-500' },
+          { label: 'Batch Students', value: batchStudents.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
+          { label: 'Avg. Attendance', value: '94%', icon: Calendar, color: 'from-teal-500 to-emerald-500' },
+          { label: 'Performance', value: 'Excellent', icon: TrendingUp, color: 'from-purple-500 to-pink-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl shadow-lg border border-gray-50 flex items-center gap-4">
             <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-md`}><stat.icon className="w-6 h-6" /></div>
@@ -1323,19 +1331,14 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
           <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Roll No</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
             {students.filter(s => s.batch === selectedBatch).map((s) => (
-              <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
+              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
                 <td className="py-4">
-                  <button 
-                    onClick={() => onViewStudent(s)}
-                    className="group flex flex-col items-start text-left hover:opacity-80 transition-all"
-                  >
-                    <div className="font-bold text-gray-900 group-hover:text-teal-600 group-hover:underline">{s.name}</div>
-                    <div className="text-xs text-gray-500">{s.email}</div>
-                  </button>
+                  <div className="font-bold text-gray-900">{s.name}</div>
+                  <div className="text-xs text-gray-500">{s.email}</div>
                 </td>
                 <td className="py-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4 flex gap-2"><button onClick={() => onEditStudent(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={() => onDeleteStudent(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
+                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
               </tr>
             ))}
           </tbody>
@@ -1920,19 +1923,14 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
           <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Batch</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
           <tbody className="divide-y divide-gray-50">
             {filtered.map(s => (
-              <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
+              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
                 <td className="py-4">
-                  <button 
-                    onClick={() => onViewStudent(s)}
-                    className="group flex flex-col items-start text-left hover:opacity-80 transition-all"
-                  >
-                    <div className="font-bold text-gray-900 group-hover:text-teal-600 group-hover:underline">{s.name}</div>
-                    <div className="text-xs text-gray-500">{s.email}</div>
-                  </button>
+                  <div className="font-bold text-gray-900">{s.name}</div>
+                  <div className="text-xs text-gray-500">{s.email}</div>
                 </td>
                 <td className="py-4">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4"><span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{s.batch}</span></td>
-                <td className="py-4 flex gap-2"><button onClick={() => onEditStudent(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={() => onDeleteStudent(s.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
+                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
               </tr>
             ))}
           </tbody>
@@ -2727,16 +2725,38 @@ function StudentRatingsModal({
   open,
   student,
   onClose,
+  onSaveProfile,
 }: {
   open: boolean;
   student?: Student;
   onClose: () => void;
+  onSaveProfile?: (
+    studentId: string,
+    updates: Pick<Student, 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+  ) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    email: '',
+    phoneNumber: '',
+    dateOfBirth: '',
+    parentContact: '',
+    address: '',
+  });
 
   useEffect(() => {
-    if (open) setShowRatings(false);
-  }, [open]);
+    if (!open || !student) return;
+    setShowRatings(false);
+    setIsEditingProfile(false);
+    setProfileDraft({
+      email: student.email ?? '',
+      phoneNumber: student.phoneNumber ?? '',
+      dateOfBirth: student.dateOfBirth ?? '',
+      parentContact: student.parentContact ?? '',
+      address: student.address ?? '',
+    });
+  }, [open, student]);
 
   if (!open || !student) return null;
 
@@ -2752,6 +2772,11 @@ function StudentRatingsModal({
   };
 
   const finalRating = calculateFinalRating();
+  const saveProfile = () => {
+    if (!student) return;
+    onSaveProfile?.(student.id, profileDraft);
+    setIsEditingProfile(false);
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -2775,27 +2800,109 @@ function StudentRatingsModal({
         <div className="flex-1 overflow-y-auto p-8">
           {!showRatings ? (
             <div className="space-y-8">
+              <div className="flex justify-end">
+                {!isEditingProfile ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(true)}
+                    className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 transition"
+                  >
+                    Edit Details
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingProfile(false);
+                        setProfileDraft({
+                          email: student.email ?? '',
+                          phoneNumber: student.phoneNumber ?? '',
+                          dateOfBirth: student.dateOfBirth ?? '',
+                          parentContact: student.parentContact ?? '',
+                          address: student.address ?? '',
+                        });
+                      }}
+                      className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveProfile}
+                      className="px-4 py-2 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition"
+                    >
+                      Save Details
+                    </button>
+                  </div>
+                )}
+              </div>
               {/* Basic Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.email}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="email"
+                      value={profileDraft.email}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.email}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" /> {student.phoneNumber || 'Not provided'}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="tel"
+                      value={profileDraft.phoneNumber}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" /> {student.phoneNumber || 'Not provided'}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Date of Birth</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-purple-600" /> {student.dateOfBirth || 'Not provided'}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="date"
+                      value={profileDraft.dateOfBirth}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-purple-600" /> {student.dateOfBirth || 'Not provided'}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Parent's Contact</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-orange-600" /> {student.parentContact || 'Not provided'}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="tel"
+                      value={profileDraft.parentContact}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, parentContact: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-orange-600" /> {student.parentContact || 'Not provided'}</p>
+                  )}
                 </div>
                 <div className="md:col-span-2 space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Residential Address</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-emerald-600" /> {student.address || 'Not provided'}</p>
+                  {isEditingProfile ? (
+                    <textarea
+                      rows={3}
+                      value={profileDraft.address}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, address: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><LayoutDashboard className="w-4 h-4 text-emerald-600" /> {student.address || 'Not provided'}</p>
+                  )}
                 </div>
               </div>
 

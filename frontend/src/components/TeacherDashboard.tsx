@@ -354,7 +354,76 @@ export function TeacherDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const openEditBatch = (label: string) => setBatchModal({ open: true, batchLabel: label });
+  const teacherSubject =
+    faculty.find(
+      (f) =>
+        f.email.toLowerCase() === user.email.toLowerCase() ||
+        f.name.toLowerCase() === user.name.toLowerCase()
+    )?.subject ?? null;
+  const handleSaveTeacherSubjectRating = (studentId: string, subject: string, rating: number) => {
+    const nextRating = Math.max(0, Math.min(5, rating));
+    setStudents((prev) =>
+      prev.map((student) => {
+        if (student.id !== studentId) return student;
+
+        const existingSubjectRatings = student.subjectRatings ?? {};
+        const prevSubject = existingSubjectRatings[subject] ?? {
+          attendance: nextRating,
+          tests: nextRating,
+          dppPerformance: nextRating,
+          behavior: nextRating,
+        };
+        const updatedSubjectRatings = {
+          ...existingSubjectRatings,
+          [subject]: {
+            attendance: nextRating,
+            tests: nextRating,
+            dppPerformance: nextRating,
+            behavior: nextRating,
+            ...prevSubject,
+          },
+        };
+        updatedSubjectRatings[subject] = {
+          attendance: nextRating,
+          tests: nextRating,
+          dppPerformance: nextRating,
+          behavior: nextRating,
+        };
+
+        const values = Object.values(updatedSubjectRatings);
+        const avg =
+          values.length > 0
+            ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
+              values.length
+            : student.rating;
+
+        return {
+          ...student,
+          subjectRatings: updatedSubjectRatings,
+          rating: Number(avg.toFixed(1)),
+        };
+      })
+    );
+    setRatingModal((prev) => {
+      if (!prev.student || prev.student.id !== studentId) return prev;
+      const existingSubjectRatings = prev.student.subjectRatings ?? {};
+      return {
+        ...prev,
+        student: {
+          ...prev.student,
+          subjectRatings: {
+            ...existingSubjectRatings,
+            [subject]: {
+              attendance: nextRating,
+              tests: nextRating,
+              dppPerformance: nextRating,
+              behavior: nextRating,
+            },
+          },
+        },
+      };
+    });
+  };
   const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
 
   return (
@@ -486,7 +555,6 @@ export function TeacherDashboard({
                 <OverviewTab
                   selectedBatch={selectedBatch}
                   students={students}
-                  onEditBatch={openEditBatch}
                 />
               )}
               {activeTab === 'students' && (
@@ -551,6 +619,8 @@ export function TeacherDashboard({
               open={ratingModal.open}
               student={ratingModal.student}
               onClose={closeStudentRatings}
+              teacherSubject={teacherSubject}
+              onSaveSubjectRating={handleSaveTeacherSubjectRating}
             />
           )}
         </AnimatePresence>
@@ -648,12 +718,12 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
   );
 }
 
-function OverviewTab({ selectedBatch, students, onEditBatch }: { selectedBatch: Batch | null; students: Student[]; onEditBatch: (l: string) => void; }) {
+function OverviewTab({ selectedBatch, students }: { selectedBatch: Batch | null; students: Student[]; }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2><button onClick={() => onEditBatch(selectedBatch)} className="px-6 py-3 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition">Edit Batch Settings</button></div>
+      <div className="flex justify-between items-center"><h2 className="text-3xl font-bold text-gray-900">{selectedBatch} Overview</h2></div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { label: 'Batch Students', value: batchStudents.length, icon: Users, color: 'from-blue-500 to-cyan-500' },
@@ -1059,16 +1129,27 @@ function StudentRatingsModal({
   open,
   student,
   onClose,
+  teacherSubject,
+  onSaveSubjectRating,
 }: {
   open: boolean;
   student?: Student;
   onClose: () => void;
+  teacherSubject?: string | null;
+  onSaveSubjectRating?: (studentId: string, subject: string, rating: number) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
+  const [draftRatings, setDraftRatings] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (open) setShowRatings(false);
-  }, [open]);
+    if (!open || !student) return;
+    setShowRatings(false);
+    const nextDrafts: Record<string, string> = {};
+    Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
+      nextDrafts[subject] = ((r.attendance + r.tests + r.dppPerformance + r.behavior) / 4).toFixed(1);
+    });
+    setDraftRatings(nextDrafts);
+  }, [open, student]);
 
   if (!open || !student) return null;
 
@@ -1163,11 +1244,18 @@ function StudentRatingsModal({
                   <p className="text-xl font-black text-gray-900">{finalRating.toFixed(1)}/5.0</p>
                 </div>
               </div>
+              <p className="text-sm text-gray-500">
+                {teacherSubject
+                  ? `You can edit ratings only for ${teacherSubject}.`
+                  : 'Teacher subject is not mapped, so rating edit is disabled.'}
+              </p>
 
               {student.subjectRatings && Object.keys(student.subjectRatings).length > 0 ? (
                 <div className="space-y-6">
                   {Object.entries(student.subjectRatings).map(([subject, r]) => {
                     const subAvg = calculateSubjectRating(r);
+                    const canEditThisSubject =
+                      !!teacherSubject && subject.toLowerCase() === teacherSubject.toLowerCase();
                     return (
                       <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
@@ -1177,6 +1265,34 @@ function StudentRatingsModal({
                             {renderPerformanceStars(subAvg)}
                           </div>
                         </div>
+                        {canEditThisSubject && (
+                          <div className="px-6 py-4 border-b border-gray-100 bg-teal-50/50 flex flex-col sm:flex-row sm:items-center gap-3">
+                            <label className="text-sm font-semibold text-gray-700">Update {subject} rating (0-5)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={5}
+                              step={0.1}
+                              value={draftRatings[subject] ?? ''}
+                              onChange={(e) => setDraftRatings((prev) => ({ ...prev, [subject]: e.target.value }))}
+                              className="w-28 rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const value = Number(draftRatings[subject]);
+                                if (Number.isNaN(value) || value < 0 || value > 5) {
+                                  window.alert('Please enter a rating between 0 and 5.');
+                                  return;
+                                }
+                                onSaveSubjectRating?.(student.id, subject, value);
+                              }}
+                              className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                            >
+                              Save {subject} Rating
+                            </button>
+                          </div>
+                        )}
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                           {[
                             { label: 'Attendance', val: r.attendance },
