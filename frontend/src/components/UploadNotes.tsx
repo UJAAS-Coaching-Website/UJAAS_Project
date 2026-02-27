@@ -268,7 +268,11 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                       </div>
                       
                       <button
-                        onClick={() => removeFile(index)}
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to remove the file "${file.name}"?`)) {
+                            removeFile(index);
+                          }
+                        }}
                         className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
                       >
                         <X className="w-5 h-5" />

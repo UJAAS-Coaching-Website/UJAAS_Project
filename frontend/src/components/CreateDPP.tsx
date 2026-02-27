@@ -236,7 +236,11 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveQuestion(q.id)}
+                          onClick={() => {
+                            if (confirm('Are you sure you want to remove this question?')) {
+                              handleRemoveQuestion(q.id);
+                            }
+                          }}
                           className="text-red-600 hover:bg-red-100 p-2 rounded-lg transition"
                         >
                           <Trash2 className="w-5 h-5" />

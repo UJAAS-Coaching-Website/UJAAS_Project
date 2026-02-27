@@ -865,7 +865,16 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           {data.courses.map((c, i) => (
             <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl group">
               <span className="font-medium text-gray-700">{c}</span>
-              <button onClick={() => handleRemoveCourse(i)} className="p-2 text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-5 h-5" /></button>
+              <button 
+                onClick={() => {
+                  if (confirm(`Are you sure you want to remove the course "${c}"?`)) {
+                    handleRemoveCourse(i);
+                  }
+                }} 
+                className="p-2 text-red-500 opacity-0 group-hover:opacity-100"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
             </div>
           ))}
         </div>
@@ -913,7 +922,16 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 relative group">
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => { setEditingFacultyIndex(i); setIsAddingFaculty(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg"><Edit className="w-4 h-4" /></button>
-                <button onClick={() => onUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) })} className="p-2 bg-red-50 text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                <button 
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to remove ${m.name} from faculty?`)) {
+                      onUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) });
+                    }
+                  }} 
+                  className="p-2 bg-red-50 text-red-500 rounded-lg"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
               <div className="flex items-center gap-4">
                 <img src={m.image} className="w-16 h-16 rounded-full object-cover border-2 border-teal-100" />
@@ -950,7 +968,16 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.achievers.map((a, i) => (
             <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 relative group">
-              <button onClick={() => onUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) })} className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
+              <button 
+                onClick={() => {
+                  if (confirm(`Are you sure you want to remove achiever "${a.name}"?`)) {
+                    onUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) });
+                  }
+                }} 
+                className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
               <div className="flex items-center gap-4">
                 <img src={a.image} className="w-16 h-16 rounded-xl object-cover border-2 border-cyan-100" />
                 <div><h3 className="font-bold text-gray-900">{a.name}</h3><p className="text-sm text-cyan-600">{a.achievement}</p><p className="text-xs text-gray-500">Year: {a.year}</p></div>
@@ -1031,7 +1058,11 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
 }
 
 function QueriesManagementTab({ queries, onUpdate }: { queries: import('../App').LandingQuery[]; onUpdate: (queries: import('../App').LandingQuery[]) => void }) {
-  const handleDelete = (id: string) => onUpdate(queries.filter(q => q.id !== id));
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this query?')) {
+      onUpdate(queries.filter(q => q.id !== id));
+    }
+  };
   const handleStatusChange = (id: string, status: 'new' | 'contacted' | 'completed') => onUpdate(queries.map(q => q.id === id ? { ...q, status } : q));
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
