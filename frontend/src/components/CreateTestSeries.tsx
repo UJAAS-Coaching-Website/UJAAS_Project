@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface BatchInfo {
   label: string;
@@ -50,6 +51,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   };
   const [activeSubject, setActiveSubject] = useState('Physics');
   const [activeSection, setActiveSection] = useState<'Section A' | 'Section B'>('Section A');
+  useBodyScrollLock(showSuccess);
 
   useEffect(() => {
     const validSubjects = getSubjects();

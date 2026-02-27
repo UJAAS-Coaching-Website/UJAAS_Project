@@ -12,6 +12,7 @@ import {
   Paperclip
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface UploadNotesProps {
   onBack: () => void;
@@ -29,6 +30,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  useBodyScrollLock(showSuccess);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();

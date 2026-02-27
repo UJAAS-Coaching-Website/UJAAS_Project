@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface CreateDPPProps {
   onBack: () => void;
@@ -27,6 +28,7 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
 
   const [showSuccess, setShowSuccess] = useState(false);
+  useBodyScrollLock(showSuccess);
 
   const handleAddQuestion = (question: Question) => {
     setQuestions([...questions, question]);

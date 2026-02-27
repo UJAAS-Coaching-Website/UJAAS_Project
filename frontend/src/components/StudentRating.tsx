@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   Star,
   TrendingUp,
@@ -39,6 +40,7 @@ export function StudentRating({ students }: StudentRatingProps) {
   const [ratings, setRatings] = useState<StudentRating[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [editingRating, setEditingRating] = useState<StudentRating | null>(null);
+  useBodyScrollLock(Boolean(selectedStudent && editingRating));
 
   // Load ratings from localStorage
   useEffect(() => {

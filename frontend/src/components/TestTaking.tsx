@@ -1,5 +1,6 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   Clock,
   ChevronLeft,
@@ -74,6 +75,7 @@ export function TestTaking({
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
+  useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;

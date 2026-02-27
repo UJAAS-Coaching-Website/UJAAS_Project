@@ -31,6 +31,7 @@ import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { TeacherProfile } from './TeacherProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
@@ -194,6 +195,16 @@ export function TeacherDashboard({
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newChapterName, setNewChapterName] = useState('');
   const [activeSubjectForChapter, setActiveSubjectForChapter] = useState<string | null>(null);
+
+  useBodyScrollLock(
+    studentModal.open ||
+      batchModal.open ||
+      ratingModal.open ||
+      showFullTimetable ||
+      batchStudentPicker.open ||
+      isAddSubjectModalOpen ||
+      isAddChapterModalOpen
+  );
 
   const handleAddSubject = (e: FormEvent) => {
     e.preventDefault();
@@ -642,6 +653,8 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
 
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState('');
+
+  useBodyScrollLock(isAddChapterModalOpen);
 
   const handleAddChapter = (e: FormEvent) => {
     e.preventDefault();

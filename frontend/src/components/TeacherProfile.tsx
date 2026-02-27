@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { me } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   User,
   Mail,
@@ -499,6 +500,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
     newPassword: '',
     confirmPassword: '',
   });
+  useBodyScrollLock(showLogoutConfirm || showChangePassword);
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);

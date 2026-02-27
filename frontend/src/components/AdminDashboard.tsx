@@ -34,6 +34,7 @@ import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { AdminProfile } from './AdminProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
@@ -368,6 +369,16 @@ export function AdminDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
+
+  useBodyScrollLock(
+    studentModal.open ||
+      facultyModal.open ||
+      batchModal.open ||
+      batchStudentPicker.open ||
+      batchFacultyPicker.open ||
+      ratingModal.open ||
+      showFullTimetable
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pt-20">
@@ -1304,6 +1315,8 @@ function NotesManagementTab({
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newChapterName, setNewChapterName] = useState('');
+
+  useBodyScrollLock(isAddSubjectModalOpen || isAddChapterModalOpen);
 
   const handleAddSubject = (e: FormEvent) => {
     e.preventDefault();
