@@ -1172,16 +1172,16 @@ function StudentRatingsModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
           <div>
-            <h3 className="text-2xl font-bold">{student.name}</h3>
-            <p className="text-teal-50 opacity-90">{student.batch} • {student.rollNumber}</p>
+            <h3 className="text-xl font-bold">{student.name}</h3>
+            <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

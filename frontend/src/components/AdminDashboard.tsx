@@ -487,7 +487,7 @@ export function AdminDashboard({
   const closeStudentRatings = () => setRatingModal({ open: false });
   const handleSaveStudentProfile = (
     studentId: string,
-    updates: Pick<Student, 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
     setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
@@ -2732,12 +2732,13 @@ function StudentRatingsModal({
   onClose: () => void;
   onSaveProfile?: (
     studentId: string,
-    updates: Pick<Student, 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({
+    name: '',
     email: '',
     phoneNumber: '',
     dateOfBirth: '',
@@ -2750,6 +2751,7 @@ function StudentRatingsModal({
     setShowRatings(false);
     setIsEditingProfile(false);
     setProfileDraft({
+      name: student.name ?? '',
       email: student.email ?? '',
       phoneNumber: student.phoneNumber ?? '',
       dateOfBirth: student.dateOfBirth ?? '',
@@ -2784,22 +2786,22 @@ function StudentRatingsModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
           <div>
-            <h3 className="text-2xl font-bold">{student.name}</h3>
-            <p className="text-teal-50 opacity-90">{student.batch} • {student.rollNumber}</p>
+            <h3 className="text-xl font-bold">{student.name}</h3>
+            <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8">
           {!showRatings ? (
-            <div className="space-y-8">
+            <div className="space-y-4">
               <div className="flex justify-end">
                 {!isEditingProfile ? (
                   <button
@@ -2816,6 +2818,7 @@ function StudentRatingsModal({
                       onClick={() => {
                         setIsEditingProfile(false);
                         setProfileDraft({
+                          name: student.name ?? '',
                           email: student.email ?? '',
                           phoneNumber: student.phoneNumber ?? '',
                           dateOfBirth: student.dateOfBirth ?? '',
@@ -2839,6 +2842,19 @@ function StudentRatingsModal({
               </div>
               {/* Basic Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileDraft.name}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, name: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-indigo-600" /> {student.name}</p>
+                  )}
+                </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
                   {isEditingProfile ? (
