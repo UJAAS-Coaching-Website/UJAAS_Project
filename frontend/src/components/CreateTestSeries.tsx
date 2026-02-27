@@ -79,7 +79,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
       ...question,
       subject: activeSubject,
       metadata: {
-        section: testData.format === 'Custom' ? undefined : activeSection
+        section: testData.format === 'JEE MAIN' ? activeSection : undefined
       }
     };
     
@@ -97,7 +97,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
 
   const filteredQuestions = questions.filter(q => 
     q.subject === activeSubject && 
-    (testData.format === 'Custom' || (q as any).metadata?.section === activeSection)
+    (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
   );
 
   const handleRemoveQuestion = (id: string) => {
@@ -140,9 +140,14 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
         }
       });
     } else if (testData.format === 'NEET') {
+      const neetSubjectCounts: Record<string, number> = {
+        Physics: 45,
+        Chemistry: 45,
+        Biology: 90
+      };
       subjects.forEach(subject => {
-        // NEET: 50 questions per subject area (usually 35 A + 15 B)
-        for (let i = 1; i <= 50; i++) {
+        const count = neetSubjectCounts[subject] ?? 0;
+        for (let i = 1; i <= count; i++) {
           demoQuestions.push({
             id: `demo-${subject}-${i}-${timestamp}`,
             type: 'MCQ',
@@ -151,8 +156,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
             correctAnswer: 0,
             difficulty: 'Medium',
             marks: 4,
-            subject: subject,
-            metadata: { section: i <= 35 ? 'Section A' : 'Section B' }
+            subject: subject
           });
         }
       });
@@ -207,7 +211,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   
   const getRequiredCount = () => {
     if (testData.format === 'JEE MAIN') return 90;
-    if (testData.format === 'NEET') return 200;
+    if (testData.format === 'NEET') return 180;
     return 5;
   };
 
@@ -315,7 +319,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                         <button
                           key={f}
                           onClick={() => {
-                            const duration = f === 'JEE MAIN' ? 180 : f === 'NEET' ? 200 : 180;
+                            const duration = f === 'JEE MAIN' ? 180 : f === 'NEET' ? 180 : 180;
                             const marks = f === 'JEE MAIN' ? 300 : f === 'NEET' ? 720 : 300;
                             setTestData({ ...testData, format: f as any, duration, totalMarks: marks });
                           }}
@@ -470,7 +474,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                 </button>
               </div>
 
-              {testData.format !== 'Custom' && (
+              {testData.format === 'JEE MAIN' && (
                 <div className="flex gap-4">
                   {(['Section A', 'Section B'] as const).map((sec) => (
                     <button
@@ -499,7 +503,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                     {testData.format === 'JEE MAIN' ? (
                       <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 10 Numerical Value Questions (+4, 0) - Students attempt 5'}</p>
                     ) : (
-                      <p>{activeSection === 'Section A' ? 'Section A: 35 Compulsory MCQs (+4, -1)' : 'Section B: 15 MCQs (+4, -1) - Students attempt 10'}</p>
+                      <p>Physics: 45 MCQs, Chemistry: 45 MCQs, Biology: 90 MCQs (all +4, -1)</p>
                     )}
                   </div>
                 </div>
@@ -508,7 +512,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               <div ref={formRef} className="scroll-mt-8">
                 <QuestionUploadForm 
                   onAddQuestion={handleAddQuestion} 
-                  buttonLabel={`Add to ${activeSubject} - ${activeSection}`}
+                  buttonLabel={`Add to ${activeSubject}${testData.format === 'JEE MAIN' ? ` - ${activeSection}` : ''}`}
                   showMarks={testData.format === 'Custom'}
                   showSubject={testData.format === 'Custom'}
                   subjects={currentSubjects}
@@ -527,7 +531,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               {filteredQuestions.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Added in {activeSubject} {testData.format !== 'Custom' && `- ${activeSection}`} ({filteredQuestions.length})
+                    Added in {activeSubject} {testData.format === 'JEE MAIN' && `- ${activeSection}`} ({filteredQuestions.length})
                   </h3>
                   <div className="space-y-3">
                     {filteredQuestions.map((q, index) => (
