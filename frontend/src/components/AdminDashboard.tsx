@@ -204,6 +204,14 @@ export function AdminDashboard({
     open: false,
     mode: 'create'
   });
+  const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
+    open: false,
+    batch: null
+  });
+  const [batchFacultyPicker, setBatchFacultyPicker] = useState<{ open: boolean; batch: Batch | null }>({
+    open: false,
+    batch: null
+  });
 
   useEffect(() => {
     // Simulated data fetch
@@ -309,10 +317,49 @@ export function AdminDashboard({
     }
   };
 
+  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+    if (window.confirm('Remove this student from the current batch?')) {
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === id && student.batch === batch
+            ? {
+                ...student,
+                batch: 'Unassigned',
+                enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
+              }
+            : student
+        )
+      );
+    }
+  };
+
   const handleDeleteFaculty = (id: string) => {
     if (window.confirm('Are you sure you want to delete this teacher?')) {
       setFaculty(faculty.filter(f => f.id !== id));
     }
+  };
+
+  const openBatchStudentPicker = (batch: Batch) => setBatchStudentPicker({ open: true, batch });
+  const closeBatchStudentPicker = () => setBatchStudentPicker({ open: false, batch: null });
+  const handleAssignExistingStudentToBatch = (studentId: string, batch: Batch) => {
+    setStudents((prev) =>
+      prev.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              batch,
+            }
+          : student
+      )
+    );
+  };
+  const openBatchFacultyPicker = (batch: Batch) => setBatchFacultyPicker({ open: true, batch });
+  const closeBatchFacultyPicker = () => setBatchFacultyPicker({ open: false, batch: null });
+  const handleAssignExistingFacultyToBatch = (facultyName: string, batch: Batch) => {
+    const currentBatch = batches.find((item) => item.label === batch);
+    if (!currentBatch) return;
+    const nextAssigned = Array.from(new Set([...(currentBatch.facultyAssigned ?? []), facultyName]));
+    onUpdateBatch(batch, currentBatch.subjects ?? [], nextAssigned);
   };
 
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student }>({
@@ -508,9 +555,9 @@ export function AdminDashboard({
                   students={students}
                   selectedBatch={selectedBatch}
                   onChangeBatch={onClearBatch}
-                  onAddStudent={() => openAddStudent(selectedBatch)}
+                  onAddStudent={() => openBatchStudentPicker(selectedBatch)}
                   onEditStudent={openEditStudent}
-                  onDeleteStudent={handleDeleteStudent}
+                  onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
                   onViewStudent={openStudentRatings}
                 />
               )}
@@ -520,6 +567,7 @@ export function AdminDashboard({
                   batches={batches}
                   faculty={faculty}
                   onUpdateBatch={onUpdateBatch}
+                  onOpenAddFaculty={() => openBatchFacultyPicker(selectedBatch)}
                 />
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
@@ -573,6 +621,21 @@ export function AdminDashboard({
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
           onDeleteBatch={onDeleteBatch}
+        />
+        <BatchStudentPickerModal
+          open={batchStudentPicker.open}
+          selectedBatch={batchStudentPicker.batch}
+          students={students}
+          onClose={closeBatchStudentPicker}
+          onAssign={handleAssignExistingStudentToBatch}
+        />
+        <BatchFacultyPickerModal
+          open={batchFacultyPicker.open}
+          selectedBatch={batchFacultyPicker.batch}
+          batches={batches}
+          faculty={faculty}
+          onClose={closeBatchFacultyPicker}
+          onAssign={handleAssignExistingFacultyToBatch}
         />
 
         <StudentRatingsModal
@@ -1117,12 +1180,12 @@ function OverviewTab({ selectedBatch, onEditBatch, students }: { selectedBatch: 
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Batch Students</h2><p className="text-gray-500">{selectedBatch}</p></div>
-        <div className="flex gap-3"><button onClick={onChangeBatch} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">Change Batch</button><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -1143,25 +1206,56 @@ function StudentsTab({ students, selectedBatch, onChangeBatch, onAddStudent, onE
   );
 }
 
-function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch }: { selectedBatch: Batch; faculty: Teacher[]; batches: BatchInfo[]; onUpdateBatch: any }) {
+function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpenAddFaculty }: { selectedBatch: Batch; faculty: Teacher[]; batches: BatchInfo[]; onUpdateBatch: any; onOpenAddFaculty: () => void }) {
   const currentBatch = batches.find(b => b.label === selectedBatch);
-  const [assigned, setAssigned] = useState<string[]>(currentBatch?.facultyAssigned || []);
-  const handleToggle = (name: string) => {
-    const next = assigned.includes(name) ? assigned.filter(n => n !== name) : [...assigned, name];
-    setAssigned(next);
-    onUpdateBatch(selectedBatch, { facultyAssigned: next });
+  const assigned = currentBatch?.facultyAssigned ?? [];
+  const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
+  const handleRemoveFacultyFromBatch = (facultyName: string) => {
+    if (!currentBatch) return;
+    if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
+    const nextAssigned = assigned.filter((name) => name !== facultyName);
+    onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
   };
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <h2 className="text-3xl font-bold text-gray-900 mb-8">Manage Batch Faculty</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {faculty.map((t) => (
-          <button key={t.id} onClick={() => handleToggle(t.name)} className={`p-6 rounded-3xl border-2 transition-all text-left ${assigned.includes(t.name) ? 'border-cyan-500 bg-cyan-50 shadow-md' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${assigned.includes(t.name) ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-400'}`}><GraduationCap className="w-6 h-6" /></div>
-            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3><p className="text-sm font-semibold text-cyan-600 uppercase tracking-wider">{t.subject}</p>
-          </button>
-        ))}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold text-gray-900">Manage Batch Faculty</h2>
+        <button
+          type="button"
+          onClick={onOpenAddFaculty}
+          className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Add Faculty
+        </button>
       </div>
+      {assignedFaculty.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-gray-300 bg-white/60 p-8 text-center text-gray-600">
+          No faculty assigned to this batch yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {assignedFaculty.map((t) => (
+            <div key={t.id} className="p-6 rounded-3xl border-2 transition-all text-left border-cyan-500 bg-cyan-50 shadow-md">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-teal-600 text-white">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
+              <p className="text-sm font-semibold text-cyan-600 uppercase tracking-wider">{t.subject}</p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2085,6 +2179,151 @@ function AddFacultyModal({
             </button>
           </div>
         </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function BatchStudentPickerModal({
+  open,
+  selectedBatch,
+  students,
+  onClose,
+  onAssign,
+}: {
+  open: boolean;
+  selectedBatch: Batch | null;
+  students: Student[];
+  onClose: () => void;
+  onAssign: (studentId: string, batch: Batch) => void;
+}) {
+  if (!open || !selectedBatch) return null;
+
+  const availableStudents = students.filter((student) => student.batch !== selectedBatch);
+
+  const handleAssign = (student: Student) => {
+    if (
+      student.batch &&
+      student.batch !== 'Unassigned' &&
+      student.batch !== selectedBatch &&
+      !window.confirm(`Move ${student.name} from ${student.batch} to ${selectedBatch}?`)
+    ) {
+      return;
+    }
+    onAssign(student.id, selectedBatch);
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">Add Existing Student</h3>
+          <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
+        </div>
+        <div className="p-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-3">
+          {availableStudents.length === 0 ? (
+            <p className="text-sm text-gray-500">No students available to add.</p>
+          ) : (
+            availableStudents.map((student) => (
+              <div key={student.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                <div>
+                  <p className="font-semibold text-gray-900">{student.name}</p>
+                  <p className="text-sm text-gray-500">{student.email}</p>
+                  <p className="text-xs text-gray-400 mt-1">Current batch: {student.batch || 'Unassigned'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAssign(student)}
+                  className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                >
+                  Add
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function BatchFacultyPickerModal({
+  open,
+  selectedBatch,
+  batches,
+  faculty,
+  onClose,
+  onAssign,
+}: {
+  open: boolean;
+  selectedBatch: Batch | null;
+  batches: BatchInfo[];
+  faculty: Teacher[];
+  onClose: () => void;
+  onAssign: (facultyName: string, batch: Batch) => void;
+}) {
+  if (!open || !selectedBatch) return null;
+
+  const currentBatch = batches.find((item) => item.label === selectedBatch);
+  const assigned = currentBatch?.facultyAssigned ?? [];
+  const availableFaculty = faculty.filter((item) => !assigned.includes(item.name));
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">Add Existing Faculty</h3>
+          <p className="text-sm text-white/80">Select faculty to assign to {selectedBatch}.</p>
+        </div>
+        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-3">
+          {availableFaculty.length === 0 ? (
+            <p className="text-sm text-gray-500">All available faculty are already assigned to this batch.</p>
+          ) : (
+            availableFaculty.map((item) => (
+              <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                <div>
+                  <p className="font-semibold text-gray-900">{item.name}</p>
+                  <p className="text-sm text-gray-500">{item.subject}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onAssign(item.name, selectedBatch)}
+                  className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                >
+                  Add
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="px-6 pb-6 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+          >
+            Close
+          </button>
+        </div>
       </motion.div>
     </div>
   );

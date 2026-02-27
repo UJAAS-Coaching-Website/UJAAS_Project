@@ -163,6 +163,10 @@ export function TeacherDashboard({
   const [batchModal, setBatchModal] = useState<{ open: boolean; batchLabel?: string; }>({ open: false });
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student; }>({ open: false });
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
+    open: false,
+    batch: null
+  });
 
   // Content Management State (Keeping it internal as requested)
   const [subjects, setSubjects] = useState([
@@ -237,6 +241,36 @@ export function TeacherDashboard({
     if (window.confirm('Are you sure you want to delete this student?')) {
       setStudents(prev => prev.filter(s => s.id !== id));
     }
+  };
+
+  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+    if (window.confirm('Remove this student from the current batch?')) {
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === id && student.batch === batch
+            ? {
+                ...student,
+                batch: 'Unassigned',
+                enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
+              }
+            : student
+        )
+      );
+    }
+  };
+  const openBatchStudentPicker = (batch: Batch) => setBatchStudentPicker({ open: true, batch });
+  const closeBatchStudentPicker = () => setBatchStudentPicker({ open: false, batch: null });
+  const handleAssignExistingStudentToBatch = (studentId: string, batch: Batch) => {
+    setStudents((prev) =>
+      prev.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              batch,
+            }
+          : student
+      )
+    );
   };
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
@@ -381,9 +415,9 @@ export function TeacherDashboard({
                   students={students}
                   selectedBatch={selectedBatch}
                   onChangeBatch={onClearBatch}
-                  onAddStudent={() => openAddStudent(selectedBatch)}
+                  onAddStudent={() => openBatchStudentPicker(selectedBatch)}
                   onEditStudent={openEditStudent}
-                  onDeleteStudent={handleDeleteStudent}
+                  onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
                   onViewStudent={openStudentRatings}
                 />
               )}
@@ -423,6 +457,13 @@ export function TeacherDashboard({
           faculty={faculty}
           onClose={closeBatchModal}
           onUpdateBatch={onUpdateBatch}
+        />
+        <BatchStudentPickerModal
+          open={batchStudentPicker.open}
+          selectedBatch={batchStudentPicker.batch}
+          students={students}
+          onClose={closeBatchStudentPicker}
+          onAssign={handleAssignExistingStudentToBatch}
         />
 
         <StudentRatingsModal
@@ -546,12 +587,12 @@ function OverviewTab({ selectedBatch, students, onEditBatch }: { selectedBatch: 
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Batch Students</h2><p className="text-gray-500">{selectedBatch}</p></div>
-        <div className="flex gap-3"><button onClick={onChangeBatch} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg transition">Change Batch</button><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -850,6 +891,83 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
       </div>
     </div>
   ); 
+}
+
+function BatchStudentPickerModal({
+  open,
+  selectedBatch,
+  students,
+  onClose,
+  onAssign,
+}: {
+  open: boolean;
+  selectedBatch: Batch | null;
+  students: Student[];
+  onClose: () => void;
+  onAssign: (studentId: string, batch: Batch) => void;
+}) {
+  if (!open || !selectedBatch) return null;
+
+  const availableStudents = students.filter((student) => student.batch !== selectedBatch);
+
+  const handleAssign = (student: Student) => {
+    if (
+      student.batch &&
+      student.batch !== 'Unassigned' &&
+      student.batch !== selectedBatch &&
+      !window.confirm(`Move ${student.name} from ${student.batch} to ${selectedBatch}?`)
+    ) {
+      return;
+    }
+    onAssign(student.id, selectedBatch);
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
+      >
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+          <h3 className="text-xl font-semibold">Add Existing Student</h3>
+          <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
+        </div>
+        <div className="p-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-3">
+          {availableStudents.length === 0 ? (
+            <p className="text-sm text-gray-500">No students available to add.</p>
+          ) : (
+            availableStudents.map((student) => (
+              <div key={student.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                <div>
+                  <p className="font-semibold text-gray-900">{student.name}</p>
+                  <p className="text-sm text-gray-500">{student.email}</p>
+                  <p className="text-xs text-gray-400 mt-1">Current batch: {student.batch || 'Unassigned'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAssign(student)}
+                  className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                >
+                  Add
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 function StudentRatingsModal({ open, student, onClose }: any) { 
