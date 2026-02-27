@@ -730,10 +730,10 @@ function OverviewTab({
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/50 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedBatch}</h2>
-          <p className="text-gray-500 font-medium">Batch Academic Overview & Content</p>
+          <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
+          <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
         </div>
       </div>
 

@@ -1503,13 +1503,18 @@ function OverviewTab({
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/40 backdrop-blur-md p-6 rounded-3xl border border-white/50 shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{selectedBatch}</h2>
-          <p className="text-gray-500 font-medium">Batch Management & Academic Overview</p>
+          <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
+          <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => onEditBatch(selectedBatch)} className="px-5 py-2.5 bg-white text-cyan-600 rounded-xl font-bold border border-cyan-100 shadow-sm hover:shadow-md transition text-sm">Settings</button>
+          <button 
+            onClick={() => onEditBatch(selectedBatch)} 
+            className="px-8 py-3 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold border border-white/30 shadow-lg hover:bg-white/30 transition-all text-sm"
+          >
+            Batch Settings
+          </button>
         </div>
       </div>
 
@@ -1531,25 +1536,25 @@ function OverviewTab({
         </div>
         
         {assignedFaculty.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {assignedFaculty.map(t => (
-              <div key={t.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 relative group hover:bg-white hover:shadow-md transition-all">
-                <button 
-                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
-                  className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Remove from batch"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50">
+              <div key={t.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-md transition-all flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50 shrink-0 text-lg">
                     {t.name.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-gray-900 text-sm truncate">{t.name}</h4>
+                    <h4 className="font-bold text-gray-900 text-base truncate">{t.name}</h4>
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
                   </div>
                 </div>
+                <button 
+                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  title="Remove from batch"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             ))}
           </div>
@@ -3085,6 +3090,218 @@ function StudentRatingsModal({
   };
 
   const finalRating = calculateFinalRating();
+  const getProfileValuesForPrint = () => ({
+    name: isEditingProfile ? profileDraft.name : student.name,
+    email: isEditingProfile ? profileDraft.email : student.email,
+    phoneNumber: isEditingProfile ? profileDraft.phoneNumber : student.phoneNumber,
+    dateOfBirth: isEditingProfile ? profileDraft.dateOfBirth : student.dateOfBirth,
+    parentContact: isEditingProfile ? profileDraft.parentContact : student.parentContact,
+    address: isEditingProfile ? profileDraft.address : student.address,
+  });
+
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const handlePrintStudentDetails = () => {
+    const profileValues = getProfileValuesForPrint();
+
+    const detailsRows = [
+      ['Student Name', profileValues.name || 'Not provided'],
+      ['Email Address', profileValues.email || 'Not provided'],
+      ['Phone Number', profileValues.phoneNumber || 'Not provided'],
+      ['Date of Birth', profileValues.dateOfBirth || 'Not provided'],
+      ["Parent's Contact", profileValues.parentContact || 'Not provided'],
+      ['Residential Address', profileValues.address || 'Not provided'],
+      ['Batch', student.batch || 'Not provided'],
+      ['Roll Number', student.rollNumber || 'Not provided'],
+      ['Final Average Rating', `${finalRating.toFixed(1)} / 5.0`],
+    ]
+      .map(
+        ([label, value]) =>
+          `<tr><td class="label">${escapeHtml(label)}</td><td class="value">${escapeHtml(value)}</td></tr>`
+      )
+      .join('');
+
+    const subjectRatingsHtml =
+      student.subjectRatings && Object.keys(student.subjectRatings).length > 0
+        ? Object.entries(student.subjectRatings)
+            .map(([subject, r]) => {
+              const subjectAverage = calculateSubjectRating(r);
+              return `
+                <section class="subject-card">
+                  <h3>${escapeHtml(subject)}</h3>
+                  <p class="subject-avg">Subject Average: ${subjectAverage.toFixed(1)} / 5.0</p>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Parameter</th>
+                        <th>Rating</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Attendance</td><td>${r.attendance.toFixed(1)} / 5.0</td></tr>
+                      <tr><td>Test Performance</td><td>${r.tests.toFixed(1)} / 5.0</td></tr>
+                      <tr><td>DPP Performance</td><td>${r.dppPerformance.toFixed(1)} / 5.0</td></tr>
+                      <tr><td>Class Behaviour</td><td>${r.behavior.toFixed(1)} / 5.0</td></tr>
+                    </tbody>
+                  </table>
+                </section>
+              `;
+            })
+            .join('')
+        : '<p class="empty">No rating data available for this student.</p>';
+
+    const printableHtml = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Student Details - ${escapeHtml(profileValues.name || student.name)}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 24px;
+              font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+            }
+            .page {
+              max-width: 900px;
+              margin: 0 auto;
+            }
+            .header {
+              border-bottom: 2px solid #0d9488;
+              padding-bottom: 12px;
+              margin-bottom: 18px;
+            }
+            h1 {
+              margin: 0 0 4px;
+              font-size: 24px;
+            }
+            .subtext {
+              margin: 0;
+              color: #334155;
+              font-size: 13px;
+            }
+            h2 {
+              margin: 22px 0 10px;
+              font-size: 18px;
+              color: #0f766e;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 8px;
+            }
+            th, td {
+              border: 1px solid #e2e8f0;
+              padding: 10px 12px;
+              text-align: left;
+              vertical-align: top;
+              font-size: 13px;
+            }
+            th {
+              background: #f1f5f9;
+              font-weight: 700;
+            }
+            .label {
+              width: 35%;
+              font-weight: 700;
+              background: #f8fafc;
+            }
+            .value {
+              width: 65%;
+            }
+            .subject-card {
+              border: 1px solid #e2e8f0;
+              border-radius: 10px;
+              padding: 12px;
+              margin-bottom: 14px;
+              page-break-inside: avoid;
+            }
+            .subject-card h3 {
+              margin: 0;
+              font-size: 15px;
+            }
+            .subject-avg {
+              margin: 4px 0 6px;
+              color: #334155;
+              font-size: 13px;
+              font-weight: 600;
+            }
+            .empty {
+              padding: 12px;
+              border: 1px dashed #cbd5e1;
+              border-radius: 8px;
+              color: #475569;
+              font-size: 13px;
+            }
+            @media print {
+              body { padding: 0; }
+              .page { max-width: 100%; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="header">
+              <h1>Student Details Report</h1>
+              <p class="subtext">Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
+            </div>
+
+            <h2>Student Profile</h2>
+            <table>
+              <tbody>${detailsRows}</tbody>
+            </table>
+
+            <h2>Detailed Ratings</h2>
+            ${subjectRatingsHtml}
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.right = '0';
+    printFrame.style.bottom = '0';
+    printFrame.style.width = '0';
+    printFrame.style.height = '0';
+    printFrame.style.border = '0';
+    printFrame.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(printFrame);
+
+    const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+    if (!frameDoc || !printFrame.contentWindow) {
+      document.body.removeChild(printFrame);
+      window.alert('Unable to open print preview. Please try again.');
+      return;
+    }
+
+    frameDoc.open();
+    frameDoc.write(printableHtml);
+    frameDoc.close();
+
+    printFrame.onload = () => {
+      printFrame.contentWindow?.focus();
+      printFrame.contentWindow?.print();
+      const cleanup = () => {
+        setTimeout(() => {
+          if (document.body.contains(printFrame)) {
+            document.body.removeChild(printFrame);
+          }
+        }, 200);
+      };
+      printFrame.contentWindow?.addEventListener('afterprint', cleanup, { once: true });
+      setTimeout(cleanup, 2000);
+    };
+  };
   const saveProfile = () => {
     if (!student) return;
     onSaveProfile?.(student.id, profileDraft);
@@ -3105,9 +3322,19 @@ function StudentRatingsModal({
             <h3 className="text-xl font-bold">{student.name}</h3>
             <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrintStudentDetails}
+              className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold hover:bg-white/25 transition"
+            >
+              <FileText className="w-4 h-4" />
+              Print Details
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8">
