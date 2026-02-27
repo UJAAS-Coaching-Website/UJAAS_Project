@@ -809,13 +809,13 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
                 <h3 className="text-xl font-bold">Add New Chapter</h3>
                 <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
               </div>
-              <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+              <form onSubmit={handleAddChapter} className="p-6 space-y-4 overflow-y-auto">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
                   <input
@@ -874,7 +874,7 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white">
+      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">{title}</h2>
         <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit({ id: initialData?.id, name: f.get('name'), email: f.get('email'), rollNumber: f.get('roll'), batch: f.get('batch') }); onClose(); }} className="space-y-4">
           <input name="name" defaultValue={initialData?.name} placeholder="Student Name" required className="w-full px-4 py-3 rounded-xl border border-gray-200" />
@@ -895,7 +895,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white">
+      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
         <form onSubmit={(e) => { e.preventDefault(); onUpdateBatch(batchLabel); onClose(); }} className="space-y-4">
           <input name="label" defaultValue={batchLabel} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500" />
@@ -988,7 +988,7 @@ function StudentRatingsModal({ open, student, onClose }: any) {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-white text-center">
+      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white text-center">
         <div className="w-20 h-20 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4"><Star className="w-10 h-10 text-cyan-600" /></div>
         <h3 className="text-2xl font-bold text-gray-900 mb-2">{student.name}</h3>
         <p className="text-gray-500 mb-6">Performance Rating: {student.rating}/5</p>
@@ -997,3 +997,4 @@ function StudentRatingsModal({ open, student, onClose }: any) {
     </div>
   ); 
 }
+

@@ -1504,13 +1504,13 @@ function NotesManagementTab({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
                 <h3 className="text-xl font-bold">Add New Subject</h3>
                 <p className="text-teal-50 text-sm">Create a new subject folder</p>
               </div>
-              <form onSubmit={handleAddSubject} className="p-6 space-y-4">
+              <form onSubmit={handleAddSubject} className="p-6 space-y-4 overflow-y-auto">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Subject Name</label>
                   <input
@@ -1559,13 +1559,13 @@ function NotesManagementTab({
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
                 <h3 className="text-xl font-bold">Add New Chapter</h3>
                 <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
               </div>
-              <form onSubmit={handleAddChapter} className="p-6 space-y-4">
+              <form onSubmit={handleAddChapter} className="p-6 space-y-4 overflow-y-auto">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
                   <input
@@ -1939,14 +1939,14 @@ function AddStudentModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">{title ?? 'Add Student'}</h3>
           <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Name {requiredMark}</span>
@@ -2120,14 +2120,14 @@ function AddFacultyModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">{title ?? 'Add Faculty'}</h3>
           <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
             <span className="block">Subject {requiredMark}</span>
             <input
@@ -2232,7 +2232,7 @@ function BatchStudentPickerModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">Add Existing Student</h3>
@@ -2301,13 +2301,13 @@ function BatchFacultyPickerModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">Add Existing Faculty</h3>
           <p className="text-sm text-white/80">Select faculty to assign to {selectedBatch}.</p>
         </div>
-        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-3">
+        <div className="p-6 overflow-y-auto custom-scrollbar space-y-3">
           {availableFaculty.length === 0 ? (
             <p className="text-sm text-gray-500">All available faculty are already assigned to this batch.</p>
           ) : (
@@ -2459,14 +2459,14 @@ function BatchFormModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">{mode === 'edit' ? 'Edit Batch' : 'Create New Batch'}</h3>
           <p className="text-sm text-white/80">Add batch details and faculty assignment.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
             <span className="block">Batch Name *</span>
             <input
@@ -2618,14 +2618,14 @@ function StudentRatingsModal({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-white overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">{student.name}</h3>
           <p className="text-sm text-white/80">Performance Breakdown</p>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto">
           {performanceData.map((item) => (
             <div key={item.label} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
               <div className="text-sm font-medium text-gray-700">{item.label}</div>
@@ -2650,3 +2650,4 @@ function StudentRatingsModal({
     </div>
   );
 }
+

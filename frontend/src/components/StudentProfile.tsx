@@ -595,7 +595,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8"
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
             >
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -643,7 +643,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8"
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
             >
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -717,3 +717,4 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
     </div>
   );
 }
+

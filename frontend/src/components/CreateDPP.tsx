@@ -342,7 +342,7 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl"
+                className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto text-center shadow-2xl"
               >
                 <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-white" />
@@ -359,3 +359,4 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
     </div>
   );
 }
+
