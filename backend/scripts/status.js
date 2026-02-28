@@ -10,7 +10,7 @@ if (!connectionString) {
 const requiredTables = [
   "users",
   "students",
-  "facultys",
+  "faculties",
   "batches",
   "student_batches",
   "faculty_batches",

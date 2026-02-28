@@ -42,6 +42,14 @@ function toApiUser(row) {
             },
           }
         : null,
+    facultyDetails:
+      row.role === "faculty"
+        ? {
+            phone: row.faculty_phone ?? "",
+            subjectSpecialty: row.subject_specialty ?? "",
+            joinDate: row.faculty_join_date ?? null,
+          }
+        : null,
   };
 }
 
@@ -58,6 +66,9 @@ async function fetchUserProfileById(userId) {
       TO_CHAR(s.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
       s.parent_contact,
       TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+      f.phone AS faculty_phone,
+      f.subject_specialty,
+      TO_CHAR(f.join_date, 'YYYY-MM-DD') AS faculty_join_date,
       COALESCE(r.attendance, 0) AS attendance,
       COALESCE(r.assignments, 0) AS assignments,
       COALESCE(r.tests, 0) AS tests,
@@ -71,6 +82,7 @@ async function fetchUserProfileById(userId) {
       MIN(b.year) AS batch_name
     FROM users u
     LEFT JOIN students s ON s.user_id = u.id
+    LEFT JOIN faculties f ON f.user_id = u.id
     LEFT JOIN ratings r ON r.student_id = s.user_id
     LEFT JOIN student_batches sb ON sb.student_id = s.user_id
     LEFT JOIN batches b ON b.id = sb.batch_id
@@ -78,6 +90,7 @@ async function fetchUserProfileById(userId) {
     GROUP BY
       u.id, u.name, u.email, u.role,
       s.roll_number, s.phone, s.address, s.date_of_birth, s.parent_contact, s.join_date,
+      f.phone, f.subject_specialty, f.join_date,
       r.attendance, r.assignments, r.tests, r.participation, r.behavior, r.engagement
   `;
 

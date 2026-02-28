@@ -355,11 +355,12 @@ export function FacultyDashboard({
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
   const facultySubject =
+    ((user as any).facultyDetails?.subjectSpecialty ||
     faculty.find(
       (f) =>
         f.email.toLowerCase() === user.email.toLowerCase() ||
         f.name.toLowerCase() === user.name.toLowerCase()
-    )?.subject ?? null;
+    )?.subject) ?? null;
   const handleSaveFacultySubjectRating = (studentId: string, subject: string, rating: number) => {
     const nextRating = Math.max(0, Math.min(5, rating));
     setStudents((prev) =>
@@ -1283,7 +1284,7 @@ function StudentRatingsModal({
               </div>
               <p className="text-sm text-gray-500">
                 {facultySubject
-                  ? `You can edit ratings only for ${facultySubject}.`
+                  ? `You can edit ratings for ${facultySubject}.`
                   : 'Faculty subject is not mapped, so rating edit is disabled.'}
               </p>
 
@@ -1292,7 +1293,8 @@ function StudentRatingsModal({
                   {Object.entries(student.subjectRatings).map(([subject, r]) => {
                     const subAvg = calculateSubjectRating(r);
                     const canEditThisSubject =
-                      !!facultySubject && subject.toLowerCase() === facultySubject.toLowerCase();
+                      !!facultySubject && 
+                      (subject.toLowerCase() === facultySubject.toLowerCase() || facultySubject.toLowerCase() === 'general');
                     return (
                       <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
@@ -1353,7 +1355,15 @@ function StudentRatingsModal({
               ) : (
                 <div className="text-center py-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                   <Star className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No rating data available for this student.</p>
+                  <p className="text-gray-500 font-medium mb-4">No rating data available for this student.</p>
+                  {!!facultySubject && (
+                    <button
+                      onClick={() => onSaveSubjectRating?.(student.id, facultySubject, 0)}
+                      className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
+                    >
+                      Add Initial {facultySubject} Rating
+                    </button>
+                  )}
                 </div>
               )}
             </div>

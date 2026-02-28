@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS students (
   join_date date
 );
 
-CREATE TABLE IF NOT EXISTS facultys (
+CREATE TABLE IF NOT EXISTS faculties (
   user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   phone text,
   subject_specialty text,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS student_batches (
 );
 
 CREATE TABLE IF NOT EXISTS faculty_batches (
-  faculty_id uuid REFERENCES facultys(user_id) ON DELETE CASCADE,
+  faculty_id uuid REFERENCES faculties(user_id) ON DELETE CASCADE,
   batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
   PRIMARY KEY (faculty_id, batch_id)
 );

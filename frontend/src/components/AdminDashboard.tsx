@@ -2236,7 +2236,7 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all facultys and subject experts</p></div>
+        <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all faculties and subject experts</p></div>
         <button onClick={onAddFaculty} className="px-6 py-3  bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Faculty</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

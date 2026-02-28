@@ -16,6 +16,12 @@ export interface StudentDetails {
   };
 }
 
+export interface FacultyDetails {
+  phone: string;
+  subjectSpecialty: string;
+  joinDate: string | null;
+}
+
 export interface UpdateProfilePayload {
   name: string;
   phone: string;
@@ -31,6 +37,7 @@ export interface AuthUser {
   role: "student" | "faculty" | "admin";
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
+  facultyDetails?: FacultyDetails | null;
 }
 
 interface AuthResponse {

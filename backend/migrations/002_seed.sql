@@ -25,7 +25,7 @@ WITH
       'Asha Faculty',
       'faculty@ujaas.com',
       'faculty',
-      'faculty_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
+      'faculty_seed_salt:f78a1871f4f1dbe1cebefe14805abed36a92d1b32a36b8c1ace1b2af0a1ada01a23f467e4b722066e1c427446704f90592292e1c23ac7afb6891fa96fa3d6141'
     )
     RETURNING id
   ),
@@ -61,7 +61,7 @@ WITH
     RETURNING user_id
   ),
   faculty_inserted AS (
-    INSERT INTO facultys (user_id, phone, subject_specialty, join_date)
+    INSERT INTO faculties (user_id, phone, subject_specialty, join_date)
     SELECT id, '+91 99999 11111', 'Physics', '2024-06-01'
     FROM faculty_user
     RETURNING user_id
@@ -73,9 +73,9 @@ JOIN batches_inserted b ON b.name = '2025-26 Morning Batch';
 
 INSERT INTO faculty_batches (faculty_id, batch_id)
 SELECT t.user_id, b.id
-FROM facultys t
+FROM faculties t
 JOIN batches b ON b.name = '2025-26 Morning Batch'
-WHERE t.user_id IN (SELECT user_id FROM facultys LIMIT 1);
+WHERE t.user_id IN (SELECT user_id FROM faculties LIMIT 1);
 
 INSERT INTO notes (id, batch_id, title, file_url, created_at)
 SELECT uuid_generate_v4(), b.id, 'Physics - Wave Optics', 'https://example.com/notes/wave-optics.pdf', now()
