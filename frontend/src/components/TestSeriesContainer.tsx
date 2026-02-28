@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TestSeriesSection } from './TestSeriesSection';
 import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
@@ -118,10 +118,17 @@ interface TestState {
 interface TestSeriesContainerProps {
   user: any;
   publishedTests: import('../App').PublishedTest[];
+  onStateChange?: (mode: TestState['mode']) => void;
 }
 
-export function TestSeriesContainer({ user, publishedTests }: TestSeriesContainerProps) {
+export function TestSeriesContainer({ user, publishedTests, onStateChange }: TestSeriesContainerProps) {
   const [testState, setTestState] = useState<TestState>({ mode: 'list' });
+
+  // Call onStateChange whenever mode changes
+  useEffect(() => {
+    onStateChange?.(testState.mode);
+    return () => onStateChange?.('list');
+  }, [testState.mode, onStateChange]);
 
   const handleStartTest = (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, questions?: any[]) => {
     const questionsToUse = questions || generateMockQuestions(questionCount, subject);

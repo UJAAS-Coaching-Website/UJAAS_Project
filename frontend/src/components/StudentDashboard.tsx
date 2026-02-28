@@ -50,6 +50,10 @@ export function StudentDashboard({
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
+  const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+
+  // Compute if navbar should be hidden (either by TestSeries state or DPP Practice)
+  const isNavbarHidden = isNavbarInternalHidden || !!selectedDPP;
 
   const handleStartDPP = (dpp: any, subjectName?: string) => {
     setSelectedDPP({
@@ -79,76 +83,78 @@ export function StudentDashboard({
       </AnimatePresence>
 
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => {
-                setProfileSection('overview');
-                onNavigate('home');
-              }}
-              title="Go to Dashboard"
-            >
-              <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-              <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
-                UJAAS
-              </span>
-            </motion.button>
-
-            {/* Center Navigation Tabs */}
-            <div className="flex items-center gap-2">
-              {[
-                { id: 'home', label: 'Dashboard', icon: GraduationCap },
-                { id: 'test-series', label: 'Test Series', icon: FileText }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === 'home') setProfileSection('overview');
-                    onNavigate(tab.id as Tab);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                    (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <tab.icon className="w-5 h-5" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Profile Button */}
-            <div className="flex items-center gap-4">
-              <NotificationCenter 
-                notifications={notifications}
-                onMarkAsRead={onMarkAsRead}
-                onMarkAllAsRead={onMarkAllAsRead}
-                onDelete={onDeleteNotification}
-              />
+      {!isNavbarHidden && (
+        <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              {/* Logo */}
               <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-2 cursor-pointer"
                 onClick={() => {
                   setProfileSection('overview');
-                  onNavigate('profile');
+                  onNavigate('home');
                 }}
-                className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
-                title="View Profile"
+                title="Go to Dashboard"
               >
-                {user.name.charAt(0).toUpperCase()}
+                <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
+                <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
+                  UJAAS
+                </span>
               </motion.button>
+
+              {/* Center Navigation Tabs */}
+              <div className="flex items-center gap-2">
+                {[
+                  { id: 'home', label: 'Dashboard', icon: GraduationCap },
+                  { id: 'test-series', label: 'Test Series', icon: FileText }
+                ].map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => {
+                      if (tab.id === 'home') setProfileSection('overview');
+                      onNavigate(tab.id as Tab);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
+                      (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
+                        ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <tab.icon className="w-5 h-5" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Profile Button */}
+              <div className="flex items-center gap-4">
+                <NotificationCenter 
+                  notifications={notifications}
+                  onMarkAsRead={onMarkAsRead}
+                  onMarkAllAsRead={onMarkAllAsRead}
+                  onDelete={onDeleteNotification}
+                />
+                <motion.button
+                  onClick={() => {
+                    setProfileSection('overview');
+                    onNavigate('profile');
+                  }}
+                  className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                  title="View Profile"
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </motion.button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="h-20" /> {/* Spacer for fixed navbar */}
+        {!isNavbarHidden && <div className="h-20" />} {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
@@ -165,7 +171,13 @@ export function StudentDashboard({
               }} 
             />
           )}
-          {activeTab === 'test-series' && <TestSeriesContainer user={user} publishedTests={publishedTests} />}
+          {activeTab === 'test-series' && (
+            <TestSeriesContainer 
+              user={user} 
+              publishedTests={publishedTests} 
+              onStateChange={(mode) => setIsNavbarInternalHidden(mode !== 'list')}
+            />
+          )}
           {activeTab === 'profile' && (
             <StudentProfile 
               user={user} 
@@ -184,7 +196,7 @@ export function StudentDashboard({
       </main>
 
       {/* Footer */}
-      <Footer />
+      {!isNavbarHidden && <Footer />}
     </div>
   );
 }
