@@ -2281,7 +2281,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
-        <div className="flex gap-3"><div className="relative"><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="   Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py- bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex items-center gap-3"><div className="relative"><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="   Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
