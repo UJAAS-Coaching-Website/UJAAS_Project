@@ -26,7 +26,7 @@ import { StudentProfile } from './StudentProfile';
 import { DPPPractice } from './DPPPractice';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 
 interface StudentDashboardProps {
@@ -55,9 +55,35 @@ export function StudentDashboard({
   publishedTests
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
+  const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
+
+  const handleStartDPP = (dpp: any, subjectName?: string) => {
+    setSelectedDPP({
+      ...dpp,
+      subject: subjectName || dpp.subject || 'General'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      {/* DPP Practice Overlay */}
+      <AnimatePresence>
+        {selectedDPP && (
+          <DPPPractice 
+            dpp={{
+              id: selectedDPP.id,
+              title: selectedDPP.title,
+              subject: selectedDPP.subject,
+              totalQuestions: selectedDPP.questions || selectedDPP.totalQuestions || 20,
+              duration: selectedDPP.duration || 45,
+              difficulty: selectedDPP.difficulty || 'Medium',
+              completed: false
+            }}
+            onExit={() => setSelectedDPP(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,7 +182,13 @@ export function StudentDashboard({
               initialSection={profileSection} 
             />
           )}
-          {activeTab === 'batch-detail' && <BatchDashboard user={user} onBack={() => onNavigate('home')} />}
+          {activeTab === 'batch-detail' && (
+            <BatchDashboard 
+              user={user} 
+              onBack={() => onNavigate('home')} 
+              onStartDPP={handleStartDPP}
+            />
+          )}
         </motion.div>
       </main>
 
@@ -461,10 +493,18 @@ function HomeTab({
   );
 }
 
-function BatchDashboard({ user, onBack }: { user: User; onBack: () => void }) {
+function BatchDashboard({ 
+  user, 
+  onBack, 
+  onStartDPP 
+}: { 
+  user: User; 
+  onBack: () => void; 
+  onStartDPP: (dpp: any, subjectName?: string) => void;
+}) {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
           <button 
@@ -487,19 +527,18 @@ function BatchDashboard({ user, onBack }: { user: User; onBack: () => void }) {
           <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
         </div>
         <div className="p-1">
-          <StudentContentTab />
+          <StudentContentTab onStartDPP={onStartDPP} />
         </div>
       </div>
     </div>
   );
 }
 
-function StudentContentTab() {
+function StudentContentTab({ onStartDPP }: { onStartDPP: (dpp: any, subjectName: string) => void }) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
-  const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
 
   const subjects = [
     { id: 's1', name: 'Physics', color: '#3b82f6' },
@@ -526,25 +565,6 @@ function StudentContentTab() {
     { id: 'd3', chapter: 'Atomic Structure', title: 'Atomic Structure DPP 01 - Bohr Model', questions: 12, date: '2025-09-28' },
     { id: 'd4', chapter: 'Laws of Motion', title: 'Laws of Motion DPP 01 - Friction Basics', questions: 18, date: '2025-10-02' },
   ];
-
-  if (selectedDPP) {
-    return (
-      <div className="bg-white rounded-3xl overflow-hidden shadow-xl min-h-[600px]">
-        <DPPPractice 
-          dpp={{
-            id: selectedDPP.id,
-            title: selectedDPP.title,
-            subject: selectedSubject || 'General',
-            totalQuestions: selectedDPP.questions || 20,
-            duration: 45,
-            difficulty: 'Medium',
-            completed: false
-          }}
-          onExit={() => setSelectedDPP(null)}
-        />
-      </div>
-    );
-  }
 
   const renderSubjectGrid = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
@@ -691,7 +711,7 @@ function StudentContentTab() {
                     </div>
                   </div>
                   <button 
-                    onClick={() => setSelectedDPP(dpp)}
+                    onClick={() => onStartDPP(dpp, selectedSubject!)}
                     className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-md hover:shadow-xl flex-shrink-0 font-bold"
                   >
                     <Play className="w-4 h-4" />
