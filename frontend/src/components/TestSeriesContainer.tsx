@@ -67,20 +67,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
     });
   };
 
-  const handleContinueTest = (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, savedAnswers: Record<string, number | null>, timeSpent: number) => {
-    const questions = generateMockQuestions(questionCount, subject);
-    setTestState({
-      mode: 'taking',
-      testId,
-      testTitle,
-      duration,
-      totalMarks,
-      questions,
-      savedAnswers,
-      timeSpent
-    });
-  };
-
   const handleSubmitTest = (answers: Record<string, number | null>, timeSpent: number) => {
     if (!testState.questions) return;
 
@@ -156,7 +142,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       unattempted,
       timeSpent,
       duration: testState.duration! * 60,
-      percentile: Math.floor(Math.random() * 30) + 70, // Mock percentile 70-100
       rank: Math.floor(Math.random() * 50) + 1, // Mock rank 1-50
       totalStudents: 1234,
       submittedAt: new Date().toISOString(),
@@ -171,7 +156,12 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
   };
 
   const handleExitTest = () => {
-    setTestState({ mode: 'list' });
+    // If exiting during a test, submit current answers
+    if (testState.mode === 'taking') {
+      handleSubmitTest(testState.savedAnswers || {}, testState.timeSpent || 0);
+    } else {
+      setTestState({ mode: 'list' });
+    }
   };
 
   const handleCloseAnalytics = () => {
@@ -229,7 +219,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
   return (
     <TestSeriesSection
       onStartTest={handleStartTest}
-      onContinueTest={handleContinueTest}
       onViewAnalytics={(testId: string) => {
         // Generate mock result for viewing analytics of completed test
         const mockQuestions = generateMockQuestions(30, 'Physics');

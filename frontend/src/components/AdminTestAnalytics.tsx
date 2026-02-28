@@ -24,7 +24,6 @@ interface StudentPerformance {
   totalQuestions: number;
   timeSpent: number;
   rank: number;
-  percentile: number;
 }
 
 interface AdminTestAnalyticsProps {
@@ -347,7 +346,6 @@ export function AdminTestAnalytics({
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Percentage</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Accuracy</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Percentile</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -370,7 +368,7 @@ export function AdminTestAnalytics({
                             {index < 3 && (
                               <Award className={`w-5 h-5 ${
                                 index === 0 ? 'text-yellow-500' :
-                                index === 1 ? 'text-gray-400' :
+                                index === index === 1 ? 'text-gray-400' :
                                 'text-orange-600'
                               }`} />
                             )}
@@ -414,11 +412,6 @@ export function AdminTestAnalytics({
                             <Clock className="w-4 h-4" />
                             <span className="text-sm">{formatTime(student.timeSpent)}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
-                            {student.percentile}th
-                          </span>
                         </td>
                       </motion.tr>
                     );

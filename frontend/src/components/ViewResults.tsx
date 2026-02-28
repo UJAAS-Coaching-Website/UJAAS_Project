@@ -30,7 +30,6 @@ interface TestResult {
   percentage: number;
   rank: number;
   totalStudents: number;
-  percentile: number;
   timeSpent: number;
   duration: number;
   correctAnswers: number;
@@ -51,7 +50,6 @@ const MOCK_RESULTS: TestResult[] = [
     percentage: 81.7,
     rank: 23,
     totalStudents: 1234,
-    percentile: 98,
     timeSpent: 9600,
     duration: 10800,
     correctAnswers: 72,
@@ -70,7 +68,6 @@ const MOCK_RESULTS: TestResult[] = [
     percentage: 78.0,
     rank: 45,
     totalStudents: 856,
-    percentile: 95,
     timeSpent: 4200,
     duration: 5400,
     correctAnswers: 24,
@@ -89,7 +86,6 @@ const MOCK_RESULTS: TestResult[] = [
     percentage: 76.7,
     rank: 67,
     totalStudents: 723,
-    percentile: 91,
     timeSpent: 5800,
     duration: 7200,
     correctAnswers: 28,
@@ -108,7 +104,6 @@ const MOCK_RESULTS: TestResult[] = [
     percentage: 85.0,
     rank: 12,
     totalStudents: 945,
-    percentile: 99,
     timeSpent: 3200,
     duration: 3600,
     correctAnswers: 22,
@@ -127,7 +122,6 @@ const MOCK_RESULTS: TestResult[] = [
     percentage: 55.0,
     rank: 234,
     totalStudents: 678,
-    percentile: 65,
     timeSpent: 5000,
     duration: 4500,
     correctAnswers: 16,
@@ -155,7 +149,7 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
   const totalTests = filteredResults.length;
   const averageScore = filteredResults.reduce((acc, r) => acc + r.percentage, 0) / totalTests;
   const averageRank = Math.floor(filteredResults.reduce((acc, r) => acc + r.rank, 0) / totalTests);
-  const averagePercentile = Math.floor(filteredResults.reduce((acc, r) => acc + r.percentile, 0) / totalTests);
+  const averageAccuracy = Math.floor(filteredResults.reduce((acc, r) => acc + (r.correctAnswers / r.totalQuestions) * 100, 0) / totalTests);
   
   // Calculate trend
   const recentTests = filteredResults.slice(0, 3);
@@ -238,8 +232,8 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             change: null
           },
           { 
-            label: 'Avg Percentile', 
-            value: `${averagePercentile}th`, 
+            label: 'Avg Accuracy', 
+            value: `${averageAccuracy}%`, 
             icon: Award, 
             gradient: 'from-purple-500 to-pink-500',
             change: null
@@ -372,7 +366,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Score</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Percentage</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Rank</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Percentile</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Performance</th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Action</th>
               </tr>
@@ -424,11 +417,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                         <span className="font-bold text-gray-900">#{result.rank}</span>
                         <span className="text-sm text-gray-600">/ {result.totalStudents}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
-                        {result.percentile}th
-                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm">

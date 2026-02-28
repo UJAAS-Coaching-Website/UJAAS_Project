@@ -106,18 +106,27 @@ export function TestTaking({
   };
 
   const handleExitRequest = () => {
-    if (isAnyPreview && hasChanges) {
-      setShowExitConfirm(true);
+    if (isAnyPreview) {
+      if (hasChanges) {
+        setShowExitConfirm(true);
+      } else {
+        onExit();
+      }
     } else {
-      onExit();
+      setShowExitConfirm(true);
     }
   };
 
   const handleConfirmExit = (save: boolean) => {
-    if (save && onSave) {
-      onSave(testId, questions, testTitle, selectedBatches);
+    if (isAnyPreview) {
+      if (save && onSave) {
+        onSave(testId, questions, testTitle, selectedBatches);
+      }
+      onExit();
+    } else {
+      // For students, confirm exit means submit
+      handleSubmit();
     }
-    onExit();
   };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
@@ -165,6 +174,7 @@ export function TestTaking({
     const timeSpent = (duration * 60) - timeLeft;
     onSubmit(answers, timeSpent);
     setShowSubmitDialog(false);
+    setShowExitConfirm(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -269,15 +279,13 @@ export function TestTaking({
                 </div>
               )}
 
-              {isAnyPreview && (
-                <button
-                  onClick={handleExitRequest}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                  Exit Review
-                </button>
-              )}
+              <button
+                onClick={handleExitRequest}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+              >
+                <X className="w-5 h-5" />
+                {isAnyPreview ? 'Exit Review' : 'Exit Test'}
+              </button>
             </div>
           </div>
         </div>
@@ -809,7 +817,7 @@ export function TestTaking({
           </div>
         )}
 
-        {/* Exit Preview Confirmation */}
+        {/* Exit Confirmation */}
         {showExitConfirm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
             <motion.div
@@ -818,26 +826,32 @@ export function TestTaking({
               className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             >
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Save className="w-10 h-10 text-amber-600" />
+                <div className={`w-20 h-20 ${isAnyPreview ? 'bg-amber-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                  {isAnyPreview ? <Save className="w-10 h-10 text-amber-600" /> : <AlertCircle className="w-10 h-10 text-red-600" />}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">Save Changes?</h3>
-                <p className="text-gray-600 mt-2">You have made edits to this test. Would you like to keep these changes?</p>
+                <h3 className="text-2xl font-bold text-gray-900">{isAnyPreview ? 'Save Changes?' : 'Exit & Submit?'}</h3>
+                <p className="text-gray-600 mt-2">
+                  {isAnyPreview 
+                    ? 'You have made edits to this test. Would you like to keep these changes?'
+                    : 'Tests cannot be paused. If you exit now, your current answers will be submitted and the test will end.'}
+                </p>
               </div>
 
               <div className="flex flex-col gap-3">
                 <motion.button
-                  onClick={() => handleConfirmExit(true)}
-                  className="w-full py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => isAnyPreview ? handleConfirmExit(true) : handleConfirmExit(false)}
+                  className={`w-full py-4 bg-gradient-to-r ${isAnyPreview ? 'from-teal-600 to-cyan-600' : 'from-orange-500 to-red-600'} text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all`}
                 >
-                  Save & Exit
+                  {isAnyPreview ? 'Save & Exit' : 'Exit & Submit Now'}
                 </motion.button>
-                <motion.button
-                  onClick={() => handleConfirmExit(false)}
-                  className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
-                >
-                  Discard Changes
-                </motion.button>
+                {isAnyPreview && (
+                  <motion.button
+                    onClick={() => handleConfirmExit(false)}
+                    className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                  >
+                    Discard Changes
+                  </motion.button>
+                )}
                 <button
                   onClick={() => setShowExitConfirm(false)}
                   className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
@@ -919,4 +933,3 @@ export function TestTaking({
     </div>
   );
 }
-

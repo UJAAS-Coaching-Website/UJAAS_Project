@@ -23,15 +23,14 @@ interface TestSeries {
   totalMarks: number;
   questions: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  status: 'not-started' | 'in-progress' | 'completed' | 'locked';
+  status: 'not-started' | 'completed' | 'upcoming';
   score?: number;
   attempts: number;
   scheduledDate?: string;
   enrolled: number;
   passingMarks: number;
-  savedAnswers?: Record<string, number | null>;
-  timeSpent?: number;
   realQuestions?: any[];
+  startTimeStatus?: 'on-time' | 'late';
 }
 
 const MOCK_TEST_SERIES: TestSeries[] = [
@@ -48,7 +47,8 @@ const MOCK_TEST_SERIES: TestSeries[] = [
     attempts: 1,
     scheduledDate: '2026-02-10',
     enrolled: 1234,
-    passingMarks: 180
+    passingMarks: 180,
+    startTimeStatus: 'on-time'
   },
   {
     id: '2',
@@ -58,14 +58,11 @@ const MOCK_TEST_SERIES: TestSeries[] = [
     totalMarks: 100,
     questions: 30,
     difficulty: 'Medium',
-    status: 'in-progress',
-    score: 65,
-    attempts: 1,
+    status: 'not-started',
+    attempts: 0,
     scheduledDate: '2026-02-12',
     enrolled: 856,
-    passingMarks: 50,
-    savedAnswers: {},
-    timeSpent: 1800
+    passingMarks: 50
   },
   {
     id: '3',
@@ -103,7 +100,7 @@ const MOCK_TEST_SERIES: TestSeries[] = [
     totalMarks: 360,
     questions: 54,
     difficulty: 'Hard',
-    status: 'locked',
+    status: 'upcoming',
     attempts: 0,
     scheduledDate: '2026-03-01',
     enrolled: 2100,
@@ -127,7 +124,6 @@ const MOCK_TEST_SERIES: TestSeries[] = [
 
 interface TestSeriesProps {
   onStartTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, questions?: any[]) => void;
-  onContinueTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, savedAnswers: Record<string, number | null>, timeSpent: number) => void;
   onViewAnalytics: (testId: string) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
@@ -136,14 +132,12 @@ interface TestSeriesProps {
 
 export function TestSeriesSection({ 
   onStartTest, 
-  onContinueTest, 
   onViewAnalytics, 
   onViewResults,
   publishedTests = [],
   userBatch
 }: TestSeriesProps) {
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'locked'>('all');
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
   const mappedPublishedTests: TestSeries[] = (publishedTests || [])
     .filter(t => !userBatch || t.batches.includes(userBatch))
@@ -169,18 +163,16 @@ export function TestSeriesSection({
     const statusFilter = 
       selectedFilter === 'all' ? true :
       selectedFilter === 'completed' ? test.status === 'completed' :
-      selectedFilter === 'pending' ? test.status === 'not-started' || test.status === 'in-progress' :
-      selectedFilter === 'locked' ? test.status === 'locked' : true;
+      selectedFilter === 'pending' ? test.status === 'not-started' :
+      selectedFilter === 'upcoming' ? test.status === 'upcoming' : true;
     
-    const subjectFilter = selectedSubject === 'all' ? true : test.subject === selectedSubject;
-    
-    return statusFilter && subjectFilter;
+    return statusFilter;
   });
 
   const stats = {
     total: allTests.length,
     completed: allTests.filter(t => t.status === 'completed').length,
-    pending: allTests.filter(t => t.status === 'not-started' || t.status === 'in-progress').length,
+    pending: allTests.filter(t => t.status === 'not-started').length,
     avgScore: 82
   };
 
@@ -248,7 +240,7 @@ export function TestSeriesSection({
                 { id: 'all', label: 'All Tests' },
                 { id: 'completed', label: 'Completed' },
                 { id: 'pending', label: 'Pending' },
-                { id: 'locked', label: 'Locked' }
+                { id: 'upcoming', label: 'Upcoming' }
               ].map(filter => (
                 <motion.button
                   key={filter.id}
@@ -260,31 +252,6 @@ export function TestSeriesSection({
                   }`}
                 >
                   {filter.label}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Subject Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'Physics', label: 'Physics' },
-                { id: 'Chemistry', label: 'Chemistry' },
-                { id: 'Mathematics', label: 'Mathematics' }
-              ].map(subject => (
-                <motion.button
-                  key={subject.id}
-                  onClick={() => setSelectedSubject(subject.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedSubject === subject.id
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {subject.label}
                 </motion.button>
               ))}
             </div>
@@ -302,8 +269,7 @@ export function TestSeriesSection({
             {/* Card Header */}
             <div className={`p-6 ${
               test.status === 'completed' ? 'bg-gradient-to-r from-green-50 to-emerald-50' :
-              test.status === 'in-progress' ? 'bg-gradient-to-r from-orange-50 to-yellow-50' :
-              test.status === 'locked' ? 'bg-gradient-to-r from-gray-50 to-gray-100' :
+              test.status === 'upcoming' ? 'bg-gradient-to-r from-gray-50 to-gray-100' :
               'bg-gradient-to-r from-blue-50 to-indigo-50'
             }`}>
               <div className="flex items-start justify-between mb-4">
@@ -322,7 +288,7 @@ export function TestSeriesSection({
                     <CheckCircle className="w-6 h-6 text-green-600" />
                   </div>
                 )}
-                {test.status === 'locked' && (
+                {test.status === 'upcoming' && (
                   <div className="flex items-center gap-2">
                     <Lock className="w-6 h-6 text-gray-400" />
                   </div>
@@ -392,8 +358,23 @@ export function TestSeriesSection({
                     <Target className="w-4 h-4" />
                     <span>Attempts</span>
                   </div>
-                  <span className="font-medium text-gray-900">{test.attempts}/3</span>
+                  <span className="font-medium text-gray-900">{test.attempts}/1</span>
                 </div>
+                {test.status === 'completed' && test.startTimeStatus && (
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Clock className="w-4 h-4" />
+                      <span>Start Status</span>
+                    </div>
+                    <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
+                      test.startTimeStatus === 'on-time' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {test.startTimeStatus === 'on-time' ? 'ON TIME' : 'LATE'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Action Button */}
@@ -401,17 +382,6 @@ export function TestSeriesSection({
                 onClick={() => {
                   if (test.status === 'completed') {
                     onViewAnalytics(test.id);
-                  } else if (test.status === 'in-progress') {
-                    onContinueTest(
-                      test.id,
-                      test.title,
-                      test.duration,
-                      test.totalMarks,
-                      test.questions,
-                      test.subject,
-                      test.savedAnswers || {},
-                      test.timeSpent || 0
-                    );
                   } else if (test.status === 'not-started') {
                     onStartTest(
                       test.id,
@@ -424,29 +394,24 @@ export function TestSeriesSection({
                     );
                   }
                 }}
-                disabled={test.status === 'locked'}
+                disabled={test.status === 'upcoming'}
                 className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                  test.status === 'locked'
+                  test.status === 'upcoming'
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : test.status === 'completed'
                     ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl'
                     : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
                 }`}
               >
-                {test.status === 'locked' ? (
+                {test.status === 'upcoming' ? (
                   <>
-                    <Lock className="w-5 h-5" />
-                    Locked
+                    <Calendar className="w-5 h-5" />
+                    Upcoming
                   </>
                 ) : test.status === 'completed' ? (
                   <>
                     <BarChart3 className="w-5 h-5" />
                     View Analysis
-                  </>
-                ) : test.status === 'in-progress' ? (
-                  <>
-                    <Play className="w-5 h-5" />
-                    Continue Test
                   </>
                 ) : (
                   <>

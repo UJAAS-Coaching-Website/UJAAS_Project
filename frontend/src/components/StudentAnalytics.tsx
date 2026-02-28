@@ -38,7 +38,6 @@ interface TestResult {
   unattempted: number;
   timeSpent: number;
   duration: number;
-  percentile: number;
   rank: number;
   totalStudents: number;
   submittedAt: string;
@@ -143,7 +142,7 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
               <p className="text-5xl font-bold mb-1">#{result.rank}</p>
               <p className="text-blue-100">out of {result.totalStudents}</p>
               <div className="mt-3 inline-block px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full">
-                <span className="text-lg font-bold">{result.percentile}th percentile</span>
+                <span className="text-lg font-bold">Top Performance</span>
               </div>
             </div>
           </div>

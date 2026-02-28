@@ -1,26 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { User } from '../App';
 import { 
-  LogOut, 
-  BookOpen, 
-  ClipboardList, 
   GraduationCap,
   User as UserIcon,
-  Trophy,
+  Star,
   Clock,
-  TrendingUp,
   Target,
   FileText,
   ChevronRight,
   ChevronLeft,
   Folder,
   Download,
-  Star,
-  X,
-  Play
+  Play,
+  BookOpen,
+  ClipboardList
 } from 'lucide-react';
-import { NotesSection } from './NotesSection';
-import { DPPSection } from './DPPSection';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { DPPPractice } from './DPPPractice';
@@ -41,7 +35,7 @@ interface StudentDashboardProps {
   publishedTests: import('../App').PublishedTest[];
 }
 
-type Tab = 'home' | 'notes' | 'dpp' | 'test-series' | 'profile' | 'batch-detail';
+type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail';
 
 export function StudentDashboard({ 
   user, 
@@ -89,23 +83,26 @@ export function StudentDashboard({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <motion.div
+            <motion.button
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => {
+                setProfileSection('overview');
+                onNavigate('home');
+              }}
+              title="Go to Dashboard"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
               <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
                 UJAAS
               </span>
-            </motion.div>
+            </motion.button>
 
             {/* Center Navigation Tabs */}
             <div className="flex items-center gap-2">
               {[
                 { id: 'home', label: 'Dashboard', icon: GraduationCap },
-                { id: 'notes', label: 'Notes', icon: BookOpen },
-                { id: 'dpp', label: 'DPP', icon: ClipboardList },
                 { id: 'test-series', label: 'Test Series', icon: FileText }
               ].map((tab) => (
                 <motion.button
@@ -168,8 +165,6 @@ export function StudentDashboard({
               }} 
             />
           )}
-          {activeTab === 'notes' && <NotesSection />}
-          {activeTab === 'dpp' && <DPPSection />}
           {activeTab === 'test-series' && <TestSeriesContainer user={user} publishedTests={publishedTests} />}
           {activeTab === 'profile' && (
             <StudentProfile 
@@ -418,67 +413,6 @@ function HomeTab({
         </div>
       </motion.div>
 
-      {/* Recent Activity */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          {[
-            {
-              icon: ClipboardList,
-              gradient: 'from-green-500 to-emerald-500',
-              bgGradient: 'from-green-50 to-emerald-50',
-              title: 'Completed Physics DPP #12',
-              time: '2 hours ago',
-              badge: '95%',
-              badgeColor: 'text-green-600 bg-green-100'
-            },
-            {
-              icon: BookOpen,
-              gradient: 'from-blue-500 to-cyan-500',
-              bgGradient: 'from-blue-50 to-cyan-50',
-              title: 'Downloaded Chemistry Notes',
-              time: '5 hours ago',
-              badge: null,
-              badgeColor: ''
-            },
-            {
-              icon: ClipboardList,
-              gradient: 'from-purple-500 to-pink-500',
-              bgGradient: 'from-purple-50 to-pink-50',
-              title: 'Started Mathematics DPP #8',
-              time: 'Yesterday',
-              badge: 'In Progress',
-              badgeColor: 'text-yellow-600 bg-yellow-100'
-            }
-          ].map((activity, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.7 + index * 0.1 }}
-              className={`flex items-center gap-4 p-4 bg-gradient-to-r ${activity.bgGradient} rounded-xl border border-white shadow-md hover:shadow-lg transition-all`}
-            >
-              <motion.div className={`w-12 h-12 bg-gradient-to-br ${activity.gradient} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                <activity.icon className="w-6 h-6 text-white" />
-              </motion.div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{activity.title}</p>
-                <p className="text-sm text-gray-600">{activity.time}</p>
-              </div>
-              {activity.badge && (
-                <span className={`text-sm font-medium px-3 py-1 rounded-full ${activity.badgeColor}`}>
-                  {activity.badge}
-                </span>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
     </div>
   );
 }
