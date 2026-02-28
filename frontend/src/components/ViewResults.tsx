@@ -132,8 +132,6 @@ interface ViewResultsProps {
 }
 
 export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsProps) {
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'all'>('all');
-
   const filteredResults = MOCK_RESULTS;
 
   // Calculate overall stats
@@ -235,35 +233,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
           </div>
         ))}
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Time Range Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Time Range</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'week', label: 'Last Week' },
-                { id: 'month', label: 'Last Month' },
-                { id: 'all', label: 'All Time' }
-              ].map(range => (
-                <button
-                  key={range.id}
-                  onClick={() => setSelectedTimeRange(range.id as any)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedTimeRange === range.id
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {range.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Results Table */}
