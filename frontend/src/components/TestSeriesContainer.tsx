@@ -7,18 +7,17 @@ import { ViewResults } from './ViewResults';
 interface ReviewMeta {
   id: string;
   title: string;
-  subject: string;
   duration: number;
   totalMarks: number;
   questionCount: number;
 }
 
 const REVIEW_TESTS: ReviewMeta[] = [
-  { id: '1', title: 'JEE Main Demo Test - Attempted (New)', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
-  { id: '2', title: 'JEE Main Demo Test - Fresh Attempt', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
-  { id: '3', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
-  { id: '4', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
-  { id: '5', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '1', title: 'JEE Main Demo Test - Attempted (New)', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '2', title: 'JEE Main Demo Test - Fresh Attempt', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '3', title: 'JEE Main Demo Test - Attempted', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '4', title: 'JEE Main Demo Test - Attempted', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '5', title: 'JEE Main Demo Test - Attempted', duration: 180, totalMarks: 300, questionCount: 90 },
 ];
 
 const buildJeeMainDemoQuestions = (testKey: string) => {
@@ -170,38 +169,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       };
     });
 
-    // Calculate subject-wise performance
-    const subjectMap = new Map<string, any>();
-    questionsWithAnswers.forEach(q => {
-      if (!subjectMap.has(q.subject)) {
-        subjectMap.set(q.subject, {
-          subject: q.subject,
-          total: 0,
-          correct: 0,
-          wrong: 0,
-          unattempted: 0,
-          marks: 0,
-          maxMarks: 0
-        });
-      }
-      
-      const subjectData = subjectMap.get(q.subject);
-      subjectData.total++;
-      subjectData.maxMarks += q.marks;
-      
-      if (q.userAnswer !== undefined && q.userAnswer !== null) {
-        if (q.userAnswer === q.correctAnswer) {
-          subjectData.correct++;
-          subjectData.marks += q.marks;
-        } else {
-          subjectData.wrong++;
-          subjectData.marks -= q.negativeMarks ?? 0;
-        }
-      } else {
-        subjectData.unattempted++;
-      }
-    });
-
     const result = {
       testId: testState.testId!,
       testTitle: testState.testTitle!,
@@ -216,8 +183,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       rank: Math.floor(Math.random() * 50) + 1, // Mock rank 1-50
       totalStudents: 1234,
       submittedAt: new Date().toISOString(),
-      questions: questionsWithAnswers,
-      subjectWise: Array.from(subjectMap.values())
+      questions: questionsWithAnswers
     };
 
     setTestState({
@@ -248,7 +214,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
     const questions =
       reviewMeta.id === '1'
         ? buildJeeMainDemoQuestions('jee-main-demo-attempted-new-review')
-        : generateMockQuestions(reviewMeta.questionCount, reviewMeta.subject);
+        : generateMockQuestions(reviewMeta.questionCount, 'All Subjects');
     const seed = getSeedFromId(testId);
     const answers: Record<string, number | string | null> = {};
 
@@ -282,37 +248,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       return { ...q, userAnswer };
     });
 
-    const subjectMap = new Map<string, any>();
-    questionsWithAnswers.forEach((q) => {
-      if (!subjectMap.has(q.subject)) {
-        subjectMap.set(q.subject, {
-          subject: q.subject,
-          total: 0,
-          correct: 0,
-          wrong: 0,
-          unattempted: 0,
-          marks: 0,
-          maxMarks: 0,
-        });
-      }
-
-      const subjectData = subjectMap.get(q.subject);
-      subjectData.total++;
-      subjectData.maxMarks += q.marks;
-
-      if (q.userAnswer !== undefined && q.userAnswer !== null) {
-        if (String(q.userAnswer) === String(q.correctAnswer)) {
-          subjectData.correct++;
-          subjectData.marks += q.marks;
-        } else {
-          subjectData.wrong++;
-          subjectData.marks -= q.negativeMarks ?? 0;
-        }
-      } else {
-        subjectData.unattempted++;
-      }
-    });
-
     const result = {
       testId: reviewMeta.id,
       testTitle: reviewMeta.title,
@@ -328,7 +263,6 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       totalStudents: 1234,
       submittedAt: new Date().toISOString(),
       questions: questionsWithAnswers,
-      subjectWise: Array.from(subjectMap.values()),
     };
 
     setTestState({

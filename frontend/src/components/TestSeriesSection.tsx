@@ -256,11 +256,6 @@ export function TestSeriesSection({
             }`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/80 text-gray-700">
-                      {test.subject}
-                    </span>
-                  </div>
                   <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                     {test.title}
                   </h3>

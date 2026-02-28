@@ -23,7 +23,6 @@ import {
 interface TestResult {
   id: string;
   testTitle: string;
-  subject: string;
   date: string;
   score: number;
   totalMarks: number;
@@ -43,7 +42,6 @@ const MOCK_RESULTS: TestResult[] = [
   {
     id: '1',
     testTitle: 'JEE Main Full Length Test #1',
-    subject: 'All Subjects',
     date: '2026-02-10',
     score: 245,
     totalMarks: 300,
@@ -61,7 +59,6 @@ const MOCK_RESULTS: TestResult[] = [
   {
     id: '2',
     testTitle: 'Physics Chapter Test - Mechanics',
-    subject: 'Physics',
     date: '2026-02-08',
     score: 78,
     totalMarks: 100,
@@ -79,7 +76,6 @@ const MOCK_RESULTS: TestResult[] = [
   {
     id: '3',
     testTitle: 'Mathematics Calculus Test',
-    subject: 'Mathematics',
     date: '2026-02-05',
     score: 92,
     totalMarks: 120,
@@ -97,7 +93,6 @@ const MOCK_RESULTS: TestResult[] = [
   {
     id: '4',
     testTitle: 'Chemistry Organic Test',
-    subject: 'Chemistry',
     date: '2026-02-01',
     score: 68,
     totalMarks: 80,
@@ -115,7 +110,6 @@ const MOCK_RESULTS: TestResult[] = [
   {
     id: '5',
     testTitle: 'Physics Waves & Optics',
-    subject: 'Physics',
     date: '2026-01-28',
     score: 55,
     totalMarks: 100,
@@ -138,12 +132,9 @@ interface ViewResultsProps {
 }
 
 export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsProps) {
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'all'>('all');
 
-  const filteredResults = MOCK_RESULTS.filter(result => 
-    selectedSubject === 'all' ? true : result.subject === selectedSubject
-  );
+  const filteredResults = MOCK_RESULTS;
 
   // Calculate overall stats
   const totalTests = filteredResults.length;
@@ -158,22 +149,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
   const olderAvg = olderTests.length > 0 ? olderTests.reduce((acc, r) => acc + r.percentage, 0) / olderTests.length : recentAvg;
   const trend = recentAvg > olderAvg ? 'up' : 'down';
   const trendPercentage = Math.abs(((recentAvg - olderAvg) / olderAvg) * 100).toFixed(1);
-
-  // Subject-wise performance
-  const subjectPerformance = ['Physics', 'Chemistry', 'Mathematics', 'All Subjects'].map(subject => {
-    const subjectResults = MOCK_RESULTS.filter(r => r.subject === subject);
-    if (subjectResults.length === 0) return null;
-    
-    const avgScore = subjectResults.reduce((acc, r) => acc + r.percentage, 0) / subjectResults.length;
-    const testsAttempted = subjectResults.length;
-    
-    return {
-      subject,
-      avgScore: avgScore.toFixed(1),
-      testsAttempted,
-      color: subject === 'Physics' ? 'blue' : subject === 'Chemistry' ? 'green' : subject === 'Mathematics' ? 'purple' : 'indigo'
-    };
-  }).filter(Boolean);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -262,69 +237,9 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
         ))}
       </div>
 
-      {/* Subject-wise Performance */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <div className="flex items-center gap-2 mb-6">
-          <BarChart3 className="w-6 h-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Subject-wise Performance</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {subjectPerformance.map((subject, index) => (
-            <div
-              key={index}
-              className="p-5 bg-gradient-to-br from-gray-50 to-indigo-50 rounded-xl border border-gray-200"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-900">{subject.subject}</h3>
-                <span className={`px-2 py-1 bg-${subject.color}-100 text-${subject.color}-700 rounded-lg text-xs font-semibold`}>
-                  {subject.testsAttempted} tests
-                </span>
-              </div>
-              <p className="text-3xl font-bold text-gray-900 mb-2">{subject.avgScore}%</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full bg-gradient-to-r ${
-                    parseFloat(subject.avgScore) >= 75 ? 'from-green-500 to-emerald-500' :
-                    parseFloat(subject.avgScore) >= 50 ? 'from-yellow-500 to-orange-500' :
-                    'from-red-500 to-pink-500'
-                  }`}
-                  style={{ width: `${subject.avgScore}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Subject Filter */}
-          <div className="flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Filter by Subject</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'all', label: 'All Subjects' },
-                { id: 'Physics', label: 'Physics' },
-                { id: 'Chemistry', label: 'Chemistry' },
-                { id: 'Mathematics', label: 'Mathematics' }
-              ].map(subject => (
-                <button
-                  key={subject.id}
-                  onClick={() => setSelectedSubject(subject.id)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    selectedSubject === subject.id
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {subject.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Time Range Filter */}
           <div className="flex-1">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Time Range</label>
@@ -382,9 +297,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-semibold text-gray-900">{result.testTitle}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-600">{result.subject}</span>
-                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -466,10 +378,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-sm text-gray-700">
                 <CheckCircle className="w-4 h-4 text-green-600" />
-                Excellent in Chemistry (85% avg)
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-600" />
                 Consistent performance
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
@@ -488,10 +396,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
               <h3 className="font-bold text-gray-900">Areas to Improve</h3>
             </div>
             <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <XCircle className="w-4 h-4 text-orange-600" />
-                Practice more Physics problems
-              </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
                 <XCircle className="w-4 h-4 text-orange-600" />
                 Reduce unattempted questions

@@ -48,15 +48,6 @@ interface TestResult {
   totalStudents: number;
   submittedAt: string;
   questions: Question[];
-  subjectWise: {
-    subject: string;
-    total: number;
-    correct: number;
-    wrong: number;
-    unattempted: number;
-    marks: number;
-    maxMarks: number;
-  }[];
 }
 
 interface StudentAnalyticsProps {
@@ -194,69 +185,6 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
             </motion.div>
           ))}
         </div>
-
-        {/* Subject-wise Analysis */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6"
-        >
-          <div className="flex items-center gap-2 mb-6">
-            <BarChart3 className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Subject-wise Performance</h2>
-          </div>
-
-          <div className="space-y-4">
-            {result.subjectWise.map((subject, index) => {
-              const subjectPercentage = ((subject.marks / subject.maxMarks) * 100).toFixed(1);
-              const subjectAccuracy = subject.total > 0 
-                ? ((subject.correct / subject.total) * 100).toFixed(1)
-                : '0.0';
-
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  className="p-5 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">{subject.subject}</h3>
-                        <p className="text-sm text-gray-600">
-                          {subject.correct} correct • {subject.wrong} wrong • {subject.unattempted} unattempted
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">{subject.marks}/{subject.maxMarks}</p>
-                      <p className="text-sm text-gray-600">{subjectPercentage}% • Accuracy: {subjectAccuracy}%</p>
-                    </div>
-                  </div>
-
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${subjectPercentage}%` }}
-                      transition={{ duration: 1, delay: 0.7 + index * 0.1 }}
-                      className={`h-3 rounded-full ${
-                        parseFloat(subjectPercentage) >= 75 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                        parseFloat(subjectPercentage) >= 50 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-                        'bg-gradient-to-r from-red-500 to-pink-500'
-                      }`}
-                    />
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
 
         {/* Review Mode (Read Only) */}
         <motion.div
