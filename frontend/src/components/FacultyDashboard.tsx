@@ -124,7 +124,9 @@ function renderPerformanceStars(rating: number) {
             style={{
               background: `linear-gradient(90deg, #f59e0b ${fillPercentage}%, #d1d5db ${fillPercentage}%)`,
               WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              color: 'transparent',
             }}
           >
             ★
@@ -361,34 +363,23 @@ export function FacultyDashboard({
         f.email.toLowerCase() === user.email.toLowerCase() ||
         f.name.toLowerCase() === user.name.toLowerCase()
     )?.subject) ?? null;
-  const handleSaveFacultySubjectRating = (studentId: string, subject: string, rating: number) => {
-    const nextRating = Math.max(0, Math.min(5, rating));
+  const handleSaveFacultySubjectRating = (
+    studentId: string, 
+    subject: string, 
+    ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
+  ) => {
     setStudents((prev) =>
       prev.map((student) => {
         if (student.id !== studentId) return student;
 
-        const existingSubjectRatings = student.subjectRatings ?? {};
-        const prevSubject = existingSubjectRatings[subject] ?? {
-          attendance: nextRating,
-          tests: nextRating,
-          dppPerformance: nextRating,
-          behavior: nextRating,
-        };
         const updatedSubjectRatings = {
-          ...existingSubjectRatings,
+          ...(student.subjectRatings ?? {}),
           [subject]: {
-            attendance: nextRating,
-            tests: nextRating,
-            dppPerformance: nextRating,
-            behavior: nextRating,
-            ...prevSubject,
+            attendance: Math.max(0, Math.min(5, ratings.attendance)),
+            tests: Math.max(0, Math.min(5, ratings.tests)),
+            dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
+            behavior: Math.max(0, Math.min(5, ratings.behavior)),
           },
-        };
-        updatedSubjectRatings[subject] = {
-          attendance: nextRating,
-          tests: nextRating,
-          dppPerformance: nextRating,
-          behavior: nextRating,
         };
 
         const values = Object.values(updatedSubjectRatings);
@@ -407,18 +398,17 @@ export function FacultyDashboard({
     );
     setRatingModal((prev) => {
       if (!prev.student || prev.student.id !== studentId) return prev;
-      const existingSubjectRatings = prev.student.subjectRatings ?? {};
       return {
         ...prev,
         student: {
           ...prev.student,
           subjectRatings: {
-            ...existingSubjectRatings,
+            ...(prev.student.subjectRatings ?? {}),
             [subject]: {
-              attendance: nextRating,
-              tests: nextRating,
-              dppPerformance: nextRating,
-              behavior: nextRating,
+              attendance: Math.max(0, Math.min(5, ratings.attendance)),
+              tests: Math.max(0, Math.min(5, ratings.tests)),
+              dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
+              behavior: Math.max(0, Math.min(5, ratings.behavior)),
             },
           },
         },
@@ -1174,17 +1164,28 @@ function StudentRatingsModal({
   student?: Student;
   onClose: () => void;
   facultySubject?: string | null;
-  onSaveSubjectRating?: (studentId: string, subject: string, rating: number) => void;
+  onSaveSubjectRating?: (
+    studentId: string, 
+    subject: string, 
+    ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
+  ) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
-  const [draftRatings, setDraftRatings] = useState<Record<string, string>>({});
+  const [draftRatings, setDraftRatings] = useState<Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }>>({});
+  const [editingSubject, setEditingSubject] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !student) return;
     setShowRatings(false);
-    const nextDrafts: Record<string, string> = {};
+    setEditingSubject(null);
+    const nextDrafts: Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }> = {};
     Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
-      nextDrafts[subject] = ((r.attendance + r.tests + r.dppPerformance + r.behavior) / 4).toFixed(1);
+      nextDrafts[subject] = {
+        attendance: r.attendance.toString(),
+        tests: r.tests.toString(),
+        dppPerformance: r.dppPerformance.toString(),
+        behavior: r.behavior.toString(),
+      };
     });
     setDraftRatings(nextDrafts);
   }, [open, student]);
@@ -1295,40 +1296,96 @@ function StudentRatingsModal({
                     const canEditThisSubject =
                       !!facultySubject && 
                       (subject.toLowerCase() === facultySubject.toLowerCase() || facultySubject.toLowerCase() === 'general');
+                    
+                    const isEditing = editingSubject === subject;
+
+                    const currentDraft = draftRatings[subject] || {
+                      attendance: r.attendance.toString(),
+                      tests: r.tests.toString(),
+                      dppPerformance: r.dppPerformance.toString(),
+                      behavior: r.behavior.toString(),
+                    };
+
                     return (
                       <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                           <h5 className="font-bold text-gray-900">{subject}</h5>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-gray-500 px-2 py-1 bg-white rounded-lg border border-gray-100">Avg: {subAvg.toFixed(1)}</span>
-                            {renderPerformanceStars(subAvg)}
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-500 px-2 py-1 bg-white rounded-lg border border-gray-100">Avg: {subAvg.toFixed(1)}</span>
+                              {renderPerformanceStars(subAvg)}
+                            </div>
+                            {canEditThisSubject && !isEditing && (
+                              <button
+                                onClick={() => setEditingSubject(subject)}
+                                className="px-3 py-1 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {isEditing && (
+                              <button
+                                onClick={() => setEditingSubject(null)}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-300 transition"
+                              >
+                                Cancel
+                              </button>
+                            )}
                           </div>
                         </div>
-                        {canEditThisSubject && (
-                          <div className="px-6 py-4 border-b border-gray-100 bg-teal-50/50 flex flex-col sm:flex-row sm:items-center gap-3">
-                            <label className="text-sm font-semibold text-gray-700">Update {subject} rating (0-5)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              max={5}
-                              step={0.1}
-                              value={draftRatings[subject] ?? ''}
-                              onChange={(e) => setDraftRatings((prev) => ({ ...prev, [subject]: e.target.value }))}
-                              className="w-28 rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
-                            />
+                        {isEditing && (
+                          <div className="p-6 border-b border-gray-100 bg-teal-50/50 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              {[
+                                { label: 'Attendance', key: 'attendance' },
+                                { label: 'Test Performance', key: 'tests' },
+                                { label: 'DPP Performance', key: 'dppPerformance' },
+                                { label: 'Class Behaviour', key: 'behavior' },
+                              ].map((item) => (
+                                <div key={item.key} className="space-y-1">
+                                  <label className="text-xs font-bold text-gray-500 uppercase">{item.label}</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={5}
+                                    step={0.1}
+                                    value={currentDraft[item.key as keyof typeof currentDraft]}
+                                    onChange={(e) => setDraftRatings((prev) => ({
+                                      ...prev,
+                                      [subject]: {
+                                        ...(prev[subject] || currentDraft),
+                                        [item.key]: e.target.value
+                                      }
+                                    }))}
+                                    className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                  />
+                                </div>
+                              ))}
+                            </div>
                             <button
                               type="button"
                               onClick={() => {
-                                const value = Number(draftRatings[subject]);
-                                if (Number.isNaN(value) || value < 0 || value > 5) {
-                                  window.alert('Please enter a rating between 0 and 5.');
+                                const ratings = {
+                                  attendance: Number(currentDraft.attendance),
+                                  tests: Number(currentDraft.tests),
+                                  dppPerformance: Number(currentDraft.dppPerformance),
+                                  behavior: Number(currentDraft.behavior),
+                                };
+
+                                const invalid = Object.values(ratings).some(v => Number.isNaN(v) || v < 0 || v > 5);
+                                if (invalid) {
+                                  window.alert('Please enter ratings between 0 and 5 for all factors.');
                                   return;
                                 }
-                                onSaveSubjectRating?.(student.id, subject, value);
+                                
+                                if (window.confirm(`Are you sure you want to save updated ratings for ${subject}?`)) {
+                                  onSaveSubjectRating?.(student.id, subject, ratings);
+                                  setEditingSubject(null);
+                                }
                               }}
-                              className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                              className="w-full py-3 rounded-xl bg-teal-600 text-white font-bold shadow-lg hover:bg-teal-700 transition"
                             >
-                              Save {subject} Rating
+                              Save {subject} Ratings
                             </button>
                           </div>
                         )}
@@ -1358,7 +1415,12 @@ function StudentRatingsModal({
                   <p className="text-gray-500 font-medium mb-4">No rating data available for this student.</p>
                   {!!facultySubject && (
                     <button
-                      onClick={() => onSaveSubjectRating?.(student.id, facultySubject, 0)}
+                      onClick={() => {
+                        if (window.confirm(`Initialize ${facultySubject} rating for this student?`)) {
+                          onSaveSubjectRating?.(student.id, facultySubject, { attendance: 0, tests: 0, dppPerformance: 0, behavior: 0 });
+                          setEditingSubject(facultySubject);
+                        }
+                      }}
                       className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
                     >
                       Add Initial {facultySubject} Rating
