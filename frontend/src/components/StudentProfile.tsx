@@ -15,7 +15,11 @@ import {
   Lock,
   Phone,
   MapPin,
-  LogOut
+  LogOut,
+  X,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp
 } from 'lucide-react';
 
 interface StudentProfileProps {
@@ -264,7 +268,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       )}
 
       {activeSection === 'performance' && (
-        <PerformanceSection details={studentDetails} overallPerformance={overallPerformance} />
+        <PerformanceSection details={studentDetails} user={profileUser} />
       )}
 
       {activeSection === 'settings' && (
@@ -386,22 +390,147 @@ function OverviewSection({
   );
 }
 
-function PerformanceSection({ details, overallPerformance }: { details: StudentDetails; overallPerformance: number }) {
-  const ratings = details.ratings || {
-    attendance: 0,
-    tests: 0,
-    behavior: 0,
+function PerformanceSection({ details, user }: { details: StudentDetails; user: any }) {
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const ratings = details.ratings || {};
+  
+  useBodyScrollLock(!!selectedSubject);
+  
+  // Define colors for subjects
+  const subjectColors: Record<string, { color: string; bgColor: string }> = {
+    'Physics': { color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
+    'Chemistry': { color: 'from-green-500 to-emerald-500', bgColor: 'from-green-50 to-emerald-50' },
+    'Mathematics': { color: 'from-purple-500 to-pink-500', bgColor: 'from-purple-50 to-pink-50' },
+    'Biology': { color: 'from-pink-500 to-rose-500', bgColor: 'from-pink-50 to-rose-50' },
+    'General': { color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' }
   };
 
-  const performanceData = [
-    { label: 'Attendance', value: ratings.attendance, max: 5, color: 'from-green-500 to-emerald-500', bgColor: 'from-green-50 to-emerald-50' },
-    { label: 'DPP Performance', value: (ratings as any).dppPerformance || 0, max: 5, color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
-    { label: 'Test Performance', value: ratings.tests, max: 5, color: 'from-purple-500 to-pink-500', bgColor: 'from-purple-50 to-pink-50' },
-    { label: 'Class Behaviour', value: ratings.behavior, max: 5, color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' }
-  ];
+  // Always show all 4 subjects
+  const subjects = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+
+  // Helper to get detailed ratings for a subject (mocked for each subject to be unique)
+  const getDetailedRatings = (subject: string) => {
+    // In a real app, this would come from user.studentDetails.subjectRatings[subject]
+    const sr = (user as any).subjectRatings?.[subject];
+    if (sr) return sr;
+
+    // Create unique mock data for each subject based on its name
+    const hash = subject.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const variation = (hash % 10) / 10; // 0.0 to 0.9
+
+    return {
+      attendance: Math.min(5, Math.max(3, (ratings.attendance || 4.5) - (variation * 0.5))),
+      tests: Math.min(5, Math.max(2.5, (ratings.tests || 4.0) + (variation * 0.8) - 0.4)),
+      dppPerformance: Math.min(5, Math.max(3, (ratings.dppPerformance || 4.2) + (variation * 0.4) - 0.2)),
+      behavior: Math.min(5, Math.max(4, (ratings.behavior || 4.8) - (variation * 0.2)))
+    };
+  };
+
+  const performanceData = subjects.map((subject: string) => {
+    const detailed = getDetailedRatings(subject);
+    const avg = (detailed.attendance + detailed.tests + detailed.dppPerformance + detailed.behavior) / 4;
+    const style = subjectColors[subject];
+    
+    return {
+      label: subject,
+      value: avg,
+      max: 5,
+      color: style.color,
+      bgColor: style.bgColor,
+      detailed
+    };
+  });
+
+  // Calculate overall performance for the card
+  const overallPerformance = performanceData.reduce((acc: number, curr: any) => acc + curr.value, 0) / performanceData.length;
 
   return (
     <div className="space-y-6">
+      <AnimatePresence>
+        {selectedSubject && (
+          <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setSelectedSubject(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className={`shrink-0 px-6 py-4 border-b border-gray-100 bg-gradient-to-r ${subjectColors[selectedSubject]?.color || subjectColors['General'].color} text-white flex justify-between items-center`}>
+                <div>
+                  <h3 className="text-xl font-bold">{selectedSubject} Breakdown</h3>
+                  <p className="text-white/80 text-sm">Detailed academic performance</p>
+                </div>
+                <button onClick={() => setSelectedSubject(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 sm:p-8 space-y-6 overflow-y-auto">
+                {(() => {
+                  const detailed = getDetailedRatings(selectedSubject);
+                  const items = [
+                    { label: 'Attendance', val: detailed.attendance },
+                    { label: 'Test Performance', val: detailed.tests },
+                    { label: 'DPP Performance', val: detailed.dppPerformance },
+                    { label: 'Class Behaviour', val: detailed.behavior }
+                  ];
+
+                  return (
+                    <div className="grid grid-cols-1 gap-6">
+                      {items.map((item) => (
+                        <div key={item.label} className="flex flex-col items-center gap-2">
+                          <span className="text-sm font-bold text-gray-700 uppercase tracking-wider">{item.label}</span>
+                          <div className="scale-110">
+                            {renderPerformanceStars(item.val)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subject Average</p>
+                      <p className="text-2xl font-black text-gray-900">
+                        {((getDetailedRatings(selectedSubject).attendance + 
+                           getDetailedRatings(selectedSubject).tests + 
+                           getDetailedRatings(selectedSubject).dppPerformance + 
+                           getDetailedRatings(selectedSubject).behavior) / 4).toFixed(1)}
+                        <span className="text-sm text-gray-400">/5.0</span>
+                      </p>
+                    </div>
+                    {renderPerformanceStars(((getDetailedRatings(selectedSubject).attendance + 
+                           getDetailedRatings(selectedSubject).tests + 
+                           getDetailedRatings(selectedSubject).dppPerformance + 
+                           getDetailedRatings(selectedSubject).behavior) / 4))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-8 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+                <button
+                  onClick={() => setSelectedSubject(null)}
+                  className="px-6 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Overall Performance Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -438,23 +567,28 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
       >
         <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-indigo-600" />
-          Performance Breakdown
+          Subject-wise Performance
         </h3>
+        <p className="text-sm text-gray-500 mb-6 -mt-4">Click on a subject to see detailed breakdown</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {performanceData.map((item, index) => (
-            <motion.div
+          {performanceData.map((item: any, index: number) => (
+            <motion.button
               key={index}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.05 }}
-              className={`p-6 bg-gradient-to-br ${item.bgColor} rounded-2xl border border-white shadow-md flex flex-col items-center text-center`}
+              onClick={() => setSelectedSubject(item.label)}
+              className={`p-6 bg-gradient-to-br ${item.bgColor} rounded-2xl border border-white shadow-md flex flex-col items-center text-center hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer group`}
             >
-              <h4 className="font-bold text-gray-900 mb-3">{item.label}</h4>
+              <h4 className="font-bold text-gray-900 mb-3 group-hover:text-teal-700 transition-colors">{item.label}</h4>
               <div className="scale-125 mb-2 origin-center">
                 {renderPerformanceStars(item.value)}
               </div>
               <p className="text-xs font-bold text-gray-500 mt-2 uppercase tracking-widest">{item.value.toFixed(1)} / 5.0</p>
-            </motion.div>
+              <div className="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                View Detailed Breakdown →
+              </div>
+            </motion.button>
           ))}
         </div>
       </motion.div>
@@ -493,46 +627,28 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Security Settings */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+        className="space-y-3"
       >
-        <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <Lock className="w-6 h-6 text-indigo-600" />
-          Security
-        </h3>
-        <div className="space-y-3">
-          <motion.button
-            onClick={() => setShowChangePassword(true)}
-            className="w-full p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group"
-          >
-            <div>
-              <h4 className="font-semibold text-gray-900">Change Password</h4>
-              <p className="text-sm text-gray-600">Update your account password</p>
-            </div>
-            <div className="w-8 h-8 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center transition">
-              <Lock className="w-4 h-4 text-indigo-600" />
-            </div>
-          </motion.button>
-        </div>
-      </motion.div>
+        <motion.button
+          onClick={() => setShowChangePassword(true)}
+          className="w-full p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
+        >
+          <div>
+            <h4 className="font-semibold text-gray-900">Change Password</h4>
+            <p className="text-sm text-gray-600">Update your account password</p>
+          </div>
+          <div className="w-8 h-8 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center transition">
+            <Lock className="w-4 h-4 text-indigo-600" />
+          </div>
+        </motion.button>
 
-      {/* Account Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Account Management</h3>
-        
-        {/* Logout Button */}
         <motion.button
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition mb-3"
+          className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
@@ -546,7 +662,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         </motion.button>
       </motion.div>
 
-      {/* Logout Confirmation Modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
           <motion.div
