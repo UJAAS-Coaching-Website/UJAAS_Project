@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Clock, ChevronLeft, ChevronRight, Flag, CheckCircle, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { X, CheckCircle, ArrowRight } from 'lucide-react';
 
 interface DPP {
   id: string;
@@ -47,32 +47,8 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
   const [questions] = useState<Question[]>(() => generateQuestions(dpp.totalQuestions));
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(dpp.totalQuestions).fill(null));
-  const [timeLeft, setTimeLeft] = useState(dpp.duration * 60); // Convert to seconds
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
-
-  // Timer
-  useEffect(() => {
-    if (isSubmitted) return;
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setIsSubmitted(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isSubmitted]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleAnswerSelect = (optionIndex: number) => {
     if (isSubmitted) return;
@@ -100,7 +76,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
   const score = isSubmitted ? calculateScore() : 0;
 
   return (
-    <div className="fixed inset-0 bg-white z-[2000] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-white z-layer-modal overflow-hidden flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4">
@@ -116,14 +92,6 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Timer */}
-              <div className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border-2 transition-colors ${
-                timeLeft < 300 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'
-              }`}>
-                <Clock className="w-5 h-5" />
-                <span className="font-mono font-bold text-lg">{formatTime(timeLeft)}</span>
-              </div>
-
               {/* Exit Button */}
               <button
                 onClick={onExit}
@@ -139,17 +107,17 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto bg-gradient-to-br from-teal-50 to-cyan-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!isSubmitted ? (
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
               {/* Question */}
-              <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-100">
+              <div className="lg:col-span-3 bg-white rounded-2xl p-6 sm:p-8 lg:p-10 shadow-lg border border-gray-100">
                 <div className="flex items-start gap-3 mb-6">
-                  <span className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-semibold">
+                  <span className="flex-shrink-0 w-9 h-9 bg-teal-600 text-white rounded-full flex items-center justify-center font-semibold">
                     {currentQuestion + 1}
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-lg text-gray-900 leading-relaxed">
+                    <h3 className="text-xl sm:text-2xl text-gray-900 leading-relaxed">
                       {questions[currentQuestion].question}
                     </h3>
                   </div>
@@ -177,7 +145,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
                             <div className="w-2 h-2 bg-white rounded-full" />
                           )}
                         </div>
-                        <span className="text-gray-900">{option}</span>
+                        <span className="text-gray-900 text-base sm:text-lg">{option}</span>
                       </div>
                     </button>
                   ))}
@@ -215,9 +183,12 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
               </div>
 
               {/* Question Grid */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+              <div className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100">
                 <h4 className="text-sm font-semibold text-gray-700 mb-4">Questions</h4>
-                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
+                >
                   {questions.map((_, index) => (
                     <button
                       key={index}
@@ -292,7 +263,7 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
 
       {/* Confirm Submit Modal */}
       {showConfirmSubmit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-layer-10001 p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-xl font-bold text-gray-900 mb-2">Submit Test?</h3>
             <p className="text-gray-600 mb-6">
