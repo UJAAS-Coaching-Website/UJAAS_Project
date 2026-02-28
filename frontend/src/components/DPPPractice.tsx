@@ -100,34 +100,37 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
   const score = isSubmitted ? calculateScore() : 0;
 
   return (
-    <div className="fixed inset-0 bg-white z-[2000] overflow-hidden flex flex-col">
+    <div className="bg-white min-h-[600px] flex flex-col rounded-3xl overflow-hidden shadow-xl">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-8 py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900">{dpp.title}</h2>
-              <p className="text-sm text-gray-600">
-                Question {currentQuestion + 1} of {questions.length}
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">{dpp.title}</h2>
+              <div className="flex items-center gap-3">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700 uppercase tracking-wider">{dpp.subject}</span>
+                <p className="text-sm text-gray-500 font-medium border-l border-gray-200 pl-3">
+                  Question {currentQuestion + 1} of {questions.length}
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
               {/* Timer */}
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                timeLeft < 300 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+              <div className={`flex items-center gap-3 px-5 py-2.5 rounded-xl border-2 transition-colors ${
+                timeLeft < 300 ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'
               }`}>
                 <Clock className="w-5 h-5" />
-                <span className="font-mono font-semibold text-lg">{formatTime(timeLeft)}</span>
+                <span className="font-mono font-bold text-xl">{formatTime(timeLeft)}</span>
               </div>
 
               {/* Exit Button */}
               <button
                 onClick={onExit}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-                title="Exit"
+                className="p-3 hover:bg-gray-100 rounded-xl transition-all text-gray-400 hover:text-gray-600 border border-gray-100"
+                title="Exit Practice"
               >
-                <X className="w-6 h-6 text-gray-600" />
+                <X className="w-6 h-6" />
               </button>
             </div>
           </div>

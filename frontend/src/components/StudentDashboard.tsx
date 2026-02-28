@@ -16,12 +16,14 @@ import {
   Folder,
   Download,
   Star,
-  X
+  X,
+  Play
 } from 'lucide-react';
 import { NotesSection } from './NotesSection';
 import { DPPSection } from './DPPSection';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
+import { DPPPractice } from './DPPPractice';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion } from 'motion/react';
@@ -497,6 +499,7 @@ function StudentContentTab() {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
+  const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
 
   const subjects = [
     { id: 's1', name: 'Physics', color: '#3b82f6' },
@@ -518,9 +521,30 @@ function StudentContentTab() {
   ];
 
   const dpps = [
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-    { id: 'd2', chapter: 'Atomic Structure', title: 'Atomic Theory DPP', questions: 20, date: '2025-09-25' },
+    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - One Dimensional Motion', questions: 15, date: '2025-09-22' },
+    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile Motion', questions: 20, date: '2025-09-25' },
+    { id: 'd3', chapter: 'Atomic Structure', title: 'Atomic Structure DPP 01 - Bohr Model', questions: 12, date: '2025-09-28' },
+    { id: 'd4', chapter: 'Laws of Motion', title: 'Laws of Motion DPP 01 - Friction Basics', questions: 18, date: '2025-10-02' },
   ];
+
+  if (selectedDPP) {
+    return (
+      <div className="bg-white rounded-3xl overflow-hidden shadow-xl min-h-[600px]">
+        <DPPPractice 
+          dpp={{
+            id: selectedDPP.id,
+            title: selectedDPP.title,
+            subject: selectedSubject || 'General',
+            totalQuestions: selectedDPP.questions || 20,
+            duration: 45,
+            difficulty: 'Medium',
+            completed: false
+          }}
+          onExit={() => setSelectedDPP(null)}
+        />
+      </div>
+    );
+  }
 
   const renderSubjectGrid = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
@@ -608,7 +632,7 @@ function StudentContentTab() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={activeContentType === 'notes' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
           {activeContentType === 'notes' ? (
             relevantNotes.length > 0 ? relevantNotes.map(note => (
               <motion.div
@@ -647,33 +671,35 @@ function StudentContentTab() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ClipboardList className="w-6 h-6 text-orange-600" />
-                  </div>
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{dpp.title}</h3>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">{selectedSubject}</span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">{dpp.chapter}</span>
+                    <div className="flex items-center gap-3 mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">{dpp.title}</h3>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                      <span>{dpp.questions} Questions</span>
-                      <span>•</span>
-                      <span>{dpp.date}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg transition shadow-md hover:shadow-lg font-bold text-sm">
-                        Start Practice
-                      </button>
-                      <button className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-all shadow-sm">
-                        <Download className="w-4 h-4" />
-                      </button>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center gap-1">
+                        <ClipboardList className="w-4 h-4" />
+                        <span>{dpp.questions} Questions</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{dpp.date}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">{selectedSubject}</span>
+                      </div>
                     </div>
                   </div>
+                  <button 
+                    onClick={() => setSelectedDPP(dpp)}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-md hover:shadow-xl flex-shrink-0 font-bold"
+                  >
+                    <Play className="w-4 h-4" />
+                    Start Practice
+                  </button>
                 </div>
               </motion.div>
-            )) : <div className="md:col-span-2 text-center py-12 text-gray-500 font-medium bg-gray-50 rounded-2xl border-2 border-dashed">No DPPs available for this chapter yet.</div>
+            )) : <div className="text-center py-12 text-gray-500 font-medium bg-gray-50 rounded-2xl border-2 border-dashed">No DPPs available for this chapter yet.</div>
           )}
         </div>
       </div>
