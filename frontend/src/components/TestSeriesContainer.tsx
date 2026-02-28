@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TestSeriesSection } from './TestSeriesSection';
-import { TestTaking } from './TestTaking';
+import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
 
@@ -174,7 +174,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
 
   if (testState.mode === 'taking' && testState.questions) {
     return (
-      <TestTaking
+      <StudentTestTaking
         testId={testState.testId!}
         testTitle={testState.testTitle!}
         duration={testState.duration!}
