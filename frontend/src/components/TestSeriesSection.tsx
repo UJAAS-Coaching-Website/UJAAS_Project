@@ -188,7 +188,7 @@ export function TestSeriesSection({
           { label: 'Total Tests', value: stats.total, icon: FileText, gradient: 'from-blue-500 to-cyan-500' },
           { label: 'Completed', value: stats.completed, icon: CheckCircle, gradient: 'from-green-500 to-emerald-500' },
           { label: 'Pending', value: stats.pending, icon: Clock, gradient: 'from-orange-500 to-red-500' },
-          { label: 'Avg Score', value: `${stats.avgScore}%`, icon: TrendingUp, gradient: 'from-purple-500 to-pink-500' }
+          { label: 'Avg Score', value: `${stats.avgScore}%`, icon: Award, gradient: 'from-purple-500 to-pink-500' }
         ].map((stat, index) => (
           <motion.div
             key={index}

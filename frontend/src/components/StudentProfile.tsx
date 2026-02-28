@@ -458,46 +458,6 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
           ))}
         </div>
       </motion.div>
-
-      {/* Performance Insights */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Target className="w-6 h-6 text-indigo-600" />
-          Performance Insights
-        </h3>
-        <div className="space-y-3">
-          {overallPerformance >= 4.5 && (
-            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg">
-              <p className="text-green-800 font-medium">🎉 Excellent Performance! Keep up the great work!</p>
-            </div>
-          )}
-          {overallPerformance >= 3.5 && overallPerformance < 4.5 && (
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-500 rounded-lg">
-              <p className="text-blue-800 font-medium">👍 Good Performance! You're doing well!</p>
-            </div>
-          )}
-          {overallPerformance >= 2.5 && overallPerformance < 3.5 && (
-            <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-lg">
-              <p className="text-yellow-800 font-medium">📈 Keep Improving! There's room for growth!</p>
-            </div>
-          )}
-          {overallPerformance < 2.5 && overallPerformance > 0 && (
-            <div className="p-4 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-lg">
-              <p className="text-red-800 font-medium">💪 Focus Required! Let's work on improvement together!</p>
-            </div>
-          )}
-          {overallPerformance === 0 && (
-            <div className="p-4 bg-gradient-to-r from-gray-50 to-slate-50 border-l-4 border-gray-500 rounded-lg">
-              <p className="text-gray-800 font-medium">📊 No ratings yet. Your performance will be evaluated by the admin.</p>
-            </div>
-          )}
-        </div>
-      </motion.div>
     </div>
   );
 }

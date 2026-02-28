@@ -3,8 +3,6 @@ import { TestTaking } from './TestTaking';
 import {
   Trophy,
   Target,
-  TrendingUp,
-  TrendingDown,
   Clock,
   CheckCircle,
   XCircle,

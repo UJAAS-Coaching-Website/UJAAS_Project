@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
-  TrendingUp,
-  TrendingDown,
   Award,
   Target,
   Clock,
@@ -140,14 +138,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
   const averageRank = Math.floor(filteredResults.reduce((acc, r) => acc + r.rank, 0) / totalTests);
   const averageAccuracy = Math.floor(filteredResults.reduce((acc, r) => acc + (r.correctAnswers / r.totalQuestions) * 100, 0) / totalTests);
   
-  // Calculate trend
-  const recentTests = filteredResults.slice(0, 3);
-  const olderTests = filteredResults.slice(3);
-  const recentAvg = recentTests.reduce((acc, r) => acc + r.percentage, 0) / recentTests.length;
-  const olderAvg = olderTests.length > 0 ? olderTests.reduce((acc, r) => acc + r.percentage, 0) / olderTests.length : recentAvg;
-  const trend = recentAvg > olderAvg ? 'up' : 'down';
-  const trendPercentage = Math.abs(((recentAvg - olderAvg) / olderAvg) * 100).toFixed(1);
-
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -164,11 +154,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             <p className="text-sm sm:text-base text-gray-600">Your complete performance history and analytics</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-medium hover:bg-indigo-200 transition-all text-sm">
-              <Download className="w-4 sm:w-5 h-4 sm:h-5" />
-              <span className="hidden sm:inline">Export All</span>
-              <span className="sm:hidden">Export</span>
-            </button>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-all"
@@ -186,30 +171,25 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             label: 'Tests Attempted', 
             value: totalTests.toString(), 
             icon: BookOpen, 
-            gradient: 'from-blue-500 to-cyan-500',
-            change: null
+            gradient: 'from-blue-500 to-cyan-500'
           },
           { 
             label: 'Average Score', 
             value: `${averageScore.toFixed(1)}%`, 
             icon: Target, 
-            gradient: 'from-green-500 to-emerald-500',
-            change: trend === 'up' ? `+${trendPercentage}%` : `-${trendPercentage}%`,
-            changeType: trend
+            gradient: 'from-green-500 to-emerald-500'
           },
           { 
             label: 'Average Rank', 
             value: `#${averageRank}`, 
             icon: Trophy, 
-            gradient: 'from-yellow-500 to-orange-500',
-            change: null
+            gradient: 'from-yellow-500 to-orange-500'
           },
           { 
             label: 'Avg Accuracy', 
             value: `${averageAccuracy}%`, 
             icon: Award, 
-            gradient: 'from-purple-500 to-pink-500',
-            change: null
+            gradient: 'from-purple-500 to-pink-500'
           }
         ].map((stat, index) => (
           <div
@@ -221,14 +201,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
             </div>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-              {stat.change && (
-                <span className={`flex items-center text-sm font-semibold ${
-                  stat.changeType === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.changeType === 'up' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {stat.change}
-                </span>
-              )}
             </div>
             <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
           </div>
@@ -328,79 +300,6 @@ export function ViewResults({ onClose, onViewDetailedAnalytics }: ViewResultsPro
         </div>
       </div>
 
-      {/* Performance Insights */}
-      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-        <div className="flex items-center gap-2 mb-6">
-          <TrendingUp className="w-6 h-6 text-indigo-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Performance Insights</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Strengths */}
-          <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-gray-900">Strengths</h3>
-            </div>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Consistent performance
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Good time management
-              </li>
-            </ul>
-          </div>
-
-          {/* Areas to Improve */}
-          <div className="p-5 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center">
-                <Target className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-gray-900">Areas to Improve</h3>
-            </div>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <XCircle className="w-4 h-4 text-orange-600" />
-                Reduce unattempted questions
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <XCircle className="w-4 h-4 text-orange-600" />
-                Focus on hard difficulty tests
-              </li>
-            </ul>
-          </div>
-
-          {/* Recommendations */}
-          <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                <Award className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-bold text-gray-900">Recommendations</h3>
-            </div>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <ChevronRight className="w-4 h-4 text-blue-600" />
-                Take more mock tests
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <ChevronRight className="w-4 h-4 text-blue-600" />
-                Review incorrect answers
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-700">
-                <ChevronRight className="w-4 h-4 text-blue-600" />
-                Practice time-bound tests
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
