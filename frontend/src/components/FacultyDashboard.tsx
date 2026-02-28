@@ -118,19 +118,29 @@ function renderPerformanceStars(rating: number) {
         }
 
         return (
-          <span
-            key={star}
-            className="inline-block w-4 text-center text-[16px] leading-4"
-            style={{
-              background: `linear-gradient(90deg, #f59e0b ${fillPercentage}%, #d1d5db ${fillPercentage}%)`,
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              color: 'transparent',
-            }}
+          <div 
+            key={star} 
+            className="relative inline-block select-none"
+            style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
           >
-            ★
-          </span>
+            {/* Background star (Gray) */}
+            <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
+            {/* Fill star (Gold) */}
+            <div 
+              style={{ 
+                width: `${fillPercentage}%`, 
+                overflow: 'hidden', 
+                position: 'absolute', 
+                left: 0, 
+                top: 0, 
+                whiteSpace: 'nowrap',
+                color: '#f59e0b',
+                transition: 'width 0.3s ease'
+              }}
+            >
+              <span>★</span>
+            </div>
+          </div>
         );
       })}
       <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
