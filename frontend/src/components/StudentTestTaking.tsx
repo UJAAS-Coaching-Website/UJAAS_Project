@@ -5,7 +5,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Flag,
   CheckCircle,
   AlertCircle,
   X,
@@ -75,6 +74,9 @@ export function StudentTestTaking({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
+    () => new Set(initialQuestions[0] ? [initialQuestions[0].id] : [])
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
@@ -96,6 +98,17 @@ export function StudentTestTaking({
       setEditForm(questions[currentQuestion]);
     }
   }, [isEditing, currentQuestion, questions]);
+
+  useEffect(() => {
+    const current = questions[currentQuestion];
+    if (!current) return;
+    setVisitedQuestions((prev) => {
+      if (prev.has(current.id)) return prev;
+      const next = new Set(prev);
+      next.add(current.id);
+      return next;
+    });
+  }, [currentQuestion, questions]);
 
   const handleSaveEdit = () => {
     if (editForm.id) {
@@ -290,8 +303,8 @@ export function StudentTestTaking({
           </div>
         </div>
 
-        {/* Subject and Section Tabs (Preview Mode Only) */}
-        {isAnyPreview && (
+        {/* Subject and Section Tabs */}
+        {subjects.length > 0 && (
           <div className="flex flex-col gap-4 mb-6">
             {/* Subject Tabs */}
             <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
@@ -358,6 +371,11 @@ export function StudentTestTaking({
                         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
                           {question.subject}
                         </span>
+                        {currentSection && currentSection !== 'Default' && (
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">
+                            {currentSection}
+                          </span>
+                        )}
                         <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
                           {question.marks} marks
                         </span>
@@ -382,18 +400,6 @@ export function StudentTestTaking({
                         </div>
                       )}
                     </div>
-                    {!isAnyPreview && (
-                      <button
-                        onClick={() => toggleFlag(question.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          flaggedQuestions.has(question.id)
-                            ? 'bg-amber-100 text-amber-600'
-                            : 'bg-gray-100 text-gray-400 hover:text-amber-600'
-                        }`}
-                      >
-                        <Flag className="w-5 h-5" />
-                      </button>
-                    )}
                   </div>
 
                   {/* Options */}
@@ -657,13 +663,35 @@ export function StudentTestTaking({
                   {isAnyPreview ? 'Exit Review' : 'Submit Test'}
                 </motion.button>
               ) : (
-                <motion.button
-                  onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-                >
-                  Next
-                  <ChevronRight className="w-5 h-5" />
-                </motion.button>
+                <div className="flex items-center gap-3">
+                  {!isAnyPreview && (
+                    <>
+                      <button
+                        onClick={() => setAnswers({ ...answers, [question.id]: null })}
+                        className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => toggleFlag(question.id)}
+                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${
+                          flaggedQuestions.has(question.id)
+                            ? 'bg-purple-100 border-purple-300 text-purple-700'
+                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        Mark for Review
+                      </button>
+                    </>
+                  )}
+                  <motion.button
+                    onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {isAnyPreview ? 'Next' : 'Save & Next'}
+                    <ChevronRight className="w-5 h-5" />
+                  </motion.button>
+                </div>
               )}
             </div>
           </div>
@@ -672,24 +700,6 @@ export function StudentTestTaking({
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Question Palette</h3>
-
-              {/* Stats - only for students */}
-              {!isAnyPreview && (
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Answered</span>
-                    <span className="text-lg font-bold text-green-600">{answeredCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Not Answered</span>
-                    <span className="text-lg font-bold text-gray-600">{notAnsweredCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Flagged</span>
-                    <span className="text-lg font-bold text-amber-600">{flaggedQuestions.size}</span>
-                  </div>
-                </div>
-              )}
 
               {/* Question Grid - Filtered by Active Section */}
               <div className="space-y-4">
@@ -713,18 +723,22 @@ export function StudentTestTaking({
                         className={`aspect-square rounded-lg font-semibold text-sm relative ${
                           currentQuestion === q.globalIndex
                             ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                            : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
                             : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : isAnyPreview && q.explanation
                             ? 'bg-teal-50 text-teal-700 border border-teal-200'
                             : !isAnyPreview && flaggedQuestions.has(q.id)
-                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            : !isAnyPreview && visitedQuestions.has(q.id)
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
                         {q.globalIndex + 1}
-                        {!isAnyPreview && flaggedQuestions.has(q.id) && (
-                          <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                          <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
                         {isAnyPreview && !q.explanation && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
@@ -754,12 +768,26 @@ export function StudentTestTaking({
               {!isAnyPreview && (
                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
                   <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-gray-100 rounded" />
+                    <span className="text-xs text-gray-600">Not visited yet</span>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-green-100 rounded" />
                     <span className="text-xs text-gray-600">Answered</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 rounded" />
-                    <span className="text-xs text-gray-600">Not Answered</span>
+                    <div className="w-4 h-4 bg-red-100 rounded" />
+                    <span className="text-xs text-gray-600">Visited</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-100 rounded" />
+                    <span className="text-xs text-gray-600">Review</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-100 rounded relative">
+                      <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                    </div>
+                    <span className="text-xs text-gray-600">Answered & Review</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
