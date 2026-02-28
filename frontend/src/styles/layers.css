@@ -35,3 +35,21 @@
 .z-layer-10002 {
   z-index: 10002;
 }
+
+/* Keep interaction feedback lightweight to avoid expensive repaints/reflows. */
+:root {
+  --app-fast-transition: 140ms;
+}
+
+.transition-all {
+  transition-duration: var(--app-fast-transition) !important;
+}
+
+.duration-300,
+.duration-500 {
+  transition-duration: var(--app-fast-transition) !important;
+}
+
+.animate-pulse {
+  animation-duration: 3s !important;
+}

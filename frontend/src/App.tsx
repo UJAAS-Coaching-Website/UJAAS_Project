@@ -6,7 +6,7 @@ import { FacultyDashboard } from './components/FacultyDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
   id: string;
@@ -859,122 +859,124 @@ function App() {
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {showGetStarted && !user ? (
-        <motion.div
-          key="getstarted"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.5 }}
-        >
-          <GetStarted 
-            onGetStarted={handleGetStarted} 
-            isNewUser={false} 
-            userName="" 
-            landingData={landingData} 
-            onSubmitQuery={handleAddQuery}
-          />
-        </motion.div>
-      ) : !user ? (
-        <motion.div
-          key="login"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Login onLogin={handleLogin} />
-        </motion.div>
-      ) : user.role === 'student' ? (
-        <motion.div
-          key="student"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <StudentDashboard 
-            user={user} 
-            activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
-            onNavigate={navigateTab}
-            onLogout={handleLogout}
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-            onDeleteNotification={handleDeleteNotification}
-          />
-        </motion.div>
-      ) : user.role === 'faculty' ? (
-        <motion.div
-          key="faculty"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <FacultyDashboard 
-            user={user} 
-            activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
-            onNavigate={navigateTab}
-            adminSection={adminLandingSection}
-            onNavigateSection={handleAdminNavigateSection}
-            selectedBatch={adminBatch}
-            onSelectBatch={handleAdminSelectBatch}
-            onClearBatch={handleAdminClearBatch}
-            batches={adminBatches}
-            onUpdateBatch={updateAdminBatch}
-            onLogout={handleLogout}
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-            onDeleteNotification={handleDeleteNotification}
-            publishedTests={publishedTests}
-            onPreviewTest={handlePreviewTest}
-            onUpdatePublishedTest={updatePublishedTest}
-            selectedPreviewTest={selectedPreviewTest}
-          />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="admin"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <AdminDashboard 
-            user={user} 
-            activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
-            onNavigate={navigateTab}
-            adminSection={adminLandingSection}
-            onNavigateSection={handleAdminNavigateSection}
-            selectedBatch={adminBatch}
-            onSelectBatch={handleAdminSelectBatch}
-            onClearBatch={handleAdminClearBatch}
-            batches={adminBatches}
-            onCreateBatch={addAdminBatch}
-            onUpdateBatch={updateAdminBatch}
-            onDeleteBatch={deleteAdminBatch}
-            onLogout={handleLogout}
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-            onDeleteNotification={handleDeleteNotification}
-            landingData={landingData}
-            onUpdateLandingData={setLandingData}
-            queries={queries}
-            onUpdateQueries={setQueries}
-            publishedTests={publishedTests}
-            onPublishTest={handlePublishTest}
-            onPreviewTest={handlePreviewTest}
-            onUpdatePublishedTest={updatePublishedTest}
-            onDeletePublishedTest={handleDeletePublishedTest}
-            selectedPreviewTest={selectedPreviewTest}
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <MotionConfig reducedMotion="always">
+      <AnimatePresence mode="wait">
+        {showGetStarted && !user ? (
+          <motion.div
+            key="getstarted"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.5 }}
+          >
+            <GetStarted 
+              onGetStarted={handleGetStarted} 
+              isNewUser={false} 
+              userName="" 
+              landingData={landingData} 
+              onSubmitQuery={handleAddQuery}
+            />
+          </motion.div>
+        ) : !user ? (
+          <motion.div
+            key="login"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Login onLogin={handleLogin} />
+          </motion.div>
+        ) : user.role === 'student' ? (
+          <motion.div
+            key="student"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <StudentDashboard 
+              user={user} 
+              activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
+              onNavigate={navigateTab}
+              onLogout={handleLogout}
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onDeleteNotification={handleDeleteNotification}
+            />
+          </motion.div>
+        ) : user.role === 'faculty' ? (
+          <motion.div
+            key="faculty"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <FacultyDashboard 
+              user={user} 
+              activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
+              onNavigate={navigateTab}
+              adminSection={adminLandingSection}
+              onNavigateSection={handleAdminNavigateSection}
+              selectedBatch={adminBatch}
+              onSelectBatch={handleAdminSelectBatch}
+              onClearBatch={handleAdminClearBatch}
+              batches={adminBatches}
+              onUpdateBatch={updateAdminBatch}
+              onLogout={handleLogout}
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onDeleteNotification={handleDeleteNotification}
+              publishedTests={publishedTests}
+              onPreviewTest={handlePreviewTest}
+              onUpdatePublishedTest={updatePublishedTest}
+              selectedPreviewTest={selectedPreviewTest}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="admin"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AdminDashboard 
+              user={user} 
+              activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
+              onNavigate={navigateTab}
+              adminSection={adminLandingSection}
+              onNavigateSection={handleAdminNavigateSection}
+              selectedBatch={adminBatch}
+              onSelectBatch={handleAdminSelectBatch}
+              onClearBatch={handleAdminClearBatch}
+              batches={adminBatches}
+              onCreateBatch={addAdminBatch}
+              onUpdateBatch={updateAdminBatch}
+              onDeleteBatch={deleteAdminBatch}
+              onLogout={handleLogout}
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+              onDeleteNotification={handleDeleteNotification}
+              landingData={landingData}
+              onUpdateLandingData={setLandingData}
+              queries={queries}
+              onUpdateQueries={setQueries}
+              publishedTests={publishedTests}
+              onPublishTest={handlePublishTest}
+              onPreviewTest={handlePreviewTest}
+              onUpdatePublishedTest={updatePublishedTest}
+              onDeletePublishedTest={handleDeletePublishedTest}
+              selectedPreviewTest={selectedPreviewTest}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </MotionConfig>
   );
 }
 
