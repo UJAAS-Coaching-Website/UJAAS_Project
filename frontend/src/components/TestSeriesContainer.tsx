@@ -4,6 +4,23 @@ import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
 
+interface ReviewMeta {
+  id: string;
+  title: string;
+  subject: string;
+  duration: number;
+  totalMarks: number;
+  questionCount: number;
+}
+
+const REVIEW_TESTS: ReviewMeta[] = [
+  { id: '1', title: 'JEE Main Full Length Test #1', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '2', title: 'Physics Chapter Test - Mechanics', subject: 'Physics', duration: 90, totalMarks: 100, questionCount: 30 },
+  { id: '3', title: 'Chemistry Organic Chemistry Test', subject: 'Chemistry', duration: 60, totalMarks: 80, questionCount: 25 },
+  { id: '4', title: 'Mathematics Advanced Calculus', subject: 'Mathematics', duration: 120, totalMarks: 120, questionCount: 40 },
+  { id: '5', title: 'Physics Waves & Optics Test', subject: 'Physics', duration: 75, totalMarks: 100, questionCount: 30 },
+];
+
 // Mock question generator
 const generateMockQuestions = (count: number, subject: string) => {
   const subjects = subject === 'All Subjects' 
@@ -31,6 +48,16 @@ const generateMockQuestions = (count: number, subject: string) => {
   }
   
   return questions;
+};
+
+const getSeedFromId = (testId: string) =>
+  testId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+
+const getDeterministicAnswer = (seed: number, index: number, correct: number) => {
+  const pattern = (seed + index) % 6;
+  if (pattern === 0) return null; // unattempted
+  if (pattern === 1 || pattern === 2 || pattern === 3) return correct; // mostly correct
+  return (correct + 1 + ((seed + index) % 2)) % 4; // wrong
 };
 
 interface TestState {
@@ -168,8 +195,99 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
     setTestState({ mode: 'list' });
   };
 
-  const handleViewResults = (testId: string) => {
+  const handleViewResults = (_testId: string) => {
     setTestState({ mode: 'viewResults' });
+  };
+
+  const openMockAnalytics = (testId: string) => {
+    const reviewMeta = REVIEW_TESTS.find((test) => test.id === testId) ?? REVIEW_TESTS[0];
+    const questions = generateMockQuestions(reviewMeta.questionCount, reviewMeta.subject);
+    const seed = getSeedFromId(testId);
+    const answers: Record<string, number | null> = {};
+
+    questions.forEach((q, index) => {
+      answers[q.id] = getDeterministicAnswer(seed, index, q.correctAnswer);
+    });
+
+    // Calculate results using the same path as a real submission.
+    let correctAnswers = 0;
+    let wrongAnswers = 0;
+    let unattempted = 0;
+    let obtainedMarks = 0;
+
+    const questionsWithAnswers = questions.map((q) => {
+      const userAnswer = answers[q.id];
+      const isCorrect = userAnswer === q.correctAnswer;
+      const isAttempted = userAnswer !== undefined && userAnswer !== null;
+
+      if (isAttempted) {
+        if (isCorrect) {
+          correctAnswers++;
+          obtainedMarks += q.marks;
+        } else {
+          wrongAnswers++;
+          obtainedMarks -= q.negativeMarks ?? 0;
+        }
+      } else {
+        unattempted++;
+      }
+
+      return { ...q, userAnswer };
+    });
+
+    const subjectMap = new Map<string, any>();
+    questionsWithAnswers.forEach((q) => {
+      if (!subjectMap.has(q.subject)) {
+        subjectMap.set(q.subject, {
+          subject: q.subject,
+          total: 0,
+          correct: 0,
+          wrong: 0,
+          unattempted: 0,
+          marks: 0,
+          maxMarks: 0,
+        });
+      }
+
+      const subjectData = subjectMap.get(q.subject);
+      subjectData.total++;
+      subjectData.maxMarks += q.marks;
+
+      if (q.userAnswer !== undefined && q.userAnswer !== null) {
+        if (q.userAnswer === q.correctAnswer) {
+          subjectData.correct++;
+          subjectData.marks += q.marks;
+        } else {
+          subjectData.wrong++;
+          subjectData.marks -= q.negativeMarks ?? 0;
+        }
+      } else {
+        subjectData.unattempted++;
+      }
+    });
+
+    const result = {
+      testId: reviewMeta.id,
+      testTitle: reviewMeta.title,
+      totalMarks: reviewMeta.totalMarks,
+      obtainedMarks,
+      totalQuestions: questionsWithAnswers.length,
+      correctAnswers,
+      wrongAnswers,
+      unattempted,
+      timeSpent: Math.floor(reviewMeta.duration * 60 * 0.78),
+      duration: reviewMeta.duration * 60,
+      rank: (seed % 80) + 1,
+      totalStudents: 1234,
+      submittedAt: new Date().toISOString(),
+      questions: questionsWithAnswers,
+      subjectWise: Array.from(subjectMap.values()),
+    };
+
+    setTestState({
+      mode: 'analytics',
+      result,
+    });
   };
 
   if (testState.mode === 'taking' && testState.questions) {
@@ -201,17 +319,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
     return (
       <ViewResults
         onClose={handleCloseAnalytics}
-        onViewDetailedAnalytics={(testId: string) => {
-          // Generate mock result for detailed analytics
-          const mockQuestions = generateMockQuestions(30, 'Physics');
-          const mockAnswers: Record<string, number> = {};
-          mockQuestions.forEach((q, i) => {
-            // Mock some correct, some wrong, some unattempted
-            if (i < 20) mockAnswers[q.id] = i % 3 === 0 ? q.correctAnswer : (q.correctAnswer + 1) % 4;
-          });
-
-          handleSubmitTest(mockAnswers, 3600);
-        }}
+        onViewDetailedAnalytics={openMockAnalytics}
       />
     );
   }
@@ -219,17 +327,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
   return (
     <TestSeriesSection
       onStartTest={handleStartTest}
-      onViewAnalytics={(testId: string) => {
-        // Generate mock result for viewing analytics of completed test
-        const mockQuestions = generateMockQuestions(30, 'Physics');
-        const mockAnswers: Record<string, number> = {};
-        mockQuestions.forEach((q, i) => {
-          // Mock some correct, some wrong, some unattempted
-          if (i < 20) mockAnswers[q.id] = i % 3 === 0 ? q.correctAnswer : (q.correctAnswer + 1) % 4;
-        });
-
-        handleSubmitTest(mockAnswers, 3600);
-      }}
+      onViewAnalytics={openMockAnalytics}
       onViewResults={() => setTestState({ mode: 'viewResults' })}
       publishedTests={publishedTests}
       userBatch={user.batch}
