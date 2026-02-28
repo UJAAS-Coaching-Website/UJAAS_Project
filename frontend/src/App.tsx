@@ -71,7 +71,7 @@ export interface PublishedTest {
 }
 
 function App() {
-  const studentTabs = ['home', 'notes', 'dpp', 'test-series', 'profile'] as const;
+  const studentTabs = ['home', 'notes', 'dpp', 'test-series', 'profile', 'batch-detail'] as const;
   const adminTabs = [
     'home',
     'students',

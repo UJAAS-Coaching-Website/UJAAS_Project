@@ -79,7 +79,7 @@ async function fetchUserProfileById(userId) {
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT b.name), NULL),
         ARRAY[]::text[]
       ) AS enrolled_courses,
-      MIN(b.year) AS batch_name
+      MIN(b.name) AS batch_name
     FROM users u
     LEFT JOIN students s ON s.user_id = u.id
     LEFT JOIN faculties f ON f.user_id = u.id

@@ -43,15 +43,17 @@ WITH
   batches_inserted AS (
     INSERT INTO batches (id, name, year, start_date, end_date, active)
     VALUES
-      (uuid_generate_v4(), '2025-26 Morning Batch', '2025-26', '2025-04-01', '2026-03-31', true),
-      (uuid_generate_v4(), '2025-26 Evening Batch', '2025-26', '2025-04-01', '2026-03-31', true)
+      (uuid_generate_v4(), '11th JEE', '2025-26', '2025-04-01', '2026-03-31', true),
+      (uuid_generate_v4(), '11th NEET', '2025-26', '2025-04-01', '2026-03-31', true),
+      (uuid_generate_v4(), '12th JEE', '2025-26', '2025-04-01', '2026-03-31', true),
+      (uuid_generate_v4(), '12th NEET', '2025-26', '2025-04-01', '2026-03-31', true)
     RETURNING id, name
   ),
   student_inserted AS (
     INSERT INTO students (user_id, roll_number, phone, address, date_of_birth, parent_contact, join_date)
     SELECT
       id,
-      'UG' || TO_CHAR(CURRENT_DATE, 'YYYY') || RIGHT(REPLACE(id::text, '-', ''), 4),
+      'UJAAS-11J-001',
       '+91 98765 43210',
       'Mumbai, Maharashtra',
       '2005-05-15',
@@ -62,35 +64,35 @@ WITH
   ),
   faculty_inserted AS (
     INSERT INTO faculties (user_id, phone, subject_specialty, join_date)
-    SELECT id, '+91 99999 11111', 'Physics', '2024-06-01'
+    SELECT id, '+91 99999 11111', 'General', '2024-06-01'
     FROM faculty_user
     RETURNING user_id
   )
 INSERT INTO student_batches (student_id, batch_id, joined_at)
 SELECT s.user_id, b.id, '2025-09-01'
 FROM student_inserted s
-JOIN batches_inserted b ON b.name = '2025-26 Morning Batch';
+JOIN batches_inserted b ON b.name = '11th JEE';
 
 INSERT INTO faculty_batches (faculty_id, batch_id)
 SELECT t.user_id, b.id
 FROM faculties t
-JOIN batches b ON b.name = '2025-26 Morning Batch'
+JOIN batches b ON b.name = '11th JEE'
 WHERE t.user_id IN (SELECT user_id FROM faculties LIMIT 1);
 
 INSERT INTO notes (id, batch_id, title, file_url, created_at)
-SELECT uuid_generate_v4(), b.id, 'Physics - Wave Optics', 'https://example.com/notes/wave-optics.pdf', now()
+SELECT uuid_generate_v4(), b.id, 'Physics - Kinematics Notes', 'https://example.com/notes/kinematics.pdf', now()
 FROM batches b
-WHERE b.name = '2025-26 Morning Batch';
+WHERE b.name = '11th JEE';
 
 INSERT INTO tests (id, batch_id, title, type, scheduled_at, duration_minutes, total_marks)
-SELECT uuid_generate_v4(), b.id, 'Physics Test Series 1', 'test_series', '2026-02-28T10:00:00Z', 120, 300
+SELECT uuid_generate_v4(), b.id, 'Weekly Test - Physics', 'test_series', '2026-03-05T10:00:00Z', 120, 300
 FROM batches b
-WHERE b.name = '2025-26 Morning Batch';
+WHERE b.name = '11th JEE';
 
 INSERT INTO tests (id, batch_id, title, type, scheduled_at, duration_minutes, total_marks)
-SELECT uuid_generate_v4(), b.id, 'Chemistry DPP #8', 'dpp', '2026-02-26T10:00:00Z', 45, 50
+SELECT uuid_generate_v4(), b.id, 'Mathematics DPP #1', 'dpp', '2026-03-01T10:00:00Z', 45, 50
 FROM batches b
-WHERE b.name = '2025-26 Morning Batch';
+WHERE b.name = '11th JEE';
 
 INSERT INTO test_attempts (id, test_id, student_id, score, submitted_at, status)
 SELECT uuid_generate_v4(), t.id, s.user_id, 240, now(), 'submitted'
