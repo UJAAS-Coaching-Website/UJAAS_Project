@@ -264,50 +264,32 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="space-y-6">
-      {/* Security Settings */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+        className="space-y-3"
       >
-        <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <Lock className="w-6 h-6 text-teal-600" />
-          Security
-        </h3>
-        <div className="space-y-3">
-          <motion.button
-            whileHover={{ scale: 1.02, x: 5 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowChangePassword(true)}
-            className="w-full p-4 bg-gradient-to-r from-gray-50 to-teal-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group"
-          >
-            <div>
-              <h4 className="font-semibold text-gray-900">Change Password</h4>
-              <p className="text-sm text-gray-600">Update your account password</p>
-            </div>
-            <div className="w-8 h-8 bg-teal-100 group-hover:bg-teal-200 rounded-lg flex items-center justify-center transition">
-              <Lock className="w-4 h-4 text-teal-600" />
-            </div>
-          </motion.button>
-        </div>
-      </motion.div>
+        <motion.button
+          whileHover={{ scale: 1.02, x: 5 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowChangePassword(true)}
+          className="w-full p-4 bg-gradient-to-r from-gray-50 to-teal-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
+        >
+          <div>
+            <h4 className="font-semibold text-gray-900">Change Password</h4>
+            <p className="text-sm text-gray-600">Update your account password</p>
+          </div>
+          <div className="w-8 h-8 bg-teal-100 group-hover:bg-teal-200 rounded-lg flex items-center justify-center transition">
+            <Lock className="w-4 h-4 text-teal-600" />
+          </div>
+        </motion.button>
 
-      {/* Account Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Account Management</h3>
-        
-        {/* Logout Button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition mb-3"
+          className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
@@ -321,7 +303,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         </motion.button>
       </motion.div>
 
-      {/* Logout Confirmation Modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
           <motion.div
@@ -369,7 +350,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* Change Password Modal */}
       <AnimatePresence>
         {showChangePassword && (
           <motion.div
