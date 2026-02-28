@@ -636,8 +636,6 @@ export function AdminDashboard({
             {/* Logo and Branding */}
             <motion.button
               onClick={onClearBatch}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
@@ -660,8 +658,6 @@ export function AdminDashboard({
                   <motion.button
                     key={section.id}
                     onClick={() => onNavigateSection(section.id as AdminSection)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
@@ -682,8 +678,6 @@ export function AdminDashboard({
                   <motion.button
                     key={tab.id}
                     onClick={() => onNavigate(tab.id as Tab)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       activeTab === tab.id && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
@@ -700,8 +694,6 @@ export function AdminDashboard({
             {/* Profile Button */}
             <div className="flex items-center gap-4">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => onNavigate('profile')}
                 className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
@@ -1430,7 +1422,7 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {batches.map((batch) => (
-        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group">
+        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group">
           <div className="w-14 h-14 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 group-hover:scale-110 transition-transform">
             <BookOpen className="w-7 h-7 text-white" />
           </div>
@@ -1438,7 +1430,7 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
           <p className="text-gray-500 text-sm">View and manage this batch's academic progress</p>
         </motion.button>
       ))}
-      <motion.button onClick={onAddBatch} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group">
+      <motion.button onClick={onAddBatch} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group">
         <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-teal-50 transition-colors">
           <Plus className="w-7 h-7 text-gray-400 group-hover:text-teal-600" />
         </div>
@@ -1911,8 +1903,6 @@ function NotesManagementTab({
           <div className="flex items-center gap-3">
             {currentView !== 'root' && (
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
                 onClick={goBack}
                 className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               >
@@ -1941,18 +1931,14 @@ function NotesManagementTab({
           <div className="flex items-center gap-3">
             {currentView === 'root' && (
               <>
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <motion.button
                   onClick={onViewTimetable}
                   className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
                 >
                   <Calendar className="w-5 h-5" />
                   Time Table
                 </motion.button>
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <motion.button
                   onClick={() => setIsAddSubjectModalOpen(true)}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
                 >
@@ -1962,9 +1948,7 @@ function NotesManagementTab({
               </>
             )}
             {currentView === 'subject' && (
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <motion.button
                 onClick={() => setIsAddChapterModalOpen(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
               >
@@ -1972,9 +1956,7 @@ function NotesManagementTab({
                 Add Chapter
               </motion.button>
             )}
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.button
               onClick={() => onNavigate('upload-notice')}
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
             >
@@ -2105,8 +2087,6 @@ function NotesManagementTab({
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
-                          whileHover={{ y: -5, scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
                           onClick={() => navigateToSubject(sub.name)}
                           className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
                         >
@@ -2144,7 +2124,6 @@ function NotesManagementTab({
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        whileHover={{ x: 10 }}
                         onClick={() => navigateToChapter(chapter)}
                         className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
                       >
@@ -2183,7 +2162,7 @@ function NotesManagementTab({
                       >
                         Study Notes
                         {activeContentType === 'notes' && (
-                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                          <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
                         )}
                       </button>
                       <button
@@ -2194,7 +2173,7 @@ function NotesManagementTab({
                       >
                         Daily Practice Problems (DPPs)
                         {activeContentType === 'dpps' && (
-                          <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+                          <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
                         )}
                       </button>
                     </div>

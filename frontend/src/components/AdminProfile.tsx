@@ -79,7 +79,6 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
 
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
           <motion.div
-            whileHover={{ scale: 1.05 }}
             className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
           >
             {displayName.charAt(0).toUpperCase()}
@@ -144,8 +143,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         className="space-y-3"
       >
         <motion.button
-          whileHover={{ scale: 1.02, x: 5 }}
-          whileTap={{ scale: 0.98 }}
           onClick={() => setShowChangePassword(true)}
           className="w-full p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
         >
@@ -159,8 +156,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         </motion.button>
 
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
           onClick={() => setShowLogoutConfirm(true)}
           className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
         >
@@ -202,16 +197,12 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
               <div className="flex gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowLogoutConfirm(false)}
                   className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
                 >
                   Cancel
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={handleLogout}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
                 >
@@ -286,8 +277,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
                 <div className="pt-2 flex gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={closeChangePassword}
                     className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
@@ -295,8 +284,6 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                     Cancel
                   </motion.button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     type="submit"
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
                   >

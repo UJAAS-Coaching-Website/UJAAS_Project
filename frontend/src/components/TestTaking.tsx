@@ -468,7 +468,7 @@ export function TestTaking({
                           <h3 className="font-bold">Explanation</h3>
                         </div>
                         {isFacultyPreview && !question.explanation && (
-                          <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100 animate-pulse">
+                          <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
                             Needs Explanation
                           </span>
                         )}
@@ -628,8 +628,6 @@ export function TestTaking({
             {/* Navigation */}
             <div className="flex items-center justify-between">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
@@ -644,8 +642,6 @@ export function TestTaking({
 
               {currentQuestion === questions.length - 1 ? (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
                   className={`px-8 py-3 bg-gradient-to-r ${isAnyPreview ? 'from-gray-600 to-gray-700' : 'from-green-600 to-emerald-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2`}
                 >
@@ -654,8 +650,6 @@ export function TestTaking({
                 </motion.button>
               ) : (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                 >
@@ -707,8 +701,6 @@ export function TestTaking({
                     .map((q) => (
                       <motion.button
                         key={q.id}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
                         onClick={() => setCurrentQuestion(q.globalIndex)}
                         className={`aspect-square rounded-lg font-semibold text-sm relative ${
                           currentQuestion === q.globalIndex
@@ -727,7 +719,7 @@ export function TestTaking({
                           <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
                         )}
                         {isAnyPreview && !q.explanation && (
-                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
                         )}
                       </motion.button>
                     ))}
@@ -801,8 +793,6 @@ export function TestTaking({
 
               <div className="flex flex-col gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={handleSubmit}
                   className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
                 >
@@ -837,16 +827,12 @@ export function TestTaking({
 
               <div className="flex flex-col gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleConfirmExit(true)}
                   className="w-full py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
                 >
                   Save & Exit
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleConfirmExit(false)}
                   className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
                 >
@@ -920,8 +906,6 @@ export function TestTaking({
 
               <div className="mt-8 pt-6 border-t border-gray-100">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowSettings(false)}
                   className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
                 >

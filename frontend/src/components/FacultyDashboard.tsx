@@ -596,8 +596,6 @@ export function FacultyDashboard({
           <div className="flex justify-between items-center h-20">
             <motion.button
               onClick={onClearBatch}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
@@ -616,8 +614,6 @@ export function FacultyDashboard({
                   <motion.button
                     key={section.id}
                     onClick={() => onNavigateSection(section.id as FacultySection)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
@@ -638,8 +634,6 @@ export function FacultyDashboard({
                   <motion.button
                     key={tab.id}
                     onClick={() => onNavigate(tab.id as Tab)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       activeTab === tab.id && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
@@ -655,8 +649,6 @@ export function FacultyDashboard({
 
             <div className="flex items-center gap-4">
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => onNavigate('profile')}
                 className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
@@ -844,8 +836,6 @@ function BatchSelectionTab({ batches, onSelectBatch }: { batches: BatchInfo[]; o
         <motion.button
           key={batch.slug}
           onClick={() => onSelectBatch(batch.label)}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
           className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group"
         >
           <div className="w-14 h-14 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 group-hover:scale-110 transition-transform">
@@ -1083,8 +1073,6 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={() => navigateToSubject(sub.name)}
               className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
             >
@@ -1098,7 +1086,7 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
       {currentView === 'subject' && selectedSubject && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {chapters[selectedSubject]?.map((chapter, index) => (
-            <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} whileHover={{ x: 10 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
+            <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
               <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
               <div className="flex items-center gap-2">
                 <button
@@ -1120,8 +1108,8 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
       {currentView === 'chapter' && selectedChapter && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 border-b border-gray-200">
-            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
-            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(activeContentType === 'notes' ? notes : dpps).filter(item => item.chapter === selectedChapter).map((item, index) => (
@@ -1231,7 +1219,6 @@ function TestSeriesManagementTab({
           {publishedTests.map((test) => (
             <motion.div
               key={test.id}
-              whileHover={{ y: -5 }}
               className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 flex flex-col h-full"
             >
               <div className="flex justify-between items-start mb-4">

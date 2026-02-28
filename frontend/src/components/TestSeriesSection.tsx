@@ -199,8 +199,6 @@ export function TestSeriesSection({
           </div>
           <div className="flex items-center gap-4">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
               onClick={onViewResults}
             >
@@ -223,7 +221,6 @@ export function TestSeriesSection({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.05, y: -5 }}
             className="bg-white rounded-xl p-5 shadow-md border border-gray-100"
           >
             <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-lg flex items-center justify-center mb-3`}>
@@ -255,8 +252,6 @@ export function TestSeriesSection({
               ].map(filter => (
                 <motion.button
                   key={filter.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedFilter(filter.id as any)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedFilter === filter.id
@@ -282,8 +277,6 @@ export function TestSeriesSection({
               ].map(subject => (
                 <motion.button
                   key={subject.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedSubject(subject.id)}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     selectedSubject === subject.id
@@ -405,8 +398,6 @@ export function TestSeriesSection({
 
               {/* Action Button */}
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   if (test.status === 'completed') {
                     onViewAnalytics(test.id);

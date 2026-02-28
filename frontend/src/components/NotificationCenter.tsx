@@ -60,8 +60,6 @@ export function NotificationCenter({
     <div className="relative">
       {/* Bell Icon Button */}
       <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg hover:bg-gray-100 transition"
       >

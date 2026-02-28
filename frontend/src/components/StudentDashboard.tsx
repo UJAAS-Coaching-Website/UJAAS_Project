@@ -114,8 +114,6 @@ export function StudentDashboard({
                     if (tab.id === 'home') setProfileSection('overview');
                     onNavigate(tab.id as Tab);
                   }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                     (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
                       ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
@@ -137,8 +135,6 @@ export function StudentDashboard({
                 onDelete={onDeleteNotification}
               />
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   setProfileSection('overview');
                   onNavigate('profile');
@@ -290,7 +286,6 @@ function HomeTab({
       <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
-        whileHover={{ scale: 1.02 }}
         className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
@@ -331,15 +326,13 @@ function HomeTab({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.02 }}
             onClick={stat.clickable ? stat.onClick : undefined}
             className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
-                <motion.div 
-                  whileHover={{ scale: 1.2 }}
+                <motion.div
                   className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
                 >
                   <stat.icon className="w-6 h-6 text-white" />
@@ -384,7 +377,6 @@ function HomeTab({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5 }}
-              whileHover={{ scale: 1.05, y: -5 }}
               onClick={() => onNavigate('batch-detail')}
               className="p-5 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all text-white cursor-pointer group"
             >
@@ -397,7 +389,7 @@ function HomeTab({
               <p className="text-xs font-bold text-teal-100 uppercase tracking-wider mb-1">Primary Batch</p>
               <h4 className="font-bold mb-1 text-xl">{user.studentDetails.batch}</h4>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-green-400 rounded-full" />
                 <p className="text-sm text-teal-50">Current Enrollment</p>
               </div>
               <p className="text-xs font-bold text-teal-100 underline decoration-teal-100/30 underline-offset-4">View Batch Dashboard</p>
@@ -410,7 +402,6 @@ function HomeTab({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.6 + index * 0.1 }}
-              whileHover={{ scale: 1.05, y: -5 }}
               className="p-5 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all"
             >
               <div className="w-12 h-12 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-xl flex items-center justify-center mb-3 shadow-lg">
@@ -470,7 +461,6 @@ function HomeTab({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.7 + index * 0.1 }}
-              whileHover={{ scale: 1.02, x: 5 }}
               className={`flex items-center gap-4 p-4 bg-gradient-to-r ${activity.bgGradient} rounded-xl border border-white shadow-md hover:shadow-lg transition-all`}
             >
               <motion.div className={`w-12 h-12 bg-gradient-to-br ${activity.gradient} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
@@ -571,8 +561,6 @@ function StudentContentTab({ onStartDPP }: { onStartDPP: (dpp: any, subjectName:
       {subjects.map((subject) => (
         <motion.div
           key={subject.id}
-          whileHover={{ scale: 1.02, y: -5 }}
-          whileTap={{ scale: 0.98 }}
           onClick={() => {
             setSelectedSubject(subject.name);
             setCurrentView('subject');
@@ -604,7 +592,6 @@ function StudentContentTab({ onStartDPP }: { onStartDPP: (dpp: any, subjectName:
         {chapters[selectedSubject!]?.map((chapter) => (
           <motion.div
             key={chapter}
-            whileHover={{ x: 5 }}
             onClick={() => {
               setSelectedChapter(chapter);
               setCurrentView('chapter');

@@ -166,8 +166,6 @@ export function StudentRankingsEnhanced() {
           {/* Filter and Sort Bar */}
           <div className="flex flex-wrap gap-3">
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold shadow-lg transition-all ${
                 showFilters || activeFiltersCount > 0
@@ -193,8 +191,6 @@ export function StudentRankingsEnhanced() {
             ].map((sort) => (
               <motion.button
                 key={sort.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 onClick={() => toggleSort(sort.id as SortBy)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold shadow-lg transition-all ${
                   sortBy === sort.id
@@ -228,8 +224,6 @@ export function StudentRankingsEnhanced() {
                 <h3 className="text-lg font-semibold text-gray-900">Filter Options</h3>
                 {activeFiltersCount > 0 && (
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       setFilterLevel('all');
                       setFilterCourse('all');
@@ -256,8 +250,6 @@ export function StudentRankingsEnhanced() {
                     ].map((level) => (
                       <motion.button
                         key={level.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => setFilterLevel(level.id as FilterLevel)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                           filterLevel === level.id
@@ -283,8 +275,6 @@ export function StudentRankingsEnhanced() {
                     ].map((course) => (
                       <motion.button
                         key={course.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => setFilterCourse(course.id as FilterCourse)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                           filterCourse === course.id
@@ -316,7 +306,6 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-gray-100 to-gray-300 rounded-2xl p-6 shadow-xl relative mt-8">
               <div className="absolute -top-8 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-gray-300 to-gray-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg"
                 >
@@ -344,7 +333,6 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-yellow-100 to-orange-300 rounded-2xl p-6 shadow-2xl relative">
               <div className="absolute -top-10 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   animate={{ y: [0, -5, 0] }}
                   className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center border-4 border-white shadow-2xl"
@@ -373,7 +361,6 @@ export function StudentRankingsEnhanced() {
             <div className="w-full bg-gradient-to-br from-orange-100 to-red-300 rounded-2xl p-6 shadow-xl relative mt-8">
               <div className="absolute -top-8 left-1/2 -translate-x-1/2">
                 <motion.div
-                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg"
                 >
@@ -444,7 +431,6 @@ export function StudentRankingsEnhanced() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <motion.div
-                          whileHover={{ scale: 1.2}}
                           transition={{ duration: 0.5 }}
                           className={`w-10 h-10 bg-gradient-to-br ${getRankBadgeColor(rank)} rounded-full flex items-center justify-center text-white font-bold shadow-md`}
                         >
@@ -466,7 +452,6 @@ export function StudentRankingsEnhanced() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <motion.div
-                          whileHover={{ scale: 1.1 }}
                           className="text-3xl font-bold text-gray-900"
                         >
                           {student.overallScore}
@@ -519,8 +504,6 @@ export function StudentRankingsEnhanced() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Students Match Your Filters</h3>
             <p className="text-gray-600 mb-4">Try adjusting your filters or clear them to see all rankings</p>
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setFilterLevel('all');
                 setFilterCourse('all');
@@ -571,7 +554,6 @@ export function StudentRankingsEnhanced() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 + index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
               className={`bg-gradient-to-br ${stat.bgColor} rounded-2xl p-6 shadow-lg border border-white`}
             >
               <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center mb-3 shadow-lg`}>

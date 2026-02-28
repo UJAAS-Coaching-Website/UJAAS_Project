@@ -463,8 +463,6 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
 
                 <div className="flex justify-end mt-8">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={() => isStep1Valid && setStep(2)}
                     disabled={!isStep1Valid}
                     className="px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -652,7 +650,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                               Negative: -{(q as any).negativeMarks ?? 0}
                             </span>
                             {editingQuestion?.id === q.id && (
-                              <span className="px-2 py-1 bg-amber-600 text-white rounded font-bold animate-pulse">
+                              <span className="px-2 py-1 bg-amber-600 text-white rounded font-bold">
                                 EDITING...
                               </span>
                             )}
@@ -682,8 +680,6 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                 </button>
                 <div className="flex flex-col items-end gap-2">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={() => isStep2Valid && setStep(3)}
                     disabled={!isStep2Valid}
                     className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -758,8 +754,6 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                     Previous
                   </button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={handleSubmit}
                     className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                   >

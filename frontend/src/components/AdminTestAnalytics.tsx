@@ -329,8 +329,6 @@ export function AdminTestAnalytics({
                 <h2 className="text-2xl font-bold text-gray-900">Student Performance</h2>
               </div>
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg font-medium hover:bg-purple-200 transition-all"
               >
                 <Filter className="w-4 h-4" />

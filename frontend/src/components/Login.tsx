@@ -142,8 +142,6 @@ export function Login({ onLogin }: LoginProps) {
 
             {/* Submit Button */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"

@@ -418,8 +418,6 @@ export function QuestionUploadForm({
 
         <div className="pt-4 flex items-center gap-3">
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             onClick={handleAdd}
             className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-amber-600 to-orange-600' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all`}
           >

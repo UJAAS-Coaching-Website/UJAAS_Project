@@ -51,8 +51,6 @@ export function Footer() {
                   href={social.link}
                   target="_blank"
                   rel="noreferrer"
-                  whileHover={{ scale: 1.2}}
-                  whileTap={{ scale: 0.9 }}
                   className={`w-9 h-9 bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center ${social.color} transition-all hover:bg-white/20`}
                 >
                   <social.icon className="w-4 h-4" />
@@ -81,7 +79,6 @@ export function Footer() {
                 <li key={index}>
                   <motion.a
                     href="#"
-                    whileHover={{ x: 5 }}
                     className="text-gray-300 hover:text-white transition-all flex items-center gap-2 group"
                   >
                     <div className="w-1.5 h-1.5 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />

@@ -163,7 +163,6 @@ export function StudentRating({ students }: StudentRatingProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
               className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white hover:shadow-xl transition-all"
             >
               <div className="flex items-start justify-between mb-4">
@@ -187,7 +186,6 @@ export function StudentRating({ students }: StudentRatingProps) {
                   </div>
                 </div>
                 <motion.div
-                  whileHover={{ scale: 1.1}}
                   transition={{ duration: 0.5 }}
                   className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold border-4 border-yellow-200"
                 >
@@ -214,8 +212,6 @@ export function StudentRating({ students }: StudentRatingProps) {
               )}
 
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={() => handleEditRating(student.id)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg shadow-md hover:shadow-lg transition"
               >
@@ -256,8 +252,6 @@ export function StudentRating({ students }: StudentRatingProps) {
                     <p className="text-purple-100 mt-1">{editingRating.studentName}</p>
                   </div>
                   <motion.button
-                    whileHover={{ scale: 1.1}}
-                    whileTap={{ scale: 0.9 }}
                     onClick={handleCancel}
                     className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition"
                   >
@@ -349,8 +343,6 @@ export function StudentRating({ students }: StudentRatingProps) {
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
                         <motion.button
                           key={value}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
                           onClick={() => setEditingRating({
                             ...editingRating,
                             [item.key]: value
@@ -383,7 +375,6 @@ export function StudentRating({ students }: StudentRatingProps) {
                       </p>
                     </div>
                     <motion.div
-                      whileHover={{ scale: 1.1}}
                       transition={{ duration: 0.5 }}
                       className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-2xl border-4 border-yellow-200 shadow-lg"
                     >
@@ -396,8 +387,6 @@ export function StudentRating({ students }: StudentRatingProps) {
               {/* Modal Footer */}
               <div className="sticky bottom-0 bg-gray-50 p-6 rounded-b-3xl border-t border-gray-200 flex gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={handleCancel}
                   className="flex-1 px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center justify-center gap-2"
                 >
@@ -405,8 +394,6 @@ export function StudentRating({ students }: StudentRatingProps) {
                   Cancel
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={handleSaveRating}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2"
                 >

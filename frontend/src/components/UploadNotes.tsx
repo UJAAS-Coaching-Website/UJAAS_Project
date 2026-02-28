@@ -336,8 +336,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               Cancel
             </button>
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={handleSubmit}
               disabled={!isFormValid || uploading}
               className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
