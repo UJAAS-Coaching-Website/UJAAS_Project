@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { TestTaking } from './TestTaking';
 import {
   Trophy,
   Target,
@@ -65,6 +66,22 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
     : '0.0';
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
+
+  const reviewAnswers = result.questions.reduce<Record<string, number | null>>((acc, question) => {
+    acc[question.id] = question.userAnswer ?? null;
+    return acc;
+  }, {});
+
+  const reviewQuestions = result.questions.map((question) => ({
+    id: question.id,
+    question: question.text,
+    options: question.options,
+    correctAnswer: question.correctAnswer,
+    subject: question.subject,
+    marks: question.marks,
+    type: 'MCQ' as const,
+    explanation: '',
+  }));
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -235,91 +252,27 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
           </div>
         </motion.div>
 
-        {/* Question-wise Analysis */}
+        {/* Review Mode (Read Only) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Question-wise Analysis</h2>
-
-          <div className="space-y-4">
-            {result.questions.map((question, index) => {
-              const isCorrect = question.userAnswer === question.correctAnswer;
-              const isAttempted = question.userAnswer !== undefined && question.userAnswer !== null;
-
-              return (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 + index * 0.02 }}
-                  className={`p-5 rounded-xl border-2 ${
-                    !isAttempted ? 'bg-gray-50 border-gray-200' :
-                    isCorrect ? 'bg-green-50 border-green-200' :
-                    'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      !isAttempted ? 'bg-gray-200 text-gray-600' :
-                      isCorrect ? 'bg-green-500 text-white' :
-                      'bg-red-500 text-white'
-                    }`}>
-                      {!isAttempted ? '−' : isCorrect ? '✓' : '✗'}
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-bold text-gray-900">Q{index + 1}.</span>
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                          {question.subject}
-                        </span>
-                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
-                          {question.marks} marks
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-900 font-medium mb-3">{question.text}</p>
-
-                      <div className="space-y-2">
-                        {question.options.map((option, optIndex) => {
-                          const isUserAnswer = question.userAnswer === optIndex;
-                          const isCorrectAnswer = question.correctAnswer === optIndex;
-
-                          return (
-                            <div
-                              key={optIndex}
-                              className={`p-3 rounded-lg border ${
-                                isCorrectAnswer ? 'bg-green-100 border-green-300' :
-                                isUserAnswer ? 'bg-red-100 border-red-300' :
-                                'bg-white border-gray-200'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {isCorrectAnswer && <CheckCircle className="w-4 h-4 text-green-600" />}
-                                {isUserAnswer && !isCorrectAnswer && <XCircle className="w-4 h-4 text-red-600" />}
-                                <span className="text-sm text-gray-900">{option}</span>
-                                {isCorrectAnswer && (
-                                  <span className="ml-auto text-xs font-semibold text-green-700">Correct Answer</span>
-                                )}
-                                {isUserAnswer && !isCorrectAnswer && (
-                                  <span className="ml-auto text-xs font-semibold text-red-700">Your Answer</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+          <TestTaking
+            testId={result.testId}
+            testTitle={`${result.testTitle} - Review`}
+            duration={Math.max(1, Math.ceil(result.duration / 60))}
+            questions={reviewQuestions}
+            onSubmit={() => {}}
+            onExit={onClose}
+            initialAnswers={reviewAnswers}
+            initialTimeSpent={result.timeSpent}
+            isFacultyPreview={true}
+            disableEditing={true}
+          />
         </motion.div>
       </div>
     </div>
   );
 }
+

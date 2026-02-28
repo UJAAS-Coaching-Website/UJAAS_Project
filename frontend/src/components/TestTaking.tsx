@@ -45,6 +45,7 @@ interface TestTakingProps {
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
+  disableEditing?: boolean;
   availableBatches?: { label: string; slug: string }[];
   initialBatches?: string[];
 }
@@ -61,6 +62,7 @@ export function TestTaking({
   initialTimeSpent = 0,
   isPreview = false,
   isFacultyPreview = false,
+  disableEditing = false,
   availableBatches = [],
   initialBatches = []
 }: TestTakingProps) {
@@ -243,11 +245,13 @@ export function TestTaking({
                       <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                       {selectedBatches.join(', ') || 'No batches assigned'}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                      isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
-                    }`}>
-                      {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
-                    </span>
+                    {!disableEditing && (
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                        isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                      }`}>
+                        {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
+                      </span>
+                    )}
                   </>
                 )}
               </div>
@@ -364,7 +368,7 @@ export function TestTaking({
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
                           {question.type}
                         </span>
-                        {isAnyPreview && (
+                        {isAnyPreview && !disableEditing && (
                           <button
                             onClick={() => setIsEditing(true)}
                             className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold hover:bg-amber-200 transition-colors"
