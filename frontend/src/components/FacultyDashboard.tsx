@@ -1410,11 +1410,13 @@ function StudentRatingsModal({
   const [draftRatings, setDraftRatings] = useState<Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }>>({});
   const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
+  const [editingRemarkSubject, setEditingRemarkSubject] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !student) return;
     setShowRatings(false);
     setEditingSubject(null);
+    setEditingRemarkSubject(null);
     const nextDrafts: Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }> = {};
     const nextRemarks: Record<string, string> = {};
     Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
@@ -1653,31 +1655,63 @@ function StudentRatingsModal({
                             </p>
                           </div>
                           {canEditThisSubject && (
-                            <div className="space-y-2">
-                              <textarea
-                                rows={3}
-                                value={draftRemarks[subject] ?? ''}
-                                onChange={(e) =>
-                                  setDraftRemarks((prev) => ({
-                                    ...prev,
-                                    [subject]: e.target.value,
-                                  }))
-                                }
-                                placeholder={`Add ${subject} remark`}
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
-                              />
+                            editingRemarkSubject === subject ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  rows={3}
+                                  value={draftRemarks[subject] ?? ''}
+                                  onChange={(e) =>
+                                    setDraftRemarks((prev) => ({
+                                      ...prev,
+                                      [subject]: e.target.value,
+                                    }))
+                                  }
+                                  placeholder={`Add ${subject} remark`}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDraftRemarks((prev) => ({
+                                        ...prev,
+                                        [subject]: student.subjectRemarks?.[subject] ?? '',
+                                      }));
+                                      setEditingRemarkSubject(null);
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`Save remark for ${subject}?`)) {
+                                        onSaveSubjectRemark?.(student.id, subject, draftRemarks[subject] ?? '');
+                                        setEditingRemarkSubject(null);
+                                      }
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition"
+                                  >
+                                    Save Remark
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (window.confirm(`Save remark for ${subject}?`)) {
-                                    onSaveSubjectRemark?.(student.id, subject, draftRemarks[subject] ?? '');
-                                  }
+                                  setDraftRemarks((prev) => ({
+                                    ...prev,
+                                    [subject]: student.subjectRemarks?.[subject] ?? '',
+                                  }));
+                                  setEditingRemarkSubject(subject);
                                 }}
                                 className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition"
                               >
-                                Save {subject} Remark
+                                Edit {subject} Remark
                               </button>
-                            </div>
+                            )
                           )}
                         </div>
                       </div>

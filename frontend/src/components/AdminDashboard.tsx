@@ -307,6 +307,11 @@ export function AdminDashboard({
           'Physics': { attendance: 4.8, tests: 4.5, dppPerformance: 4.6, behavior: 4.9 },
           'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.5 },
           'Mathematics': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 }
+        },
+        subjectRemarks: {
+          'Physics': 'Good conceptual clarity. Keep revising numericals regularly.',
+          'Chemistry': 'Theory is decent, focus more on reaction mechanism practice.',
+          'Mathematics': 'Excellent consistency and speed in problem solving.'
         }
       },
       { 
@@ -327,6 +332,11 @@ export function AdminDashboard({
           'Biology': { attendance: 5.0, tests: 4.9, dppPerformance: 4.9, behavior: 5.0 },
           'Physics': { attendance: 4.5, tests: 4.2, dppPerformance: 4.4, behavior: 4.6 },
           'Chemistry': { attendance: 4.8, tests: 4.7, dppPerformance: 4.7, behavior: 4.9 }
+        },
+        subjectRemarks: {
+          'Biology': 'Strong retention and neat diagram presentation.',
+          'Physics': 'Needs more confidence in multi-step numericals.',
+          'Chemistry': 'Very disciplined and improving test performance.'
         }
       },
       { 
@@ -346,6 +356,10 @@ export function AdminDashboard({
         subjectRatings: {
           'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.9, behavior: 4.2 },
           'Mathematics': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.5 }
+        },
+        subjectRemarks: {
+          'Physics': 'Basics are clear, but revise formulas before tests.',
+          'Mathematics': 'Good progress. Keep practicing advanced level questions.'
         }
       },
       { 
@@ -365,6 +379,10 @@ export function AdminDashboard({
         subjectRatings: {
           'Physics': { attendance: 4.5, tests: 4.6, dppPerformance: 4.4, behavior: 4.8 },
           'Mathematics': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.7 }
+        },
+        subjectRemarks: {
+          'Physics': 'Very attentive in class and asks relevant doubts.',
+          'Mathematics': 'Accurate approach. Work slightly on time management.'
         }
       },
       { 
@@ -384,6 +402,10 @@ export function AdminDashboard({
         subjectRatings: {
           'Biology': { attendance: 4.0, tests: 3.9, dppPerformance: 4.1, behavior: 4.3 },
           'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.0, behavior: 4.2 }
+        },
+        subjectRemarks: {
+          'Biology': 'Regular in class; needs deeper NCERT revision.',
+          'Chemistry': 'Maintain short notes and increase daily question count.'
         }
       },
       { 
@@ -404,6 +426,11 @@ export function AdminDashboard({
           'Physics': { attendance: 5.0, tests: 4.9, dppPerformance: 4.8, behavior: 5.0 },
           'Mathematics': { attendance: 4.9, tests: 5.0, dppPerformance: 4.9, behavior: 4.9 },
           'Chemistry': { attendance: 4.8, tests: 4.8, dppPerformance: 4.9, behavior: 4.8 }
+        },
+        subjectRemarks: {
+          'Physics': 'Outstanding class participation and analytical skills.',
+          'Mathematics': 'Excellent accuracy. Continue with mixed mock practice.',
+          'Chemistry': 'Consistent performer with very good discipline.'
         }
       },
     ];
@@ -3124,6 +3151,7 @@ function StudentRatingsModal({
 }) {
   const [showRatings, setShowRatings] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingAdminRemark, setIsEditingAdminRemark] = useState(false);
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
@@ -3138,6 +3166,7 @@ function StudentRatingsModal({
     if (!open || !student) return;
     setShowRatings(false);
     setIsEditingProfile(false);
+    setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
       email: student.email ?? '',
@@ -3236,7 +3265,7 @@ function StudentRatingsModal({
     const adminRemarkHtml = `
       <section class="admin-remark">
         <h2>Admin Overall Remark</h2>
-        <p>${escapeHtml((adminRemarkDraft || student.adminRemark || '').trim() || 'No admin remark provided.')}</p>
+        <p>${escapeHtml((student.adminRemark || '').trim() || 'No admin remark provided.')}</p>
       </section>
     `;
 
@@ -3729,24 +3758,57 @@ function StudentRatingsModal({
               )}
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
                 <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Admin Overall Remark</p>
-                <textarea
-                  rows={4}
-                  value={adminRemarkDraft}
-                  onChange={(e) => setAdminRemarkDraft(e.target.value)}
-                  placeholder="Enter final overall remark for this student"
-                  className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Save admin overall remark for this student?')) {
-                      onSaveAdminRemark?.(student.id, adminRemarkDraft);
-                    }
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition"
-                >
-                  Save Admin Remark
-                </button>
+                {!isEditingAdminRemark ? (
+                  <>
+                    <p className="text-sm text-gray-700 bg-white border border-blue-100 rounded-xl p-3 whitespace-pre-wrap">
+                      {(student.adminRemark || '').trim() || 'No admin remark added yet.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminRemarkDraft(student.adminRemark ?? '');
+                        setIsEditingAdminRemark(true);
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition"
+                    >
+                      Edit Admin Remark
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <textarea
+                      rows={4}
+                      value={adminRemarkDraft}
+                      onChange={(e) => setAdminRemarkDraft(e.target.value)}
+                      placeholder="Enter final overall remark for this student"
+                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminRemarkDraft(student.adminRemark ?? '');
+                          setIsEditingAdminRemark(false);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Save admin overall remark for this student?')) {
+                            onSaveAdminRemark?.(student.id, adminRemarkDraft);
+                            setIsEditingAdminRemark(false);
+                          }
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition"
+                      >
+                        Save Admin Remark
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
