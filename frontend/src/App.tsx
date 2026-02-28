@@ -929,6 +929,10 @@ function App() {
             onMarkAsRead={handleMarkAsRead}
             onMarkAllAsRead={handleMarkAllAsRead}
             onDeleteNotification={handleDeleteNotification}
+            publishedTests={publishedTests}
+            onPreviewTest={handlePreviewTest}
+            onUpdatePublishedTest={updatePublishedTest}
+            selectedPreviewTest={selectedPreviewTest}
           />
         </motion.div>
       ) : (
