@@ -14,12 +14,48 @@ interface ReviewMeta {
 }
 
 const REVIEW_TESTS: ReviewMeta[] = [
-  { id: '1', title: 'JEE Main Full Length Test #1', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
-  { id: '2', title: 'Physics Chapter Test - Mechanics', subject: 'Physics', duration: 90, totalMarks: 100, questionCount: 30 },
-  { id: '3', title: 'Chemistry Organic Chemistry Test', subject: 'Chemistry', duration: 60, totalMarks: 80, questionCount: 25 },
-  { id: '4', title: 'Mathematics Advanced Calculus', subject: 'Mathematics', duration: 120, totalMarks: 120, questionCount: 40 },
-  { id: '5', title: 'Physics Waves & Optics Test', subject: 'Physics', duration: 75, totalMarks: 100, questionCount: 30 },
+  { id: '1', title: 'JEE Main Demo Test - Attempted (New)', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '2', title: 'JEE Main Demo Test - Fresh Attempt', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '3', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '4', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
+  { id: '5', title: 'JEE Main Demo Test - Attempted', subject: 'All Subjects', duration: 180, totalMarks: 300, questionCount: 90 },
 ];
+
+const buildJeeMainDemoQuestions = (testKey: string) => {
+  const subjects = ['Physics', 'Chemistry', 'Mathematics'];
+  const questions: any[] = [];
+
+  subjects.forEach((subject) => {
+    for (let i = 1; i <= 20; i++) {
+      questions.push({
+        id: `${testKey}-${subject}-A-${i}`,
+        question: `${subject} Section A - Question ${i}`,
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correctAnswer: (i - 1) % 4,
+        subject,
+        marks: 4,
+        negativeMarks: 1,
+        type: 'MCQ',
+        metadata: { section: 'Section A' },
+      });
+    }
+
+    for (let i = 1; i <= 10; i++) {
+      questions.push({
+        id: `${testKey}-${subject}-B-${i}`,
+        question: `${subject} Section B - Numerical ${i}`,
+        correctAnswer: String((i * 2) + 1),
+        subject,
+        marks: 4,
+        negativeMarks: 0,
+        type: 'Numerical',
+        metadata: { section: 'Section B' },
+      });
+    }
+  });
+
+  return questions;
+};
 
 // Mock question generator
 const generateMockQuestions = (count: number, subject: string) => {
@@ -53,11 +89,19 @@ const generateMockQuestions = (count: number, subject: string) => {
 const getSeedFromId = (testId: string) =>
   testId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
 
-const getDeterministicAnswer = (seed: number, index: number, correct: number) => {
+const getDeterministicAnswerAny = (seed: number, index: number, q: any) => {
   const pattern = (seed + index) % 6;
-  if (pattern === 0) return null; // unattempted
-  if (pattern === 1 || pattern === 2 || pattern === 3) return correct; // mostly correct
-  return (correct + 1 + ((seed + index) % 2)) % 4; // wrong
+  if (pattern === 0) return null;
+
+  if ((q.type || '') === 'Numerical') {
+    if (pattern <= 3) return String(q.correctAnswer);
+    const numeric = Number(q.correctAnswer);
+    return Number.isFinite(numeric) ? String(numeric + 1) : `${q.correctAnswer}_wrong`;
+  }
+
+  if (pattern <= 3) return q.correctAnswer;
+  const correct = Number(q.correctAnswer) || 0;
+  return (correct + 1 + ((seed + index) % 2)) % 4;
 };
 
 interface TestState {
@@ -201,12 +245,15 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
 
   const openMockAnalytics = (testId: string) => {
     const reviewMeta = REVIEW_TESTS.find((test) => test.id === testId) ?? REVIEW_TESTS[0];
-    const questions = generateMockQuestions(reviewMeta.questionCount, reviewMeta.subject);
+    const questions =
+      reviewMeta.id === '1'
+        ? buildJeeMainDemoQuestions('jee-main-demo-attempted-new-review')
+        : generateMockQuestions(reviewMeta.questionCount, reviewMeta.subject);
     const seed = getSeedFromId(testId);
-    const answers: Record<string, number | null> = {};
+    const answers: Record<string, number | string | null> = {};
 
     questions.forEach((q, index) => {
-      answers[q.id] = getDeterministicAnswer(seed, index, q.correctAnswer);
+      answers[q.id] = getDeterministicAnswerAny(seed, index, q);
     });
 
     // Calculate results using the same path as a real submission.
@@ -217,7 +264,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
 
     const questionsWithAnswers = questions.map((q) => {
       const userAnswer = answers[q.id];
-      const isCorrect = userAnswer === q.correctAnswer;
+      const isCorrect = String(userAnswer) === String(q.correctAnswer);
       const isAttempted = userAnswer !== undefined && userAnswer !== null;
 
       if (isAttempted) {
@@ -254,7 +301,7 @@ export function TestSeriesContainer({ user, publishedTests }: TestSeriesContaine
       subjectData.maxMarks += q.marks;
 
       if (q.userAnswer !== undefined && q.userAnswer !== null) {
-        if (q.userAnswer === q.correctAnswer) {
+        if (String(q.userAnswer) === String(q.correctAnswer)) {
           subjectData.correct++;
           subjectData.marks += q.marks;
         } else {

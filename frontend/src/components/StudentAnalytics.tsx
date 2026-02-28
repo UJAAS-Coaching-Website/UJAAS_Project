@@ -21,11 +21,16 @@ import {
 interface Question {
   id: string;
   text: string;
-  options: string[];
-  correctAnswer: number;
+  question?: string;
+  options?: string[];
+  correctAnswer: number | string | number[];
   subject: string;
   marks: number;
-  userAnswer?: number | null;
+  type?: 'MCQ' | 'MSQ' | 'Numerical';
+  metadata?: {
+    section?: string;
+  };
+  userAnswer?: number | string | null;
 }
 
 interface TestResult {
@@ -74,12 +79,13 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
 
   const reviewQuestions = result.questions.map((question) => ({
     id: question.id,
-    question: question.text,
+    question: question.question ?? question.text,
     options: question.options,
     correctAnswer: question.correctAnswer,
     subject: question.subject,
     marks: question.marks,
-    type: 'MCQ' as const,
+    type: question.type ?? ('MCQ' as const),
+    metadata: question.metadata,
     explanation: '',
   }));
 

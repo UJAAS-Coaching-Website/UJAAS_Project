@@ -33,92 +33,74 @@ interface TestSeries {
   startTimeStatus?: 'on-time' | 'late';
 }
 
+const buildJeeMainDemoQuestions = (testKey: string) => {
+  const subjects = ['Physics', 'Chemistry', 'Mathematics'];
+  const questions: any[] = [];
+
+  subjects.forEach((subject) => {
+    for (let i = 1; i <= 20; i++) {
+      questions.push({
+        id: `${testKey}-${subject}-A-${i}`,
+        question: `${subject} Section A - Question ${i}`,
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correctAnswer: (i - 1) % 4,
+        subject,
+        marks: 4,
+        negativeMarks: 1,
+        type: 'MCQ',
+        metadata: { section: 'Section A' },
+      });
+    }
+
+    for (let i = 1; i <= 10; i++) {
+      questions.push({
+        id: `${testKey}-${subject}-B-${i}`,
+        question: `${subject} Section B - Numerical ${i}`,
+        correctAnswer: String((i * 2) + 1),
+        subject,
+        marks: 4,
+        negativeMarks: 0,
+        type: 'Numerical',
+        metadata: { section: 'Section B' },
+      });
+    }
+  });
+
+  return questions;
+};
+
 const MOCK_TEST_SERIES: TestSeries[] = [
   {
     id: '1',
-    title: 'JEE Main Full Length Test #1',
+    title: 'JEE Main Demo Test - Attempted (New)',
     subject: 'All Subjects',
     duration: 180,
     totalMarks: 300,
     questions: 90,
     difficulty: 'Hard',
     status: 'completed',
-    score: 245,
+    score: 212,
     attempts: 1,
-    scheduledDate: '2026-02-10',
-    enrolled: 1234,
-    passingMarks: 180,
-    startTimeStatus: 'on-time'
+    scheduledDate: '2026-03-01',
+    enrolled: 1098,
+    passingMarks: 120,
+    startTimeStatus: 'on-time',
+    realQuestions: buildJeeMainDemoQuestions('jee-main-demo-attempted-new')
   },
   {
     id: '2',
-    title: 'Physics Chapter Test - Mechanics',
-    subject: 'Physics',
-    duration: 90,
-    totalMarks: 100,
-    questions: 30,
-    difficulty: 'Medium',
-    status: 'not-started',
-    attempts: 0,
-    scheduledDate: '2026-02-12',
-    enrolled: 856,
-    passingMarks: 50
-  },
-  {
-    id: '3',
-    title: 'Chemistry Organic Chemistry Test',
-    subject: 'Chemistry',
-    duration: 60,
-    totalMarks: 80,
-    questions: 25,
-    difficulty: 'Medium',
-    status: 'not-started',
-    attempts: 0,
-    scheduledDate: '2026-02-18',
-    enrolled: 945,
-    passingMarks: 40
-  },
-  {
-    id: '4',
-    title: 'Mathematics Advanced Calculus',
-    subject: 'Mathematics',
-    duration: 120,
-    totalMarks: 120,
-    questions: 40,
-    difficulty: 'Hard',
-    status: 'not-started',
-    attempts: 0,
-    scheduledDate: '2026-02-20',
-    enrolled: 723,
-    passingMarks: 60
-  },
-  {
-    id: '5',
-    title: 'JEE Advanced Mock Test #1',
+    title: 'JEE Main Demo Test - Fresh Attempt',
     subject: 'All Subjects',
     duration: 180,
-    totalMarks: 360,
-    questions: 54,
+    totalMarks: 300,
+    questions: 90,
     difficulty: 'Hard',
-    status: 'upcoming',
-    attempts: 0,
-    scheduledDate: '2026-03-01',
-    enrolled: 2100,
-    passingMarks: 180
-  },
-  {
-    id: '6',
-    title: 'Physics Waves & Optics Test',
-    subject: 'Physics',
-    duration: 75,
-    totalMarks: 100,
-    questions: 30,
-    difficulty: 'Easy',
     status: 'not-started',
     attempts: 0,
-    scheduledDate: '2026-02-25',
-    enrolled: 678,
-    passingMarks: 50
+    scheduledDate: '2026-03-04',
+    enrolled: 1098,
+    passingMarks: 120,
+    realQuestions: buildJeeMainDemoQuestions('jee-main-demo-fresh')
   }
 ];
 
