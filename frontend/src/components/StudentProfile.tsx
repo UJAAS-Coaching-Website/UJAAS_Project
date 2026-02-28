@@ -410,28 +410,25 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-8 text-gray-900 shadow-xl border border-white relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/40 rounded-full -mr-24 -mt-24" />
         <div className="relative">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-2xl font-bold mb-2">Overall Rating</h3>
-              <p className="text-white/80">Based on all evaluated criteria</p>
+              <h3 className="text-2xl font-bold mb-1">Overall Rating</h3>
+              <p className="text-gray-500 font-medium">Based on all academic factors</p>
             </div>
-            <motion.div
-              whileHover={{ scale: 1.1}}
-              transition={{ duration: 0.5 }}
-              className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/30"
-            >
-              <div className="text-center">
-                <div className="text-4xl font-bold">{overallPerformance.toFixed(1)}</div>
-                <div className="text-xs">/ 5</div>
-              </div>
-            </motion.div>
+            <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <Star className="w-7 h-7 text-white" />
+            </div>
           </div>
-          <div className="mt-4 scale-150 origin-left">
-            {renderPerformanceStars(overallPerformance)}
+          <div className="flex items-end gap-4">
+            <div className="scale-150 origin-left">
+              {renderPerformanceStars(overallPerformance)}
+            </div>
+            <p className="text-xl font-black text-gray-400 mb-0.5">/</p>
+            <p className="text-3xl font-black text-gray-900 mb-0.5">5.0</p>
           </div>
         </div>
       </motion.div>
