@@ -10,8 +10,8 @@ SET password_hash = 'student_seed_salt:f52a9eabd44b4662ce26d5ad1f287bdeafc2b78d4
 WHERE role = 'student' AND (password_hash IS NULL OR password_hash = '');
 
 UPDATE users
-SET password_hash = 'teacher_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
-WHERE role = 'teacher' AND (password_hash IS NULL OR password_hash = '');
+SET password_hash = 'faculty_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
+WHERE role = 'faculty' AND (password_hash IS NULL OR password_hash = '');
 
 UPDATE users
 SET password_hash = 'default_seed_salt:b14cc879686ef73fe9504404a50592f69f8dd5a0aaa4bae2d17f5b9e82ef7dfe13c382a28d00a72579296dcf58936db01e13064533af4071c1a0d35566ed59cd'

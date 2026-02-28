@@ -18,7 +18,7 @@
 ### 1. Core Pages
 - ✅ `/App.tsx` - Loading screen
 - ✅ `/components/Login.tsx` - Complete login system
-- ✅ `/components/GetStarted.tsx` - Hero, stats, teachers, CTA
+- ✅ `/components/GetStarted.tsx` - Hero, stats, facultys, CTA
 - ✅ `/components/StudentDashboard.tsx` - Navigation, home tab, stats
 
 ### 2. Configuration Files

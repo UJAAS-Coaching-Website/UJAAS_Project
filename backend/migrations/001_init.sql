@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name text NOT NULL,
   email text NOT NULL UNIQUE,
-  role text NOT NULL CHECK (role IN ('student','teacher','admin')),
+  role text NOT NULL CHECK (role IN ('student','faculty','admin')),
   password_hash text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS students (
   join_date date
 );
 
-CREATE TABLE IF NOT EXISTS teachers (
+CREATE TABLE IF NOT EXISTS facultys (
   user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   phone text,
   subject_specialty text,
@@ -46,10 +46,10 @@ CREATE TABLE IF NOT EXISTS student_batches (
   PRIMARY KEY (student_id, batch_id)
 );
 
-CREATE TABLE IF NOT EXISTS teacher_batches (
-  teacher_id uuid REFERENCES teachers(user_id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS faculty_batches (
+  faculty_id uuid REFERENCES facultys(user_id) ON DELETE CASCADE,
   batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
-  PRIMARY KEY (teacher_id, batch_id)
+  PRIMARY KEY (faculty_id, batch_id)
 );
 
 CREATE TABLE IF NOT EXISTS notes (

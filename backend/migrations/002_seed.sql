@@ -4,7 +4,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 DELETE FROM users
-WHERE email IN ('admin@ujaas.com', 'teacher@ujaas.com', 'student@ujaas.com');
+WHERE email IN ('admin@ujaas.com', 'faculty@ujaas.com', 'student@ujaas.com');
 
 WITH
   admin_user AS (
@@ -18,14 +18,14 @@ WITH
     )
     RETURNING id
   ),
-  teacher_user AS (
+  faculty_user AS (
     INSERT INTO users (id, name, email, role, password_hash)
     VALUES (
       uuid_generate_v4(),
-      'Asha Teacher',
-      'teacher@ujaas.com',
-      'teacher',
-      'teacher_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
+      'Asha Faculty',
+      'faculty@ujaas.com',
+      'faculty',
+      'faculty_seed_salt:c1a4c6dbbf645eeb99b10fd9751ce2c51463e5b088fe4a53b9dbe5a65c99220d967312f2c287f0338b3f8c0d412ff49ec5223cc3127209fbc8c629a2b7621895'
     )
     RETURNING id
   ),
@@ -60,10 +60,10 @@ WITH
     FROM student_user
     RETURNING user_id
   ),
-  teacher_inserted AS (
-    INSERT INTO teachers (user_id, phone, subject_specialty, join_date)
+  faculty_inserted AS (
+    INSERT INTO facultys (user_id, phone, subject_specialty, join_date)
     SELECT id, '+91 99999 11111', 'Physics', '2024-06-01'
-    FROM teacher_user
+    FROM faculty_user
     RETURNING user_id
   )
 INSERT INTO student_batches (student_id, batch_id, joined_at)
@@ -71,11 +71,11 @@ SELECT s.user_id, b.id, '2025-09-01'
 FROM student_inserted s
 JOIN batches_inserted b ON b.name = '2025-26 Morning Batch';
 
-INSERT INTO teacher_batches (teacher_id, batch_id)
+INSERT INTO faculty_batches (faculty_id, batch_id)
 SELECT t.user_id, b.id
-FROM teachers t
+FROM facultys t
 JOIN batches b ON b.name = '2025-26 Morning Batch'
-WHERE t.user_id IN (SELECT user_id FROM teachers LIMIT 1);
+WHERE t.user_id IN (SELECT user_id FROM facultys LIMIT 1);
 
 INSERT INTO notes (id, batch_id, title, file_url, created_at)
 SELECT uuid_generate_v4(), b.id, 'Physics - Wave Optics', 'https://example.com/notes/wave-optics.pdf', now()

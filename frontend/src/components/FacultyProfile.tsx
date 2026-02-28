@@ -18,12 +18,12 @@ import {
   LogOut
 } from 'lucide-react';
 
-interface TeacherProfileProps {
+interface FacultyProfileProps {
   user: {
     id: string;
     name: string;
     email: string;
-    role?: 'student' | 'teacher' | 'admin';
+    role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
     studentDetails?: StudentDetails | null;
   };
@@ -76,7 +76,7 @@ function formatDateForDisplay(value?: string | null): string {
   });
 }
 
-export function TeacherProfile({ user, onLogout }: TeacherProfileProps) {
+export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
   const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>('overview');
 

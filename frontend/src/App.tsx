@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
-import { TeacherDashboard } from './components/TeacherDashboard';
+import { FacultyDashboard } from './components/FacultyDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
@@ -12,7 +12,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: 'student' | 'faculty' | 'admin';
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
 }
@@ -485,27 +485,27 @@ function App() {
     if (parts[0] === 'student') {
       return { view: 'student' as const, tab: parts[1] || 'home' };
     }
-    if (parts[0] === 'teacher') {
+    if (parts[0] === 'faculty') {
       if (parts.length === 1) {
-        return { view: 'teacher' as const, section: 'batches' as AdminLandingSection };
+        return { view: 'faculty' as const, section: 'batches' as AdminLandingSection };
       }
 
       const second = parts[1];
       const third = parts[2];
 
       if (isAdminBatchSlug(second)) {
-        return { view: 'teacher' as const, batch: second, tab: third || 'home' };
+        return { view: 'faculty' as const, batch: second, tab: third || 'home' };
       }
 
       if (isAdminLandingSection(second)) {
-        return { view: 'teacher' as const, section: second };
+        return { view: 'faculty' as const, section: second };
       }
 
       if (isAdminTab(second)) {
-        return { view: 'teacher' as const, tab: second };
+        return { view: 'faculty' as const, tab: second };
       }
 
-      return { view: 'teacher' as const, section: 'batches' as AdminLandingSection };
+      return { view: 'faculty' as const, section: 'batches' as AdminLandingSection };
     }
     if (parts[0] === 'admin') {
       if (parts.length === 1) {
@@ -548,10 +548,10 @@ function App() {
 
   const tabToPath = (role: User['role'], tab: StudentTab | AdminTab, batch: AdminBatch | null = null) => {
     if (role === 'student') return `/student/${tab}`;
-    if (role === 'teacher') {
+    if (role === 'faculty') {
       const batchSlug = slugFromBatch(batch);
-      if (batchSlug) return `/teacher/${batchSlug}/${tab}`;
-      return tab === 'home' ? '/teacher' : `/teacher/${tab}`;
+      if (batchSlug) return `/faculty/${batchSlug}/${tab}`;
+      return tab === 'home' ? '/faculty' : `/faculty/${tab}`;
     }
     const batchSlug = slugFromBatch(batch);
     if (batchSlug) return `/admin/${batchSlug}/${tab}`;
@@ -561,8 +561,8 @@ function App() {
   const adminSectionToPath = (section: AdminLandingSection) =>
     section === 'batches' ? '/admin' : `/admin/${section}`;
 
-  const teacherSectionToPath = (section: AdminLandingSection) =>
-    section === 'batches' ? '/teacher' : `/teacher/${section}`;
+  const facultySectionToPath = (section: AdminLandingSection) =>
+    section === 'batches' ? '/faculty' : `/faculty/${section}`;
 
   const setTabFromPath = (currentUser: User | null) => {
     const route = parsePath();
@@ -589,25 +589,25 @@ function App() {
       return;
     }
 
-    const isTeacherRole = currentUser.role === 'teacher';
+    const isFacultyRole = currentUser.role === 'faculty';
     const isRoleMismatch =
-      (currentUser.role === 'teacher' && route.view === 'admin') ||
-      (currentUser.role === 'admin' && route.view === 'teacher');
-    const parsedBatch = route.view === 'admin' || route.view === 'teacher' ? batchFromSlug(route.batch) : null;
+      (currentUser.role === 'faculty' && route.view === 'admin') ||
+      (currentUser.role === 'admin' && route.view === 'faculty');
+    const parsedBatch = route.view === 'admin' || route.view === 'faculty' ? batchFromSlug(route.batch) : null;
     const parsedSection =
-      (route.view === 'admin' || route.view === 'teacher') && isAdminLandingSection(route.section) ? route.section : 'batches';
+      (route.view === 'admin' || route.view === 'faculty') && isAdminLandingSection(route.section) ? route.section : 'batches';
     const adminTab = isAdminTab(route.tab) ? route.tab : 'home';
     setAdminBatch(parsedBatch);
     setAdminLandingSection(parsedSection);
     setActiveTab(adminTab);
     const canonicalPath = parsedBatch
-      ? tabToPath(isTeacherRole ? 'teacher' : 'admin', adminTab, parsedBatch)
+      ? tabToPath(isFacultyRole ? 'faculty' : 'admin', adminTab, parsedBatch)
       : adminTab === 'profile'
-      ? isTeacherRole
-        ? '/teacher/profile'
+      ? isFacultyRole
+        ? '/faculty/profile'
         : '/admin/profile'
-      : isTeacherRole
-      ? teacherSectionToPath(parsedSection)
+      : isFacultyRole
+      ? facultySectionToPath(parsedSection)
       : adminSectionToPath(parsedSection);
     if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
       window.history.replaceState({ tab: adminTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
@@ -622,7 +622,7 @@ function App() {
     if (user.role === 'student') {
       path = tabToPath('student', tab);
     } else {
-      const role = user.role === 'teacher' ? 'teacher' : 'admin';
+      const role = user.role === 'faculty' ? 'faculty' : 'admin';
       if (adminBatch) {
         path = tabToPath(role, tab, adminBatch);
       } else if (tab === 'profile') {
@@ -630,7 +630,7 @@ function App() {
       } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'upload-notice' || tab === 'upload-notes') {
         path = `/${role}/${adminLandingSection}/${tab}`;
       } else {
-        path = user.role === 'teacher' ? teacherSectionToPath(adminLandingSection) : adminSectionToPath(adminLandingSection);
+        path = user.role === 'faculty' ? facultySectionToPath(adminLandingSection) : adminSectionToPath(adminLandingSection);
       }
     }
 
@@ -646,7 +646,7 @@ function App() {
     setAdminBatch(batch);
     setAdminLandingSection('batches');
     setActiveTab('home');
-    const path = tabToPath(user?.role === 'teacher' ? 'teacher' : 'admin', 'home', batch);
+    const path = tabToPath(user?.role === 'faculty' ? 'faculty' : 'admin', 'home', batch);
     window.history.pushState({ tab: 'home', batch, section: 'batches' }, '', path);
   };
 
@@ -658,7 +658,7 @@ function App() {
     window.history.pushState(
       { tab: 'home', batch: null, section: 'batches' },
       '',
-      user?.role === 'teacher' ? '/teacher' : '/admin'
+      user?.role === 'faculty' ? '/faculty' : '/admin'
     );
   };
 
@@ -668,7 +668,7 @@ function App() {
     setAdminBatch(null);
     const targetTab = section === 'test-series' ? 'test-series' : 'home';
     setActiveTab(targetTab);
-    const path = user?.role === 'teacher' ? teacherSectionToPath(section) : adminSectionToPath(section);
+    const path = user?.role === 'faculty' ? facultySectionToPath(section) : adminSectionToPath(section);
     window.history.pushState({ tab: targetTab, batch: null, section }, '', path);
   };
 
@@ -766,25 +766,25 @@ function App() {
       setAdminLandingSection('batches');
       return;
     }
-    if (userData.role !== 'student' && (route.view === 'admin' || route.view === 'teacher')) {
+    if (userData.role !== 'student' && (route.view === 'admin' || route.view === 'faculty')) {
       const parsedBatch = batchFromSlug(route.batch);
       const parsedSection = isAdminLandingSection(route.section) ? route.section : 'batches';
       const parsedTab = isAdminTab(route.tab) ? route.tab : 'home';
       setAdminBatch(parsedBatch);
       setAdminLandingSection(parsedSection);
       setActiveTab(parsedTab);
-      const isTeacherRole = userData.role === 'teacher';
+      const isFacultyRole = userData.role === 'faculty';
       const isRoleMismatch =
-        (userData.role === 'teacher' && route.view === 'admin') ||
-        (userData.role === 'admin' && route.view === 'teacher');
+        (userData.role === 'faculty' && route.view === 'admin') ||
+        (userData.role === 'admin' && route.view === 'faculty');
       const canonicalPath = parsedBatch
-        ? tabToPath(isTeacherRole ? 'teacher' : 'admin', parsedTab, parsedBatch)
+        ? tabToPath(isFacultyRole ? 'faculty' : 'admin', parsedTab, parsedBatch)
         : parsedTab === 'profile'
-        ? isTeacherRole
-          ? '/teacher/profile'
+        ? isFacultyRole
+          ? '/faculty/profile'
           : '/admin/profile'
-        : isTeacherRole
-        ? teacherSectionToPath(parsedSection)
+        : isFacultyRole
+        ? facultySectionToPath(parsedSection)
         : adminSectionToPath(parsedSection);
       if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
         window.history.replaceState({ tab: parsedTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
@@ -806,7 +806,7 @@ function App() {
     window.history.pushState(
       { tab: defaultTab, batch: null, section: 'batches' },
       '',
-      userData.role === 'teacher' ? '/teacher' : '/admin'
+      userData.role === 'faculty' ? '/faculty' : '/admin'
     );
   };
 
@@ -905,15 +905,15 @@ function App() {
             onDeleteNotification={handleDeleteNotification}
           />
         </motion.div>
-      ) : user.role === 'teacher' ? (
+      ) : user.role === 'faculty' ? (
         <motion.div
-          key="teacher"
+          key="faculty"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <TeacherDashboard 
+          <FacultyDashboard 
             user={user} 
             activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
             onNavigate={navigateTab}

@@ -103,7 +103,7 @@ interface Student {
   }>;
 }
 
-interface Teacher {
+interface Faculty {
   id: string;
   name: string;
   email: string;
@@ -124,7 +124,7 @@ type StudentFormState = {
   parentContact: string;
 };
 
-type TeacherFormState = {
+type FacultyFormState = {
   id?: string;
   name: string;
   email: string;
@@ -196,7 +196,7 @@ export function AdminDashboard({
   selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
-  const [faculty, setFaculty] = useState<Teacher[]>([]);
+  const [faculty, setFaculty] = useState<Faculty[]>([]);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -207,9 +207,9 @@ export function AdminDashboard({
     title: 'Add Student'
   });
 
-  const [facultyModal, setFacultyModal] = useState<{ open: boolean; initialData?: Teacher; title: string }>({
+  const [facultyModal, setFacultyModal] = useState<{ open: boolean; initialData?: Faculty; title: string }>({
     open: false,
-    title: 'Add Teacher'
+    title: 'Add Faculty'
   });
 
   const [batchModal, setBatchModal] = useState<{ open: boolean; mode: 'create' | 'edit'; batchLabel?: string }>({
@@ -384,8 +384,8 @@ export function AdminDashboard({
   const openEditStudent = (student: Student) => setStudentModal({ open: true, defaultBatch: student.batch, initialData: student, title: 'Edit Student' });
   const closeStudentModal = () => setStudentModal({ ...studentModal, open: false });
 
-  const openAddFaculty = () => setFacultyModal({ open: true, title: 'Add Teacher' });
-  const openEditFaculty = (teacher: Teacher) => setFacultyModal({ open: true, initialData: teacher, title: 'Edit Teacher' });
+  const openAddFaculty = () => setFacultyModal({ open: true, title: 'Add Faculty' });
+  const openEditFaculty = (faculty: Faculty) => setFacultyModal({ open: true, initialData: faculty, title: 'Edit Faculty' });
   const closeFacultyModal = () => setFacultyModal({ ...facultyModal, open: false });
 
   const openAddBatch = () => setBatchModal({ open: true, mode: 'create' });
@@ -443,15 +443,15 @@ export function AdminDashboard({
     closeStudentModal();
   };
 
-  const handleSaveFaculty = (data: TeacherFormState) => {
+  const handleSaveFaculty = (data: FacultyFormState) => {
     if (data.id) {
       setFaculty(prev => prev.map(f => f.id === data.id ? { ...f, ...data } : f));
     } else {
-      const newTeacher: Teacher = {
+      const newFaculty: Faculty = {
         ...data,
         id: `faculty-${Date.now()}`,
       };
-      setFaculty(prev => [...prev, newTeacher]);
+      setFaculty(prev => [...prev, newFaculty]);
     }
     closeFacultyModal();
   };
@@ -479,7 +479,7 @@ export function AdminDashboard({
   };
 
   const handleDeleteFaculty = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this teacher?')) {
+    if (window.confirm('Are you sure you want to delete this faculty?')) {
       setFaculty(faculty.filter(f => f.id !== id));
     }
   };
@@ -1453,7 +1453,7 @@ function OverviewTab({
   selectedBatch: Batch | null; 
   onEditBatch: (l: string) => void; 
   students: Student[];
-  faculty: Teacher[];
+  faculty: Faculty[];
   batches: BatchInfo[];
   onNavigate: (tab: Tab) => void;
   onClearBatch: () => void;
@@ -1507,7 +1507,7 @@ function OverviewTab({
             onClick={onOpenAddFaculty}
             className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
           >
-            Assign Teacher
+            Assign Faculty
           </button>
         </div>
         
@@ -1616,7 +1616,7 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
   );
 }
 
-function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpenAddFaculty }: { selectedBatch: Batch; faculty: Teacher[]; batches: BatchInfo[]; onUpdateBatch: any; onOpenAddFaculty: () => void }) {
+function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpenAddFaculty }: { selectedBatch: Batch; faculty: Faculty[]; batches: BatchInfo[]; onUpdateBatch: any; onOpenAddFaculty: () => void }) {
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const assigned = currentBatch?.facultyAssigned ?? [];
   const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
@@ -2232,12 +2232,12 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
   );
 }
 
-function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFaculty }: { faculty: Teacher[]; onAddFaculty: () => void; onEditFaculty: (t: Teacher) => void; onDeleteFaculty: (id: string) => void }) {
+function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFaculty }: { faculty: Faculty[]; onAddFaculty: () => void; onEditFaculty: (t: Faculty) => void; onDeleteFaculty: (id: string) => void }) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all teachers and subject experts</p></div>
-        <button onClick={onAddFaculty} className="px-6 py-3  bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Teacher</button>
+        <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all facultys and subject experts</p></div>
+        <button onClick={onAddFaculty} className="px-6 py-3  bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Faculty</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map(t => (
@@ -2527,11 +2527,11 @@ function AddFacultyModal({
 }: {
   open: boolean;
   onClose: () => void;
-  initialData?: Teacher;
+  initialData?: Faculty;
   title?: string;
-  onSubmit?: (data: TeacherFormState) => void;
+  onSubmit?: (data: FacultyFormState) => void;
 }) {
-  const [formState, setFormState] = useState<TeacherFormState>({
+  const [formState, setFormState] = useState<FacultyFormState>({
     id: initialData?.id,
     subject: initialData?.subject ?? '',
     name: initialData?.name ?? '',
@@ -2552,7 +2552,7 @@ function AddFacultyModal({
 
   if (!open) return null;
 
-  const handleChange = (field: keyof TeacherFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement>) => {
     setFormState((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
@@ -2735,7 +2735,7 @@ function BatchFacultyPickerModal({
   open: boolean;
   selectedBatch: Batch | null;
   batches: BatchInfo[];
-  faculty: Teacher[];
+  faculty: Faculty[];
   onClose: () => void;
   onAssign: (facultyName: string, batch: Batch) => void;
 }) {
@@ -2806,7 +2806,7 @@ function BatchFormModal({
   open: boolean;
   mode: 'create' | 'edit';
   batches: BatchInfo[];
-  faculty: Teacher[];
+  faculty: Faculty[];
   batchLabel?: string;
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };

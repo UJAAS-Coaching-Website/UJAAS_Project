@@ -30,5 +30,5 @@ Minimal backend scaffold.
   - `POST /api/auth/logout`
 - Seed login credentials:
   - Admin: `admin@ujaas.com` / `admin123`
-  - Teacher: `teacher@ujaas.com` / `teacher123`
+  - Faculty: `faculty@ujaas.com` / `faculty123`
   - Student: `student@ujaas.com` / `student123`

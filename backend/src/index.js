@@ -205,7 +205,7 @@ app.post("/api/auth/login", async (req, res) => {
 
   try {
     const userLookup = await pool.query(
-      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'teacher', 'admin')",
+      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'faculty', 'admin')",
       [email.toLowerCase()]
     );
     if (userLookup.rowCount === 0) {
@@ -233,7 +233,7 @@ app.get("/api/auth/me", async (req, res) => {
 
   try {
     const user = await fetchUserProfileById(payload.sub);
-    if (!user || (user.role !== "student" && user.role !== "teacher" && user.role !== "admin")) {
+    if (!user || (user.role !== "student" && user.role !== "faculty" && user.role !== "admin")) {
       return res.status(401).json({ message: "unauthorized" });
     }
     return res.status(200).json({ user });
@@ -338,7 +338,7 @@ app.post("/api/auth/refresh", async (req, res) => {
     }
 
     const user = await fetchUserProfileById(payload.sub);
-    if (!user || (user.role !== "student" && user.role !== "teacher" && user.role !== "admin")) {
+    if (!user || (user.role !== "student" && user.role !== "faculty" && user.role !== "admin")) {
       clearAuthCookies(res);
       return res.status(401).json({ message: "unauthorized" });
     }

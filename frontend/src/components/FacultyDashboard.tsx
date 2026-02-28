@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { TeacherProfile } from './TeacherProfile';
+import { FacultyProfile } from './FacultyProfile';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -39,12 +39,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 
-interface TeacherDashboardProps {
+interface FacultyDashboardProps {
   user: User;
   activeTab: Tab;
   onNavigate: (tab: Tab) => void;
-  adminSection: TeacherSection;
-  onNavigateSection: (section: TeacherSection) => void;
+  adminSection: FacultySection;
+  onNavigateSection: (section: FacultySection) => void;
   selectedBatch: Batch | null;
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
@@ -59,7 +59,7 @@ interface TeacherDashboardProps {
 
 type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
 type Batch = string;
-type TeacherSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series';
+type FacultySection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series';
 type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
 
 interface Student {
@@ -84,7 +84,7 @@ interface Student {
   }>;
 }
 
-interface Teacher {
+interface Faculty {
   id: string;
   name: string;
   email: string;
@@ -198,12 +198,12 @@ const MOCK_STUDENTS: Student[] = [
   },
 ];
 
-const MOCK_FACULTY: Teacher[] = [
+const MOCK_FACULTY: Faculty[] = [
   { id: 'f1', name: 'Arvind Sir', email: 'arvind@example.com', subject: 'Physics', phone: '+91 98765 11111' },
   { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', phone: '+91 98765 22222' },
 ];
 
-export function TeacherDashboard({ 
+export function FacultyDashboard({ 
   user, 
   activeTab,
   onNavigate,
@@ -219,9 +219,9 @@ export function TeacherDashboard({
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification
-}: TeacherDashboardProps) {
+}: FacultyDashboardProps) {
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
-  const [faculty, setFaculty] = useState<Teacher[]>(MOCK_FACULTY);
+  const [faculty, setFaculty] = useState<Faculty[]>(MOCK_FACULTY);
   
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
     open: false,
@@ -354,13 +354,13 @@ export function TeacherDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const teacherSubject =
+  const facultySubject =
     faculty.find(
       (f) =>
         f.email.toLowerCase() === user.email.toLowerCase() ||
         f.name.toLowerCase() === user.name.toLowerCase()
     )?.subject ?? null;
-  const handleSaveTeacherSubjectRating = (studentId: string, subject: string, rating: number) => {
+  const handleSaveFacultySubjectRating = (studentId: string, subject: string, rating: number) => {
     const nextRating = Math.max(0, Math.min(5, rating));
     setStudents((prev) =>
       prev.map((student) => {
@@ -440,7 +440,7 @@ export function TeacherDashboard({
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
               <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
-                UJAAS Teacher
+                UJAAS Faculty
               </span>
             </motion.button>
 
@@ -454,7 +454,7 @@ export function TeacherDashboard({
                 ].map((section) => (
                   <motion.button
                     key={section.id}
-                    onClick={() => onNavigateSection(section.id as TeacherSection)}
+                    onClick={() => onNavigateSection(section.id as FacultySection)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
@@ -523,7 +523,7 @@ export function TeacherDashboard({
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('content')} />
           ) : activeTab === 'profile' ? (
-            <TeacherProfile user={user} onLogout={onLogout} />
+            <FacultyProfile user={user} onLogout={onLogout} />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -613,8 +613,8 @@ export function TeacherDashboard({
               open={ratingModal.open}
               student={ratingModal.student}
               onClose={closeStudentRatings}
-              teacherSubject={teacherSubject}
-              onSaveSubjectRating={handleSaveTeacherSubjectRating}
+              facultySubject={facultySubject}
+              onSaveSubjectRating={handleSaveFacultySubjectRating}
             />
           )}
         </AnimatePresence>
@@ -1166,13 +1166,13 @@ function StudentRatingsModal({
   open,
   student,
   onClose,
-  teacherSubject,
+  facultySubject,
   onSaveSubjectRating,
 }: {
   open: boolean;
   student?: Student;
   onClose: () => void;
-  teacherSubject?: string | null;
+  facultySubject?: string | null;
   onSaveSubjectRating?: (studentId: string, subject: string, rating: number) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
@@ -1282,9 +1282,9 @@ function StudentRatingsModal({
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                {teacherSubject
-                  ? `You can edit ratings only for ${teacherSubject}.`
-                  : 'Teacher subject is not mapped, so rating edit is disabled.'}
+                {facultySubject
+                  ? `You can edit ratings only for ${facultySubject}.`
+                  : 'Faculty subject is not mapped, so rating edit is disabled.'}
               </p>
 
               {student.subjectRatings && Object.keys(student.subjectRatings).length > 0 ? (
@@ -1292,7 +1292,7 @@ function StudentRatingsModal({
                   {Object.entries(student.subjectRatings).map(([subject, r]) => {
                     const subAvg = calculateSubjectRating(r);
                     const canEditThisSubject =
-                      !!teacherSubject && subject.toLowerCase() === teacherSubject.toLowerCase();
+                      !!facultySubject && subject.toLowerCase() === facultySubject.toLowerCase();
                     return (
                       <div key={subject} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
