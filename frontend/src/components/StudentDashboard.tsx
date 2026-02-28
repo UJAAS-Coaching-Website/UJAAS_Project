@@ -14,7 +14,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Folder,
-  Download
+  Download,
+  Star,
+  X
 } from 'lucide-react';
 import { NotesSection } from './NotesSection';
 import { DPPSection } from './DPPSection';
@@ -50,6 +52,8 @@ export function StudentDashboard({
   onDeleteNotification,
   publishedTests
 }: StudentDashboardProps) {
+  const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {/* Navigation */}
@@ -78,7 +82,10 @@ export function StudentDashboard({
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
-                  onClick={() => onNavigate(tab.id as Tab)}
+                  onClick={() => {
+                    if (tab.id === 'home') setProfileSection('overview');
+                    onNavigate(tab.id as Tab);
+                  }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
@@ -104,7 +111,10 @@ export function StudentDashboard({
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate('profile')}
+                onClick={() => {
+                  setProfileSection('overview');
+                  onNavigate('profile');
+                }}
                 className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
                 title="View Profile"
               >
@@ -124,11 +134,26 @@ export function StudentDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && <HomeTab user={user} onNavigate={onNavigate} />}
+          {activeTab === 'home' && (
+            <HomeTab 
+              user={user} 
+              onNavigate={onNavigate} 
+              onOpenPerformance={() => {
+                setProfileSection('performance');
+                onNavigate('profile');
+              }} 
+            />
+          )}
           {activeTab === 'notes' && <NotesSection />}
           {activeTab === 'dpp' && <DPPSection />}
           {activeTab === 'test-series' && <TestSeriesContainer user={user} publishedTests={publishedTests} />}
-          {activeTab === 'profile' && <StudentProfile user={user} onLogout={onLogout} />}
+          {activeTab === 'profile' && (
+            <StudentProfile 
+              user={user} 
+              onLogout={onLogout} 
+              initialSection={profileSection} 
+            />
+          )}
           {activeTab === 'batch-detail' && <BatchDashboard user={user} onBack={() => onNavigate('home')} />}
         </motion.div>
       </main>
@@ -139,7 +164,70 @@ export function StudentDashboard({
   );
 }
 
-function HomeTab({ user, onNavigate }: { user: User; onNavigate: (t: Tab) => void }) {
+function renderPerformanceStars(rating: number) {
+  const normalizedRating = Math.max(0, Math.min(5, rating));
+
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => {
+        let fillPercentage = 0;
+        if (normalizedRating >= star) {
+          fillPercentage = 100;
+        } else if (normalizedRating > star - 1) {
+          fillPercentage = (normalizedRating - (star - 1)) * 100;
+        }
+
+        return (
+          <div 
+            key={star} 
+            className="relative inline-block select-none"
+            style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
+          >
+            {/* Background star (Gray) */}
+            <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
+            {/* Fill star (Gold) */}
+            <div 
+              style={{ 
+                width: `${fillPercentage}%`, 
+                overflow: 'hidden', 
+                position: 'absolute', 
+                left: 0, 
+                top: 0, 
+                whiteSpace: 'nowrap',
+                color: '#f59e0b',
+                transition: 'width 0.3s ease'
+              }}
+            >
+              <span>★</span>
+            </div>
+          </div>
+        );
+      })}
+      <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function HomeTab({ 
+  user, 
+  onNavigate, 
+  onOpenPerformance 
+}: { 
+  user: User; 
+  onNavigate: (t: Tab) => void;
+  onOpenPerformance: () => void;
+}) {
+  const calculateOverallRating = () => {
+    if (!user.studentDetails?.ratings) return 0;
+    const r = user.studentDetails.ratings;
+    const dppPerformance = (r as any).dppPerformance || 0;
+    const ratingsList = [r.attendance, r.tests, r.behavior, dppPerformance];
+    const total = ratingsList.reduce((sum, value) => sum + value, 0);
+    return Number((total / ratingsList.length).toFixed(1));
+  };
+
+  const currentRating = calculateOverallRating();
+
   const stats = [
     { 
       label: 'DPP Completed', 
@@ -147,31 +235,18 @@ function HomeTab({ user, onNavigate }: { user: User; onNavigate: (t: Tab) => voi
       icon: ClipboardList, 
       gradient: 'from-green-500 to-emerald-500',
       bgGradient: 'from-green-50 to-emerald-50',
-      percentage: 80
+      percentage: 80,
+      clickable: false
     },
     { 
-      label: 'Study Hours', 
-      value: '45.5', 
-      icon: Clock, 
-      gradient: 'from-blue-500 to-cyan-500',
-      bgGradient: 'from-blue-50 to-cyan-50',
-      percentage: 75
-    },
-    { 
-      label: 'Notes Downloaded', 
-      value: '18', 
-      icon: BookOpen, 
-      gradient: 'from-cyan-500 to-blue-500',
-      bgGradient: 'from-cyan-50 to-blue-50',
-      percentage: 60
-    },
-    { 
-      label: 'Rank', 
-      value: '#12', 
-      icon: Trophy, 
+      label: 'My Performance Rating', 
+      value: `${currentRating.toFixed(1)}/5.0`, 
+      icon: Star, 
       gradient: 'from-yellow-500 to-orange-500',
       bgGradient: 'from-yellow-50 to-orange-50',
-      percentage: 95
+      percentage: (currentRating / 5) * 100,
+      clickable: true,
+      onClick: onOpenPerformance
     },
   ];
 
@@ -215,47 +290,44 @@ function HomeTab({ user, onNavigate }: { user: User; onNavigate: (t: Tab) => voi
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            whileHover={{ scale: 1.05}}
-            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group`}
+            whileHover={{ scale: 1.02 }}
+            onClick={stat.clickable ? stat.onClick : undefined}
+            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
                 <motion.div 
-                  whileHover={{ scale: 1.2}}
+                  whileHover={{ scale: 1.2 }}
                   className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
                 >
                   <stat.icon className="w-6 h-6 text-white" />
                 </motion.div>
-                <div className="text-right">
-                  <motion.div 
-                    className="flex items-center gap-1 text-green-600"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                  >
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="text-xs font-semibold">{stat.percentage}%</span>
-                  </motion.div>
-                </div>
               </div>
               <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-              <p className="text-sm text-gray-600">{stat.label}</p>
-              <div className="mt-3 w-full bg-white/50 rounded-full h-1.5">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stat.percentage}%` }}
-                  transition={{ delay: 0.5 + index * 0.1, duration: 1 }}
-                  className={`h-1.5 rounded-full bg-gradient-to-r ${stat.gradient}`}
-                />
-              </div>
+              <p className="text-sm text-gray-600 font-medium mb-3">{stat.label}</p>
+              
+              {stat.label === 'My Performance Rating' ? (
+                <div className="mt-2">
+                  {renderPerformanceStars(currentRating)}
+                </div>
+              ) : (
+                <div className="mt-3 w-full bg-white/50 rounded-full h-1.5">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stat.percentage}%` }}
+                    transition={{ delay: 0.5 + index * 0.1, duration: 1 }}
+                    className={`h-1.5 rounded-full bg-gradient-to-r ${stat.gradient}`}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         ))}
@@ -453,7 +525,7 @@ function StudentContentTab() {
   const renderSubjectGrid = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
       {subjects.map((subject) => (
-        <motion.button
+        <motion.div
           key={subject.id}
           whileHover={{ scale: 1.02, y: -5 }}
           whileTap={{ scale: 0.98 }}
@@ -461,7 +533,7 @@ function StudentContentTab() {
             setSelectedSubject(subject.name);
             setCurrentView('subject');
           }}
-          className="p-6 bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col items-center text-center group transition-all"
+          className="p-6 bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col items-center text-center group transition-all cursor-pointer"
         >
           <div 
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:rotate-6 transition-transform"
@@ -471,7 +543,7 @@ function StudentContentTab() {
           </div>
           <h4 className="text-lg font-bold text-gray-900">{subject.name}</h4>
           <p className="text-sm text-gray-500 mt-1">{chapters[subject.name]?.length || 0} Chapters</p>
-        </motion.button>
+        </motion.div>
       ))}
     </div>
   );
@@ -486,14 +558,14 @@ function StudentContentTab() {
       </button>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {chapters[selectedSubject!]?.map((chapter) => (
-          <motion.button
+          <motion.div
             key={chapter}
             whileHover={{ x: 5 }}
             onClick={() => {
               setSelectedChapter(chapter);
               setCurrentView('chapter');
             }}
-            className="flex items-center justify-between p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group text-left"
+            className="flex items-center justify-between p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group text-left cursor-pointer"
           >
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
@@ -502,7 +574,7 @@ function StudentContentTab() {
               <span className="font-bold text-gray-900">{chapter}</span>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
-          </motion.button>
+          </motion.div>
         ))}
       </div>
     </div>

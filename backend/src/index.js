@@ -34,7 +34,7 @@ function toApiUser(row) {
             parentContact: row.parent_contact ?? "",
             ratings: {
               attendance: row.attendance ?? 0,
-              assignments: row.assignments ?? 0,
+              dppPerformance: row.assignments ?? 0,
               tests: row.tests ?? 0,
               participation: row.participation ?? 0,
               behavior: row.behavior ?? 0,

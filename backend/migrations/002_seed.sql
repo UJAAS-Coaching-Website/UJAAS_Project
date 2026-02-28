@@ -123,6 +123,6 @@ FROM users u WHERE u.role = 'student'
 LIMIT 1;
 
 INSERT INTO ratings (id, student_id, attendance, assignments, tests, participation, behavior, engagement, updated_at)
-SELECT uuid_generate_v4(), s.user_id, 0, 0, 0, 0, 0, 0, now()
+SELECT uuid_generate_v4(), s.user_id, 4.5, 4.2, 4.0, 4.8, 4.5, 4.6, now()
 FROM students s
 LIMIT 1;

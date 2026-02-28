@@ -28,6 +28,7 @@ interface StudentProfileProps {
     studentDetails?: StudentDetails | null;
   };
   onLogout: () => void;
+  initialSection?: 'overview' | 'performance' | 'settings';
 }
 
 interface StudentDetails {
@@ -76,9 +77,13 @@ function formatDateForDisplay(value?: string | null): string {
   });
 }
 
-export function StudentProfile({ user, onLogout }: StudentProfileProps) {
+export function StudentProfile({ user, onLogout, initialSection = 'overview' }: StudentProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
-  const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>(initialSection);
+
+  useEffect(() => {
+    setActiveSection(initialSection);
+  }, [initialSection]);
 
   const normalizeDetails = (details?: StudentDetails | null): StudentDetails => {
     if (!details) {
@@ -174,11 +179,12 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
   // Calculate overall rating (out of 5)
   const calculateOverallPerformance = () => {
     if (!studentDetails.ratings) return 0;
-    const { attendance, tests, behavior, dppPerformance } = studentDetails.ratings;
+    const { attendance, tests, behavior } = studentDetails.ratings;
+    const dppPerformance = (studentDetails.ratings as any).dppPerformance || 0;
 
-    const ratings = [attendance, tests, behavior, dppPerformance];
-    const total = ratings.reduce((sum, value) => sum + value, 0);
-    return Number((total / ratings.length).toFixed(1));
+    const ratingsList = [attendance, tests, behavior, dppPerformance];
+    const total = ratingsList.reduce((sum, value) => sum + value, 0);
+    return Number((total / ratingsList.length).toFixed(1));
   };
 
   const overallPerformance = calculateOverallPerformance();
@@ -271,24 +277,46 @@ export function StudentProfile({ user, onLogout }: StudentProfileProps) {
   );
 }
 
-function renderRatingStars(rating: number) {
-  const normalizedRating = Math.max(0, Math.min(5, Math.round(rating)));
+function renderPerformanceStars(rating: number) {
+  const normalizedRating = Math.max(0, Math.min(5, rating));
 
   return (
-    <div className="flex items-center gap-1" aria-label={`Rating ${normalizedRating} out of 5`}>
-      {Array.from({ length: 5 }, (_, index) => {
-        const isFilled = index < normalizedRating;
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => {
+        let fillPercentage = 0;
+        if (normalizedRating >= star) {
+          fillPercentage = 100;
+        } else if (normalizedRating > star - 1) {
+          fillPercentage = (normalizedRating - (star - 1)) * 100;
+        }
 
         return (
-          <span
-            key={index}
-            className="inline-block text-[18px] leading-5"
-            style={{ color: isFilled ? '#f59e0b' : '#d1d5db' }}
+          <div 
+            key={star} 
+            className="relative inline-block select-none"
+            style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
           >
-            {'\u2605'}
-          </span>
+            {/* Background star (Gray) */}
+            <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
+            {/* Fill star (Gold) */}
+            <div 
+              style={{ 
+                width: `${fillPercentage}%`, 
+                overflow: 'hidden', 
+                position: 'absolute', 
+                left: 0, 
+                top: 0, 
+                whiteSpace: 'nowrap',
+                color: '#f59e0b',
+                transition: 'width 0.3s ease'
+              }}
+            >
+              <span>★</span>
+            </div>
+          </div>
         );
       })}
+      <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -315,7 +343,7 @@ function OverviewSection({
               <Star className="w-6 h-6 text-white" />
             </div>
           </div>
-          <div className="mb-2">{renderRatingStars(overallPerformance)}</div>
+          <div className="mb-2">{renderPerformanceStars(overallPerformance)}</div>
           <p className="text-sm text-gray-600">Overall Rating</p>
         </motion.div>
       </div>
@@ -365,18 +393,14 @@ function OverviewSection({
 function PerformanceSection({ details, overallPerformance }: { details: StudentDetails; overallPerformance: number }) {
   const ratings = details.ratings || {
     attendance: 0,
-    assignments: 0,
     tests: 0,
-    participation: 0,
     behavior: 0,
-    engagement: 0,
-    dppPerformance: 0
   };
 
   const performanceData = [
     { label: 'Attendance', value: ratings.attendance, max: 5, color: 'from-green-500 to-emerald-500', bgColor: 'from-green-50 to-emerald-50' },
+    { label: 'DPP Performance', value: (ratings as any).dppPerformance || 0, max: 5, color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
     { label: 'Test Performance', value: ratings.tests, max: 5, color: 'from-purple-500 to-pink-500', bgColor: 'from-purple-50 to-pink-50' },
-    { label: 'DPP Performance', value: ratings.dppPerformance, max: 5, color: 'from-blue-500 to-cyan-500', bgColor: 'from-blue-50 to-cyan-50' },
     { label: 'Class Behaviour', value: ratings.behavior, max: 5, color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' }
   ];
 
@@ -401,12 +425,14 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
               className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/30"
             >
               <div className="text-center">
-                <div className="text-4xl font-bold">{overallPerformance}</div>
+                <div className="text-4xl font-bold">{overallPerformance.toFixed(1)}</div>
                 <div className="text-xs">/ 5</div>
               </div>
             </motion.div>
           </div>
-          <div className="mt-4">{renderRatingStars(overallPerformance)}</div>
+          <div className="mt-4 scale-150 origin-left">
+            {renderPerformanceStars(overallPerformance)}
+          </div>
         </div>
       </motion.div>
 
@@ -428,22 +454,13 @@ function PerformanceSection({ details, overallPerformance }: { details: StudentD
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.05 }}
-              className={`p-5 bg-gradient-to-br ${item.bgColor} rounded-xl border border-white shadow-md`}
+              className={`p-6 bg-gradient-to-br ${item.bgColor} rounded-2xl border border-white shadow-md flex flex-col items-center text-center`}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-gray-900">{item.label}</h4>
-                <span className="text-2xl font-bold text-gray-900">
-                  {item.value}<span className="text-lg text-gray-600">/{item.max}</span>
-                </span>
+              <h4 className="font-bold text-gray-900 mb-3">{item.label}</h4>
+              <div className="scale-125 mb-2 origin-center">
+                {renderPerformanceStars(item.value)}
               </div>
-              <div className="w-full bg-white/50 rounded-full h-3">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(item.value / item.max) * 100}%` }}
-                  transition={{ delay: 0.5 + index * 0.1, duration: 1 }}
-                  className={`h-3 rounded-full bg-gradient-to-r ${item.color} shadow-sm`}
-                />
-              </div>
+              <p className="text-xs font-bold text-gray-500 mt-2 uppercase tracking-widest">{item.value.toFixed(1)} / 5.0</p>
             </motion.div>
           ))}
         </div>
