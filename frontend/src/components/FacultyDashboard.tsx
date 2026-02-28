@@ -149,65 +149,125 @@ function renderPerformanceStars(rating: number) {
 }
 
 const MOCK_STUDENTS: Student[] = [
+  // 11th JEE
   { 
-    id: '1', 
-    name: 'Rahul Kumar', 
-    email: 'rahul@example.com', 
-    rollNumber: 'UJAAS-001', 
-    enrolledCourses: ['JEE Advanced'], 
-    joinDate: '2025-09-01', 
-    performance: 87, 
-    rating: 4.2, 
-    batch: '11th JEE',
-    phoneNumber: '+91 98765 43210',
-    dateOfBirth: '2008-05-15',
-    address: '123, Academic Row, Education City',
-    parentContact: '+91 98765 00000',
-    subjectRatings: {
-      'Physics': { attendance: 4.5, tests: 4.0, dppPerformance: 4.2, behavior: 4.8 },
-      'Chemistry': { attendance: 4.0, tests: 3.8, dppPerformance: 4.0, behavior: 4.5 },
-      'Mathematics': { attendance: 4.8, tests: 4.5, dppPerformance: 4.6, behavior: 4.2 }
-    }
+    id: '1', name: 'Rahul Kumar', email: 'rahul@example.com', rollNumber: 'UJAAS-11J-001', 
+    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-01', performance: 87, rating: 4.2, batch: '11th JEE',
+    phoneNumber: '+91 98765 43210', dateOfBirth: '2008-05-15', address: 'Mumbai', parentContact: '+91 98765 00000',
+    subjectRatings: { 'Physics': { attendance: 4.5, tests: 4.0, dppPerformance: 4.2, behavior: 4.8 } }
   },
   { 
-    id: '2', 
-    name: 'Priya Sharma', 
-    email: 'priya@example.com', 
-    rollNumber: 'UJAAS-002', 
-    enrolledCourses: ['NEET'], 
-    joinDate: '2025-09-05', 
-    performance: 92, 
-    rating: 4.5, 
-    batch: '11th NEET',
-    phoneNumber: '+91 98765 43211',
-    dateOfBirth: '2008-08-20',
-    address: '456, Scholar Street, Knowledge Park',
-    parentContact: '+91 98765 11111',
-    subjectRatings: {
-      'Biology': { attendance: 5.0, tests: 4.8, dppPerformance: 4.7, behavior: 4.9 },
-      'Physics': { attendance: 4.2, tests: 3.5, dppPerformance: 3.8, behavior: 4.5 },
-      'Chemistry': { attendance: 4.5, tests: 4.2, dppPerformance: 4.4, behavior: 4.7 }
-    }
+    id: '10', name: 'Aditya Singh', email: 'aditya@example.com', rollNumber: 'UJAAS-11J-002', 
+    enrolledCourses: ['JEE Mains'], joinDate: '2025-09-02', performance: 75, rating: 3.8, batch: '11th JEE',
+    phoneNumber: '+91 98765 43220', dateOfBirth: '2008-06-10', address: 'Pune', parentContact: '+91 98765 00010',
+    subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.5, dppPerformance: 3.8, behavior: 4.0 } }
   },
   { 
-    id: '3', 
-    name: 'Amit Patel', 
-    email: 'amit@example.com', 
-    rollNumber: 'UJAAS-003', 
-    enrolledCourses: ['JEE Advanced'], 
-    joinDate: '2025-09-10', 
-    performance: 78, 
-    rating: 3.8, 
-    batch: '12th JEE',
-    phoneNumber: '+91 98765 43212',
-    dateOfBirth: '2007-12-10',
-    address: '789, Campus Road, Study Hub',
-    parentContact: '+91 98765 22222',
-    subjectRatings: {
-      'Physics': { attendance: 3.5, tests: 3.2, dppPerformance: 3.0, behavior: 4.0 },
-      'Mathematics': { attendance: 4.2, tests: 4.5, dppPerformance: 4.0, behavior: 3.8 }
-    }
+    id: '11', name: 'Ishaan Verma', email: 'ishaan@example.com', rollNumber: 'UJAAS-11J-003', 
+    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-03', performance: 92, rating: 4.7, batch: '11th JEE',
+    phoneNumber: '+91 98765 43221', dateOfBirth: '2008-07-20', address: 'Nagpur', parentContact: '+91 98765 00011',
+    subjectRatings: { 'Chemistry': { attendance: 4.8, tests: 4.6, dppPerformance: 4.7, behavior: 4.9 } }
   },
+
+  // 11th NEET
+  { 
+    id: '2', name: 'Priya Sharma', email: 'priya@example.com', rollNumber: 'UJAAS-11N-001', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-05', performance: 92, rating: 4.5, batch: '11th NEET',
+    phoneNumber: '+91 98765 43211', dateOfBirth: '2008-08-20', address: 'Delhi', parentContact: '+91 98765 11111',
+    subjectRatings: { 'Biology': { attendance: 5.0, tests: 4.8, dppPerformance: 4.7, behavior: 4.9 } }
+  },
+  { 
+    id: '12', name: 'Anjali Gupta', email: 'anjali@example.com', rollNumber: 'UJAAS-11N-002', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-06', performance: 80, rating: 4.0, batch: '11th NEET',
+    phoneNumber: '+91 98765 43222', dateOfBirth: '2008-09-15', address: 'Gurgaon', parentContact: '+91 98765 11112',
+    subjectRatings: { 'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 4.0, behavior: 4.2 } }
+  },
+  { 
+    id: '13', name: 'Riya Patel', email: 'riya@example.com', rollNumber: 'UJAAS-11N-003', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-07', performance: 85, rating: 4.2, batch: '11th NEET',
+    phoneNumber: '+91 98765 43223', dateOfBirth: '2008-10-05', address: 'Noida', parentContact: '+91 98765 11113',
+    subjectRatings: { 'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.3, behavior: 4.5 } }
+  },
+
+  // 12th JEE
+  { 
+    id: '3', name: 'Amit Patel', email: 'amit@example.com', rollNumber: 'UJAAS-12J-001', 
+    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-10', performance: 78, rating: 3.8, batch: '12th JEE',
+    phoneNumber: '+91 98765 43212', dateOfBirth: '2007-12-10', address: 'Surat', parentContact: '+91 98765 22222',
+    subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.2, dppPerformance: 3.0, behavior: 4.0 } }
+  },
+  { 
+    id: '14', name: 'Karan Mehra', email: 'karan@example.com', rollNumber: 'UJAAS-12J-002', 
+    enrolledCourses: ['JEE Mains'], joinDate: '2025-09-11', performance: 82, rating: 4.1, batch: '12th JEE',
+    phoneNumber: '+91 98765 43224', dateOfBirth: '2007-11-12', address: 'Ahmedabad', parentContact: '+91 98765 22223',
+    subjectRatings: { 'Mathematics': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.3 } }
+  },
+  { 
+    id: '15', name: 'Siddharth Jain', email: 'sid@example.com', rollNumber: 'UJAAS-12J-003', 
+    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-12', performance: 88, rating: 4.4, batch: '12th JEE',
+    phoneNumber: '+91 98765 43225', dateOfBirth: '2007-10-25', address: 'Rajkot', parentContact: '+91 98765 22224',
+    subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.6 } }
+  },
+
+  // 12th NEET
+  { 
+    id: '4', name: 'Sneha Reddy', email: 'sneha@example.com', rollNumber: 'UJAAS-12N-001', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-12', performance: 85, rating: 4.0, batch: '12th NEET',
+    phoneNumber: '+91 98765 43213', dateOfBirth: '2007-06-25', address: 'Hyderabad', parentContact: '+91 98765 33333',
+    subjectRatings: { 'Biology': { attendance: 4.2, tests: 4.0, dppPerformance: 3.8, behavior: 4.5 } }
+  },
+  { 
+    id: '16', name: 'Megha Rao', email: 'megha_s@example.com', rollNumber: 'UJAAS-12N-002', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-13', performance: 90, rating: 4.6, batch: '12th NEET',
+    phoneNumber: '+91 98765 43226', dateOfBirth: '2007-05-10', address: 'Bangalore', parentContact: '+91 98765 33334',
+    subjectRatings: { 'Chemistry': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.8 } }
+  },
+  { 
+    id: '17', name: 'Arjun Das', email: 'arjun@example.com', rollNumber: 'UJAAS-12N-003', 
+    enrolledCourses: ['NEET'], joinDate: '2025-09-14', performance: 72, rating: 3.5, batch: '12th NEET',
+    phoneNumber: '+91 98765 43227', dateOfBirth: '2007-04-15', address: 'Chennai', parentContact: '+91 98765 33335',
+    subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.0, dppPerformance: 3.2, behavior: 4.0 } }
+  },
+
+  // Dropper JEE
+  { 
+    id: '5', name: 'Vikram Singh', email: 'vikram@example.com', rollNumber: 'UJAAS-DRJ-001', 
+    enrolledCourses: ['JEE Mains'], joinDate: '2025-10-01', performance: 80, rating: 3.9, batch: 'Dropper JEE',
+    phoneNumber: '+91 98765 43214', dateOfBirth: '2006-11-05', address: 'Jaipur', parentContact: '+91 98765 44444',
+    subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.5, behavior: 4.2 } }
+  },
+  { 
+    id: '18', name: 'Rohit Balan', email: 'rohit@example.com', rollNumber: 'UJAAS-DRJ-002', 
+    enrolledCourses: ['JEE Advanced'], joinDate: '2025-10-02', performance: 85, rating: 4.2, batch: 'Dropper JEE',
+    phoneNumber: '+91 98765 43228', dateOfBirth: '2006-10-10', address: 'Jodhpur', parentContact: '+91 98765 44445',
+    subjectRatings: { 'Physics': { attendance: 4.3, tests: 4.1, dppPerformance: 4.0, behavior: 4.5 } }
+  },
+  { 
+    id: '19', name: 'Sanjay Dutt', email: 'sanjay@example.com', rollNumber: 'UJAAS-DRJ-003', 
+    enrolledCourses: ['JEE Mains'], joinDate: '2025-10-03', performance: 70, rating: 3.4, batch: 'Dropper JEE',
+    phoneNumber: '+91 98765 43229', dateOfBirth: '2006-09-15', address: 'Udaipur', parentContact: '+91 98765 44446',
+    subjectRatings: { 'Chemistry': { attendance: 3.5, tests: 3.2, dppPerformance: 3.4, behavior: 3.8 } }
+  },
+
+  // Dropper NEET
+  { 
+    id: '6', name: 'Ananya Gupta', email: 'ananya@example.com', rollNumber: 'UJAAS-DRN-001', 
+    enrolledCourses: ['NEET'], joinDate: '2025-10-05', performance: 88, rating: 4.3, batch: 'Dropper NEET',
+    phoneNumber: '+91 98765 43215', dateOfBirth: '2006-03-12', address: 'Lucknow', parentContact: '+91 98765 55555',
+    subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.2, dppPerformance: 4.0, behavior: 4.8 } }
+  },
+  { 
+    id: '20', name: 'Zoya Khan', email: 'zoya@example.com', rollNumber: 'UJAAS-DRN-002', 
+    enrolledCourses: ['NEET'], joinDate: '2025-10-06', performance: 94, rating: 4.8, batch: 'Dropper NEET',
+    phoneNumber: '+91 98765 43230', dateOfBirth: '2006-02-10', address: 'Kanpur', parentContact: '+91 98765 55556',
+    subjectRatings: { 'Biology': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 } }
+  },
+  { 
+    id: '21', name: 'Vivek Oberoi', email: 'vivek@example.com', rollNumber: 'UJAAS-DRN-003', 
+    enrolledCourses: ['NEET'], joinDate: '2025-10-07', performance: 76, rating: 3.7, batch: 'Dropper NEET',
+    phoneNumber: '+91 98765 43231', dateOfBirth: '2006-01-15', address: 'Varanasi', parentContact: '+91 98765 55557',
+    subjectRatings: { 'Physics': { attendance: 3.8, tests: 3.5, dppPerformance: 3.6, behavior: 4.0 } }
+  }
 ];
 
 const MOCK_FACULTY: Faculty[] = [
@@ -234,6 +294,11 @@ export function FacultyDashboard({
 }: FacultyDashboardProps) {
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [faculty, setFaculty] = useState<Faculty[]>(MOCK_FACULTY);
+
+  useEffect(() => {
+    // Ensure mock students are always loaded and correctly assigned to current batches
+    setStudents(MOCK_STUDENTS);
+  }, [batches]);
   
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
     open: false,
@@ -450,7 +515,6 @@ export function FacultyDashboard({
               <div className="flex items-center gap-2">
                 {[
                   { id: 'batches', label: 'Batches', icon: BookOpen },
-                  { id: 'students', label: 'Students', icon: Users },
                   { id: 'test-series', label: 'Test Series', icon: FileText },
                 ].map((section) => (
                   <motion.button
@@ -534,16 +598,6 @@ export function FacultyDashboard({
                   onSelectBatch={onSelectBatch}
                 />
               )}
-              {adminSection === 'students' && (
-                <StudentsDirectoryTab
-                  students={students}
-                  batches={batches}
-                  onAddStudent={() => openAddStudent(null)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={handleDeleteStudent}
-                  onViewStudent={openStudentRatings}
-                />
-              )}
               {adminSection === 'test-series' && (
                 <TestSeriesManagementTab onNavigate={onNavigate} selectedBatch={null as unknown as Batch} onChangeBatch={() => {}} />
               )}
@@ -565,9 +619,6 @@ export function FacultyDashboard({
                   students={students}
                   selectedBatch={selectedBatch}
                   onChangeBatch={onClearBatch}
-                  onAddStudent={() => openBatchStudentPicker(selectedBatch)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
                   onViewStudent={openStudentRatings}
                 />
               )}
@@ -759,7 +810,7 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onViewStudent: (s: Student) => void }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -768,31 +819,27 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
-        <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="text-left border-b border-gray-100">
-              <th className="pb-4 px-4 font-bold text-gray-700">Student</th>
-              <th className="pb-4 px-4 font-bold text-gray-700">Roll No</th>
-              <th className="pb-4 px-4 font-bold text-gray-700">Performance</th>
-              <th className="pb-4 px-4 font-bold text-gray-700 text-right">Actions</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '45%' }}>Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '25%' }}>Roll No</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '30%' }}>Performance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {students.filter(s => s.batch === selectedBatch).map((s) => (
               <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                 <td className="py-4 px-4">
-                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
-                  <div className="text-xs text-gray-500">{s.email}</div>
+                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
+                  <div className="text-xs text-gray-500 truncate">{s.email}</div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
-                <td className="py-4 px-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4 px-4 text-right">
-                  <div className="flex justify-end gap-1">
-                    <button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"><Edit className="w-4 h-4" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4" /></button>
+                <td className="py-4 px-4">
+                  <div className="flex items-center">
+                    {renderPerformanceStars(s.rating)}
                   </div>
                 </td>
               </tr>
