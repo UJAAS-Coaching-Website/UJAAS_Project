@@ -88,6 +88,8 @@ interface Student {
     dppPerformance: number;
     behavior: number;
   }>;
+  subjectRemarks?: Record<string, string>;
+  adminRemark?: string;
 }
 
 interface Faculty {
@@ -281,6 +283,60 @@ const MOCK_FACULTY: Faculty[] = [
   { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', phone: '+91 98765 22222' },
 ];
 
+const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
+
+type StoredStudentRemarks = Record<
+  string,
+  {
+    subjectRemarks?: Record<string, string>;
+    adminRemark?: string;
+  }
+>;
+
+const readStoredRemarks = (): StoredStudentRemarks => {
+  try {
+    const raw = localStorage.getItem(STUDENT_REMARKS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as StoredStudentRemarks;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredRemarks = (
+  studentId: string,
+  updates: { subjectRemarks?: Record<string, string>; adminRemark?: string }
+) => {
+  const current = readStoredRemarks();
+  const prevEntry = current[studentId] ?? {};
+  current[studentId] = {
+    ...prevEntry,
+    ...updates,
+    subjectRemarks: {
+      ...(prevEntry.subjectRemarks ?? {}),
+      ...(updates.subjectRemarks ?? {}),
+    },
+  };
+  localStorage.setItem(STUDENT_REMARKS_STORAGE_KEY, JSON.stringify(current));
+};
+
+const withStoredRemarks = (list: Student[]): Student[] => {
+  const stored = readStoredRemarks();
+  return list.map((student) => {
+    const entry = stored[student.id];
+    if (!entry) return student;
+    return {
+      ...student,
+      subjectRemarks: {
+        ...(student.subjectRemarks ?? {}),
+        ...(entry.subjectRemarks ?? {}),
+      },
+      adminRemark: entry.adminRemark ?? student.adminRemark,
+    };
+  });
+};
+
 export function FacultyDashboard({ 
   user, 
   activeTab,
@@ -307,7 +363,7 @@ export function FacultyDashboard({
 
   useEffect(() => {
     // Ensure mock students are always loaded and correctly assigned to current batches
-    setStudents(MOCK_STUDENTS);
+    setStudents(withStoredRemarks(MOCK_STUDENTS));
   }, [batches]);
   
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
@@ -499,6 +555,36 @@ export function FacultyDashboard({
         },
       };
     });
+  };
+  const handleSaveFacultySubjectRemark = (studentId: string, subject: string, remark: string) => {
+    const cleanedRemark = remark.trim();
+    setStudents((prev) =>
+      prev.map((student) =>
+        student.id === studentId
+          ? {
+              ...student,
+              subjectRemarks: {
+                ...(student.subjectRemarks ?? {}),
+                [subject]: cleanedRemark,
+              },
+            }
+          : student
+      )
+    );
+    setRatingModal((prev) => {
+      if (!prev.student || prev.student.id !== studentId) return prev;
+      return {
+        ...prev,
+        student: {
+          ...prev.student,
+          subjectRemarks: {
+            ...(prev.student.subjectRemarks ?? {}),
+            [subject]: cleanedRemark,
+          },
+        },
+      };
+    });
+    writeStoredRemarks(studentId, { subjectRemarks: { [subject]: cleanedRemark } });
   };
   const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
 
@@ -703,6 +789,7 @@ export function FacultyDashboard({
               onClose={closeStudentRatings}
               facultySubject={facultySubject}
               onSaveSubjectRating={handleSaveFacultySubjectRating}
+              onSaveSubjectRemark={handleSaveFacultySubjectRemark}
             />
           )}
         </AnimatePresence>
@@ -1306,6 +1393,7 @@ function StudentRatingsModal({
   onClose,
   facultySubject,
   onSaveSubjectRating,
+  onSaveSubjectRemark,
 }: {
   open: boolean;
   student?: Student;
@@ -1316,9 +1404,11 @@ function StudentRatingsModal({
     subject: string, 
     ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
   ) => void;
+  onSaveSubjectRemark?: (studentId: string, subject: string, remark: string) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
   const [draftRatings, setDraftRatings] = useState<Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }>>({});
+  const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1326,6 +1416,7 @@ function StudentRatingsModal({
     setShowRatings(false);
     setEditingSubject(null);
     const nextDrafts: Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }> = {};
+    const nextRemarks: Record<string, string> = {};
     Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
       nextDrafts[subject] = {
         attendance: r.attendance.toString(),
@@ -1333,8 +1424,10 @@ function StudentRatingsModal({
         dppPerformance: r.dppPerformance.toString(),
         behavior: r.behavior.toString(),
       };
+      nextRemarks[subject] = student.subjectRemarks?.[subject] ?? '';
     });
     setDraftRatings(nextDrafts);
+    setDraftRemarks(nextRemarks);
   }, [open, student]);
 
   if (!open || !student) return null;
@@ -1551,6 +1644,41 @@ function StudentRatingsModal({
                               {renderPerformanceStars(param.val)}
                             </div>
                           ))}
+                        </div>
+                        <div className="px-6 pb-6 space-y-3">
+                          <div>
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Faculty Remark</p>
+                            <p className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3 whitespace-pre-wrap">
+                              {(student.subjectRemarks?.[subject] || '').trim() || 'No remark added yet.'}
+                            </p>
+                          </div>
+                          {canEditThisSubject && (
+                            <div className="space-y-2">
+                              <textarea
+                                rows={3}
+                                value={draftRemarks[subject] ?? ''}
+                                onChange={(e) =>
+                                  setDraftRemarks((prev) => ({
+                                    ...prev,
+                                    [subject]: e.target.value,
+                                  }))
+                                }
+                                placeholder={`Add ${subject} remark`}
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(`Save remark for ${subject}?`)) {
+                                    onSaveSubjectRemark?.(student.id, subject, draftRemarks[subject] ?? '');
+                                  }
+                                }}
+                                className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition"
+                              >
+                                Save {subject} Remark
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

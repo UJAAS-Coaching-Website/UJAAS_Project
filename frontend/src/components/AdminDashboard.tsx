@@ -101,6 +101,8 @@ interface Student {
     dppPerformance: number;
     behavior: number;
   }>;
+  subjectRemarks?: Record<string, string>;
+  adminRemark?: string;
 }
 
 interface Faculty {
@@ -130,6 +132,60 @@ type FacultyFormState = {
   email: string;
   subject: string;
   phone: string;
+};
+
+const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
+
+type StoredStudentRemarks = Record<
+  string,
+  {
+    subjectRemarks?: Record<string, string>;
+    adminRemark?: string;
+  }
+>;
+
+const readStoredRemarks = (): StoredStudentRemarks => {
+  try {
+    const raw = localStorage.getItem(STUDENT_REMARKS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as StoredStudentRemarks;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredRemarks = (
+  studentId: string,
+  updates: { subjectRemarks?: Record<string, string>; adminRemark?: string }
+) => {
+  const current = readStoredRemarks();
+  const prevEntry = current[studentId] ?? {};
+  current[studentId] = {
+    ...prevEntry,
+    ...updates,
+    subjectRemarks: {
+      ...(prevEntry.subjectRemarks ?? {}),
+      ...(updates.subjectRemarks ?? {}),
+    },
+  };
+  localStorage.setItem(STUDENT_REMARKS_STORAGE_KEY, JSON.stringify(current));
+};
+
+const withStoredRemarks = (list: Student[]): Student[] => {
+  const stored = readStoredRemarks();
+  return list.map((student) => {
+    const entry = stored[student.id];
+    if (!entry) return student;
+    return {
+      ...student,
+      subjectRemarks: {
+        ...(student.subjectRemarks ?? {}),
+        ...(entry.subjectRemarks ?? {}),
+      },
+      adminRemark: entry.adminRemark ?? student.adminRemark,
+    };
+  });
 };
 
 function renderPerformanceStars(rating: number) {
@@ -232,7 +288,7 @@ export function AdminDashboard({
 
   useEffect(() => {
     // Simulated data fetch
-    setStudents([
+    const seededStudents: Student[] = [
       { 
         id: '1', 
         name: 'Rahul Sharma', 
@@ -350,7 +406,8 @@ export function AdminDashboard({
           'Chemistry': { attendance: 4.8, tests: 4.8, dppPerformance: 4.9, behavior: 4.8 }
         }
       },
-    ]);
+    ];
+    setStudents(withStoredRemarks(seededStudents));
 
     setFaculty([
       { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics', rating: 4.8 },
@@ -519,6 +576,18 @@ export function AdminDashboard({
   ) => {
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
     setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+  };
+  const handleSaveAdminRemark = (studentId: string, remark: string) => {
+    const cleanedRemark = remark.trim();
+    setStudents((prev) =>
+      prev.map((student) => (student.id === studentId ? { ...student, adminRemark: cleanedRemark } : student))
+    );
+    setRatingModal((prev) =>
+      prev.student?.id === studentId
+        ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
+        : prev
+    );
+    writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
   };
 
   useBodyScrollLock(
@@ -801,6 +870,7 @@ export function AdminDashboard({
               student={ratingModal.student}
               onClose={closeStudentRatings}
               onSaveProfile={handleSaveStudentProfile}
+              onSaveAdminRemark={handleSaveAdminRemark}
             />
           )}
         </AnimatePresence>
@@ -3041,6 +3111,7 @@ function StudentRatingsModal({
   student,
   onClose,
   onSaveProfile,
+  onSaveAdminRemark,
 }: {
   open: boolean;
   student?: Student;
@@ -3049,9 +3120,11 @@ function StudentRatingsModal({
     studentId: string,
     updates: Pick<Student, 'name' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => void;
+  onSaveAdminRemark?: (studentId: string, remark: string) => void;
 }) {
   const [showRatings, setShowRatings] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
     email: '',
@@ -3073,6 +3146,7 @@ function StudentRatingsModal({
       parentContact: student.parentContact ?? '',
       address: student.address ?? '',
     });
+    setAdminRemarkDraft(student.adminRemark ?? '');
   }, [open, student]);
 
   if (!open || !student) return null;
@@ -3131,6 +3205,7 @@ function StudentRatingsModal({
         ? `<div class="subjects-grid">${Object.entries(student.subjectRatings)
             .map(([subject, r]) => {
               const subjectAverage = calculateSubjectRating(r);
+              const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
               return `
                 <section class="subject-card">
                   <h3>${escapeHtml(subject)}</h3>
@@ -3149,11 +3224,21 @@ function StudentRatingsModal({
                       <tr><td>Class Behaviour</td><td>${r.behavior.toFixed(1)} / 5.0</td></tr>
                     </tbody>
                   </table>
+                  <div class="faculty-remark"><strong>Faculty Remark:</strong> ${escapeHtml(
+                    subjectRemark || 'No remark provided.'
+                  )}</div>
                 </section>
               `;
             })
             .join('')}</div>`
         : '<p class="empty">No rating data available for this student.</p>';
+
+    const adminRemarkHtml = `
+      <section class="admin-remark">
+        <h2>Admin Overall Remark</h2>
+        <p>${escapeHtml((adminRemarkDraft || student.adminRemark || '').trim() || 'No admin remark provided.')}</p>
+      </section>
+    `;
 
     const printableHtml = `
       <!doctype html>
@@ -3277,6 +3362,34 @@ function StudentRatingsModal({
               grid-template-columns: repeat(2, minmax(0, 1fr));
               gap: 6px;
             }
+            .faculty-remark {
+              margin-top: 4px;
+              font-size: 10px;
+              color: #1f2937;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              padding: 5px 6px;
+              line-height: 1.35;
+            }
+            .admin-remark {
+              margin-top: 8px;
+              border: 1px solid #cbd5e1;
+              border-radius: 10px;
+              padding: 8px;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .admin-remark h2 {
+              margin: 0 0 4px;
+            }
+            .admin-remark p {
+              margin: 0;
+              font-size: 10px;
+              line-height: 1.4;
+              color: #1f2937;
+              white-space: pre-wrap;
+            }
             .empty {
               padding: 8px;
               border: 1px dashed #cbd5e1;
@@ -3332,6 +3445,7 @@ function StudentRatingsModal({
 
             <h2>Detailed Ratings</h2>
             ${subjectRatingsHtml}
+            ${adminRemarkHtml}
 
             <div class="signatory">
               <div class="sign-line"></div>
@@ -3597,6 +3711,12 @@ function StudentRatingsModal({
                             </div>
                           ))}
                         </div>
+                        <div className="px-6 pb-6">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Faculty Remark</p>
+                          <p className="text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-xl p-3 whitespace-pre-wrap">
+                            {(student.subjectRemarks?.[subject] || '').trim() || 'No remark added yet.'}
+                          </p>
+                        </div>
                       </div>
                     );
                   })}
@@ -3607,6 +3727,27 @@ function StudentRatingsModal({
                   <p className="text-gray-500 font-medium">No rating data available for this student.</p>
                 </div>
               )}
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
+                <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Admin Overall Remark</p>
+                <textarea
+                  rows={4}
+                  value={adminRemarkDraft}
+                  onChange={(e) => setAdminRemarkDraft(e.target.value)}
+                  placeholder="Enter final overall remark for this student"
+                  className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Save admin overall remark for this student?')) {
+                      onSaveAdminRemark?.(student.id, adminRemarkDraft);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition"
+                >
+                  Save Admin Remark
+                </button>
+              </div>
             </div>
           )}
         </div>
