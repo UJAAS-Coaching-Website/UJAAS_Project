@@ -222,6 +222,49 @@ export function StudentTestTaking({
   const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null).length;
   const notAnsweredCount = questions.length - answeredCount;
 
+  // Grouped stats for summary table
+  const getGroupedStats = () => {
+    const stats: Record<string, Record<string, {
+      answered: number;
+      notAnswered: number;
+      marked: number;
+      answeredAndMarked: number;
+      notVisited: number;
+      total: number;
+    }>> = {};
+
+    subjects.forEach(subject => {
+      stats[subject] = {};
+      const subjectQuestions = questions.filter(q => q.subject === subject);
+      const subjectSections = Array.from(new Set(subjectQuestions.map(q => (q as any).metadata?.section || 'Default'))).sort();
+      
+      subjectSections.forEach(section => {
+        const sectionQuestions = subjectQuestions.filter(q => ((q as any).metadata?.section || 'Default') === section);
+        
+        const answered = sectionQuestions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null && !flaggedQuestions.has(q.id)).length;
+        const marked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && (answers[q.id] === undefined || answers[q.id] === null)).length;
+        const answeredAndMarked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && answers[q.id] !== undefined && answers[q.id] !== null).length;
+        const visited = sectionQuestions.filter(q => visitedQuestions.has(q.id)).length;
+        const total = sectionQuestions.length;
+        const notAnswered = visited - (answered + marked + answeredAndMarked);
+        const notVisited = total - visited;
+
+        stats[subject][section] = {
+          answered,
+          notAnswered: Math.max(0, notAnswered),
+          marked,
+          answeredAndMarked,
+          notVisited,
+          total
+        };
+      });
+    });
+
+    return stats;
+  };
+
+  const groupedStats = getGroupedStats();
+
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4`}>
       <div className="max-w-7xl mx-auto">
@@ -807,39 +850,96 @@ export function StudentTestTaking({
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
             >
               <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-blue-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Submit Test?</h3>
+                <h3 className="text-2xl font-bold text-gray-900">Test Summary</h3>
+                <p className="text-gray-600">Please review your attempt before submitting.</p>
               </div>
 
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between p-3 bg-green-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Answered</span>
-                  <span className="font-bold text-green-600">{answeredCount}</span>
-                </div>
-                <div className="flex justify-between p-3 bg-red-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Not Answered</span>
-                  <span className="font-bold text-red-600">{notAnsweredCount}</span>
-                </div>
+              <div className="overflow-x-auto mb-8 border border-gray-100 rounded-2xl shadow-sm">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 text-gray-700 uppercase text-xs font-bold">
+                    <tr>
+                      <th rowSpan={2} className="px-4 py-4 border-b border-r border-gray-200">Status</th>
+                      {subjects.map(subject => (
+                        <th 
+                          key={subject} 
+                          colSpan={Object.keys(groupedStats[subject]).length} 
+                          className="px-4 py-2 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-700"
+                        >
+                          {subject}
+                        </th>
+                      ))}
+                      <th rowSpan={2} className="px-4 py-4 border-b border-gray-200 text-center bg-indigo-50 text-indigo-700">Grand Total</th>
+                    </tr>
+                    <tr>
+                      {subjects.map(subject => 
+                        Object.keys(groupedStats[subject]).map(section => (
+                          <th key={`${subject}-${section}`} className="px-4 py-2 border-b border-r border-gray-200 text-center font-semibold text-[10px]">
+                            {section}
+                          </th>
+                        ))
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {[
+                      { key: 'answered', label: 'Answered', color: 'text-green-600' },
+                      { key: 'notAnswered', label: 'Visited', color: 'text-red-600' },
+                      { key: 'marked', label: 'Marked for Review', color: 'text-purple-600' },
+                      { key: 'answeredAndMarked', label: 'Ans & Marked for Review', color: 'text-indigo-600' },
+                      { key: 'notVisited', label: 'Not Visited', color: 'text-gray-500' }
+                    ].map(row => {
+                      let grandTotal = 0;
+                      return (
+                        <tr key={row.key} className="hover:bg-gray-50/50 transition-colors">
+                          <td className={`px-4 py-3 font-bold border-r border-gray-100 ${row.color}`}>{row.label}</td>
+                          {subjects.map(subject => 
+                            Object.keys(groupedStats[subject]).map(section => {
+                              const val = (groupedStats[subject][section] as any)[row.key];
+                              grandTotal += val;
+                              return (
+                                <td key={`${subject}-${section}-${row.key}`} className="px-4 py-3 text-center border-r border-gray-100 font-medium">
+                                  {val}
+                                </td>
+                              );
+                            })
+                          )}
+                          <td className={`px-4 py-3 text-center font-bold bg-indigo-50/30 ${row.color}`}>{grandTotal}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-gray-50/50 font-bold">
+                    <tr>
+                      <td className="px-4 py-3 border-r border-gray-100">Total Questions</td>
+                      {subjects.map(subject => 
+                        Object.keys(groupedStats[subject]).map(section => (
+                          <td key={`${subject}-${section}-total`} className="px-4 py-3 text-center border-r border-gray-100">
+                            {groupedStats[subject][section].total}
+                          </td>
+                        ))
+                      )}
+                      <td className="px-4 py-3 text-center bg-indigo-50 text-indigo-900">{questions.length}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <motion.button
-                  onClick={handleSubmit}
-                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
-                >
-                  Yes, Submit Now
-                </motion.button>
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowSubmitDialog(false)}
-                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                 >
-                  Go Back
+                  Back to Test
                 </button>
+                <motion.button
+                  onClick={handleSubmit}
+                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                >
+                  Submit Test Now
+                </motion.button>
               </div>
             </motion.div>
           </div>
