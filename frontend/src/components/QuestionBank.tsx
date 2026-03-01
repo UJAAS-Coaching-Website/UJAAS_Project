@@ -357,14 +357,14 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-cyan-600 text-white flex justify-between items-center">
+              <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <div>
-                  <h3 className="text-xl font-bold">Add to Question Bank</h3>
-                  <p className="text-teal-50 text-xs opacity-90">Upload new practice material</p>
+                  <h3 className="text-xl font-bold text-gray-900">Add to Question Bank</h3>
+                  <p className="text-gray-500 text-xs font-medium">Upload new practice material</p>
                 </div>
-                <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-200 text-gray-400 hover:text-gray-600 rounded-full transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
