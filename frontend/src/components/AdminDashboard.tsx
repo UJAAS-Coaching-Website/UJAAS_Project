@@ -111,6 +111,7 @@ interface Faculty {
   subject: string;
   phone?: string;
   rating?: number;
+  joinDate?: string;
 }
 
 type StudentFormState = {
@@ -130,6 +131,8 @@ type FacultyFormState = {
   email: string;
   subject: string;
   phone: string;
+  joinDate: string;
+  rating: number;
 };
 
 const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
@@ -2302,14 +2305,33 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all faculties and subject experts</p></div>
-        <button onClick={onAddFaculty} className="px-6 py-3  bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Faculty</button>
+        <button onClick={onAddFaculty} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Faculty</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map(t => (
-          <div key={t.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group">
-            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => onEditFaculty(t)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button><button onClick={() => onDeleteFaculty(t.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button></div>
-            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4"><GraduationCap className="w-6 h-6 text-teal-600" /></div>
-            <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
+          <div 
+            key={t.id} 
+            onClick={() => onEditFaculty(t)}
+            className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group cursor-pointer hover:shadow-md hover:border-teal-100 transition-all"
+          >
+            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEditFaculty(t); }} 
+                className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDeleteFaculty(t.id); }} 
+                className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-teal-600 transition-colors">
+              <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
             <p className="text-sm font-semibold text-teal-600 uppercase mb-2">{t.subject}</p>
             {t.rating && (
               <div className="mb-4">
@@ -2317,6 +2339,11 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
               </div>
             )}
             <div className="text-xs text-gray-500">{t.email}</div>
+            {t.joinDate && (
+              <div className="text-[10px] font-bold text-gray-400 uppercase mt-2 flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Joined: {new Date(t.joinDate).toLocaleDateString()}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -2590,6 +2617,8 @@ function AddFacultyModal({
     name: initialData?.name ?? '',
     phone: initialData?.phone ?? '',
     email: initialData?.email ?? '',
+    joinDate: initialData?.joinDate ?? '',
+    rating: initialData?.rating ?? 0,
   });
 
   useEffect(() => {
@@ -2600,13 +2629,16 @@ function AddFacultyModal({
       name: initialData?.name ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
+      joinDate: initialData?.joinDate ?? '',
+      rating: initialData?.rating ?? 0,
     });
   }, [open, initialData]);
 
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement>) => {
-    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+    const value = field === 'rating' ? parseFloat(event.target.value) || 0 : event.target.value;
+    setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -2631,53 +2663,78 @@ function AddFacultyModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
-          <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Subject {requiredMark}</span>
-            <input
-              type="text"
-              required
-              value={formState.subject}
-              onChange={handleChange('subject')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="e.g. Physics"
-            />
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Subject {requiredMark}</span>
+              <input
+                type="text"
+                required
+                value={formState.subject}
+                onChange={handleChange('subject')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="e.g. Physics"
+              />
+            </label>
 
-          <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Faculty Name {requiredMark}</span>
-            <input
-              type="text"
-              required
-              value={formState.name}
-              onChange={handleChange('name')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="Faculty name"
-            />
-          </label>
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Faculty Name {requiredMark}</span>
+              <input
+                type="text"
+                required
+                value={formState.name}
+                onChange={handleChange('name')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="Faculty name"
+              />
+            </label>
 
-          <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Phone Number {requiredMark}</span>
-            <input
-              type="tel"
-              required
-              value={formState.phone}
-              onChange={handleChange('phone')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="+91 9XXXX XXXXX"
-            />
-          </label>
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Phone Number {requiredMark}</span>
+              <input
+                type="tel"
+                required
+                value={formState.phone}
+                onChange={handleChange('phone')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="+91 9XXXX XXXXX"
+              />
+            </label>
 
-          <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Email {requiredMark}</span>
-            <input
-              type="email"
-              required
-              value={formState.email}
-              onChange={handleChange('email')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="faculty@email.com"
-            />
-          </label>
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Email {requiredMark}</span>
+              <input
+                type="email"
+                required
+                value={formState.email}
+                onChange={handleChange('email')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="faculty@email.com"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Join Date</span>
+              <input
+                type="date"
+                value={formState.joinDate}
+                onChange={handleChange('joinDate')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              />
+            </label>
+
+            {initialData?.id && (
+              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+                <span className="block">Faculty Rating (0-5)</span>
+                <input
+                  type="number"
+                  readOnly
+                  value={formState.rating}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
+                  placeholder="0.0"
+                />
+              </label>
+            )}
+          </div>
 
           <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end shrink-0">
             <button
