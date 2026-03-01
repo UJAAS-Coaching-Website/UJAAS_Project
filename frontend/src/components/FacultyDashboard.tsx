@@ -1819,34 +1819,44 @@ function StudentRatingsModal({
               </div>
 
               <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
-                <table className="w-full text-left">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Test Name</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Accuracy</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Test Name</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Score</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Rank</th>
+                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Accuracy</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {mockTestPerformance.map((perf, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-gray-900">{perf.title}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{perf.date}</td>
-                        <td className="px-6 py-4 text-sm font-mono text-gray-700">{perf.score}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-blue-600">{perf.rank}</td>
-                        <td className="px-6 py-4 text-sm font-bold text-teal-600">{perf.accuracy}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            perf.status === 'Attempted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {perf.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-gray-100/50">
+                    {mockTestPerformance.map((perf, idx) => {
+                      const isAttempted = perf.status === 'Attempted';
+                      return (
+                        <tr 
+                          key={idx} 
+                          className={`transition-colors ${
+                            isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
+                          }`}
+                        >
+                          <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
+                            {perf.title}
+                          </td>
+                          <td className="px-4 py-3 text-[10px] font-medium text-gray-500 whitespace-nowrap">
+                            {perf.date}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono font-bold text-gray-700 text-center">
+                            {perf.score}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-black text-blue-600 text-center">
+                            {perf.rank}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-black text-teal-600 text-center">
+                            {perf.accuracy}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
