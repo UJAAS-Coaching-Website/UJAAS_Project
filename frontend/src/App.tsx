@@ -11,7 +11,7 @@ import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 export interface User {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   role: 'student' | 'faculty' | 'admin';
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;

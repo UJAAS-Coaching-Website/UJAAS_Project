@@ -16,7 +16,7 @@ import {
 export interface StudentRating {
   studentId: string;
   studentName: string;
-  studentEmail: string;
+  rollNumber?: string;
   attendance: number; // 0-100
   assignments: number; // 0-100
   tests: number; // 0-100
@@ -31,7 +31,7 @@ interface StudentRatingProps {
   students: Array<{
     id: string;
     name: string;
-    email: string;
+    rollNumber?: string;
     enrolledCourses: string[];
   }>;
 }
@@ -52,7 +52,7 @@ export function StudentRating({ students }: StudentRatingProps) {
       const defaultRatings = students.map(student => ({
         studentId: student.id,
         studentName: student.name,
-        studentEmail: student.email,
+        rollNumber: student.rollNumber,
         attendance: 0,
         assignments: 0,
         tests: 0,
@@ -172,7 +172,7 @@ export function StudentRating({ students }: StudentRatingProps) {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 text-lg">{student.name}</h3>
-                    <p className="text-sm text-gray-600">{student.email}</p>
+                    {student.rollNumber && <p className="text-sm text-gray-600">Roll: {student.rollNumber}</p>}
                     <div className="flex items-center gap-2 mt-1">
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                         rank === 1 ? 'bg-yellow-100 text-yellow-800' :

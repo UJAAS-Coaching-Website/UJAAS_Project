@@ -210,25 +210,39 @@ app.use(
 app.use(express.json());
 
 app.post("/api/auth/login", async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, identifier, password } = req.body || {};
+  const loginId = identifier || email;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "email and password are required" });
+  if (!loginId || !password) {
+    return res.status(400).json({ message: "identifier and password are required" });
   }
 
   try {
-    const userLookup = await pool.query(
-      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('student', 'faculty', 'admin')",
-      [email.toLowerCase()]
+    // Try lookup by email first
+    let userLookup = await pool.query(
+      "SELECT id, role, password_hash FROM users WHERE email = $1 AND role IN ('faculty', 'admin')",
+      [loginId.toLowerCase()]
     );
+
+    // If not found as email, try lookup by roll_number for students
     if (userLookup.rowCount === 0) {
-      return res.status(401).json({ message: "invalid email or password" });
+      userLookup = await pool.query(
+        `SELECT u.id, u.role, u.password_hash 
+         FROM users u 
+         JOIN students s ON s.user_id = u.id 
+         WHERE s.roll_number = $1 AND u.role = 'student'`,
+        [loginId]
+      );
+    }
+
+    if (userLookup.rowCount === 0) {
+      return res.status(401).json({ message: "invalid identifier or password" });
     }
 
     const dbUser = userLookup.rows[0];
     const validPassword = verifyPassword(password, dbUser.password_hash);
     if (!validPassword) {
-      return res.status(401).json({ message: "invalid email or password" });
+      return res.status(401).json({ message: "invalid identifier or password" });
     }
 
     const user = await fetchUserProfileById(dbUser.id);

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { User } from '../App';
+import { User as UserType } from '../App';
 import { login } from '../api/auth';
 import { 
-  Mail, 
+  User, 
   Lock, 
   AlertCircle
 } from 'lucide-react';
@@ -10,12 +10,12 @@ import { motion } from 'motion/react';
 import logo from '../assets/logo.svg';
 
 interface LoginProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: UserType) => void;
 }
 
 
 export function Login({ onLogin }: LoginProps) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,8 +26,8 @@ export function Login({ onLogin }: LoginProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await login(email, password);
-      onLogin(response.user as User);
+      const response = await login(identifier, password);
+      onLogin(response.user as UserType);
     } catch (err: any) {
       setError(err?.message || 'Authentication failed');
     } finally {
@@ -90,20 +90,20 @@ export function Login({ onLogin }: LoginProps) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Input */}
+            {/* Identifier Input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email Address
+              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Email or Roll Number
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                  placeholder="you@example.com"
+                  placeholder="Email or Roll Number"
                   required
                 />
               </div>

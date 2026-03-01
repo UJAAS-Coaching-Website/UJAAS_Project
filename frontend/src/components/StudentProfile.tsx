@@ -26,7 +26,7 @@ interface StudentProfileProps {
   user: {
     id: string;
     name: string;
-    email: string;
+    email?: string | null;
     role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
     studentDetails?: StudentDetails | null;
@@ -217,10 +217,12 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
               <div>
                 <h2 className="text-3xl font-bold mb-2">{profileUser.name}</h2>
                 <div className="flex flex-wrap gap-4 text-indigo-100">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <span>{profileUser.email}</span>
-                  </div>
+                  {profileUser.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      <span>{profileUser.email}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     <span>Roll: {studentDetails.rollNumber}</span>

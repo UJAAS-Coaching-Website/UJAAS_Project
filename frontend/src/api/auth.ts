@@ -33,7 +33,7 @@ export interface UpdateProfilePayload {
 export interface AuthUser {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   role: "student" | "faculty" | "admin";
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
@@ -108,10 +108,10 @@ async function request<T>(path: string, options: RequestInit = {}, retried = fal
   return data;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
+export async function login(identifier: string, password: string): Promise<AuthResponse> {
   const result = await request<AuthResponse>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
   localStorage.setItem("ujaasToken", result.token);
   return result;

@@ -84,7 +84,6 @@ type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssi
 interface Student {
   id: string;
   name: string;
-  email: string;
   rollNumber: string;
   enrolledCourses: string[];
   joinDate: string;
@@ -117,7 +116,6 @@ interface Faculty {
 type StudentFormState = {
   id?: string;
   name: string;
-  email: string;
   rollNumber: string;
   batch: Batch;
   phoneNumber: string;
@@ -292,7 +290,6 @@ export function AdminDashboard({
       { 
         id: '1', 
         name: 'Rahul Sharma', 
-        email: 'rahul@example.com', 
         rollNumber: '2024001', 
         enrolledCourses: ['JEE Main'], 
         joinDate: '2024-01-15', 
@@ -317,7 +314,6 @@ export function AdminDashboard({
       { 
         id: '2', 
         name: 'Priya Patel', 
-        email: 'priya@example.com', 
         rollNumber: '2024002', 
         enrolledCourses: ['NEET'], 
         joinDate: '2024-01-20', 
@@ -342,7 +338,6 @@ export function AdminDashboard({
       { 
         id: '3', 
         name: 'Amit Kumar', 
-        email: 'amit@example.com', 
         rollNumber: '2024003', 
         enrolledCourses: ['JEE Advanced'], 
         joinDate: '2024-02-05', 
@@ -365,7 +360,6 @@ export function AdminDashboard({
       { 
         id: '4', 
         name: 'Sneha Mehta', 
-        email: 'sneha.m@example.com', 
         rollNumber: '2024004', 
         enrolledCourses: ['JEE Main', 'NEET'], 
         joinDate: '2024-02-12', 
@@ -388,7 +382,6 @@ export function AdminDashboard({
       { 
         id: '5', 
         name: 'Karan Desai', 
-        email: 'karan.d@example.com', 
         rollNumber: '2024005', 
         enrolledCourses: ['NEET'], 
         joinDate: '2024-03-03', 
@@ -411,7 +404,6 @@ export function AdminDashboard({
       { 
         id: '6', 
         name: 'Ananya Kapoor', 
-        email: 'ananya.k@example.com', 
         rollNumber: '2024006', 
         enrolledCourses: ['JEE Advanced', 'NEET'], 
         joinDate: '2024-03-10', 
@@ -498,7 +490,6 @@ export function AdminDashboard({
       setStudents(prev => prev.map(s => s.id === data.id ? { 
         ...s, 
         name: data.name,
-        email: data.email,
         rollNumber: data.rollNumber,
         batch: data.batch,
         phoneNumber: data.phoneNumber,
@@ -510,7 +501,6 @@ export function AdminDashboard({
       const newStudent: Student = {
         id: `student-${Date.now()}`,
         name: data.name,
-        email: data.email,
         rollNumber: data.rollNumber,
         batch: data.batch,
         phoneNumber: data.phoneNumber,
@@ -599,7 +589,7 @@ export function AdminDashboard({
   const closeStudentRatings = () => setRatingModal({ open: false });
   const handleSaveStudentProfile = (
     studentId: string,
-    updates: Pick<Student, 'name' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
     setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
     setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
@@ -1678,7 +1668,7 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
               <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
-                  <div className="text-xs text-gray-500">{s.email}</div>
+                  <div className="text-xs text-gray-500">{s.rollNumber}</div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
@@ -2255,7 +2245,7 @@ function NotesManagementTab({
 
 function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const [q, setQ] = useState('');
-  const filtered = students.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.email.toLowerCase().includes(q.toLowerCase()));
+  const filtered = students.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.rollNumber.toLowerCase().includes(q.toLowerCase()));
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
@@ -2277,7 +2267,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
               <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
-                  <div className="text-xs text-gray-500">{s.email}</div>
+                  <div className="text-xs text-gray-500">{s.rollNumber}</div>
                 </td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4">
@@ -2483,18 +2473,6 @@ function AddStudentModal({
                 onChange={handleChange('name')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
                 placeholder="Student name"
-              />
-            </label>
-
-            <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Email {requiredMark}</span>
-              <input
-                type="email"
-                required
-                value={formState.email}
-                onChange={handleChange('email')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                placeholder="name@email.com"
               />
             </label>
 
@@ -2772,7 +2750,7 @@ function BatchStudentPickerModal({
               <div key={student.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
                 <div>
                   <p className="font-semibold text-gray-900">{student.name}</p>
-                  <p className="text-sm text-gray-500">{student.email}</p>
+                  <p className="text-sm text-gray-500">{student.rollNumber}</p>
                   <p className="text-xs text-gray-400 mt-1">Current batch: {student.batch || 'Unassigned'}</p>
                 </div>
                 <button
@@ -3124,7 +3102,7 @@ function StudentRatingsModal({
   onClose: () => void;
   onSaveProfile?: (
     studentId: string,
-    updates: Pick<Student, 'name' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => void;
   onSaveAdminRemark?: (studentId: string, remark: string) => void;
 }) {
@@ -3134,7 +3112,6 @@ function StudentRatingsModal({
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
-    email: '',
     phoneNumber: '',
     dateOfBirth: '',
     parentContact: '',
@@ -3148,7 +3125,6 @@ function StudentRatingsModal({
     setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
-      email: student.email ?? '',
       phoneNumber: student.phoneNumber ?? '',
       dateOfBirth: student.dateOfBirth ?? '',
       parentContact: student.parentContact ?? '',
@@ -3173,7 +3149,6 @@ function StudentRatingsModal({
   const finalRating = calculateFinalRating();
   const getProfileValuesForPrint = () => ({
     name: isEditingProfile ? profileDraft.name : student.name,
-    email: isEditingProfile ? profileDraft.email : student.email,
     phoneNumber: isEditingProfile ? profileDraft.phoneNumber : student.phoneNumber,
     dateOfBirth: isEditingProfile ? profileDraft.dateOfBirth : student.dateOfBirth,
     parentContact: isEditingProfile ? profileDraft.parentContact : student.parentContact,
@@ -3193,7 +3168,6 @@ function StudentRatingsModal({
 
     const detailsRows = [
       ['Student Name', profileValues.name || 'Not provided'],
-      ['Email Address', profileValues.email || 'Not provided'],
       ['Phone Number', profileValues.phoneNumber || 'Not provided'],
       ['Date of Birth', profileValues.dateOfBirth || 'Not provided'],
       ["Parent's Contact", profileValues.parentContact || 'Not provided'],
@@ -3554,7 +3528,6 @@ function StudentRatingsModal({
                         setIsEditingProfile(false);
                         setProfileDraft({
                           name: student.name ?? '',
-                          email: student.email ?? '',
                           phoneNumber: student.phoneNumber ?? '',
                           dateOfBirth: student.dateOfBirth ?? '',
                           parentContact: student.parentContact ?? '',
@@ -3591,17 +3564,8 @@ function StudentRatingsModal({
                   )}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
-                  {isEditingProfile ? (
-                    <input
-                      type="email"
-                      value={profileDraft.email}
-                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    />
-                  ) : (
-                    <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.email}</p>
-                  )}
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Roll Number</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>

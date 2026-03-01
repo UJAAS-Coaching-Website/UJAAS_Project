@@ -445,7 +445,7 @@ export function StudentRankingsEnhanced() {
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{student.studentName}</div>
-                          <div className="text-sm text-gray-500">{student.studentEmail}</div>
+                          {student.rollNumber && <div className="text-sm text-gray-500">Roll: {student.rollNumber}</div>}
                         </div>
                       </div>
                     </td>

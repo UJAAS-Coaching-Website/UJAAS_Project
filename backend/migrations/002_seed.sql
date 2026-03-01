@@ -34,7 +34,7 @@ WITH
     VALUES (
       uuid_generate_v4(),
       'Demo Student',
-      'student@ujaas.com',
+      NULL,
       'student',
       'student_seed_salt:f52a9eabd44b4662ce26d5ad1f287bdeafc2b78d4e40ad3cb7f275c505dd5d0bbb0126109e5489a89e10edec7640e59a1f03e71d89f5f86df60a70e697996a53'
     )
