@@ -525,6 +525,15 @@
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
   }
+
+  button,
+  [type='button'],
+  [type='reset'],
+  [type='submit'],
+  [role='button'],
+  summary {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {

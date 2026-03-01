@@ -24,6 +24,16 @@
   h4 {
     @apply text-xl font-semibold;
   }
+
+  button,
+  [type='button'],
+  [type='reset'],
+  [type='submit'],
+  [role='button'],
+  summary,
+  a {
+    cursor: pointer;
+  }
 }
 
 /* Custom Scrollbar - Professional */
