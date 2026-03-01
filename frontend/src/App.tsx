@@ -80,7 +80,7 @@ export interface PublishedTest {
 }
 
 function App() {
-  const studentTabs = ['home', 'test-series', 'profile', 'batch-detail'] as const;
+  const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
   const adminTabs = [
     'home',
     'students',
@@ -96,6 +96,7 @@ function App() {
     'upload-notes',
     'profile',
     'preview-test',
+    'question-bank',
   ] as const;
 
   type StudentTab = (typeof studentTabs)[number];

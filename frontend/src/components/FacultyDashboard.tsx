@@ -37,10 +37,10 @@ import { CreateTestSeries } from './CreateTestSeries';
 import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
+import { QuestionBank } from './QuestionBank';
 import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import demotimetable from '../assets/demotimetable.jpg';
 
 interface FacultyDashboardProps {
   user: User;
@@ -64,7 +64,7 @@ interface FacultyDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile';
+type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'question-bank';
 type Batch = string;
 type FacultySection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series';
 type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
@@ -721,14 +721,21 @@ export function FacultyDashboard({
             {!selectedBatch ? (
               <div className="flex items-center gap-2">
                 {[
-                  { id: 'batches', label: 'Batches', icon: BookOpen },
+                  { id: 'batches', label: 'Batches', icon: GraduationCap },
                   { id: 'test-series', label: 'Test Series', icon: FileText },
+                  { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
                 ].map((section) => (
                   <motion.button
                     key={section.id}
-                    onClick={() => onNavigateSection(section.id as FacultySection)}
+                    onClick={() => {
+                      if (section.id === 'question-bank') {
+                        onNavigate('question-bank');
+                      } else {
+                        onNavigateSection(section.id as FacultySection);
+                      }
+                    }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
+                      (activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
                         ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
@@ -743,6 +750,7 @@ export function FacultyDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
+                  { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -784,6 +792,13 @@ export function FacultyDashboard({
           {/* Layered Rendering Logic - Standard across dashboards */}
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} />
+          ) : activeTab === 'question-bank' ? (
+            <QuestionBank 
+              userRole="faculty" 
+              userSubject={facultySubject || 'Physics'} 
+              batches={batches.map(b => b.label)}
+              onBack={() => onNavigate('home')} 
+            />
           ) : performanceInsightsTestId ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
               {(() => {

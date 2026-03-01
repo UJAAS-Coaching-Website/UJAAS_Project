@@ -131,8 +131,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                         <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[350px]">
                           {/* Left Section - 1/4 Width */}
                           <div className="md:w-1/4 flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-teal-100 bg-white/50 overflow-hidden">
-                            <img src={vision.image} alt={vision.name} className="w-full aspect-square object-cover" />
-                            <div className="p-3 text-center flex-grow flex flex-col justify-center">
+                            <div className="w-full h-64 md:h-48 flex-shrink-0 bg-white/30 overflow-hidden">
+                              <img 
+                                src={vision.image} 
+                                alt={vision.name} 
+                                className="w-full h-full object-cover" 
+                              />
+                            </div>
+                            <div className="p-4 text-center flex-grow flex flex-col justify-center">
                               <h3 className="text-lg font-bold text-gray-900 mb-0.5">{vision.name}</h3>
                               <p className="text-teal-600 font-semibold text-xs">{vision.designation}</p>
                             </div>

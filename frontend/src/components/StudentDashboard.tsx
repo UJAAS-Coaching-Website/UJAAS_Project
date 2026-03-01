@@ -18,6 +18,7 @@ import {
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { DPPPractice } from './DPPPractice';
+import { QuestionBank } from './QuestionBank';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
@@ -36,7 +37,7 @@ interface StudentDashboardProps {
   publishedTests: import('../App').PublishedTest[];
 }
 
-type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail';
+type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
 
 // Helper for mock questions
 const generateQuestions = (count: number) => {
@@ -157,7 +158,8 @@ export function StudentDashboard({
               <div className="flex items-center gap-2">
                 {[
                   { id: 'home', label: 'Dashboard', icon: GraduationCap },
-                  { id: 'test-series', label: 'Test Series', icon: FileText }
+                  { id: 'test-series', label: 'Test Series', icon: FileText },
+                  { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
@@ -243,6 +245,13 @@ export function StudentDashboard({
               onBack={() => onNavigate('home')} 
               onStartDPP={handleStartDPP}
               dppAttempts={dppAttempts}
+            />
+          )}
+          {activeTab === 'question-bank' && (
+            <QuestionBank 
+              userRole="student" 
+              userBatch={user.studentDetails?.batch} 
+              onBack={() => onNavigate('home')} 
             />
           )}
         </motion.div>
