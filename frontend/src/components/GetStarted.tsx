@@ -23,6 +23,7 @@ interface GetStartedProps {
 
 export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onSubmitQuery }: GetStartedProps) {
   const [currentAchiever, setCurrentAchiever] = useState(0);
+  const [activeVisionIndex, setActiveVisionIndex] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -117,29 +118,69 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             </h2>
           </div>
           
-          <div className="space-y-12">
+          <div className="relative">
             {landingData.visions && landingData.visions.length > 0 ? (
-              landingData.visions.map((vision) => (
-                <div key={vision.id} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row">
-                  {/* Left Section - Smaller */}
-                  <div className="md:w-1/3 p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-teal-100 bg-white/50">
-                    <div className="w-40 h-40 rounded-2xl overflow-hidden shadow-lg mb-6 border-4 border-white">
-                      <img src={vision.image} alt={vision.name} className="w-full h-full object-cover" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{vision.name}</h3>
-                    <p className="text-teal-600 font-semibold">{vision.designation}</p>
-                  </div>
-                  
-                  {/* Right Section - Larger */}
-                  <div className="md:w-2/3 p-10 flex flex-col justify-center relative overflow-hidden">
-                    <div className="absolute top-4 left-6 text-8xl text-teal-200/60 font-serif leading-none pointer-events-none">"</div>
-                    <div className="relative z-10 text-xl md:text-2xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4">
-                      {vision.vision}
-                    </div>
-                    <div className="absolute bottom-4 right-6 text-8xl text-teal-200/60 font-serif leading-none rotate-180 pointer-events-none">"</div>
+              <>
+                <div className="overflow-hidden">
+                  <div 
+                    className="flex transition-transform duration-500 ease-in-out"
+                    style={{ transform: `translateX(-${activeVisionIndex * 100}%)` }}
+                  >
+                    {landingData.visions.map((vision) => (
+                      <div key={vision.id} className="w-full flex-shrink-0 px-4">
+                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[400px]">
+                          {/* Left Section - Smaller */}
+                          <div className="md:w-1/3 p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-teal-100 bg-white/50">
+                            <div className="w-40 h-40 rounded-2xl overflow-hidden shadow-lg mb-6 border-4 border-white">
+                              <img src={vision.image} alt={vision.name} className="w-full h-full object-cover" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-1">{vision.name}</h3>
+                            <p className="text-teal-600 font-semibold">{vision.designation}</p>
+                          </div>
+                          
+                          {/* Right Section - Larger */}
+                          <div className="md:w-2/3 p-10 flex flex-col justify-center relative overflow-hidden">
+                            <div className="absolute top-4 left-6 text-8xl text-teal-200/60 font-serif leading-none pointer-events-none">"</div>
+                            <div className="relative z-10 text-xl md:text-2xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4">
+                              {vision.vision}
+                            </div>
+                            <div className="absolute bottom-4 right-6 text-8xl text-teal-200/60 font-serif leading-none rotate-180 pointer-events-none">"</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))
+
+                {landingData.visions.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                    
+                    <div className="flex justify-center gap-2 mt-8">
+                      {landingData.visions.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveVisionIndex(idx)}
+                          className={`h-2 rounded-full transition-all ${
+                            activeVisionIndex === idx ? 'bg-teal-600 w-8' : 'bg-gray-300 w-2'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                 <p className="text-gray-500 italic">No vision entries added yet.</p>
