@@ -284,6 +284,7 @@ export function TestPerformanceInsights({
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted At</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
@@ -312,25 +313,23 @@ export function TestPerformanceInsights({
                         <div className="font-bold text-gray-900">{perf.studentName}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {new Date(perf.submittedAt).toLocaleDateString()}
-                            <Clock className="w-3.5 h-3.5 ml-1" />
-                            {new Date(perf.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </div>
-                          {status && (
-                            <div className="flex mt-1">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
-                                status === 'late' 
-                                  ? 'bg-red-100 text-red-700' 
-                                  : 'bg-green-100 text-green-700'
-                              }`}>
-                                {status === 'late' ? 'Late' : 'On Time'}
-                              </span>
-                            </div>
-                          )}
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(perf.submittedAt).toLocaleDateString()}
+                          <Clock className="w-3.5 h-3.5 ml-1" />
+                          {new Date(perf.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {status && (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                            status === 'late' 
+                              ? 'bg-red-100 text-red-700' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {status === 'late' ? 'Late' : 'On Time'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
