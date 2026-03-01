@@ -106,6 +106,49 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
+      {/* The Vision Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-2">
+              <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                The Vision
+              </span>
+            </h2>
+          </div>
+          
+          <div className="space-y-12">
+            {landingData.visions && landingData.visions.length > 0 ? (
+              landingData.visions.map((vision) => (
+                <div key={vision.id} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row">
+                  {/* Left Section - Smaller */}
+                  <div className="md:w-1/3 p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-teal-100 bg-white/50">
+                    <div className="w-40 h-40 rounded-2xl overflow-hidden shadow-lg mb-6 border-4 border-white">
+                      <img src={vision.image} alt={vision.name} className="w-full h-full object-cover" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-1">{vision.name}</h3>
+                    <p className="text-teal-600 font-semibold">{vision.designation}</p>
+                  </div>
+                  
+                  {/* Right Section - Larger */}
+                  <div className="md:w-2/3 p-10 flex flex-col justify-center relative overflow-hidden">
+                    <div className="absolute top-4 left-6 text-8xl text-teal-200/60 font-serif leading-none pointer-events-none">"</div>
+                    <div className="relative z-10 text-xl md:text-2xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4">
+                      {vision.vision}
+                    </div>
+                    <div className="absolute bottom-4 right-6 text-8xl text-teal-200/60 font-serif leading-none rotate-180 pointer-events-none">"</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                <p className="text-gray-500 italic">No vision entries added yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className="py-20 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">

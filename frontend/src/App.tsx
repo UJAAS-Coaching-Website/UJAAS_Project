@@ -32,6 +32,14 @@ export interface LandingAchiever {
   image: string;
 }
 
+export interface LandingVision {
+  id: string;
+  name: string;
+  designation: string;
+  vision: string;
+  image: string;
+}
+
 export interface LandingContact {
   phone: string;
   email: string;
@@ -53,6 +61,7 @@ export interface LandingData {
   courses: string[];
   faculty: LandingFaculty[];
   achievers: LandingAchiever[];
+  visions: LandingVision[];
   contact: LandingContact;
 }
 
@@ -218,6 +227,29 @@ function App() {
           image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop'
         }
       ],
+      visions: [
+        {
+          id: 'v1',
+          name: 'Shri G.S. Sharma',
+          designation: 'Founder & Director',
+          vision: 'Our vision is to provide quality education and guidance to every student, empowering them to achieve their dreams and build a better future for themselves and the nation.',
+          image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop'
+        },
+        {
+          id: 'v2',
+          name: 'Dr. A.K. Singh',
+          designation: 'Academic Head',
+          vision: 'We believe in nurturing raw talent into brilliant minds. Our focus is on holistic development, critical thinking, and instilling a lifelong passion for learning.',
+          image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop'
+        },
+        {
+          id: 'v3',
+          name: 'Mrs. R. Desai',
+          designation: 'Chief Administrator',
+          vision: 'Education is the most powerful weapon to change the world. We ensure an environment where students feel supported, motivated, and challenged to exceed their own expectations.',
+          image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop'
+        }
+      ],
       contact: {
         phone: '+91 98765 43210',
         email: 'info@ujaas.com',
@@ -229,12 +261,22 @@ function App() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        
+        // Merge visions: keep stored ones, but add any defaults that are missing by ID
+        const mergedVisions = [...(Array.isArray(parsed.visions) ? parsed.visions : [])];
+        defaultData.visions.forEach(v => {
+          if (!mergedVisions.some(mv => mv.id === v.id)) {
+            mergedVisions.push(v);
+          }
+        });
+
         return {
           ...defaultData,
           ...parsed,
           courses: Array.isArray(parsed.courses) ? parsed.courses : defaultData.courses,
           faculty: Array.isArray(parsed.faculty) ? parsed.faculty : defaultData.faculty,
           achievers: Array.isArray(parsed.achievers) ? parsed.achievers : defaultData.achievers,
+          visions: mergedVisions,
           contact: parsed.contact || defaultData.contact,
         };
       } catch (e) {

@@ -1222,11 +1222,13 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 }
 
 function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate: (data: LandingData) => void }) {
-  const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers'>('overview');
+  const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers' | 'visions'>('overview');
   const [newCourse, setNewCourse] = useState('');
   const [isAddingFaculty, setIsAddingFaculty] = useState(false);
   const [editingFacultyIndex, setEditingFacultyIndex] = useState<number | null>(null);
   const [isAddingAchiever, setIsAddingAchiever] = useState(false);
+  const [isAddingVision, setIsAddingVision] = useState(false);
+  const [editingVisionIndex, setEditingVisionIndex] = useState<number | null>(null);
   const maxImageUploadSizeBytes = 600 * 1024;
 
   const readImageAsDataUrl = (file: File, onReady: (url: string) => void, fallbackUrl: string) => {
@@ -1313,6 +1315,47 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       setIsAddingAchiever(false);
     };
     readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+  };
+
+  const handleAddVision = (e: FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const file = formData.get('imageFile') as File;
+    const save = (url: string) => {
+      onUpdate({
+        ...data,
+        visions: [...(data.visions || []), {
+          id: `v-${Date.now()}`,
+          name: formData.get('name') as string,
+          designation: formData.get('designation') as string,
+          vision: formData.get('vision') as string,
+          image: url
+        }]
+      });
+      setIsAddingVision(false);
+    };
+    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+  };
+
+  const handleSaveEditedVision = (e: FormEvent) => {
+    e.preventDefault();
+    if (editingVisionIndex === null) return;
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const file = formData.get('imageFile') as File;
+    const existing = data.visions[editingVisionIndex].image;
+    const save = (url: string) => {
+      const next = [...data.visions];
+      next[editingVisionIndex] = {
+        ...next[editingVisionIndex],
+        name: formData.get('name') as string,
+        designation: formData.get('designation') as string,
+        vision: formData.get('vision') as string,
+        image: url
+      };
+      onUpdate({ ...data, visions: next });
+      setEditingVisionIndex(null);
+    };
+    readImageAsDataUrl(file, save, existing);
   };
 
   if (activeSubSection === 'courses') {
@@ -1458,6 +1501,80 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     );
   }
 
+  if (activeSubSection === 'visions') {
+    return (
+      <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
+            <h2 className="text-3xl font-bold text-gray-900">Manage The Vision</h2>
+          </div>
+          <button onClick={() => setIsAddingVision(!isAddingVision)} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
+            {isAddingVision ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingVision ? 'Cancel' : 'Add Vision Tile'}
+          </button>
+        </div>
+        {isAddingVision && (
+          <form onSubmit={handleAddVision} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required placeholder="Name (e.g., Founder Name)" className="px-4 py-2 rounded-lg border border-gray-200" />
+            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" />
+            <textarea name="vision" required placeholder="Vision Text" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Square Image</label>
+              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" />
+            </div>
+            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save Vision Tile</button>
+          </form>
+        )}
+        {editingVisionIndex !== null && (
+          <form onSubmit={handleSaveEditedVision} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required defaultValue={data.visions[editingVisionIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" />
+            <input name="designation" required defaultValue={data.visions[editingVisionIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" />
+            <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image (Optional)</label>
+              <input name="imageFile" type="file" accept="image/*" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" />
+            </div>
+            <div className="md:col-span-2 flex gap-3">
+              <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Update Vision Tile</button>
+              <button type="button" onClick={() => setEditingVisionIndex(null)} className="flex-1 py-3 bg-gray-200 rounded-xl font-bold transition hover:bg-gray-300">Cancel</button>
+            </div>
+          </form>
+        )}
+        <div className="space-y-6">
+          {(data.visions || []).map((v, i) => (
+            <div key={v.id} className="bg-white p-6 rounded-2xl border border-gray-100 relative group flex flex-col md:flex-row gap-6 items-center">
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => { setEditingVisionIndex(i); setIsAddingVision(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg" title="Edit Vision"><Edit className="w-4 h-4" /></button>
+                <button 
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to remove vision for "${v.name}"?`)) {
+                      onUpdate({ ...data, visions: data.visions.filter((_, idx) => idx !== i) });
+                    }
+                  }} 
+                  className="p-2 bg-red-50 text-red-500 rounded-lg"
+                  title="Delete Vision"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <img src={v.image} className="w-24 h-24 rounded-xl object-cover border-2 border-teal-100" />
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="font-bold text-xl text-gray-900">{v.name}</h3>
+                <p className="text-sm text-teal-600 font-semibold mb-2">{v.designation}</p>
+                <p className="text-gray-600 italic">"{v.vision}"</p>
+              </div>
+            </div>
+          ))}
+          {(!data.visions || data.visions.length === 0) && (
+            <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+              <p className="text-gray-500 italic">No vision entries added yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex items-center gap-4 mb-8">
@@ -1471,6 +1588,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           { id: 'courses', title: 'Courses', description: 'Manage available courses' },
           { id: 'faculty', title: 'Faculty', icon: GraduationCap, description: 'Update faculty showcase' },
           { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
+          { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
         ].map((item) => (
           <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <h3 className="text-lg font-bold mb-2">{item.title}</h3>
