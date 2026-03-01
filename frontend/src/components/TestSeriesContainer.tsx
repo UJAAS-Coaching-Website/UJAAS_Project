@@ -1,12 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { TestSeriesSection } from './TestSeriesSection';
 import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
 import { User, PublishedTest } from '../App';
+import { motion } from 'motion/react';
+import { 
+  Clock, 
+  FileText, 
+  CheckCircle, 
+  AlertCircle, 
+  BookOpen, 
+  Award,
+  ChevronLeft,
+  Play
+} from 'lucide-react';
 
 type TestState = 
   | { mode: 'list' }
+  | { mode: 'overview'; test: PublishedTest }
   | { mode: 'taking'; test: PublishedTest }
   | { mode: 'analytics'; result?: any }
   | { mode: 'viewResults' };
@@ -45,12 +57,19 @@ export function TestSeriesContainer({
         if (result) {
           setTestState({ mode: 'analytics', result });
         } else {
-          // If no result found, generate a dummy one so analysis mode works
           openMockAnalytics();
         }
       }
+    } else if (subTab.startsWith('Overview')) {
+      if (testState.mode !== 'overview') {
+        const lastTaking = localStorage.getItem('lastTakingTest');
+        if (lastTaking) {
+          setTestState({ mode: 'overview', test: JSON.parse(lastTaking) });
+        } else {
+          onNavigateSubTab?.(undefined);
+        }
+      }
     } else if (subTab.startsWith('Test')) {
-      // If we're at /Test but no test is selected, try to recover from localStorage or go back
       if (testState.mode !== 'taking') {
         const lastTaking = localStorage.getItem('lastTakingTest');
         if (lastTaking) {
@@ -69,7 +88,6 @@ export function TestSeriesContainer({
   }, [testState.mode, onStateChange]);
 
   const handleStartTest = (test: any) => {
-    // Normalizing test data
     const normalizedTest: PublishedTest = {
       id: test.id,
       title: test.title,
@@ -80,28 +98,35 @@ export function TestSeriesContainer({
       batches: test.batches || [],
       scheduleDate: test.scheduledDate || test.scheduleDate || '',
       scheduleTime: test.scheduleTime || '',
+      instructions: test.instructions || '',
       status: test.status || 'live'
     };
     
     localStorage.setItem('lastTakingTest', JSON.stringify(normalizedTest));
-    setTestState({ mode: 'taking', test: normalizedTest });
+    setTestState({ mode: 'overview', test: normalizedTest });
     
-    // Append test name to URL: /Test-my-test-name
     const testSlug = slugify(normalizedTest.title);
-    onNavigateSubTab?.(`Test-${testSlug}`);
+    onNavigateSubTab?.(`Overview-${testSlug}`);
+  };
+
+  const handleConfirmStart = () => {
+    if (testState.mode === 'overview') {
+      const test = testState.test;
+      setTestState({ mode: 'taking', test });
+      const testSlug = slugify(test.title);
+      onNavigateSubTab?.(`Test-${testSlug}`);
+    }
   };
 
   const handleCompleteTest = (answers: Record<string, number | null>, timeSpent: number) => {
     if (testState.mode !== 'taking') return;
     
     const test = testState.test;
-    
-    // Calculate basic mock result
     const result = {
       testId: test.id,
       testTitle: test.title,
       totalMarks: test.totalMarks,
-      obtainedMarks: Math.floor(Math.random() * test.totalMarks), // Mock obtained marks
+      obtainedMarks: Math.floor(Math.random() * test.totalMarks),
       totalQuestions: test.questions.length,
       correctAnswers: Math.floor(Math.random() * test.questions.length),
       wrongAnswers: 0,
@@ -125,7 +150,6 @@ export function TestSeriesContainer({
   };
 
   const openMockAnalytics = () => {
-    // Generate a default mock result if none exists
     const lastResult = localStorage.getItem('lastTestResult');
     if (lastResult) {
       const result = JSON.parse(lastResult);
@@ -133,7 +157,6 @@ export function TestSeriesContainer({
       const testSlug = slugify(result.testTitle || 'Demo');
       onNavigateSubTab?.(`Analysis-${testSlug}`);
     } else {
-      // Create a dummy result for demo if none exists
       const dummyResult = {
         testId: 'demo',
         testTitle: 'Demo Test Analysis',
@@ -161,6 +184,16 @@ export function TestSeriesContainer({
     setTestState({ mode: 'list' });
     onNavigateSubTab?.(undefined);
   };
+
+  if (testState.mode === 'overview' && testState.test) {
+    return (
+      <TestOverview 
+        test={testState.test} 
+        onStart={handleConfirmStart} 
+        onBack={handleBackToList} 
+      />
+    );
+  }
 
   if (testState.mode === 'taking' && testState.test) {
     return (
@@ -199,7 +232,6 @@ export function TestSeriesContainer({
     <TestSeriesSection 
       onStartTest={handleStartTest}
       onViewAnalytics={(testId) => {
-        // Find existing result or generate mock
         openMockAnalytics();
       }}
       onViewResults={() => {
@@ -209,5 +241,136 @@ export function TestSeriesContainer({
       publishedTests={publishedTests}
       userBatch={user.studentDetails?.batch || ''}
     />
+  );
+}
+
+function TestOverview({ 
+  test, 
+  onStart, 
+  onBack 
+}: { 
+  test: PublishedTest; 
+  onStart: () => void; 
+  onBack: () => void;
+}) {
+  const breakdown = useMemo(() => {
+    const stats: Record<string, Record<string, { count: number, marks: number, neg: number }>> = {};
+    
+    test.questions.forEach(q => {
+      const sub = q.subject || 'Default';
+      const sec = q.metadata?.section || 'Section A';
+      
+      if (!stats[sub]) stats[sub] = {};
+      if (!stats[sub][sec]) {
+        stats[sub][sec] = { count: 0, marks: q.marks || 0, neg: q.negativeMarks || 0 };
+      }
+      
+      stats[sub][sec].count++;
+    });
+    
+    return stats;
+  }, [test.questions]);
+
+  return (
+    <div className="max-w-4xl mx-auto py-8 px-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 text-white">
+          <button 
+            onClick={onBack}
+            className="flex items-center gap-2 text-teal-100 hover:text-white mb-6 font-bold transition-colors group"
+          >
+            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            Back to List
+          </button>
+          <h1 className="text-3xl font-bold mb-2">{test.title}</h1>
+          <div className="flex flex-wrap gap-6 text-teal-50">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              <span className="font-medium">{test.duration} Minutes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              <span className="font-medium">{test.questions.length} Questions</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5" />
+              <span className="font-medium">{test.totalMarks} Maximum Marks</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8">
+          {/* Question Breakdown */}
+          <section className="mb-10">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-teal-600" />
+              Question Breakdown & Marking Scheme
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
+                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
+                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
+                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
+                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Object.entries(breakdown).map(([subject, sections]) => (
+                    Object.entries(sections).map(([section, data], idx) => (
+                      <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
+                        {idx === 0 ? (
+                          <td className="px-4 py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
+                            {subject}
+                          </td>
+                        ) : null}
+                        <td className="px-4 py-4 text-gray-600 font-medium">{section}</td>
+                        <td className="px-4 py-4 text-center font-bold text-gray-900">{data.count}</td>
+                        <td className="px-4 py-4 text-center font-bold text-green-600">+{data.marks}</td>
+                        <td className="px-4 py-4 text-center font-bold text-red-600">-{data.neg}</td>
+                      </tr>
+                    ))
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Instructions */}
+          <section className="mb-10 p-6 bg-amber-50 rounded-2xl border border-amber-100">
+            <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              General Instructions
+            </h3>
+            <div className="text-amber-800 space-y-3 whitespace-pre-wrap leading-relaxed font-medium">
+              {test.instructions || "1. Ensure you have a stable internet connection.\n2. Do not refresh or close the tab during the test.\n3. The test will automatically submit when the timer ends.\n4. Use of unfair means will lead to disqualification."}
+            </div>
+          </section>
+
+          {/* Start Action */}
+          <div className="flex flex-col items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onStart}
+              className="w-full sm:w-64 py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 text-lg"
+            >
+              <Play className="w-6 h-6 fill-current" />
+              Confirm & Start Test
+            </motion.button>
+            <p className="text-sm text-gray-500 font-medium italic">
+              By clicking start, you agree to follow the exam instructions.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   );
 }
