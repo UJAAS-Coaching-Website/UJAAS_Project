@@ -39,6 +39,7 @@ import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
+import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
 import { TestTaking } from './TestTaking';
@@ -286,6 +287,49 @@ export function AdminDashboard({
     open: false,
     query: null
   });
+
+  const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
+
+  const generateMockPerformances = (testId: string): StudentPerformance[] => {
+    const test = publishedTests.find(t => t.id === testId);
+    if (!test) return [];
+
+    return students.slice(0, 5).map((student, index) => {
+      const obtainedMarks = Math.floor(Math.random() * test.totalMarks);
+      const accuracy = Math.floor(Math.random() * 40) + 60;
+      const correctAnswers = Math.floor((accuracy / 100) * test.questions.length);
+      
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        submittedAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+        score: obtainedMarks,
+        totalMarks: test.totalMarks,
+        accuracy,
+        rank: index + 1,
+        timeSpent: Math.floor(Math.random() * test.duration * 60),
+        result: {
+          testId: test.id,
+          testTitle: test.title,
+          totalMarks: test.totalMarks,
+          obtainedMarks,
+          totalQuestions: test.questions.length,
+          correctAnswers,
+          wrongAnswers: test.questions.length - correctAnswers,
+          unattempted: 0,
+          timeSpent: Math.floor(Math.random() * test.duration * 60),
+          duration: test.duration,
+          rank: index + 1,
+          totalStudents: 5,
+          submittedAt: new Date().toISOString(),
+          questions: test.questions.map(q => ({
+            ...q,
+            userAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0 // Mocking correct answers
+          }))
+        }
+      };
+    });
+  };
 
   useEffect(() => {
     // Simulated data fetch
@@ -713,6 +757,15 @@ export function AdminDashboard({
           {/* Layered Rendering Logic */}
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} onPublish={onPublishTest} />
+          ) : performanceInsightsTestId ? (
+            <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
+              <TestPerformanceInsights
+                testId={performanceInsightsTestId}
+                testTitle={publishedTests.find(t => t.id === performanceInsightsTestId)?.title || ''}
+                performances={generateMockPerformances(performanceInsightsTestId)}
+                onClose={() => setPerformanceInsightsTestId(null)}
+              />
+            </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
               <TestTaking 
@@ -780,6 +833,7 @@ export function AdminDashboard({
                   onChangeBatch={() => {}} 
                   publishedTests={publishedTests}
                   onPreviewTest={onPreviewTest}
+                  onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
                   onDeletePublishedTest={onDeletePublishedTest}
                 />
               )}
@@ -2388,9 +2442,9 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
 
 function TestSeriesManagementTab({ 
   onNavigate, 
-  selectedBatch, 
   publishedTests, 
   onPreviewTest,
+  onViewInsights,
   onDeletePublishedTest
 }: { 
   onNavigate: (t: Tab) => void; 
@@ -2398,6 +2452,7 @@ function TestSeriesManagementTab({
   onChangeBatch: () => void;
   publishedTests: import('../App').PublishedTest[];
   onPreviewTest: (testId: string) => void;
+  onViewInsights: (testId: string) => void;
   onDeletePublishedTest: (testId: string) => void;
 }) {
   const handleDelete = (testId: string, testTitle: string) => {
@@ -2409,14 +2464,18 @@ function TestSeriesManagementTab({
   return (
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex justify-between items-center">
-        <div><h2 className="text-2xl font-bold text-gray-900">Test Series Management</h2><p className="text-gray-600">{selectedBatch ? `For ${selectedBatch}` : 'Across all batches'}</p></div>
+        <div><h2 className="text-2xl font-bold text-gray-900">Test Series Management</h2><p className="text-gray-600">Review student performance and manage tests</p></div>
         <button onClick={() => onNavigate('create-test')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-500 text-white rounded-xl font-bold shadow-md"><Plus className="w-5 h-5" />Create Test Series</button>
       </div>
 
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {publishedTests.map((test) => (
-            <div key={test.id} className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative">
+            <div 
+              key={test.id} 
+              onClick={() => onViewInsights(test.id)}
+              className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative cursor-pointer hover:shadow-2xl hover:scale-[1.02] transition-all"
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
                 <div className="flex items-center gap-2">
@@ -2425,7 +2484,7 @@ function TestSeriesManagementTab({
                     test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                   }`}>{test.format}</span>
                   <button 
-                    onClick={() => handleDelete(test.id, test.title)}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete Test Series"
                   >
@@ -2439,12 +2498,19 @@ function TestSeriesManagementTab({
                 <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
                 <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ')}</div>
               </div>
-              <button 
-                onClick={() => onPreviewTest(test.id)}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                <BookOpen className="w-4 h-4" /> Preview Test
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4" /> Preview
+                </button>
+                <button 
+                  className="flex-[2] py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <BarChart3 className="w-4 h-4" /> Performance
+                </button>
+              </div>
             </div>
           ))}
         </div>

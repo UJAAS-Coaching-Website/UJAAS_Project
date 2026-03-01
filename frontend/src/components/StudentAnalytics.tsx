@@ -53,9 +53,10 @@ interface StudentAnalyticsProps {
   result: TestResult;
   onClose: () => void;
   onViewResults?: (testId: string) => void;
+  hideExplanations?: boolean;
 }
 
-export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnalyticsProps) {
+export function StudentAnalytics({ result, onClose, onViewResults, hideExplanations = false }: StudentAnalyticsProps) {
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
@@ -464,6 +465,7 @@ export function StudentAnalytics({ result, onClose, onViewResults }: StudentAnal
             initialTimeSpent={result.timeSpent}
             isFacultyPreview={true}
             disableEditing={true}
+            hideExplanations={hideExplanations}
           />
         </motion.div>
       </div>

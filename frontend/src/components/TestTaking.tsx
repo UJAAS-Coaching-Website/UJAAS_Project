@@ -46,6 +46,7 @@ interface TestTakingProps {
   isPreview?: boolean;
   isFacultyPreview?: boolean;
   disableEditing?: boolean;
+  hideExplanations?: boolean;
   availableBatches?: { label: string; slug: string }[];
   initialBatches?: string[];
 }
@@ -63,6 +64,7 @@ export function TestTaking({
   isPreview = false,
   isFacultyPreview = false,
   disableEditing = false,
+  hideExplanations = false,
   availableBatches = [],
   initialBatches = []
 }: TestTakingProps) {
@@ -368,7 +370,7 @@ export function TestTaking({
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
                           {question.type}
                         </span>
-                        {isAnyPreview && !disableEditing && (
+                        {isAnyPreview && !disableEditing && !hideExplanations && (
                           <button
                             onClick={() => setIsEditing(true)}
                             className="flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold hover:bg-amber-200 transition-colors"
@@ -472,7 +474,7 @@ export function TestTaking({
                   </div>
 
                   {/* Explanation Section */}
-                  {isAnyPreview && (
+                  {isAnyPreview && !hideExplanations && (
                     <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 text-blue-700">
@@ -719,7 +721,7 @@ export function TestTaking({
                             ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
                             : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : isAnyPreview && q.explanation
+                            : isAnyPreview && q.explanation && !hideExplanations
                             ? 'bg-teal-50 text-teal-700 border border-teal-200'
                             : !isAnyPreview && flaggedQuestions.has(q.id)
                             ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
@@ -730,7 +732,7 @@ export function TestTaking({
                         {!isAnyPreview && flaggedQuestions.has(q.id) && (
                           <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
                         )}
-                        {isAnyPreview && !q.explanation && (
+                        {isAnyPreview && !q.explanation && !hideExplanations && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
                         )}
                       </motion.button>
@@ -739,7 +741,7 @@ export function TestTaking({
               </div>
 
               {/* Legend - Review Mode */}
-              {isAnyPreview && (
+              {isAnyPreview && !hideExplanations && (
                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-teal-50 border border-teal-200 rounded" />
