@@ -142,7 +142,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                           <div className="md:w-3/4 p-8 md:p-14 flex flex-col justify-center relative overflow-hidden">
                             <div className="relative z-10 text-xl md:text-3xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4 font-serif">
                               {/* Inline Opening Quote */}
-                              <span className="inline-block w-12 h-12 align-top mr-2 -mt-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span className="inline-block w-12 h-6 align-top mr-2 -mt-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z"></path>
                                 </svg>
@@ -151,7 +151,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               {vision.vision}
                               
                               {/* Inline Closing Quote */}
-                              <span className="inline-block w-12 h-12 align-bottom ml-2 -mb-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span className="inline-block w-12 h-6 align-bottom ml-2 -mb-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M19.417 6.679C20.447 7.773 21 9 21 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311-1.804-.167-3.226-1.648-3.226-3.489a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179zm-10 0C10.447 7.773 11 9 11 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311C4.591 12.322 3.17 10.841 3.17 9a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179z"></path>
                                 </svg>
