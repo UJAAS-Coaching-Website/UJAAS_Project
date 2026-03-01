@@ -887,6 +887,7 @@ export function AdminDashboard({
               open={ratingModal.open}
               student={ratingModal.student}
               onClose={closeStudentRatings}
+              batches={batches}
               onSaveProfile={handleSaveStudentProfile}
               onSaveAdminRemark={handleSaveAdminRemark}
             />
@@ -3224,12 +3225,14 @@ function StudentRatingsModal({
   open,
   student,
   onClose,
+  batches,
   onSaveProfile,
   onSaveAdminRemark,
 }: {
   open: boolean;
   student?: Student;
   onClose: () => void;
+  batches: BatchInfo[];
   onSaveProfile?: (
     studentId: string,
     updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
@@ -3303,6 +3306,7 @@ function StudentRatingsModal({
 
   const handlePrintStudentDetails = () => {
     const profileValues = getProfileValuesForPrint();
+    const currentBatchInfo = batches.find(b => b.label === student.batch);
 
     const detailsRows = [
       ['Student Name', profileValues.name || 'Not provided'],
@@ -3316,7 +3320,7 @@ function StudentRatingsModal({
     ]
       .map(
         ([label, value]) =>
-          `<tr><td class="label">${escapeHtml(label)}</td><td class="value">${escapeHtml(value)}</td></tr>`
+          `<tr class="${label === 'Final Average Rating' ? 'highlight-rating' : ''}"><td class="label">${escapeHtml(label)}</td><td class="value">${escapeHtml(value)}</td></tr>`
       )
       .join('');
 
@@ -3326,10 +3330,17 @@ function StudentRatingsModal({
             .map(([subject, r]) => {
               const subjectAverage = calculateSubjectRating(r);
               const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
+              
+              const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
+              const subjectFaculty = batchFacultyNames.find(name => true);
+
               return `
                 <section class="subject-card">
-                  <h3>${escapeHtml(subject)}</h3>
-                  <p class="subject-avg">Subject Average: ${subjectAverage.toFixed(1)} / 5.0</p>
+                  <div class="subject-header">
+                    <h3>${escapeHtml(subject)}</h3>
+                    ${subjectFaculty ? `<p class="faculty-name">Faculty: ${escapeHtml(subjectFaculty)}</p>` : ''}
+                  </div>
+                  <p class="subject-avg highlight-sub-rating">Subject Average: ${subjectAverage.toFixed(1)} / 5.0</p>
                   <table>
                     <thead>
                       <tr>
@@ -3344,28 +3355,28 @@ function StudentRatingsModal({
                       <tr><td>Class Behaviour</td><td>${r.behavior.toFixed(1)} / 5.0</td></tr>
                     </tbody>
                   </table>
-                  <div class="faculty-remark"><strong>Faculty Remark:</strong> ${escapeHtml(
-                    subjectRemark || 'No remark provided.'
-                  )}</div>
+                  ${subjectRemark ? `
+                  <div class="faculty-remark"><strong>Faculty Remark:</strong> ${escapeHtml(subjectRemark)}</div>
+                  ` : ''}
                 </section>
               `;
             })
             .join('')}</div>`
         : '<p class="empty">No rating data available for this student.</p>';
 
-    const adminRemarkHtml = `
+    const adminRemarkHtml = (student.adminRemark || '').trim() ? `
       <section class="admin-remark">
-        <h2>Admin Overall Remark</h2>
-        <p>${escapeHtml((student.adminRemark || '').trim() || 'No admin remark provided.')}</p>
+        <h2>Overall Remark</h2>
+        <p>${escapeHtml(student.adminRemark.trim())}</p>
       </section>
-    `;
+    ` : '';
 
     const printableHtml = `
       <!doctype html>
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Student Details - ${escapeHtml(profileValues.name || student.name)}</title>
+          <title>Student Performance Report - ${escapeHtml(profileValues.name || student.name)}</title>
           <style>
             * { box-sizing: border-box; }
             @page { size: A4 portrait; margin: 8mm; }
@@ -3459,6 +3470,13 @@ function StudentRatingsModal({
             .value {
               width: 65%;
             }
+            .highlight-rating td {
+              background: #fef2f2 !important;
+              color: #991b1b !important;
+              font-weight: 800 !important;
+              font-size: 12px !important;
+              border: 1px solid #fecaca !important;
+            }
             .subject-card {
               border: 1px solid #e2e8f0;
               border-radius: 10px;
@@ -3467,15 +3485,38 @@ function StudentRatingsModal({
               page-break-inside: avoid;
               break-inside: avoid;
             }
+            .subject-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 4px;
+              border-bottom: 1px solid #f1f5f9;
+              padding-bottom: 2px;
+            }
             .subject-card h3 {
               margin: 0;
               font-size: 12px;
+              color: #0f172a;
+            }
+            .faculty-name {
+              margin: 0;
+              font-size: 11px;
+              color: #475569;
+              font-weight: 700;
             }
             .subject-avg {
-              margin: 2px 0 4px;
+              margin: 4px 0 4px;
               color: #334155;
               font-size: 10px;
               font-weight: 600;
+            }
+            .highlight-sub-rating {
+              background: #fff7ed;
+              color: #c2410c;
+              padding: 2px 6px;
+              border-radius: 4px;
+              display: inline-block;
+              border: 1px solid #ffedd5;
             }
             .subjects-grid {
               display: grid;
@@ -3499,9 +3540,11 @@ function StudentRatingsModal({
               padding: 8px;
               page-break-inside: avoid;
               break-inside: avoid;
+              background: #f8fafc;
             }
             .admin-remark h2 {
               margin: 0 0 4px;
+              color: #0f172a;
             }
             .admin-remark p {
               margin: 0;
@@ -3553,7 +3596,7 @@ function StudentRatingsModal({
                 </div>
               </div>
               <div class="header-report">
-                <h1>Student Details Report</h1>
+                <h1>Student Performance Report</h1>
                 <p class="subtext">Generated on: ${escapeHtml(new Date().toLocaleString())}</p>
               </div>
             </div>
