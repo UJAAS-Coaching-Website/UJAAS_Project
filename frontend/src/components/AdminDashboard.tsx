@@ -322,6 +322,7 @@ export function AdminDashboard({
           rank: index + 1,
           totalStudents: 5,
           submittedAt: new Date().toISOString(),
+          instructions: test.instructions,
           questions: test.questions.map(q => ({
             ...q,
             userAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0 // Mocking correct answers
@@ -767,6 +768,9 @@ export function AdminDashboard({
                     testId={performanceInsightsTestId}
                     testTitle={test?.title || ''}
                     scheduledDateTime={scheduledDateTime}
+                    testQuestions={test?.questions}
+                    testDuration={test?.duration}
+                    testInstructions={test?.instructions}
                     performances={generateMockPerformances(performanceInsightsTestId)}
                     onClose={() => setPerformanceInsightsTestId(null)}
                   />

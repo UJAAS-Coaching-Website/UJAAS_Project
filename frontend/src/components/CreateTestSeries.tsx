@@ -730,6 +730,12 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                     <p className="text-sm text-gray-600 mb-1 font-bold">Total Marks</p>
                     <p className="font-semibold text-gray-900">{testData.totalMarks}</p>
                   </div>
+                  {testData.instructions && (
+                    <div className="md:col-span-2 p-4 bg-amber-50 rounded-xl border border-amber-100">
+                      <p className="text-sm text-gray-600 mb-1 font-bold">General Instructions</p>
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{testData.instructions}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-6 p-6 bg-gray-50 rounded-2xl">

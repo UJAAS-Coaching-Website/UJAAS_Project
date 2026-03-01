@@ -250,7 +250,36 @@ function App() {
 
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
     const stored = localStorage.getItem('ujaasPublishedTests');
-    return stored ? JSON.parse(stored) : [];
+    if (stored) return JSON.parse(stored);
+    
+    // Default mock tests for demo
+    return [
+      {
+        id: 'mock-test-1',
+        title: 'JEE Mains Full Syllabus Mock Test',
+        format: 'JEE MAIN',
+        batches: ['11th JEE', '12th JEE'],
+        duration: 180,
+        totalMarks: 300,
+        scheduleDate: '2025-03-01',
+        scheduleTime: '09:00',
+        status: 'live',
+        instructions: '1. The test consists of 90 questions (30 each in Physics, Chemistry, and Mathematics).\n2. Section A contains 20 MCQs with +4/-1 marking.\n3. Section B contains 10 Numerical questions, attempt any 5 (+4/0 marking).\n4. Total time is 180 minutes.',
+        questions: [
+          {
+            id: 'q1',
+            type: 'MCQ',
+            subject: 'Physics',
+            question: 'What is the dimensional formula of gravitational constant G?',
+            options: ['[M^-1 L^3 T^-2]', '[M^1 L^3 T^-2]', '[M^-1 L^2 T^-2]', '[M^1 L^2 T^-1]'],
+            correctAnswer: 0,
+            marks: 4,
+            negativeMarks: 1,
+            metadata: { section: 'Section A' }
+          }
+        ]
+      }
+    ];
   });
 
   useEffect(() => {

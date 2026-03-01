@@ -786,12 +786,22 @@ export function FacultyDashboard({
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} />
           ) : performanceInsightsTestId ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestPerformanceInsights
-                testId={performanceInsightsTestId}
-                testTitle={publishedTests.find(t => t.id === performanceInsightsTestId)?.title || ''}
-                performances={generateMockPerformances(performanceInsightsTestId)}
-                onClose={() => setPerformanceInsightsTestId(null)}
-              />
+              {(() => {
+                const test = publishedTests.find(t => t.id === performanceInsightsTestId);
+                const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
+                return (
+                  <TestPerformanceInsights
+                    testId={performanceInsightsTestId}
+                    testTitle={test?.title || ''}
+                    scheduledDateTime={scheduledDateTime}
+                    testQuestions={test?.questions}
+                    testDuration={test?.duration}
+                    testInstructions={test?.instructions}
+                    performances={generateMockPerformances(performanceInsightsTestId)}
+                    onClose={() => setPerformanceInsightsTestId(null)}
+                  />
+                );
+              })()}
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">

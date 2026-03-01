@@ -47,6 +47,7 @@ interface TestResult {
   totalStudents: number;
   submittedAt: string;
   questions: Question[];
+  instructions?: string;
 }
 
 interface StudentAnalyticsProps {
@@ -54,9 +55,10 @@ interface StudentAnalyticsProps {
   onClose: () => void;
   onViewResults?: (testId: string) => void;
   hideExplanations?: boolean;
+  hideDownload?: boolean;
 }
 
-export function StudentAnalytics({ result, onClose, onViewResults, hideExplanations = false }: StudentAnalyticsProps) {
+export function StudentAnalytics({ result, onClose, onViewResults, hideExplanations = false, hideDownload = false }: StudentAnalyticsProps) {
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
@@ -281,6 +283,32 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
               color: #94a3b8;
               font-style: italic;
             }
+            .instructions-section {
+              background: #fffbeb;
+              border: 1px solid #fde68a;
+              border-radius: 12px;
+              padding: 15px;
+              margin-bottom: 25px;
+              page-break-inside: avoid;
+            }
+            .instructions-title {
+              color: #92400e;
+              font-size: 12px;
+              font-weight: 800;
+              text-transform: uppercase;
+              margin: 0 0 8px 0;
+              border-bottom: 1px solid #fde68a;
+              padding-bottom: 4px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .instructions-content {
+              color: #78350f;
+              font-size: 10.5px;
+              white-space: pre-wrap;
+              line-height: 1.6;
+            }
             .footer {
               margin-top: 40px;
               border-top: 1px solid #e2e8f0;
@@ -311,6 +339,13 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
             <div class="info-item"><b>Max Marks:</b> ${result.totalMarks}</div>
             <div class="info-item"><b>Questions:</b> ${result.totalQuestions}</div>
           </div>
+
+          ${result.instructions ? `
+            <div class="instructions-section">
+              <h4 class="instructions-title">General Instructions</h4>
+              <div class="instructions-content">${escapeHtml(result.instructions)}</div>
+            </div>
+          ` : ''}
 
           <div class="questions-list">
             ${contentHtml}
@@ -359,13 +394,15 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
               <p className="text-gray-600">Detailed Performance Analysis</p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={handleDownloadTestPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-medium hover:bg-blue-200 transition-all"
-              >
-                <Download className="w-5 h-5" />
-                Download
-              </button>
+              {!hideDownload && (
+                <button
+                  onClick={handleDownloadTestPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-medium hover:bg-blue-200 transition-all"
+                >
+                  <Download className="w-5 h-5" />
+                  Download
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"

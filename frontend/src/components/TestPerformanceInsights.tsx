@@ -9,9 +9,11 @@ import {
   Target,
   ChevronRight,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Download
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
+import logo from '../assets/logo.svg';
 
 export interface StudentPerformance {
   studentId: string;
@@ -31,9 +33,21 @@ interface TestPerformanceInsightsProps {
   performances: StudentPerformance[];
   onClose: () => void;
   scheduledDateTime?: string; // ISO string of test start time
+  testQuestions?: any[];
+  testDuration?: number;
+  testInstructions?: string;
 }
 
-export function TestPerformanceInsights({ testTitle, performances, onClose, scheduledDateTime }: TestPerformanceInsightsProps) {
+export function TestPerformanceInsights({ 
+  testTitle, 
+  testId, 
+  performances, 
+  onClose, 
+  scheduledDateTime,
+  testQuestions,
+  testDuration,
+  testInstructions
+}: TestPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -64,6 +78,139 @@ export function TestPerformanceInsights({ testTitle, performances, onClose, sche
     return diffInMinutes > 30 ? 'late' : 'on-time';
   };
 
+  const handleDownloadTestPDF = () => {
+    if (!testQuestions) return;
+
+    const escapeHtml = (unsafe: string) => {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
+    // Group questions by Subject and then Section
+    const groupedQuestions: Record<string, Record<string, any[]>> = {};
+    testQuestions.forEach(q => {
+      if (!groupedQuestions[q.subject]) groupedQuestions[q.subject] = {};
+      const section = q.metadata?.section || 'Section A';
+      if (!groupedQuestions[q.subject][section]) groupedQuestions[q.subject][section] = [];
+      groupedQuestions[q.subject][section].push(q);
+    });
+
+    let globalIdx = 0;
+    const contentHtml = Object.entries(groupedQuestions).map(([subject, sections]) => `
+      <div class="subject-block">
+        <h2 class="subject-title">${escapeHtml(subject)}</h2>
+        ${Object.entries(sections).map(([section, questions]) => `
+          <div class="section-block">
+            <h3 class="section-title">${escapeHtml(section)}</h3>
+            ${questions.map((q) => {
+              globalIdx++;
+              return `
+                <div class="question-container">
+                  <div class="question-header">
+                    <span class="question-number">Q${globalIdx}.</span>
+                    <div class="question-text">${escapeHtml(q.question || q.text)}</div>
+                    <span class="question-marks">[${q.marks} Marks]</span>
+                  </div>
+                  ${q.type !== 'Numerical' && q.options ? `
+                    <div class="options-grid">
+                      ${q.options.map((opt: string, optIdx: number) => `
+                        <div class="option">
+                          <span class="option-label">(${String.fromCharCode(65 + optIdx)})</span>
+                          <span class="option-text">${escapeHtml(opt)}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : `
+                    <div class="numerical-box">
+                      Answer: _______________________
+                    </div>
+                  `}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    const printableHtml = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${escapeHtml(testTitle)}</title>
+          <style>
+            * { box-sizing: border-box; }
+            @page { size: A4 portrait; margin: 15mm; }
+            body { margin: 0; padding: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.4; }
+            .header { border-bottom: 2px solid #0d9488; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+            .brand { display: flex; align-items: center; gap: 10px; }
+            .brand-logo { width: 45px; height: 45px; object-fit: contain; }
+            .brand-title { margin: 0; font-size: 18px; color: #0f172a; font-weight: 700; }
+            .test-info { text-align: right; }
+            .test-info h1 { margin: 0; font-size: 16px; color: #0d9488; }
+            .info-banner { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+            .instructions-section { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 15px; margin-bottom: 25px; page-break-inside: avoid; }
+            .instructions-title { color: #92400e; font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 1px solid #fde68a; padding-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+            .instructions-content { color: #78350f; font-size: 10.5px; white-space: pre-wrap; line-height: 1.6; }
+            .subject-title { background: #0d9488; color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; margin: 25px 0 15px; text-transform: uppercase; }
+            .section-title { border-bottom: 1px solid #e2e8f0; color: #0f766e; padding-bottom: 4px; margin: 15px 0 10px; font-size: 12px; }
+            .question-container { margin-bottom: 18px; page-break-inside: avoid; }
+            .question-header { display: flex; gap: 8px; margin-bottom: 8px; font-weight: 600; }
+            .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-left: 25px; }
+            .option { display: flex; gap: 6px; }
+            .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 9px; color: #94a3b8; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="brand">
+              <img src="${logo}" alt="Logo" class="brand-logo" />
+              <div>
+                <p class="brand-title">UJAAS Career Institute</p>
+              </div>
+            </div>
+            <div class="test-info">
+              <h1>${escapeHtml(testTitle)}</h1>
+            </div>
+          </div>
+          <div class="info-banner">
+            <div><b>Duration:</b> ${testDuration || 0} mins</div>
+            <div><b>Max Marks:</b> ${testQuestions.reduce((acc, q) => acc + (q.marks || 0), 0)}</div>
+          </div>
+          ${testInstructions ? `
+            <div class="instructions-section">
+              <h4 class="instructions-title">General Instructions</h4>
+              <div class="instructions-content">${escapeHtml(testInstructions)}</div>
+            </div>
+          ` : ''}
+          <div class="questions-list">${contentHtml}</div>
+          <div class="footer">© ${new Date().getFullYear()} UJAAS Career Institute. Authorized use only.</div>
+        </body>
+      </html>
+    `;
+
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.visibility = 'hidden';
+    document.body.appendChild(printFrame);
+    const doc = printFrame.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(printableHtml);
+      doc.close();
+      printFrame.onload = () => {
+        printFrame.contentWindow?.focus();
+        printFrame.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(printFrame), 1000);
+      };
+    }
+  };
+
   if (selectedStudent) {
     return (
       <div className="fixed inset-0 bg-white z-[10005] overflow-y-auto">
@@ -71,6 +218,7 @@ export function TestPerformanceInsights({ testTitle, performances, onClose, sche
           result={selectedStudent.result} 
           onClose={() => setSelectedStudent(null)} 
           hideExplanations={true}
+          hideDownload={true}
         />
       </div>
     );
@@ -99,6 +247,15 @@ export function TestPerformanceInsights({ testTitle, performances, onClose, sche
                 <p className="text-gray-500">Performance Insights & Student Submissions</p>
               </div>
             </div>
+            {testQuestions && (
+              <button
+                onClick={handleDownloadTestPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+              >
+                <Download className="w-5 h-5" />
+                Download Test Paper
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
