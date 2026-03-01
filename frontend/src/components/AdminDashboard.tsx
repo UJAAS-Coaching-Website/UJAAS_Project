@@ -2251,12 +2251,50 @@ function NotesManagementTab({
 
 function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const [q, setQ] = useState('');
-  const filtered = students.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.rollNumber.toLowerCase().includes(q.toLowerCase()));
+  const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
+
+  const filtered = students
+    .filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.rollNumber.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'rank-desc':
+          return b.rating - a.rating;
+        case 'rank-asc':
+          return a.rating - b.rating;
+        case 'batch-asc':
+          return (a.batch || '').localeCompare(b.batch || '');
+        default:
+          return 0;
+      }
+    });
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
-        <div className="flex items-center gap-3"><div className="relative"><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <input 
+              type="text" 
+              value={q} 
+              onChange={(e) => setQ(e.target.value)} 
+              placeholder="Search students..." 
+              className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" 
+            />
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-medium text-gray-700 outline-none cursor-pointer"
+          >
+            <option value="name-asc">Sort: A to Z</option>
+            <option value="rank-desc">Sort: Rank (High to Low)</option>
+            <option value="rank-asc">Sort: Rank (Low to High)</option>
+            <option value="batch-asc">Sort: By Batch</option>
+          </select>
+          <button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
