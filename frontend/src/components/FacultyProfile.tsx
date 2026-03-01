@@ -1,6 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { me, type FacultyDetails } from '../api/auth';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   User,
@@ -258,6 +259,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
     event.preventDefault();
     closeChangePassword();
   };
+  const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
   return (
     <div className="space-y-6">
@@ -296,130 +298,132 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         </motion.button>
       </motion.div>
 
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-4"
-            onClick={() => setShowLogoutConfirm(false)}
-          >
+      {showLogoutConfirm &&
+        modalRoot &&
+        createPortal(
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-layer-modal p-4"
+              onClick={() => setShowLogoutConfirm(false)}
             >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <LogOut className="w-8 h-8 text-orange-600" />
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
+              >
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <LogOut className="w-8 h-8 text-orange-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Logout</h3>
+                  <p className="text-gray-600">Are you sure you want to sign out of your account?</p>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Logout</h3>
-                <p className="text-gray-600">Are you sure you want to sign out of your account?</p>
-              </div>
 
-              <div className="flex gap-3">
-                <motion.button
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  onClick={handleLogout}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
-                >
-                  Logout
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showChangePassword && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[2000] p-4"
-            onClick={closeChangePassword}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
-            >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-teal-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Change Password</h3>
-                <p className="text-gray-600">Enter your current password and choose a new one.</p>
-              </div>
-
-              <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <label className="block text-sm font-medium text-gray-700">
-                  Old Password
-                  <input
-                    type="password"
-                    required
-                    value={passwordForm.oldPassword}
-                    onChange={handlePasswordChange('oldPassword')}
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    placeholder="Enter old password"
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  New Password
-                  <input
-                    type="password"
-                    required
-                    value={passwordForm.newPassword}
-                    onChange={handlePasswordChange('newPassword')}
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    placeholder="Enter new password"
-                  />
-                </label>
-
-                <label className="block text-sm font-medium text-gray-700">
-                  Confirm Password
-                  <input
-                    type="password"
-                    required
-                    value={passwordForm.confirmPassword}
-                    onChange={handlePasswordChange('confirmPassword')}
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-                    placeholder="Re-enter new password"
-                  />
-                </label>
-
-                <div className="pt-2 flex gap-3">
+                <div className="flex gap-3">
                   <motion.button
-                    type="button"
-                    onClick={closeChangePassword}
+                    onClick={() => setShowLogoutConfirm(false)}
                     className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
                   >
                     Cancel
                   </motion.button>
                   <motion.button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
+                    onClick={handleLogout}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
                   >
-                    Update Password
+                    Logout
                   </motion.button>
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            </motion.div>,
+            modalRoot
+          )}
+
+      {showChangePassword &&
+        modalRoot &&
+        createPortal(
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-layer-modal p-4"
+              onClick={closeChangePassword}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
+              >
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-8 h-8 text-teal-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Change Password</h3>
+                  <p className="text-gray-600">Enter your current password and choose a new one.</p>
+                </div>
+
+                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Old Password
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.oldPassword}
+                      onChange={handlePasswordChange('oldPassword')}
+                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                      placeholder="Enter old password"
+                    />
+                  </label>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    New Password
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordChange('newPassword')}
+                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                      placeholder="Enter new password"
+                    />
+                  </label>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    Confirm Password
+                    <input
+                      type="password"
+                      required
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordChange('confirmPassword')}
+                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                      placeholder="Re-enter new password"
+                    />
+                  </label>
+
+                  <div className="pt-2 flex gap-3">
+                    <motion.button
+                      type="button"
+                      onClick={closeChangePassword}
+                      className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      type="submit"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
+                    >
+                      Update Password
+                    </motion.button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>,
+            modalRoot
+          )}
     </div>
   );
 }
