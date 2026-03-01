@@ -108,9 +108,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       </section>
 
       {/* The Vision Section */}
-      <section className="py-20 bg-white">
+      <section className="pb-8 pt-0 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-6">
             <h2 className="text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 The Vision
@@ -121,25 +121,25 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           <div className="relative">
             {landingData.visions && landingData.visions.length > 0 ? (
               <>
-                <div className="overflow-hidden">
+                <div className="overflow-hidden py-10 -my-10">
                   <div 
                     className="flex transition-transform duration-500 ease-in-out"
                     style={{ transform: `translateX(-${activeVisionIndex * 100}%)` }}
                   >
                     {landingData.visions.map((vision) => (
                       <div key={vision.id} className="w-full flex-shrink-0 px-4">
-                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[400px]">
-                          {/* Left Section - Smaller */}
-                          <div className="md:w-1/3 p-8 flex flex-col items-center text-center border-b md:border-b-0 md:border-r border-teal-100 bg-white/50">
-                            <div className="w-40 h-40 rounded-2xl overflow-hidden shadow-lg mb-6 border-4 border-white">
-                              <img src={vision.image} alt={vision.name} className="w-full h-full object-cover" />
+                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[350px]">
+                          {/* Left Section - 1/4 Width */}
+                          <div className="md:w-1/4 flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-teal-100 bg-white/50 overflow-hidden">
+                            <img src={vision.image} alt={vision.name} className="w-full aspect-square object-cover" />
+                            <div className="p-3 text-center flex-grow flex flex-col justify-center">
+                              <h3 className="text-lg font-bold text-gray-900 mb-0.5">{vision.name}</h3>
+                              <p className="text-teal-600 font-semibold text-xs">{vision.designation}</p>
                             </div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-1">{vision.name}</h3>
-                            <p className="text-teal-600 font-semibold">{vision.designation}</p>
                           </div>
                           
-                          {/* Right Section - Larger */}
-                          <div className="md:w-2/3 p-10 flex flex-col justify-center relative overflow-hidden">
+                          {/* Right Section - 3/4 Width */}
+                          <div className="md:w-3/4 p-8 md:p-12 flex flex-col justify-center relative overflow-hidden">
                             <div className="absolute top-4 left-6 text-8xl text-teal-200/60 font-serif leading-none pointer-events-none">"</div>
                             <div className="relative z-10 text-xl md:text-2xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4">
                               {vision.vision}
@@ -167,7 +167,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                       <ChevronRight className="w-6 h-6" />
                     </button>
                     
-                    <div className="flex justify-center gap-2 mt-8">
+                    <div className="flex justify-center gap-2 mt-3 mb-3">
                       {landingData.visions.map((_, idx) => (
                         <button
                           key={idx}
@@ -190,9 +190,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
-      <section className="py-20 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500">
+      <section className="py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-6">
             <h2 className="text-4xl font-bold text-white">Admissions Open</h2>
           </div>
 
@@ -210,9 +210,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-8 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-6">
             <h2 className="text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Our Expert Faculty
@@ -249,9 +249,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
-      <section className="py-20 bg-gradient-to-br from-teal-50 to-cyan-50">
+      <section className="py-8 bg-gradient-to-br from-teal-50 to-cyan-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
+          <div className="text-center mb-6">
             <h2 className="text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Our Achievers
@@ -309,7 +309,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 </div>
 
                 {shouldPaginateAchievers && (
-                  <div className="flex justify-center gap-2 mt-6">
+                  <div className="flex justify-center gap-2 mt-4">
                     {achievers.map((_, idx) => (
                       <button
                         key={idx}
@@ -323,7 +323,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 )}
               </>
             ) : (
-              <div className="text-center py-20 bg-white rounded-2xl shadow-xl">
+              <div className="text-center py-8 bg-white rounded-2xl shadow-xl">
                 <p className="text-gray-500 italic">No achievers added yet.</p>
               </div>
             )}
@@ -331,9 +331,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-8 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-6">
             <h2 className="text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Register Your Interest
