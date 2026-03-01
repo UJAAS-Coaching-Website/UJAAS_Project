@@ -213,7 +213,7 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
             <div className="flex items-center justify-between mb-4">
               <button 
                 onClick={() => { setCurrentView('subjects'); setSelectedSubject(null); }}
-                className="flex items-center gap-2 text-teal-600 font-bold hover:underline"
+                className="flex items-center gap-2 text-teal-600 text-sm font-semibold hover:underline shrink-0 whitespace-nowrap"
               >
                 <ChevronLeft className="w-4 h-4" /> Back to Subjects
               </button>
@@ -252,22 +252,21 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
             exit={{ opacity: 0, y: -20 }}
             className="space-y-6"
           >
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-row justify-between items-center gap-4">
               <button 
                 onClick={() => { setCurrentView('chapters'); setSelectedChapter(null); }}
-                className="flex items-center gap-2 text-teal-600 font-bold hover:underline"
+                className="flex items-center gap-2 text-teal-600 text-sm font-semibold hover:underline shrink-0 whitespace-nowrap"
               >
                 <ChevronLeft className="w-4 h-4" /> Back to Chapters
               </button>
               
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="w-full sm:w-48">
                 <input 
                   type="text"
-                  placeholder="Search questions..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                  className="w-full px-4 py-1.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -289,7 +288,7 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2 mb-2">
                           <h4 className="font-bold text-gray-900 truncate text-lg">{q.name}</h4>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          <span className={`px-2 py-0.5 rounded-full text-10px font-black uppercase tracking-wider ${
                             q.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
                             q.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
                             'bg-red-100 text-red-700'
