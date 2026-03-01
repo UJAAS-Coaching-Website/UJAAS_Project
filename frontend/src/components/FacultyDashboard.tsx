@@ -702,7 +702,7 @@ export function FacultyDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pt-16">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col pt-16">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-layer-navbar shadow-md transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -782,7 +782,7 @@ export function FacultyDashboard({
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <motion.div
           key={`${selectedBatch || adminSection}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}
