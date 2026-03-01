@@ -282,6 +282,15 @@ const MOCK_FACULTY: Faculty[] = [
 ];
 
 const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
+const BATCH_ATTENDANCE_STORAGE_KEY = 'ujaas_batch_attendance';
+
+type MonthlyAttendance = {
+  month: string;
+  totalClasses: number;
+  studentAttendance: Record<string, number>;
+};
+
+type BatchAttendance = Record<string, MonthlyAttendance[]>;
 
 type StoredStudentRemarks = Record<
   string,
@@ -359,6 +368,19 @@ export function FacultyDashboard({
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [faculty, setFaculty] = useState<Faculty[]>(MOCK_FACULTY);
 
+  const [batchAttendance, setBatchAttendance] = useState<BatchAttendance>(() => {
+    try {
+      const stored = localStorage.getItem(BATCH_ATTENDANCE_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(BATCH_ATTENDANCE_STORAGE_KEY, JSON.stringify(batchAttendance));
+  }, [batchAttendance]);
+
   useEffect(() => {
     // Ensure mock students are always loaded and correctly assigned to current batches
     setStudents(withStoredRemarks(MOCK_STUDENTS));
@@ -377,6 +399,8 @@ export function FacultyDashboard({
     open: false,
     batch: null
   });
+  const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; batch: Batch | null }>({ open: false, batch: null });
+  const [attendanceEditMode, setAttendanceEditMode] = useState(false);
 
   // Content Management State (Keeping it internal as requested)
   const [subjects, setSubjects] = useState([
@@ -412,7 +436,8 @@ export function FacultyDashboard({
       showFullTimetable ||
       batchStudentPicker.open ||
       isAddSubjectModalOpen ||
-      isAddChapterModalOpen
+      isAddChapterModalOpen ||
+      attendanceModal.open
   );
 
   const handleAddSubject = (e: FormEvent) => {
@@ -586,6 +611,53 @@ export function FacultyDashboard({
   };
   const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
 
+  const handleUpdateBatchAttendance = (batch: string, updatedMonthlyAttendance: MonthlyAttendance[]) => {
+    setBatchAttendance(prev => ({
+      ...prev,
+      [batch]: updatedMonthlyAttendance
+    }));
+
+    // Update students' attendance ratings based on last month
+    if (updatedMonthlyAttendance.length > 0 && facultySubject) {
+      const lastMonth = [...updatedMonthlyAttendance].sort((a, b) => b.month.localeCompare(a.month))[0];
+      const hasAttendanceData = Object.keys(lastMonth.studentAttendance).length > 0;
+
+      if (lastMonth.totalClasses > 0 && hasAttendanceData) {
+        setStudents(prev => prev.map(student => {
+          if (student.batch !== batch) return student;
+          const attended = lastMonth.studentAttendance[student.id] || 0;
+          const rating = (attended / lastMonth.totalClasses) * 5;
+          
+          const updatedSubjectRatings = {
+            ...(student.subjectRatings ?? {}),
+            [facultySubject]: {
+              ...(student.subjectRatings?.[facultySubject] ?? { tests: 0, dppPerformance: 0, behavior: 0 }),
+              attendance: Number(rating.toFixed(1))
+            }
+          };
+
+          const values = Object.values(updatedSubjectRatings);
+          const avg = values.length > 0
+            ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) / values.length
+            : student.rating;
+
+          return {
+            ...student,
+            subjectRatings: updatedSubjectRatings,
+            rating: Number(avg.toFixed(1))
+          };
+        }));
+      }
+    }
+  };
+
+  const handleSaveAllStudentsAttendance = (batch: string, month: string, studentAttendance: Record<string, number>) => {
+    const currentBatchAtt = batchAttendance[batch] || [];
+    const updated = currentBatchAtt.map(m => m.month === month ? { ...m, studentAttendance } : m);
+    handleUpdateBatchAttendance(batch, updated);
+    setAttendanceEditMode(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pt-20">
       {/* Navigation */}
@@ -614,7 +686,7 @@ export function FacultyDashboard({
                     onClick={() => onNavigateSection(section.id as FacultySection)}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-teal-600 to-indigo-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -634,7 +706,7 @@ export function FacultyDashboard({
                     onClick={() => onNavigate(tab.id as Tab)}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       activeTab === tab.id && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-teal-600 to-indigo-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -725,6 +797,7 @@ export function FacultyDashboard({
                   onClearBatch={onClearBatch}
                   onViewTimetable={() => setShowFullTimetable(true)}
                   facultySubject={facultySubject}
+                  onOpenAttendance={() => setAttendanceModal({ open: true, batch: selectedBatch })}
                 />
               )}
               {activeTab === 'students' && (
@@ -733,6 +806,15 @@ export function FacultyDashboard({
                   selectedBatch={selectedBatch}
                   onChangeBatch={onClearBatch}
                   onViewStudent={openStudentRatings}
+                  batchAttendance={batchAttendance[selectedBatch] || []}
+                  editMode={attendanceEditMode}
+                  onToggleEditMode={() => setAttendanceEditMode(!attendanceEditMode)}
+                  onSaveAttendance={(studentAttendance) => {
+                    const lastMonth = [...(batchAttendance[selectedBatch] || [])].sort((a, b) => b.month.localeCompare(a.month))[0];
+                    if (lastMonth) {
+                      handleSaveAllStudentsAttendance(selectedBatch, lastMonth.month, studentAttendance);
+                    }
+                  }}
                 />
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
@@ -781,6 +863,18 @@ export function FacultyDashboard({
               facultySubject={facultySubject}
               onSaveSubjectRating={handleSaveFacultySubjectRating}
               onSaveSubjectRemark={handleSaveFacultySubjectRemark}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {attendanceModal.open && attendanceModal.batch && (
+            <AttendanceCalendarModal
+              open={attendanceModal.open}
+              batch={attendanceModal.batch}
+              onClose={() => setAttendanceModal({ open: false, batch: null })}
+              monthlyAttendance={batchAttendance[attendanceModal.batch] || []}
+              onUpdateAttendance={(updated) => handleUpdateBatchAttendance(attendanceModal.batch!, updated)}
             />
           )}
         </AnimatePresence>
@@ -855,7 +949,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students in your assigned batches</p></div>
-        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-cyan-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -882,7 +976,8 @@ function OverviewTab({
   onNavigate,
   onClearBatch,
   onViewTimetable,
-  facultySubject
+  facultySubject,
+  onOpenAttendance
 }: { 
   selectedBatch: Batch | null; 
   students: Student[];
@@ -890,17 +985,25 @@ function OverviewTab({
   onClearBatch: () => void;
   onViewTimetable: () => void;
   facultySubject: string | null;
+  onOpenAttendance: () => void;
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 to-indigo-600 p-8 rounded-3xl shadow-xl text-white mb-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
           <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
         </div>
+        <button
+          onClick={onOpenAttendance}
+          className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl font-bold transition flex items-center gap-2 border border-white/30"
+        >
+          <Calendar className="w-5 h-5" />
+          Classes Taken
+        </button>
       </div>
 
       {/* Batch Content Section */}
@@ -925,8 +1028,35 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ 
+  students, 
+  selectedBatch, 
+  onChangeBatch: _onChangeBatch, 
+  onViewStudent,
+  batchAttendance,
+  editMode,
+  onToggleEditMode,
+  onSaveAttendance
+}: { 
+  students: Student[]; 
+  selectedBatch: Batch; 
+  onChangeBatch: () => void; 
+  onViewStudent: (s: Student) => void;
+  batchAttendance: MonthlyAttendance[];
+  editMode: boolean;
+  onToggleEditMode: () => void;
+  onSaveAttendance: (studentAttendance: Record<string, number>) => void;
+}) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const lastMonth = [...batchAttendance].sort((a, b) => b.month.localeCompare(a.month))[0];
+  const [localAttendance, setLocalAttendance] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (lastMonth) {
+      setLocalAttendance(lastMonth.studentAttendance || {});
+    }
+  }, [lastMonth, editMode]);
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
@@ -934,24 +1064,74 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
+        {lastMonth && (
+          <div className="flex gap-3">
+            {!editMode ? (
+              <button
+                onClick={onToggleEditMode}
+                className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition flex items-center gap-2"
+              >
+                <Edit className="w-5 h-5" />
+                Fill Attendance ({new Date(lastMonth.month).toLocaleString('default', { month: 'long', year: 'numeric' })})
+              </button>
+            ) : (
+              <button
+                onClick={() => onSaveAttendance(localAttendance)}
+                className="px-8 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+              >
+                Save Attendance
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="text-left border-b border-gray-100">
-              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '45%' }}>Student</th>
-              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '25%' }}>Roll No</th>
-              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '30%' }}>Performance</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '40%' }}>Student</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '20%' }}>Roll No</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '20%' }}>Attendance</th>
+              <th className="pb-4 px-4 font-bold text-gray-700" style={{ width: '20%' }}>Performance</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {students.filter(s => s.batch === selectedBatch).map((s) => (
-              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+            {batchStudents.map((s) => (
+              <tr key={s.id} onClick={() => !editMode && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!editMode ? 'cursor-pointer' : ''} group`}>
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
                   <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
+                <td className="py-4 px-4">
+                  {lastMonth ? (
+                    <div className="flex items-center gap-2">
+                      {editMode ? (
+                        <>
+                          <input
+                            type="number"
+                            min="0"
+                            max={lastMonth.totalClasses}
+                            value={localAttendance[s.id] || 0}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setLocalAttendance({ ...localAttendance, [s.id]: Math.min(val, lastMonth.totalClasses) });
+                            }}
+                            className="w-16 px-2 py-1 rounded border border-teal-200 focus:ring-2 focus:ring-teal-100 outline-none"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className="text-gray-400 font-medium">/ {lastMonth.totalClasses}</span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-gray-700">
+                          {lastMonth.studentAttendance[s.id] || 0} / {lastMonth.totalClasses}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm italic">Not set</span>
+                  )}
+                </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center">
                     {renderPerformanceStars(s.rating)}
@@ -962,6 +1142,16 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
           </tbody>
         </table>
       </div>
+      {editMode && (
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={() => onSaveAttendance(localAttendance)}
+            className="px-10 py-4 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1"
+          >
+            Save All Attendance
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1114,7 +1304,7 @@ function NotesManagementTab({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {chapters[selectedSubject]?.map((chapter, index) => (
             <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
-              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
+              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r from-teal-600 to-indigo-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
               <div className="flex items-center gap-2">
                 {canEdit && (
                   <button
@@ -1137,8 +1327,8 @@ function NotesManagementTab({
       {currentView === 'chapter' && selectedChapter && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 border-b border-gray-200">
-            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
-            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-600 to-indigo-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-600 to-indigo-600 rounded-t-full" />)}</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(activeContentType === 'notes' ? notes : dpps).filter(item => item.chapter === selectedChapter).map((item, index) => (
@@ -1180,7 +1370,7 @@ function NotesManagementTab({
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white">
                 <h3 className="text-xl font-bold">Add New Chapter</h3>
                 <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
               </div>
@@ -1207,7 +1397,7 @@ function NotesManagementTab({
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
                   >
                     Create Chapter
                   </button>
@@ -1279,7 +1469,7 @@ function TestSeriesManagementTab({
               </div>
               <button
                 onClick={() => onPreviewTest(test.id)}
-                className="w-full py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" /> Review Questions
               </button>
@@ -1304,7 +1494,7 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
           <select name="batch" defaultValue={initialData?.batch || defaultBatch || ''} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white">
             {batches.map((b:any) => <option key={b.slug} value={b.label}>{b.label}</option>)}
           </select>
-          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button></div>
+          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
@@ -1320,7 +1510,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
         <form onSubmit={(e) => { e.preventDefault(); onUpdateBatch(batchLabel); onClose(); }} className="space-y-4">
           <input name="label" defaultValue={batchLabel} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500" />
-          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-cyan-600 text-white rounded-xl font-bold">Save</button></div>
+          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
@@ -1364,7 +1554,7 @@ function BatchStudentPickerModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="relative w-full max-w-2xl h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white">
           <h3 className="text-xl font-semibold">Add Existing Student</h3>
           <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
         </div>
@@ -1382,7 +1572,7 @@ function BatchStudentPickerModal({
                 <button
                   type="button"
                   onClick={() => handleAssign(student)}
-                  className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
                 >
                   Add
                 </button>
@@ -1473,7 +1663,7 @@ function StudentRatingsModal({
         className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white flex justify-between items-center shrink-0">
           <div>
             <h3 className="text-xl font-bold">{student.name}</h3>
             <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
@@ -1526,7 +1716,7 @@ function StudentRatingsModal({
 
               <button
                 onClick={() => setShowRatings(true)}
-                className="w-full py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
               >
                 <Star className="w-5 h-5 fill-current" /> View Detailed Ratings
               </button>
@@ -1577,7 +1767,7 @@ function StudentRatingsModal({
                             {canEditThisSubject && !isEditing && (
                               <button
                                 onClick={() => setEditingSubject(subject)}
-                                className="px-3 py-1 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition"
+                                className="px-3 py-1 bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition"
                               >
                                 Edit
                               </button>
@@ -1596,18 +1786,21 @@ function StudentRatingsModal({
                           <div className="p-6 border-b border-gray-100 bg-teal-50/50 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                               {[
-                                { label: 'Attendance', key: 'attendance' },
+                                { label: 'Attendance', key: 'attendance', readOnly: true },
                                 { label: 'Test Performance', key: 'tests' },
                                 { label: 'DPP Performance', key: 'dppPerformance' },
                                 { label: 'Class Behaviour', key: 'behavior' },
                               ].map((item) => (
                                 <div key={item.key} className="space-y-1">
-                                  <label className="text-xs font-bold text-gray-500 uppercase">{item.label}</label>
+                                  <label className="text-xs font-bold text-gray-500 uppercase">
+                                    {item.label} {(item as any).readOnly && <span className="text-[10px] text-teal-600 normal-case ml-1">(Calculated)</span>}
+                                  </label>
                                   <input
                                     type="number"
                                     min={0}
                                     max={5}
                                     step={0.1}
+                                    readOnly={(item as any).readOnly}
                                     value={currentDraft[item.key as keyof typeof currentDraft]}
                                     onChange={(e) => setDraftRatings((prev) => ({
                                       ...prev,
@@ -1616,11 +1809,12 @@ function StudentRatingsModal({
                                         [item.key]: e.target.value
                                       }
                                     }))}
-                                    className="w-full rounded-lg border border-gray-200 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-teal-200"
+                                    className={`w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all ${
+                                      (item as any).readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
+                                    }`}
                                   />
                                 </div>
-                              ))}
-                            </div>
+                              ))}                            </div>
                             <button
                               type="button"
                               onClick={() => {
@@ -1642,7 +1836,7 @@ function StudentRatingsModal({
                                   setEditingSubject(null);
                                 }
                               }}
-                              className="w-full py-3 rounded-xl bg-teal-600 text-white font-bold shadow-lg hover:bg-teal-700 transition"
+                              className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:bg-teal-700 transition"
                             >
                               Save {subject} Ratings
                             </button>
@@ -1747,7 +1941,7 @@ function StudentRatingsModal({
                           setEditingSubject(facultySubject);
                         }
                       }}
-                      className="px-6 py-3 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
+                      className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
                     >
                       Add Initial {facultySubject} Rating
                     </button>
@@ -1758,7 +1952,7 @@ function StudentRatingsModal({
           )}
         </div>
 
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 shrink-0">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
             className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
@@ -1770,3 +1964,68 @@ function StudentRatingsModal({
     </div>
   );
 }
+
+export function AttendanceCalendarModal({ open, batch, onClose, monthlyAttendance, onUpdateAttendance }: { open: boolean; batch: string; onClose: () => void; monthlyAttendance: MonthlyAttendance[]; onUpdateAttendance: (updated: MonthlyAttendance[]) => void; }) {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const year = new Date().getFullYear();
+  
+  const handleUpdateClasses = (monthStr: string, totalClasses: number) => {
+    const [y, m] = monthStr.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const validatedClasses = Math.min(totalClasses, daysInMonth);
+
+    const existing = monthlyAttendance.find(m => m.month === monthStr);
+    let updated;
+    if (existing) {
+      updated = monthlyAttendance.map(m => m.month === monthStr ? { ...m, totalClasses: validatedClasses } : m);
+    } else {
+      updated = [...monthlyAttendance, { month: monthStr, totalClasses: validatedClasses, studentAttendance: {} }];
+    }
+    onUpdateAttendance(updated);
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Classes Taken - {batch}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {months.map((month, idx) => {
+            const monthStr = `${year}-${(idx + 1).toString().padStart(2, '0')}`;
+            const data = monthlyAttendance.find(m => m.month === monthStr);
+            const [y, m] = monthStr.split('-').map(Number);
+            const daysInMonth = new Date(y, m, 0).getDate();
+            return (
+              <div key={month} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-700">{month} {year}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-500">Total Classes:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={daysInMonth}
+                    value={data?.totalClasses || ''}
+                    onChange={(e) => handleUpdateClasses(monthStr, parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-teal-500 outline-none"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-8 flex justify-end">
+          <button onClick={onClose} className="px-8 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition">Done</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+

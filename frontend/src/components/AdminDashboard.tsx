@@ -2550,17 +2550,17 @@ function AddStudentModal({
             />
           </label>
 
-          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+          <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+              className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-100 transition shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               Save Student
             </button>
@@ -2679,17 +2679,17 @@ function AddFacultyModal({
             />
           </label>
 
-          <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+          <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+              className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-100 transition shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-lg hover:shadow-xl transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               Save Faculty
             </button>
@@ -2763,11 +2763,11 @@ function BatchStudentPickerModal({
             ))
           )}
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
           >
             Close
           </button>
@@ -2831,11 +2831,11 @@ function BatchFacultyPickerModal({
             ))
           )}
         </div>
-        <div className="px-6 pb-6 flex justify-end">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+            className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
           >
             Close
           </button>
@@ -3059,12 +3059,12 @@ function BatchFormModal({
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4">
+          <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end pt-4">
             {mode === 'edit' && (
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-6 py-3 min-h-[44px] rounded-xl border border-red-200 text-red-600 font-medium leading-none whitespace-nowrap hover:bg-red-50 transition mr-auto"
+                className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition sm:mr-auto"
               >
                 Delete Batch
               </button>
@@ -3072,13 +3072,13 @@ function BatchFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 min-h-[44px] rounded-xl border border-gray-200 text-gray-700 font-medium leading-none whitespace-nowrap hover:bg-gray-50 transition"
+              className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-100 transition shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               {mode === 'edit' ? 'Save Batch' : 'Add Batch'}
             </button>
@@ -3756,7 +3756,7 @@ function StudentRatingsModal({
           )}
         </div>
 
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 shrink-0">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
             className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
