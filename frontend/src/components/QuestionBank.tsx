@@ -168,17 +168,12 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
-          {onBack && (
-            <button 
-              onClick={onBack}
-              className="flex items-center gap-2 text-teal-100 hover:text-white mb-4 font-bold transition-colors group"
-            >
-              <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-              Back
-            </button>
-          )}
           <h2 className="text-3xl font-bold tracking-tight">Question Bank</h2>
-          <p className="text-teal-50/90 font-medium">Access and manage practice materials</p>
+          <p className="text-teal-50/90 font-medium">
+            {userRole === 'faculty' 
+              ? 'Empower students with comprehensive practice materials' 
+              : 'Master your concepts with curated practice sets'}
+          </p>
         </div>
         {userRole === 'faculty' && (
           <button
