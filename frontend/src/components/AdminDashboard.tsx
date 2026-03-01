@@ -501,6 +501,7 @@ export function AdminDashboard({
         parentContact: data.parentContact
       } : s));
     } else {
+      const initialPassword = generateInitialPassword(data.name);
       const newStudent: Student = {
         id: `student-${Date.now()}`,
         name: data.name,
@@ -516,6 +517,7 @@ export function AdminDashboard({
         rating: 0,
       };
       setStudents(prev => [...prev, newStudent]);
+      window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
     }
     closeStudentModal();
   };
@@ -524,11 +526,13 @@ export function AdminDashboard({
     if (data.id) {
       setFaculty(prev => prev.map(f => f.id === data.id ? { ...f, ...data } : f));
     } else {
+      const initialPassword = generateInitialPassword(data.name);
       const newFaculty: Faculty = {
         ...data,
         id: `faculty-${Date.now()}`,
       };
       setFaculty(prev => [...prev, newFaculty]);
+      window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
     }
     closeFacultyModal();
   };
@@ -2737,6 +2741,20 @@ function AddFacultyModal({
           </div>
 
           <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end shrink-0">
+            {initialData?.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  const newPass = generateInitialPassword(formState.name);
+                  if (window.confirm(`Are you sure you want to reset the password for ${formState.name}?\n\nThe new password will be: ${newPass}`)) {
+                    window.alert(`Password for ${formState.name} has been reset to: ${newPass}`);
+                  }
+                }}
+                className="px-6 py-3 rounded-xl border border-blue-200 text-blue-600 font-bold hover:bg-blue-50 transition shadow-sm sm:mr-auto"
+              >
+                Reset Password
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -3146,6 +3164,11 @@ function BatchFormModal({
   );
 }
 
+const generateInitialPassword = (name: string) => {
+  const firstName = name.trim().split(/\s+/)[0].toLowerCase();
+  return `${firstName}@123`;
+};
+
 function StudentRatingsModal({
   open,
   student,
@@ -3190,6 +3213,14 @@ function StudentRatingsModal({
   }, [open, student]);
 
   if (!open || !student) return null;
+
+  const handleResetPassword = () => {
+    const newPass = generateInitialPassword(student.name);
+    if (window.confirm(`Are you sure you want to reset the password for ${student.name}?\n\nThe new password will be: ${newPass}`)) {
+      // In a real app, this would be an API call
+      window.alert(`Password for ${student.name} has been reset to: ${newPass}`);
+    }
+  };
 
   const calculateSubjectRating = (r: { attendance: number; tests: number; dppPerformance: number; behavior: number }) => {
     return (r.attendance + r.tests + r.dppPerformance + r.behavior) / 4;
@@ -3813,10 +3844,17 @@ function StudentRatingsModal({
           )}
         </div>
 
-        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={handleResetPassword}
+            className="px-6 py-3 rounded-xl border border-blue-200 text-blue-600 font-bold hover:bg-blue-50 transition shadow-sm sm:mr-auto"
+          >
+            Reset Password
+          </button>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
+            className="px-8 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm flex-1 sm:flex-none"
           >
             Close
           </button>
