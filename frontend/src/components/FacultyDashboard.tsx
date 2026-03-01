@@ -1540,6 +1540,7 @@ function TestSeriesManagementTab({
                   <Search className="w-4 h-4" /> Review
                 </button>
                 <button
+                  onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
                   className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <BarChart3 className="w-4 h-4" /> Performance
@@ -1679,13 +1680,13 @@ function StudentRatingsModal({
   onClose: () => void;
   facultySubject?: string | null;
   onSaveSubjectRating?: (
-    studentId: string, 
-    subject: string, 
+    studentId: string,
+    subject: string,
     ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
   ) => void;
   onSaveSubjectRemark?: (studentId: string, subject: string, remark: string) => void;
 }) {
-  const [showRatings, setShowRatings] = useState(false);
+  const [activeView, setActiveView] = useState<'profile' | 'ratings' | 'performance'>('profile');
   const [draftRatings, setDraftRatings] = useState<Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }>>({});
   const [draftRemarks, setDraftRemarks] = useState<Record<string, string>>({});
   const [editingSubject, setEditingSubject] = useState<string | null>(null);
@@ -1693,7 +1694,7 @@ function StudentRatingsModal({
 
   useEffect(() => {
     if (!open || !student) return;
-    setShowRatings(false);
+    setActiveView('profile');
     setEditingSubject(null);
     setEditingRemarkSubject(null);
     const nextDrafts: Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }> = {};
@@ -1710,8 +1711,15 @@ function StudentRatingsModal({
     setDraftRatings(nextDrafts);
     setDraftRemarks(nextRemarks);
   }, [open, student]);
-
   if (!open || !student) return null;
+
+  const mockTestPerformance = [
+    { title: 'Unit Test 1: Physics Basics', date: '2025-08-15', score: '85/100', rank: '12/150', accuracy: '88%', status: 'Attempted' },
+    { title: 'Monthly Mock: JEE Main Pattern', date: '2025-09-01', score: '245/300', rank: '45/1200', accuracy: '82%', status: 'Attempted' },
+    { title: 'Surprise Quiz: Organic Chemistry', date: '2025-09-10', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
+    { title: 'Unit Test 2: Calculus I', date: '2025-09-20', score: '92/100', rank: '5/160', accuracy: '95%', status: 'Attempted' },
+    { title: 'Full Length Mock 01', date: '2025-10-05', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
+  ];
 
   const calculateSubjectRating = (r: { attendance: number; tests: number; dppPerformance: number; behavior: number }) => {
     return (r.attendance + r.tests + r.dppPerformance + r.behavior) / 4;
@@ -1746,7 +1754,7 @@ function StudentRatingsModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-8">
-          {!showRatings ? (
+          {activeView === 'profile' ? (
             <div className="space-y-8">
               {/* Basic Info Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1786,17 +1794,68 @@ function StudentRatingsModal({
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowRatings(true)}
-                className="w-full py-4 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-              >
-                <Star className="w-5 h-5 fill-current" /> View Detailed Ratings
-              </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setActiveView('ratings')}
+                  className="py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Star className="w-5 h-5 fill-current" /> View Detailed Ratings
+                </button>
+                <button
+                  onClick={() => setActiveView('performance')}
+                  className="py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <BarChart3 className="w-5 h-5" /> View Test Performance
+                </button>
+              </div>
+            </div>
+          ) : activeView === 'performance' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <button onClick={() => setActiveView('profile')} className="text-purple-600 font-bold flex items-center gap-1 hover:underline">
+                  <ChevronLeft className="w-4 h-4" /> Back to Profile
+                </button>
+                <h4 className="text-xl font-bold text-gray-900">Test Performance Summary</h4>
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Test Name</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Score</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Rank</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Accuracy</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {mockTestPerformance.map((perf, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-gray-900">{perf.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{perf.date}</td>
+                        <td className="px-6 py-4 text-sm font-mono text-gray-700">{perf.score}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-blue-600">{perf.rank}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-teal-600">{perf.accuracy}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            perf.status === 'Attempted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {perf.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-gray-400 italic">* This table is for review only.</p>
             </div>
           ) : (
             <div className="space-y-8">
               <div className="flex items-center justify-between mb-2">
-                <button onClick={() => setShowRatings(false)} className="text-teal-600 font-bold flex items-center gap-1 hover:underline">
+                <button onClick={() => setActiveView('profile')} className="text-teal-600 font-bold flex items-center gap-1 hover:underline">
                   <ChevronLeft className="w-4 h-4" /> Back to Profile
                 </button>
                 <div className="text-right">
