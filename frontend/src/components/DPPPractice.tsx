@@ -22,6 +22,7 @@ interface Question {
 interface DPPPracticeProps {
   dpp: DPP;
   onExit: () => void;
+  onComplete?: (score: number) => void;
 }
 
 // Mock questions
@@ -43,7 +44,7 @@ const generateQuestions = (count: number): Question[] => {
   return questions;
 };
 
-export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
+export function DPPPractice({ dpp, onExit, onComplete }: DPPPracticeProps) {
   const [questions] = useState<Question[]>(() => generateQuestions(dpp.totalQuestions));
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(dpp.totalQuestions).fill(null));
@@ -57,11 +58,6 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
     setAnswers(newAnswers);
   };
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
-    setShowConfirmSubmit(false);
-  };
-
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((q, index) => {
@@ -70,6 +66,13 @@ export function DPPPractice({ dpp, onExit }: DPPPracticeProps) {
       }
     });
     return Math.round((correct / questions.length) * 100);
+  };
+
+  const handleSubmit = () => {
+    const finalScore = calculateScore();
+    setIsSubmitted(true);
+    setShowConfirmSubmit(false);
+    onComplete?.(finalScore);
   };
 
   const answeredCount = answers.filter(a => a !== null).length;

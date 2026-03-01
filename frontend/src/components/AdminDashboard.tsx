@@ -1632,7 +1632,7 @@ function OverviewTab({
       </div>
 
       {/* Batch Content Section */}
-      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-white/20">
+      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100">
         <div className="p-5 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
             <BookOpen className="w-6 h-6 text-emerald-600" />
