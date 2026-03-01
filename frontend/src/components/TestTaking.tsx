@@ -85,13 +85,13 @@ export function TestTaking({
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
-  const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+  const totalMarks = questions.reduce((sum, q) => sum + (q?.marks || 0), 0);
 
   // Group questions by subject and section for navigation
-  const subjects = Array.from(new Set(questions.map(q => q.subject)));
+  const subjects = Array.from(new Set(questions.map(q => q?.subject).filter(Boolean)));
   const currentSubject = question?.subject;
-  const sections = Array.from(new Set(questions.filter(q => q.subject === currentSubject).map(q => (q as any).metadata?.section || 'Default'))).sort();
-  const currentSection = (question as any).metadata?.section || 'Default';
+  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
+  const currentSection = (question as any)?.metadata?.section || 'Default';
 
   useEffect(() => {
     if (isEditing) {

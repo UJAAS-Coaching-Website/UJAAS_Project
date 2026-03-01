@@ -483,7 +483,11 @@ function App() {
     }
     const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'student') {
-      return { view: 'student' as const, tab: parts[1] || 'home' };
+      return { 
+        view: 'student' as const, 
+        tab: parts[1] || 'home',
+        subTab: parts[2]
+      };
     }
     if (parts[0] === 'faculty') {
       if (parts.length === 1) {
@@ -546,8 +550,10 @@ function App() {
     return { view: 'get-started' as const };
   };
 
-  const tabToPath = (role: User['role'], tab: StudentTab | AdminTab, batch: AdminBatch | null = null) => {
-    if (role === 'student') return `/student/${tab}`;
+  const tabToPath = (role: User['role'], tab: StudentTab | AdminTab, batch: AdminBatch | null = null, subTab?: string) => {
+    if (role === 'student') {
+      return subTab ? `/student/${tab}/${subTab}` : `/student/${tab}`;
+    }
     if (role === 'faculty') {
       const batchSlug = slugFromBatch(batch);
       if (batchSlug) return `/faculty/${batchSlug}/${tab}`;
@@ -583,8 +589,8 @@ function App() {
       setAdminLandingSection('batches');
       const tab = isStudentTab(route.tab) ? route.tab : 'home';
       setActiveTab(tab);
-      if (route.view !== 'student' || route.tab !== tab) {
-        window.history.replaceState({ tab }, '', tabToPath('student', tab));
+      if (route.view !== 'student' || route.tab !== tab || (route.view === 'student' && route.subTab)) {
+        window.history.replaceState({ tab, subTab: route.subTab }, '', tabToPath('student', tab, null, route.subTab));
       }
       return;
     }
@@ -614,13 +620,13 @@ function App() {
     }
   };
 
-  const navigateTab = (tab: StudentTab | AdminTab) => {
+  const navigateTab = (tab: StudentTab | AdminTab, subTab?: string) => {
     if (!user) return;
     setActiveTab(tab);
     
     let path = '';
     if (user.role === 'student') {
-      path = tabToPath('student', tab);
+      path = tabToPath('student', tab as StudentTab, null, subTab);
     } else {
       const role = user.role === 'faculty' ? 'faculty' : 'admin';
       if (adminBatch) {
@@ -898,12 +904,14 @@ function App() {
             <StudentDashboard 
               user={user} 
               activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
+              subTab={parsePath().view === 'student' ? parsePath().subTab : undefined}
               onNavigate={navigateTab}
               onLogout={handleLogout}
               notifications={notifications}
               onMarkAsRead={handleMarkAsRead}
               onMarkAllAsRead={handleMarkAllAsRead}
               onDeleteNotification={handleDeleteNotification}
+              publishedTests={publishedTests}
             />
           </motion.div>
         ) : user.role === 'faculty' ? (

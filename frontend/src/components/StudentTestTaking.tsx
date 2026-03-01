@@ -63,7 +63,7 @@ export function StudentTestTaking({
   availableBatches = [],
   initialBatches = []
 }: StudentTestTakingProps) {
-  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions || []);
   const [testTitle, setTestTitle] = useState(initialTitle);
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
@@ -75,7 +75,7 @@ export function StudentTestTaking({
   const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
-    () => new Set(initialQuestions[0] ? [initialQuestions[0].id] : [])
+    () => new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : [])
   );
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
@@ -85,13 +85,13 @@ export function StudentTestTaking({
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
-  const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 0), 0);
+  const totalMarks = questions.reduce((sum, q) => sum + (q?.marks || 0), 0);
 
   // Group questions by subject and section for navigation
-  const subjects = Array.from(new Set(questions.map(q => q.subject)));
+  const subjects = Array.from(new Set(questions.map(q => q?.subject).filter(Boolean)));
   const currentSubject = question?.subject;
-  const sections = Array.from(new Set(questions.filter(q => q.subject === currentSubject).map(q => (q as any).metadata?.section || 'Default'))).sort();
-  const currentSection = (question as any).metadata?.section || 'Default';
+  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
+  const currentSection = (question as any)?.metadata?.section || 'Default';
 
   useEffect(() => {
     if (isEditing) {

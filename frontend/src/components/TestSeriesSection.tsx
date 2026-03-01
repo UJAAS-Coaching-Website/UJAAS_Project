@@ -105,7 +105,7 @@ const MOCK_TEST_SERIES: TestSeries[] = [
 ];
 
 interface TestSeriesProps {
-  onStartTest: (testId: string, testTitle: string, duration: number, totalMarks: number, questionCount: number, subject: string, questions?: any[]) => void;
+  onStartTest: (test: any) => void;
   onViewAnalytics: (testId: string) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
@@ -360,15 +360,7 @@ export function TestSeriesSection({
                   if (test.status === 'completed') {
                     onViewAnalytics(test.id);
                   } else if (test.status === 'not-started') {
-                    onStartTest(
-                      test.id,
-                      test.title,
-                      test.duration,
-                      test.totalMarks,
-                      test.questions,
-                      test.subject,
-                      test.realQuestions
-                    );
+                    onStartTest(test);
                   }
                 }}
                 disabled={test.status === 'upcoming'}

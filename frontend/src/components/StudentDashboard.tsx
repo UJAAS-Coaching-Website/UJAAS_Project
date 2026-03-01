@@ -26,7 +26,8 @@ import logo from '../assets/logo.svg';
 interface StudentDashboardProps {
   user: User;
   activeTab: Tab;
-  onNavigate: (tab: Tab) => void;
+  subTab?: string;
+  onNavigate: (tab: Tab, subTab?: string) => void;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -59,6 +60,7 @@ const generateQuestions = (count: number) => {
 export function StudentDashboard({ 
   user, 
   activeTab,
+  subTab,
   onNavigate,
   onLogout, 
   notifications,
@@ -101,6 +103,10 @@ export function StudentDashboard({
       localStorage.setItem('dppAttempts', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const handleSubTabNavigate = (newSubTab?: string) => {
+    onNavigate(activeTab, newSubTab);
   };
 
   return (
@@ -220,6 +226,8 @@ export function StudentDashboard({
               user={user} 
               publishedTests={publishedTests} 
               onStateChange={(mode) => setIsNavbarInternalHidden(mode !== 'list')}
+              subTab={subTab}
+              onNavigateSubTab={handleSubTabNavigate}
             />
           )}
           {activeTab === 'profile' && (
