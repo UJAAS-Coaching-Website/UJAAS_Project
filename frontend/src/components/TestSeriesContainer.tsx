@@ -304,9 +304,9 @@ function TestOverview({
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-8 space-y-12">
           {/* Question Breakdown */}
-          <section className="mb-10">
+          <section>
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-teal-600" />
               Question Breakdown & Marking Scheme
@@ -344,18 +344,26 @@ function TestOverview({
           </section>
 
           {/* Instructions */}
-          <section className="mb-10 p-6 bg-amber-50 rounded-2xl border border-amber-100">
-            <h3 className="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
+          <section className="p-8 bg-amber-50 rounded-3xl border border-amber-100 shadow-sm">
+            <h3 className="text-xl font-bold text-amber-900 mb-6 flex items-center gap-2">
+              <AlertCircle className="w-6 h-6" />
               General Instructions
             </h3>
-            <div className="text-amber-800 space-y-3 whitespace-pre-wrap leading-relaxed font-medium">
-              {test.instructions || "1. Ensure you have a stable internet connection.\n2. Do not refresh or close the tab during the test.\n3. The test will automatically submit when the timer ends.\n4. Use of unfair means will lead to disqualification."}
+            <div className="text-amber-800 space-y-4 leading-relaxed font-semibold">
+              {(test.instructions || "1. Ensure you have a stable internet connection.\n2. Do not refresh or close the tab during the test.\n3. The test will automatically submit when the timer ends.\n4. Use of unfair means will lead to disqualification.")
+                .split('\n')
+                .map((point, i) => point.trim() && (
+                  <div key={i} className="flex gap-3">
+                    <span className="shrink-0">•</span>
+                    <p>{point.trim()}</p>
+                  </div>
+                ))
+              }
             </div>
           </section>
 
           {/* Start Action */}
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 pt-4">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
