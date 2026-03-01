@@ -264,7 +264,7 @@ export function AdminDashboard({
     title: 'Add Student'
   });
 
-  const [facultyModal, setFacultyModal] = useState<{ open: boolean; initialData?: Faculty; title: string }>({
+  const [facultyModal, setFacultyModal] = useState<{ open: boolean; initialData?: Faculty; title: string; isEditing?: boolean }>({
     open: false,
     title: 'Add Faculty'
   });
@@ -463,8 +463,8 @@ export function AdminDashboard({
   const openEditStudent = (student: Student) => setStudentModal({ open: true, defaultBatch: student.batch, initialData: student, title: 'Edit Student' });
   const closeStudentModal = () => setStudentModal({ ...studentModal, open: false });
 
-  const openAddFaculty = () => setFacultyModal({ open: true, title: 'Add Faculty' });
-  const openEditFaculty = (faculty: Faculty) => setFacultyModal({ open: true, initialData: faculty, title: 'Edit Faculty' });
+  const openAddFaculty = () => setFacultyModal({ open: true, title: 'Add Faculty', isEditing: true });
+  const openEditFaculty = (faculty: Faculty) => setFacultyModal({ open: true, initialData: faculty, title: 'Edit Faculty', isEditing: true });
   const closeFacultyModal = () => setFacultyModal({ ...facultyModal, open: false });
 
   const openAddBatch = () => setBatchModal({ open: true, mode: 'create' });
@@ -768,6 +768,7 @@ export function AdminDashboard({
                 <FacultyDirectoryTab
                   faculty={faculty}
                   onAddFaculty={openAddFaculty}
+                  onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
                   onEditFaculty={openEditFaculty}
                   onDeleteFaculty={handleDeleteFaculty}
                 />
@@ -850,6 +851,7 @@ export function AdminDashboard({
           initialData={facultyModal.initialData}
           title={facultyModal.title}
           onSubmit={handleSaveFaculty}
+          isInitialEditing={facultyModal.isEditing}
         />
 
         <BatchFormModal
@@ -1649,7 +1651,7 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -1680,12 +1682,6 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} 
-                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
@@ -2249,7 +2245,7 @@ function NotesManagementTab({
   );
 }
 
-function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const [q, setQ] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
 
@@ -2321,12 +2317,6 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
                 </td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} 
-                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                   >
@@ -2342,7 +2332,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
   );
 }
 
-function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFaculty }: { faculty: Faculty[]; onAddFaculty: () => void; onEditFaculty: (t: Faculty) => void; onDeleteFaculty: (id: string) => void }) {
+function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFaculty, onDeleteFaculty }: { faculty: Faculty[]; onAddFaculty: () => void; onViewFaculty: (t: Faculty) => void; onEditFaculty: (t: Faculty) => void; onDeleteFaculty: (id: string) => void }) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex justify-between items-center mb-8">
@@ -2353,19 +2343,21 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onEditFaculty, onDeleteFac
         {faculty.map(t => (
           <div 
             key={t.id} 
-            onClick={() => onEditFaculty(t)}
+            onClick={() => onViewFaculty(t)}
             className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group cursor-pointer hover:shadow-md hover:border-teal-100 transition-all"
           >
             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button 
                 onClick={(e) => { e.stopPropagation(); onEditFaculty(t); }} 
                 className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
+                title="Edit Faculty"
               >
                 <Edit className="w-4 h-4" />
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); onDeleteFaculty(t.id); }} 
                 className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                title="Delete Faculty"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -2646,13 +2638,16 @@ function AddFacultyModal({
   initialData,
   title,
   onSubmit,
+  isInitialEditing,
 }: {
   open: boolean;
   onClose: () => void;
   initialData?: Faculty;
   title?: string;
   onSubmit?: (data: FacultyFormState) => void;
+  isInitialEditing?: boolean;
 }) {
+  const [isEditing, setIsEditing] = useState(isInitialEditing ?? !initialData?.id);
   const [formState, setFormState] = useState<FacultyFormState>({
     id: initialData?.id,
     subject: initialData?.subject ?? '',
@@ -2665,6 +2660,7 @@ function AddFacultyModal({
 
   useEffect(() => {
     if (!open) return;
+    setIsEditing(isInitialEditing ?? !initialData?.id);
     setFormState({
       id: initialData?.id,
       subject: initialData?.subject ?? '',
@@ -2674,7 +2670,7 @@ function AddFacultyModal({
       joinDate: initialData?.joinDate ?? '',
       rating: initialData?.rating ?? 0,
     });
-  }, [open, initialData]);
+  }, [open, initialData, isInitialEditing]);
 
   if (!open) return null;
 
@@ -2699,57 +2695,71 @@ function AddFacultyModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
-          <h3 className="text-xl font-semibold">{title ?? 'Add Faculty'}</h3>
-          <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-semibold">{isEditing ? (initialData?.id ? 'Edit Faculty' : 'Add Faculty') : 'Faculty Details'}</h3>
+            {isEditing && <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>}
+          </div>
+          {!isEditing && initialData?.id && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl font-bold text-sm transition border border-white/30"
+            >
+              Edit Details
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Subject {requiredMark}</span>
+              <span className="block">Subject {isEditing && requiredMark}</span>
               <input
                 type="text"
-                required
+                required={isEditing}
+                readOnly={!isEditing}
                 value={formState.subject}
                 onChange={handleChange('subject')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="e.g. Physics"
               />
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Faculty Name {requiredMark}</span>
+              <span className="block">Faculty Name {isEditing && requiredMark}</span>
               <input
                 type="text"
-                required
+                required={isEditing}
+                readOnly={!isEditing}
                 value={formState.name}
                 onChange={handleChange('name')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="Faculty name"
               />
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {requiredMark}</span>
+              <span className="block">Phone Number {isEditing && requiredMark}</span>
               <input
                 type="tel"
-                required
+                required={isEditing}
+                readOnly={!isEditing}
                 value={formState.phone}
                 onChange={handleChange('phone')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="+91 9XXXX XXXXX"
               />
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Email {requiredMark}</span>
+              <span className="block">Email {isEditing && requiredMark}</span>
               <input
                 type="email"
-                required
+                required={isEditing}
+                readOnly={!isEditing}
                 value={formState.email}
                 onChange={handleChange('email')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="faculty@email.com"
               />
             </label>
@@ -2758,9 +2768,10 @@ function AddFacultyModal({
               <span className="block">Join Date</span>
               <input
                 type="date"
+                readOnly={!isEditing}
                 value={formState.joinDate}
                 onChange={handleChange('joinDate')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
               />
             </label>
 
@@ -2779,7 +2790,7 @@ function AddFacultyModal({
           </div>
 
           <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 justify-end shrink-0">
-            {initialData?.id && (
+            {isEditing && initialData?.id && (
               <button
                 type="button"
                 onClick={() => {
@@ -2788,7 +2799,7 @@ function AddFacultyModal({
                     window.alert(`Password for ${formState.name} has been reset to: ${newPass}`);
                   }
                 }}
-                className="px-6 py-3 rounded-xl border border-blue-200 text-blue-600 font-bold hover:bg-blue-50 transition shadow-sm sm:mr-auto"
+                className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition shadow-sm sm:mr-auto"
               >
                 Reset Password
               </button>
@@ -2798,14 +2809,16 @@ function AddFacultyModal({
               onClick={onClose}
               className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-100 transition shadow-sm"
             >
-              Cancel
+              {isEditing && initialData?.id ? 'Cancel' : 'Close'}
             </button>
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition"
-            >
-              Save Faculty
-            </button>
+            {isEditing && (
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition"
+              >
+                {initialData?.id ? 'Save Changes' : 'Save Faculty'}
+              </button>
+            )}
           </div>
         </form>
       </motion.div>
@@ -3882,14 +3895,16 @@ function StudentRatingsModal({
           )}
         </div>
 
-        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            className="px-6 py-3 rounded-xl border border-blue-200 text-blue-600 font-bold hover:bg-blue-50 transition shadow-sm sm:mr-auto"
-          >
-            Reset Password
-          </button>
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3 shrink-0 justify-end">
+          {isEditingProfile && (
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition shadow-sm sm:mr-auto"
+            >
+              Reset Password
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-8 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm flex-1 sm:flex-none"
