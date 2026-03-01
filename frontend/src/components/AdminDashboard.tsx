@@ -759,12 +759,19 @@ export function AdminDashboard({
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} onPublish={onPublishTest} />
           ) : performanceInsightsTestId ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestPerformanceInsights
-                testId={performanceInsightsTestId}
-                testTitle={publishedTests.find(t => t.id === performanceInsightsTestId)?.title || ''}
-                performances={generateMockPerformances(performanceInsightsTestId)}
-                onClose={() => setPerformanceInsightsTestId(null)}
-              />
+              {(() => {
+                const test = publishedTests.find(t => t.id === performanceInsightsTestId);
+                const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
+                return (
+                  <TestPerformanceInsights
+                    testId={performanceInsightsTestId}
+                    testTitle={test?.title || ''}
+                    scheduledDateTime={scheduledDateTime}
+                    performances={generateMockPerformances(performanceInsightsTestId)}
+                    onClose={() => setPerformanceInsightsTestId(null)}
+                  />
+                );
+              })()}
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
@@ -2506,7 +2513,7 @@ function TestSeriesManagementTab({
                   <Eye className="w-4 h-4" /> Preview
                 </button>
                 <button 
-                  className="flex-[2] py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <BarChart3 className="w-4 h-4" /> Performance
                 </button>
