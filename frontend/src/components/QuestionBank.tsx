@@ -9,6 +9,7 @@ import {
   Plus,
   Upload,
   X,
+  Trash2,
   CheckCircle,
   BarChart,
   Search
@@ -98,22 +99,38 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
     : [];
 
   const handleAddQuestion = (newQuestion: Omit<Question, 'id' | 'date' | 'size'>) => {
+    // Helper to find existing matching strings (case-insensitive)
+    const findExisting = (arr: string[], target: string) => 
+      arr.find(item => item.toLowerCase().trim() === target.toLowerCase().trim());
+
+    const existingSubjects = Array.from(new Set(questions.map(q => q.subject)));
+    const existingChapters = Array.from(new Set(questions.map(q => q.chapter)));
+
+    const normalizedSubject = findExisting(existingSubjects, newQuestion.subject) || newQuestion.subject.trim();
+    const normalizedChapter = findExisting(existingChapters, newQuestion.chapter) || newQuestion.chapter.trim();
+
     const question: Question = {
       ...newQuestion,
+      subject: normalizedSubject,
+      chapter: normalizedChapter,
       id: `q-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       size: `${(Math.random() * 2 + 0.5).toFixed(1)} MB`
     };
     setQuestions(prev => [question, ...prev]);
     setIsAddModalOpen(false);
-    
-    // If we were on the subjects view and added for a subject, maybe navigate?
-    // For now stay where we are.
   };
 
   const handleDeleteQuestion = (id: string) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
       setQuestions(prev => prev.filter(q => q.id !== id));
+    }
+  };
+
+  const handleDeleteChapter = (chapterName: string) => {
+    if (window.confirm(`Are you sure you want to delete the entire chapter "${chapterName}" and all its contents?`)) {
+      setQuestions(prev => prev.filter(q => !(q.subject === selectedSubject && q.chapter === chapterName)));
+      setSelectedChapter(null);
     }
   };
 
@@ -240,7 +257,21 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
+                  <div className="flex items-center gap-2">
+                    {userRole === 'faculty' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteChapter(chapter);
+                        }}
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete Chapter"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -320,9 +351,9 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
                             {userRole === 'faculty' && (
                               <button 
                                 onClick={() => handleDeleteQuestion(q.id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-sm bg-white border border-gray-100"
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-sm bg-white border border-gray-100 opacity-0 group-hover:opacity-100"
                               >
-                                <X className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             )}
                           </div>
@@ -472,7 +503,7 @@ function QuestionForm({ userSubject, batches, onSubmit, onCancel }: {
                   onClick={() => setFormData({ ...formData, difficulty: d })}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
                     formData.difficulty === d 
-                      ? 'bg-teal-600 text-white shadow-md' 
+                      ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
