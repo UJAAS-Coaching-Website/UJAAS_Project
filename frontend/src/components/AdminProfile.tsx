@@ -16,9 +16,40 @@ interface AdminProfileProps {
   };
   onLogout: () => void;
 }
-// ... (StudentDetails interface)
 export function AdminProfile({ user, onLogout }: AdminProfileProps) {
-// ... (state and useEffects)
+  const [profileUser, setProfileUser] = useState(user);
+
+  useEffect(() => {
+    setProfileUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshProfile = async () => {
+      try {
+        const response = await me();
+        if (!mounted) return;
+
+        const latestUser = response.user as any;
+        setProfileUser(latestUser);
+      } catch {
+        // Keep existing profile state if refresh fails.
+      }
+    };
+
+    refreshProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const displayName =
+    profileUser.role === 'admin' && profileUser.name.trim().toLowerCase() === 'admin user'
+      ? 'Administrator'
+      : profileUser.name;
+
   return (
     <div className="space-y-6">
       <motion.div
