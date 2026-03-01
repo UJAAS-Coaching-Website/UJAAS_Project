@@ -14,6 +14,7 @@ import {
   Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import logo from '../assets/logo.svg';
 
 export interface Question {
@@ -71,6 +72,8 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useBodyScrollLock(isAddModalOpen);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
@@ -345,7 +348,7 @@ export function QuestionBank({ userRole, userSubject, userBatch, batches = [], o
       {/* Add Modal */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-[3000]">
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-10001">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
