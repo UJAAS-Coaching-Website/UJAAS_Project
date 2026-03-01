@@ -203,7 +203,7 @@ export function StudentDashboard({
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!isNavbarHidden && <div className="h-20" />} {/* Spacer for fixed navbar */}
+        {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
