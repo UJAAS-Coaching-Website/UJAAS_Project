@@ -499,7 +499,7 @@ export function FacultyDashboard({
     ((user as any).facultyDetails?.subjectSpecialty ||
     faculty.find(
       (f) =>
-        f.email.toLowerCase() === user.email.toLowerCase() ||
+        (user.loginId && f.email.toLowerCase() === user.loginId.toLowerCase()) ||
         f.name.toLowerCase() === user.name.toLowerCase()
     )?.subject) ?? null;
   const handleSaveFacultySubjectRating = (
@@ -724,6 +724,7 @@ export function FacultyDashboard({
                   onNavigate={onNavigate}
                   onClearBatch={onClearBatch}
                   onViewTimetable={() => setShowFullTimetable(true)}
+                  facultySubject={facultySubject}
                 />
               )}
               {activeTab === 'students' && (
@@ -880,13 +881,15 @@ function OverviewTab({
   students,
   onNavigate,
   onClearBatch,
-  onViewTimetable
+  onViewTimetable,
+  facultySubject
 }: { 
   selectedBatch: Batch | null; 
   students: Student[];
   onNavigate: (tab: Tab) => void;
   onClearBatch: () => void;
   onViewTimetable: () => void;
+  facultySubject: string | null;
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
@@ -914,6 +917,7 @@ function OverviewTab({
             selectedBatch={selectedBatch}
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
+            facultySubject={facultySubject}
           />
         </div>
       </div>
@@ -962,7 +966,19 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
   );
 }
 
-function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTimetable }: { onNavigate: (t: Tab) => void; selectedBatch: Batch | null; onChangeBatch: () => void; onViewTimetable: () => void; }) {
+function NotesManagementTab({ 
+  onNavigate, 
+  selectedBatch, 
+  onChangeBatch, 
+  onViewTimetable,
+  facultySubject 
+}: { 
+  onNavigate: (t: Tab) => void; 
+  selectedBatch: Batch | null; 
+  onChangeBatch: () => void; 
+  onViewTimetable: () => void; 
+  facultySubject: string | null;
+}) {
   // Logic kept same as per request
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -994,9 +1010,11 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
 
   useBodyScrollLock(isAddChapterModalOpen);
 
+  const canEdit = !!facultySubject && selectedSubject?.toLowerCase() === facultySubject.toLowerCase();
+
   const handleAddChapter = (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedSubject) return;
+    if (!selectedSubject || !canEdit) return;
     if (newChapterName.trim()) {
       setChapters({
         ...chapters,
@@ -1008,7 +1026,7 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
   };
 
   const handleDeleteChapter = (chapterName: string) => {
-    if (!selectedSubject) return;
+    if (!selectedSubject || !canEdit) return;
     if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
       setChapters({
         ...chapters,
@@ -1020,12 +1038,14 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
   };
 
   const handleDeleteNote = (id: string) => {
+    if (!canEdit) return;
     if (confirm('Are you sure you want to delete this note?')) {
       setNotes(notes.filter(n => n.id !== id));
     }
   };
 
   const handleDeleteDPP = (id: string) => {
+    if (!canEdit) return;
     if (confirm('Are you sure you want to delete this DPP?')) {
       setDpps(dpps.filter(d => d.id !== id));
     }
@@ -1061,8 +1081,8 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
           </div>
           <div className="flex items-center gap-3">
             {currentView === 'root' && (<button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-semibold shadow-sm"><Calendar className="w-5 h-5" />Time Table</button>)}
-            {currentView === 'subject' && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Plus className="w-5 h-5" />Add Chapter</button>)}
-            {currentView === 'chapter' && (
+            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Plus className="w-5 h-5" />Add Chapter</button>)}
+            {currentView === 'chapter' && canEdit && (
               <div className="flex items-center gap-3">
                 <button onClick={() => onNavigate('upload-notes')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Upload className="w-5 h-5" />Upload Content</button>
                 <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Plus className="w-5 h-5" />Upload DPP</button>
@@ -1096,15 +1116,17 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
             <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
               <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteChapter(chapter);
-                  }}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteChapter(chapter);
+                    }}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
               </div>
             </motion.button>
@@ -1125,12 +1147,14 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
                   <div className={`w-12 h-12 bg-gradient-to-br ${activeContentType === 'notes' ? 'from-cyan-500 to-blue-500' : 'from-emerald-500 to-teal-500'} rounded-xl flex items-center justify-center shrink-0`}><FileText className="w-6 h-6 text-white" /></div>
                   <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4><div className="flex items-center justify-between"><span className="text-xs text-gray-500">{(item as any).size || (item as any).questions + ' Questions'} • {item.date}</span><div className="flex gap-1">
                     <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                    <button 
-                      onClick={() => activeContentType === 'notes' ? handleDeleteNote(item.id) : handleDeleteDPP(item.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canEdit && (
+                      <button 
+                        onClick={() => activeContentType === 'notes' ? handleDeleteNote(item.id) : handleDeleteDPP(item.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div></div></div>
                 </div>
               </motion.div>
@@ -1746,4 +1770,3 @@ function StudentRatingsModal({
     </div>
   );
 }
-
