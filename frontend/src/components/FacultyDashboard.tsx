@@ -1540,7 +1540,7 @@ function TestSeriesManagementTab({
                   <Search className="w-4 h-4" /> Review
                 </button>
                 <button
-                  className="flex-[2] py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <BarChart3 className="w-4 h-4" /> Performance
                 </button>
