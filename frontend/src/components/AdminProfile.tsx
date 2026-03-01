@@ -9,64 +9,16 @@ interface AdminProfileProps {
     id: string;
     name: string;
     email: string;
+    loginId?: string | null;
     role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
     studentDetails?: StudentDetails | null;
   };
   onLogout: () => void;
 }
-
-interface StudentDetails {
-  joinDate: string;
-  phone: string;
-  address: string;
-  dateOfBirth: string;
-  parentContact: string;
-  ratings?: {
-    attendance: number;
-    assignments: number;
-    tests: number;
-    participation: number;
-    behavior: number;
-    engagement: number;
-    dppPerformance: number;
-  };
-}
-
+// ... (StudentDetails interface)
 export function AdminProfile({ user, onLogout }: AdminProfileProps) {
-  const [profileUser, setProfileUser] = useState(user);
-
-  useEffect(() => {
-    setProfileUser(user);
-  }, [user]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const refreshProfile = async () => {
-      try {
-        const response = await me();
-        if (!mounted) return;
-
-        const latestUser = response.user as any;
-        setProfileUser(latestUser);
-      } catch {
-        // Keep existing profile state if refresh fails.
-      }
-    };
-
-    refreshProfile();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const displayName =
-    profileUser.role === 'admin' && profileUser.name.trim().toLowerCase() === 'admin user'
-      ? 'Administrator'
-      : profileUser.name;
-
+// ... (state and useEffects)
   return (
     <div className="space-y-6">
       <motion.div
@@ -91,7 +43,7 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
                 <div className="flex flex-wrap gap-4 text-indigo-100">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    <span>{profileUser.email}</span>
+                    <span>{profileUser.loginId || profileUser.email}</span>
                   </div>
                 </div>
               </div>

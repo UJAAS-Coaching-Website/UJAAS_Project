@@ -2560,7 +2560,7 @@ function AddStudentModal({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               Save Student
             </button>
@@ -2689,7 +2689,7 @@ function AddFacultyModal({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               Save Faculty
             </button>
@@ -3078,7 +3078,7 @@ function BatchFormModal({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transition"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition"
             >
               {mode === 'edit' ? 'Save Batch' : 'Add Batch'}
             </button>

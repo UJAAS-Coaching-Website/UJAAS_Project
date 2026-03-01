@@ -686,7 +686,7 @@ export function FacultyDashboard({
                     onClick={() => onNavigateSection(section.id as FacultySection)}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-teal-600 to-indigo-600 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -706,7 +706,7 @@ export function FacultyDashboard({
                     onClick={() => onNavigate(tab.id as Tab)}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       activeTab === tab.id && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-teal-600 to-indigo-600 text-white shadow-lg'
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -949,7 +949,7 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students in your assigned batches</p></div>
-        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -992,7 +992,7 @@ function OverviewTab({
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 to-indigo-600 p-8 rounded-3xl shadow-xl text-white mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 p-8 rounded-3xl shadow-xl text-white mb-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
           <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
@@ -1069,7 +1069,7 @@ function StudentsTab({
             {!editMode ? (
               <button
                 onClick={onToggleEditMode}
-                className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition flex items-center gap-2"
+                className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition flex items-center gap-2"
               >
                 <Edit className="w-5 h-5" />
                 Fill Attendance ({new Date(lastMonth.month).toLocaleString('default', { month: 'long', year: 'numeric' })})
@@ -1304,7 +1304,7 @@ function NotesManagementTab({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {chapters[selectedSubject]?.map((chapter, index) => (
             <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
-              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r from-teal-600 to-indigo-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
+              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
               <div className="flex items-center gap-2">
                 {canEdit && (
                   <button
@@ -1327,8 +1327,8 @@ function NotesManagementTab({
       {currentView === 'chapter' && selectedChapter && (
         <div className="space-y-6">
           <div className="flex items-center gap-4 border-b border-gray-200">
-            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-600 to-indigo-600 rounded-t-full" />)}</button>
-            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-600 to-indigo-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 rounded-t-full" />)}</button>
+            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 rounded-t-full" />)}</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(activeContentType === 'notes' ? notes : dpps).filter(item => item.chapter === selectedChapter).map((item, index) => (
@@ -1370,7 +1370,7 @@ function NotesManagementTab({
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white">
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
                 <h3 className="text-xl font-bold">Add New Chapter</h3>
                 <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
               </div>
@@ -1397,7 +1397,7 @@ function NotesManagementTab({
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
                   >
                     Create Chapter
                   </button>
@@ -1469,7 +1469,7 @@ function TestSeriesManagementTab({
               </div>
               <button
                 onClick={() => onPreviewTest(test.id)}
-                className="w-full py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-md hover:shadow-xl transition-all flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" /> Review Questions
               </button>
@@ -1494,7 +1494,7 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
           <select name="batch" defaultValue={initialData?.batch || defaultBatch || ''} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white">
             {batches.map((b:any) => <option key={b.slug} value={b.label}>{b.label}</option>)}
           </select>
-          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold">Save</button></div>
+          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
@@ -1510,7 +1510,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
         <form onSubmit={(e) => { e.preventDefault(); onUpdateBatch(batchLabel); onClose(); }} className="space-y-4">
           <input name="label" defaultValue={batchLabel} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500" />
-          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold">Save</button></div>
+          <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
@@ -1554,7 +1554,7 @@ function BatchStudentPickerModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="relative w-full max-w-2xl h-[70vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white">
+        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
           <h3 className="text-xl font-semibold">Add Existing Student</h3>
           <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
         </div>
@@ -1572,7 +1572,7 @@ function BatchStudentPickerModal({
                 <button
                   type="button"
                   onClick={() => handleAssign(student)}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
                 >
                   Add
                 </button>
@@ -1663,7 +1663,7 @@ function StudentRatingsModal({
         className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl border border-white overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-indigo-600 text-white flex justify-between items-center shrink-0">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white flex justify-between items-center shrink-0">
           <div>
             <h3 className="text-xl font-bold">{student.name}</h3>
             <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
@@ -1716,7 +1716,7 @@ function StudentRatingsModal({
 
               <button
                 onClick={() => setShowRatings(true)}
-                className="w-full py-4 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
               >
                 <Star className="w-5 h-5 fill-current" /> View Detailed Ratings
               </button>
@@ -1767,7 +1767,7 @@ function StudentRatingsModal({
                             {canEditThisSubject && !isEditing && (
                               <button
                                 onClick={() => setEditingSubject(subject)}
-                                className="px-3 py-1 bg-gradient-to-r from-teal-600 to-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition"
+                                className="px-3 py-1 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700 transition"
                               >
                                 Edit
                               </button>
@@ -1836,7 +1836,7 @@ function StudentRatingsModal({
                                   setEditingSubject(null);
                                 }
                               }}
-                              className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 text-white font-bold shadow-lg hover:bg-teal-700 transition"
+                              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white font-bold shadow-lg hover:bg-teal-700 transition"
                             >
                               Save {subject} Ratings
                             </button>
@@ -1941,7 +1941,7 @@ function StudentRatingsModal({
                           setEditingSubject(facultySubject);
                         }
                       }}
-                      className="px-6 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
+                      className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition"
                     >
                       Add Initial {facultySubject} Rating
                     </button>
@@ -2022,7 +2022,7 @@ export function AttendanceCalendarModal({ open, batch, onClose, monthlyAttendanc
           })}
         </div>
         <div className="mt-8 flex justify-end">
-          <button onClick={onClose} className="px-8 py-3 bg-gradient-to-r from-teal-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition">Done</button>
+          <button onClick={onClose} className="px-8 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition">Done</button>
         </div>
       </motion.div>
     </div>

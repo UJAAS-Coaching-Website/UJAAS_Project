@@ -18,13 +18,13 @@ interface FacultyProfileProps {
     id: string;
     name: string;
     email: string;
+    loginId?: string | null;
     role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
     facultyDetails?: FacultyDetails | null;
   };
   onLogout: () => void;
 }
-
 function normalizeDateForInput(value?: string | null): string {
   if (!value) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
@@ -132,11 +132,11 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
                 <div className="flex flex-wrap gap-4 text-indigo-100">
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    <span>{profileUser.email}</span>
+                    <span>{profileUser.loginId || profileUser.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4" />
-                    <span>Specialty: {facultyDetails.subjectSpecialty}</span>
+                    <span>{facultyDetails.subjectSpecialty}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -205,7 +205,7 @@ function OverviewSection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
-            { label: 'Subject Specialty', value: details.subjectSpecialty, icon: BookOpen, key: 'subjectSpecialty' },
+            { label: 'Subject', value: details.subjectSpecialty, icon: BookOpen, key: 'subjectSpecialty' },
             { label: 'Join Date', value: details.joinDate, icon: Calendar, key: 'joinDate', type: 'date' }
           ].map((field, index) => (
             <motion.div
