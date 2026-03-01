@@ -526,8 +526,36 @@ function StudentContentTab({ onStartDPP }: { onStartDPP: (dpp: any, subjectName:
     </div>
   );
 
+  const renderBreadcrumbs = () => (
+    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 px-4">
+      {selectedSubject && (
+        <>
+          <ChevronRight 
+            className="w-4 h-4 cursor-pointer hover:text-teal-600 transition-colors" 
+            onClick={() => setCurrentView('root')}
+          />
+          <span 
+            className={`cursor-pointer hover:text-teal-600 transition-colors ${currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}`}
+            onClick={() => setCurrentView('subject')}
+          >
+            {selectedSubject}
+          </span>
+        </>
+      )}
+      {selectedChapter && (
+        <>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-teal-600 font-semibold">
+            {selectedChapter}
+          </span>
+        </>
+      )}
+    </div>
+  );
+
   const renderChapterList = () => (
     <div className="space-y-4 p-4">
+      {renderBreadcrumbs()}
       <button 
         onClick={() => setCurrentView('root')}
         className="flex items-center gap-2 text-teal-600 font-bold mb-2 hover:underline"
@@ -563,6 +591,7 @@ function StudentContentTab({ onStartDPP }: { onStartDPP: (dpp: any, subjectName:
 
     return (
       <div className="space-y-6 p-4">
+        {renderBreadcrumbs()}
         <button 
           onClick={() => setCurrentView('subject')}
           className="flex items-center gap-2 text-teal-600 font-bold mb-2 hover:underline"

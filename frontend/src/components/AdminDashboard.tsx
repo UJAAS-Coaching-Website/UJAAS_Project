@@ -1902,7 +1902,6 @@ function NotesManagementTab({
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className={currentView === 'root' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('root'); setSelectedSubject(null); setSelectedChapter(null); }}>Root</span>
                 {selectedSubject && (
                   <>
                     <ChevronRight className="w-4 h-4" />

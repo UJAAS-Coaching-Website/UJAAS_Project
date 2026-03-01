@@ -1044,9 +1044,18 @@ function NotesManagementTab({ onNavigate, selectedBatch, onChangeBatch, onViewTi
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className={currentView === 'root' ? 'text-teal-600 font-semibold' : ''}>Root</span>
-                {selectedSubject && (<><ChevronRight className="w-4 h-4" /><span>{selectedSubject}</span></>)}
-                {selectedChapter && (<><ChevronRight className="w-4 h-4" /><span>{selectedChapter}</span></>)}
+                {selectedSubject && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
+                  </>
+                )}
+                {selectedChapter && (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
