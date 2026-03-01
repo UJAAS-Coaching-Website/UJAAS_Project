@@ -20,9 +20,7 @@ interface UploadNotesProps {
 
 export function UploadNotes({ onBack }: UploadNotesProps) {
   const [notesData, setNotesData] = useState({
-    title: '',
-    description: '',
-    tags: ''
+    title: ''
   });
 
   const [files, setFiles] = useState<File[]>([]);
@@ -161,32 +159,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                   value={notesData.title}
                   onChange={(e) => setNotesData({ ...notesData, title: e.target.value })}
                   placeholder="e.g., Wave Optics - Complete Theory Notes"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={notesData.description}
-                  onChange={(e) => setNotesData({ ...notesData, description: e.target.value })}
-                  rows={3}
-                  placeholder="Brief description of the notes content..."
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Tags (comma separated)
-                </label>
-                <input
-                  type="text"
-                  value={notesData.tags}
-                  onChange={(e) => setNotesData({ ...notesData, tags: e.target.value })}
-                  placeholder="e.g., optics, waves, interference, important"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>

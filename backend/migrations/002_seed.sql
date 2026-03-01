@@ -4,39 +4,39 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 DELETE FROM users
-WHERE email IN ('admin@ujaas.com', 'faculty@ujaas.com', 'student@ujaas.com');
+WHERE login_id IN ('admin@ujaas.com', 'faculty@ujaas.com', 'UJAAS-11J-001', 'UJAAS-2026-001');
 
 WITH
   admin_user AS (
-    INSERT INTO users (id, name, email, role, password_hash)
+    INSERT INTO users (id, name, login_id, role, password_hash)
     VALUES (
       uuid_generate_v4(),
       'Administrator',
       'admin@ujaas.com',
       'admin',
-      'admin_seed_salt:0b7d88c3a05e53e82430f7d7f76931abd3d21f710df4c3746b5db71edc669fd16b48dc2263e709e521f32558ceac43ee4468481fc39f4eefa0dd4a2fb52c7d42'
+      'scrypt:f066066066066066:d2185b483ff1a95ec555c1821fe2283457328a89c45e48e5c446153936cf12ebc9a1232cb9bdaf7fa8effc0ef19a9939208c6b7d0b544ea4ae90fa44542d7103'
     )
     RETURNING id
   ),
   faculty_user AS (
-    INSERT INTO users (id, name, email, role, password_hash)
+    INSERT INTO users (id, name, login_id, role, password_hash)
     VALUES (
       uuid_generate_v4(),
       'Asha Faculty',
       'faculty@ujaas.com',
       'faculty',
-      'faculty_seed_salt:f78a1871f4f1dbe1cebefe14805abed36a92d1b32a36b8c1ace1b2af0a1ada01a23f467e4b722066e1c427446704f90592292e1c23ac7afb6891fa96fa3d6141'
+      'scrypt:f066066066066066:d2185b483ff1a95ec555c1821fe2283457328a89c45e48e5c446153936cf12ebc9a1232cb9bdaf7fa8effc0ef19a9939208c6b7d0b544ea4ae90fa44542d7103'
     )
     RETURNING id
   ),
   student_user AS (
-    INSERT INTO users (id, name, email, role, password_hash)
+    INSERT INTO users (id, name, login_id, role, password_hash)
     VALUES (
       uuid_generate_v4(),
-      'Demo Student',
-      NULL,
+      'Fresh Student',
+      'UJAAS-2026-001',
       'student',
-      'student_seed_salt:f52a9eabd44b4662ce26d5ad1f287bdeafc2b78d4e40ad3cb7f275c505dd5d0bbb0126109e5489a89e10edec7640e59a1f03e71d89f5f86df60a70e697996a53'
+      'scrypt:f066066066066066:d2185b483ff1a95ec555c1821fe2283457328a89c45e48e5c446153936cf12ebc9a1232cb9bdaf7fa8effc0ef19a9939208c6b7d0b544ea4ae90fa44542d7103'
     )
     RETURNING id
   ),
@@ -53,7 +53,7 @@ WITH
     INSERT INTO students (user_id, roll_number, phone, address, date_of_birth, parent_contact, join_date)
     SELECT
       id,
-      'UJAAS-11J-001',
+      'UJAAS-2026-001',
       '+91 98765 43210',
       'Mumbai, Maharashtra',
       '2005-05-15',

@@ -15,7 +15,7 @@ interface LoginProps {
 
 
 export function Login({ onLogin }: LoginProps) {
-  const [identifier, setIdentifier] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +26,7 @@ export function Login({ onLogin }: LoginProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await login(identifier, password);
+      const response = await login(loginId, password);
       onLogin(response.user as UserType);
     } catch (err: any) {
       setError(err?.message || 'Authentication failed');
@@ -90,20 +90,20 @@ export function Login({ onLogin }: LoginProps) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Identifier Input */}
+            {/* Login ID Input */}
             <div>
-              <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1.5">
-                Email or Roll Number
+              <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Login ID
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  id="identifier"
+                  id="loginId"
                   type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
-                  placeholder="Email or Roll Number"
+                  placeholder="Enter Login ID"
                   required
                 />
               </div>
