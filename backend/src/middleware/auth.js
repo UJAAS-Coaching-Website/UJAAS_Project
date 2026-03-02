@@ -27,19 +27,24 @@ export function getTokenFromRequest(req) {
  * JWT payload, and calls `next()`. Responds 401 if invalid or blacklisted.
  */
 export async function authenticate(req, res, next) {
-    const token = getTokenFromRequest(req);
-    const payload = verifyJwt(token, jwtSecret);
+    try {
+        const token = getTokenFromRequest(req);
+        const payload = verifyJwt(token, jwtSecret);
 
-    if (!payload?.sub || payload.type !== "access") {
-        return res.status(401).json({ message: "unauthorized" });
+        if (!payload?.sub || payload.type !== "access") {
+            return res.status(401).json({ message: "unauthorized" });
+        }
+
+        if (await isTokenBlacklisted(payload.jti)) {
+            return res.status(401).json({ message: "unauthorized" });
+        }
+
+        req.user = payload;
+        next();
+    } catch (error) {
+        console.error("Auth middleware error:", error.message);
+        return res.status(503).json({ message: "service temporarily unavailable" });
     }
-
-    if (await isTokenBlacklisted(payload.jti)) {
-        return res.status(401).json({ message: "unauthorized" });
-    }
-
-    req.user = payload;
-    next();
 }
 
 /**

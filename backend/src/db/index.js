@@ -3,6 +3,15 @@ import { databaseUrl } from "../config/index.js";
 
 export const pool = new Pool({
     connectionString: databaseUrl,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    max: 5,
+});
+
+// Prevent idle client errors from crashing the server
+pool.on("error", (err) => {
+    console.error("Unexpected database pool error:", err.message);
 });
 
 export async function checkDb() {
