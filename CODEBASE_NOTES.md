@@ -1,87 +1,77 @@
 # Codebase Notes (Auto-maintained)
 
-## Summary
-- Mono-repo layout with `frontend/` (Vite + React) and `backend/` (Express).
-- Entry point: `frontend/index.html` -> `frontend/src/main.tsx` -> `frontend/src/App.tsx`.
-- UI uses Radix UI components, Tailwind utilities, and assorted UI helpers.
+## Project Overview
+**UJAAS** is a comprehensive coaching management system designed to streamline educational operations. It provides distinct interfaces for **Students**, **Faculty**, and **Administrators**, covering aspects like test series, daily practice problems (DPP), student analytics, batch management, and a customizable public landing page.
 
-## Tooling
-- Frontend build: Vite (`frontend/vite.config.ts`)
-- Frontend scripts: `npm run dev`, `npm run build` (`frontend/package.json`)
-- Backend scripts: `npm run dev`, `npm start`, `npm run db:test`, `npm run db:migrate`, `npm run db:status`, `npm run db:reset`, `npm run db:seed` (`backend/package.json`)
+## Tech Stack
+- **Frontend:** React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Motion (framer-motion).
+- **Backend:** Node.js, Express, PostgreSQL, `pg` (Postgres driver).
+- **Styling:** Custom theme using Teal and Cyan palettes, integrated with Radix UI primitives via shadcn/ui.
 
-## Dependencies (high level)
-- React 18
-- Vite + React SWC
-- Radix UI primitives
-- Tailwind CSS + utilities (`tailwind-merge`, `class-variance-authority`)
-- Motion (`motion`)
-- Recharts, embla-carousel, sonner, react-hook-form, react-day-picker
-- Express, Helmet, Morgan, CORS, dotenv, pg
+## Frontend Architecture (`frontend/`)
 
-## Source Layout
-- `frontend/src/main.tsx`: app bootstrap
-- `frontend/src/App.tsx`: routing/flow controller (login, get started, dashboards)
-- `frontend/src/index.css`, `frontend/src/styles/globals.css`: styling
-- `frontend/src/guidelines/Guidelines.md`: placeholder guidance
-- `backend/src/index.js`: minimal server serving DB status page
-- `backend/src/server.js`: Postgres connection + health check
-- `backend/scripts/db-test.js`: DB connectivity test script
-- `backend/scripts/migrate.js`: migration runner
-- `backend/scripts/reset.js`: drop all tables
-- `backend/scripts/status.js`: check required tables
-- `backend/scripts/seed.js`: seed sample data
-- `backend/migrations/001_init.sql`: initial DB schema (batches-only)
-- `backend/migrations/002_seed.sql`: sample data
+### Core Structure
+- **Entry Point:** `src/main.tsx` -> `src/App.tsx`.
+- **State Management:** `App.tsx` serves as the central hub, managing user sessions, landing page data, published tests, and global notifications. It utilizes `localStorage` for cross-session persistence.
+- **Routing:** A custom routing system based on `window.history` and `popstate` events is implemented in `App.tsx`, supporting nested paths like `/student/test-series` or `/admin/11th-jee/home`.
+- **Persistence Keys:**
+  - `ujaasToken`: JWT authentication token.
+  - `ujaasUser`: Current session user data.
+  - `ujaasLandingData`: Public landing page configuration (courses, faculty, achievers, visions).
+  - `ujaasPublishedTests`: Store for created tests and DPPs.
+  - `ujaasAdminBatches`: Batch definitions and assignments.
+  - `ujaasQueries`: User queries from the "Get Started" landing page.
 
-## Components (top-level)
-- `AdminDashboard.tsx`
-- `AdminTestAnalytics.tsx`
-- `DPPPractice.tsx`
-- `DPPSection.tsx`
-- `Footer.tsx`
-- `GetStarted.tsx`
-- `Login.tsx`
-- `NotesSection.tsx`
-- `NotificationCenter.tsx`
-- `StudentAnalytics.tsx`
-- `StudentDashboard.tsx`
-- `StudentProfile.tsx`
-- `StudentRankingsEnhanced.tsx`
-- `StudentRating.tsx`
-- `TestSeriesContainer.tsx`
-- `TestSeriesSection.tsx`
-- `TestTaking.tsx`
-- `ViewResults.tsx`
+### Features by Role
 
-## UI Library
-- `frontend/src/components/ui/*`: local Radix UI-based components
-- `frontend/src/components/figma/ImageWithFallback.tsx`: Figma helper
+#### 1. Students
+- **Dashboard:** Overview of announcements, upcoming tests, and performance stats.
+- **Test Series:** Interface to browse, view instructions, and take scheduled tests.
+- **DPP Section:** Daily Practice Problems sorted by subject.
+- **Analytics:** Visual performance insights using Recharts.
+- **Question Bank:** Categorized questions for self-practice.
+- **Profile:** Management of personal details and view of student ratings (attendance, assignments, etc.).
 
-## App Behavior Notes
-- Uses `localStorage` keys:
-  - `ujaasUser` for current session user
-  - `ujaasHasVisited` for get-started gating
-  - `ujaasNotifications` for notifications
-  - `student_details_<id>` for student details
+#### 2. Faculty
+- **Batch Management:** Overview of assigned batches, students, and schedules.
+- **Content Upload:** Tooling for uploading notes, DPPs, and notices.
+- **Analytics:** View test performance across batches and individual student progress.
+- **Test Management:** Ability to preview and manage published tests.
+- **Rankings:** View batch-wise student rankings based on performance.
 
-## Backend Notes
-- Minimal server responds at `/` with DB status text.
-- DB helper lives in `backend/src/server.js`.
-- Env template at `backend/.env.example` with `DATABASE_URL`.
+#### 3. Administrators
+- **Full System Control:** Access to all faculty and student dashboards.
+- **Landing Page Editor:** Dynamic customization of the public "Get Started" page sections.
+- **Batch CRUD:** Create, update, and delete batches and assign faculty.
+- **Test Creation:** Advanced form for creating tests with multiple sections, marking schemes, and question uploads.
+- **Query Management:** Review and respond to prospective student queries.
+- **Student Ratings:** Update behavioral and academic ratings for students.
 
-## Known Gaps
-- No API routes or DB integration yet.
+## Backend Architecture (`backend/`)
+
+### Database Schema (PostgreSQL)
+- **`users`:** Core auth table using `login_id` (email for staff, roll_number for students) and `password_hash`.
+- **`students`:** Detailed profile for students (roll_number, parent_contact, address, etc.).
+- **`faculties`:** Detailed profile for faculty (subject_specialty, phone).
+- **`batches`:** Groups of students (e.g., "11th JEE").
+- **`student_batches` / `faculty_batches`:** Join tables for role-to-batch assignment.
+- **`tests`:** Metadata for tests and DPPs.
+- **`test_attempts`:** Tracks student scores and submission status.
+- **`notes`:** Shared files/links for study material.
+- **`notifications`:** User-specific alerts (announcements, info, warnings).
+- **`ratings`:** Multi-metric student evaluation (attendance, behavior, etc.).
+
+### API Design (`backend/src/`)
+- **Authentication:** JWT-based with refresh token logic. Routes include `/api/auth/login`, `/api/auth/me`, `/api/auth/refresh`.
+- **Profile:** `/api/profile/me` for user-driven updates.
+- **Migrations:** Automated via `backend/scripts/migrate.js` using versioned SQL files in `backend/migrations/`.
+
+## Key UI Components
+- **`TestTaking.tsx`:** A complex, full-screen testing interface with timers, question navigation, and auto-submission.
+- **`AdminDashboard.tsx`:** A multi-layered dashboard using a sidebar/tabs pattern for granular control.
+- **`NotificationCenter.tsx`:** Interactive notification tray with read/delete functionality.
+- **`StudentRankingsEnhanced.tsx`:** Tabular view of student performance with filtering.
 
 ## Update Log
-- 2026-02-24: Initial structure snapshot and key notes.
-- 2026-02-24: Added Express backend scaffold under `backend/`.
-- 2026-02-24: Moved frontend files into `frontend/` directory.
-- 2026-02-24: Added Postgres health check and db helper.
-- 2026-02-24: Added DB test script under `backend/scripts/db-test.js`.
-- 2026-02-24: Renamed DB helper to `backend/src/server.js`.
-- 2026-02-24: Restored minimal `backend/src/index.js` with web DB status.
-- 2026-02-24: Added initial SQL schema for batches-only setup.
-- 2026-02-24: Added migration runner script.
-- 2026-02-24: Added db:status and db:reset scripts.
-- 2026-02-24: Added seed data for batches-only schema.
+- 2026-03-02: Completed frontend UI and logic. Updated documentation with full project architecture, role features, and database schema details.
+- 2026-02-24: Initial structure snapshot and backend scaffold. Added Postgres health checks and migration scripts.
