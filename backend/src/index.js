@@ -21,6 +21,7 @@ function toApiUser(row) {
     name: row.name,
     loginId: row.login_id,
     role: row.role,
+    avatarUrl: row.avatar_url,
     enrolledCourses: row.enrolled_courses ?? [],
     studentDetails:
       row.role === "student"
@@ -30,15 +31,14 @@ function toApiUser(row) {
             joinDate: row.join_date ?? null,
             phone: row.phone ?? "",
             address: row.address ?? "",
-            dateOfBirth: row.date_of_birth ?? null,
+            dateOfBirth: row.dob ?? null,
             parentContact: row.parent_contact ?? "",
+            adminRemark: row.admin_remark ?? "",
             ratings: {
-              attendance: row.attendance ?? 0,
-              dppPerformance: row.assignments ?? 0,
-              tests: row.tests ?? 0,
-              participation: row.participation ?? 0,
-              behavior: row.behavior ?? 0,
-              engagement: row.engagement ?? 0,
+              attendance: Number(row.attendance ?? 0),
+              assignments: Number(row.assignments ?? 0),
+              participation: Number(row.participation ?? 0),
+              behavior: Number(row.behavior ?? 0),
             },
           }
         : null,
@@ -46,8 +46,10 @@ function toApiUser(row) {
       row.role === "faculty"
         ? {
             phone: row.faculty_phone ?? "",
-            subjectSpecialty: row.subject_specialty ?? "",
-            joinDate: row.faculty_join_date ?? null,
+            subject: row.subject ?? "",
+            designation: row.designation ?? "",
+            experience: row.experience ?? "",
+            bio: row.bio ?? "",
           }
         : null,
   };
@@ -60,21 +62,23 @@ async function fetchUserProfileById(userId) {
       u.name,
       u.login_id,
       u.role,
+      u.avatar_url,
       s.roll_number,
       s.phone,
       s.address,
-      TO_CHAR(s.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+      TO_CHAR(s.dob, 'YYYY-MM-DD') AS dob,
       s.parent_contact,
       TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+      s.admin_remark,
       f.phone AS faculty_phone,
-      f.subject_specialty,
-      TO_CHAR(f.join_date, 'YYYY-MM-DD') AS faculty_join_date,
-      COALESCE(r.attendance, 0) AS attendance,
-      COALESCE(r.assignments, 0) AS assignments,
-      COALESCE(r.tests, 0) AS tests,
-      COALESCE(r.participation, 0) AS participation,
-      COALESCE(r.behavior, 0) AS behavior,
-      COALESCE(r.engagement, 0) AS engagement,
+      f.subject,
+      f.designation,
+      f.experience,
+      f.bio,
+      AVG(COALESCE(r.attendance, 0)) AS attendance,
+      AVG(COALESCE(r.assignments, 0)) AS assignments,
+      AVG(COALESCE(r.participation, 0)) AS participation,
+      AVG(COALESCE(r.behavior, 0)) AS behavior,
       COALESCE(
         ARRAY_REMOVE(ARRAY_AGG(DISTINCT b.name), NULL),
         ARRAY[]::text[]
@@ -83,15 +87,14 @@ async function fetchUserProfileById(userId) {
     FROM users u
     LEFT JOIN students s ON s.user_id = u.id
     LEFT JOIN faculties f ON f.user_id = u.id
-    LEFT JOIN ratings r ON r.student_id = s.user_id
+    LEFT JOIN student_ratings r ON r.student_id = s.user_id
     LEFT JOIN student_batches sb ON sb.student_id = s.user_id
     LEFT JOIN batches b ON b.id = sb.batch_id
     WHERE u.id = $1
     GROUP BY
-      u.id, u.name, u.login_id, u.role,
-      s.roll_number, s.phone, s.address, s.date_of_birth, s.parent_contact, s.join_date,
-      f.phone, f.subject_specialty, f.join_date,
-      r.attendance, r.assignments, r.tests, r.participation, r.behavior, r.engagement
+      u.id, u.name, u.login_id, u.role, u.avatar_url,
+      s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date, s.admin_remark,
+      f.phone, f.subject, f.designation, f.experience, f.bio
   `;
 
   const result = await pool.query(query, [userId]);
@@ -288,7 +291,7 @@ app.put("/api/profile/me", async (req, res) => {
         SET
           phone = $1,
           address = $2,
-          date_of_birth = NULLIF($3, '')::date,
+          dob = NULLIF($3, '')::date,
           parent_contact = $4
         WHERE user_id = $5
         RETURNING user_id
@@ -313,6 +316,75 @@ app.put("/api/profile/me", async (req, res) => {
     return res.status(200).json({ user });
   } catch (error) {
     return res.status(500).json({ message: "failed to update profile", error: error.message });
+  }
+});
+
+app.get("/api/batches", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM batches WHERE is_active = true ORDER BY name ASC");
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    return res.status(500).json({ message: "failed to fetch batches", error: error.message });
+  }
+});
+
+app.get("/api/landing", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT section_key, content FROM landing_page_data");
+    const data = result.rows.reduce((acc, row) => {
+      acc[row.section_key] = row.content;
+      return acc;
+    }, {});
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ message: "failed to fetch landing data", error: error.message });
+  }
+});
+
+app.post("/api/queries", async (req, res) => {
+  const { name, email, phone, course, message } = req.body || {};
+  if (!name || !phone) {
+    return res.status(400).json({ message: "name and phone are required" });
+  }
+  try {
+    await pool.query(
+      "INSERT INTO prospect_queries (name, email, phone, course, message) VALUES ($1, $2, $3, $4, $5)",
+      [name, email, phone, course, message]
+    );
+    return res.status(201).json({ message: "query submitted" });
+  } catch (error) {
+    return res.status(500).json({ message: "failed to submit query", error: error.message });
+  }
+});
+
+app.get("/api/tests", async (req, res) => {
+  const payload = await authenticateAccess(req, res);
+  if (!payload) return;
+
+  try {
+    let query;
+    let params = [];
+    if (payload.role === "student") {
+      query = `
+        SELECT t.*, 
+               (SELECT jsonb_agg(q) FROM questions q WHERE q.test_id = t.id) as questions
+        FROM tests t
+        JOIN test_target_batches ttb ON ttb.test_id = t.id
+        JOIN student_batches sb ON sb.batch_id = ttb.batch_id
+        WHERE sb.student_id = $1
+      `;
+      params = [payload.sub];
+    } else {
+      query = `
+        SELECT t.*, 
+               (SELECT jsonb_agg(q) FROM questions q WHERE q.test_id = t.id) as questions
+        FROM tests t
+      `;
+    }
+    const result = await pool.query(query, params);
+    return res.status(200).json(result.rows);
+  } catch (error) {
+    return res.status(500).json({ message: "failed to fetch tests", error: error.message });
   }
 });
 

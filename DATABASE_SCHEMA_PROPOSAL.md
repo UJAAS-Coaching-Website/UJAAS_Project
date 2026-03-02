@@ -98,8 +98,8 @@ Based on the full feature set implemented in the frontend, the following databas
 | `test_id` | UUID | REFERENCES tests(id) | |
 | `subject` | TEXT | NOT NULL | e.g., 'Physics' |
 | `section` | TEXT | | e.g., 'Section A' |
-| `type` | ENUM | 'MCQ', 'Numerical' | |
-| `question_text`| TEXT | NOT NULL | Supports LaTeX/Markdown |
+| `type` | ENUM | 'MCQ' ,'MSQ' , 'Numerical' | |
+| `question_text`| TEXT | | Supports LaTeX/Markdown |
 | `question_img` | TEXT | | URL to asset storage |
 | `options` | JSONB | | Array of strings for MCQ |
 | `option_imgs` | JSONB | | Array of URLs for options |

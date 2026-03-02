@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import "dotenv/config";
@@ -16,14 +16,20 @@ if (!connectionString) {
 }
 
 async function run() {
-  const sql = await readFile(sqlPath, "utf8");
   const pool = new Pool({ connectionString });
   const client = await pool.connect();
   try {
+    const seedFiles = (await readdir(path.join(__dirname, "..", "migrations")))
+      .filter((file) => file.endsWith(".sql") && file.toLowerCase().includes("seed"))
+      .sort();
+
     await client.query("BEGIN");
-    await client.query(sql);
+    for (const file of seedFiles) {
+      const sql = await readFile(path.join(__dirname, "..", "migrations", file), "utf8");
+      await client.query(sql);
+      console.log(`Seed applied: ${file}`);
+    }
     await client.query("COMMIT");
-    console.log("Seed applied: 002_seed.sql");
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Seed failed:", err.message);
