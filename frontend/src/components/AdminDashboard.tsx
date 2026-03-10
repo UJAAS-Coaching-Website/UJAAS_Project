@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { User, LandingData } from '../App';
+import { User, LandingData, Tab } from '../App';
 import {
   LogOut,
   GraduationCap,
@@ -58,6 +58,7 @@ interface AdminDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
+  adminFaculties: import('../api/faculties').ApiFaculty[];
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
@@ -78,10 +79,12 @@ interface AdminDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
-type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
-type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean };
+export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
+export type FacultySection = 'batches' | 'students' | 'test-series';
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
 
 interface Student {
   id: string;
@@ -235,6 +238,7 @@ export function AdminDashboard({
   onSelectBatch,
   onClearBatch,
   batches,
+  adminFaculties,
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
@@ -255,7 +259,8 @@ export function AdminDashboard({
   selectedPreviewTest,
 }: AdminDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
+  // Use adminFaculties prop directly instead of local state mock
+  const faculty = adminFaculties as Faculty[];
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -476,15 +481,6 @@ export function AdminDashboard({
       },
     ];
     setStudents(withStoredRemarks(seededStudents));
-
-    setFaculty([
-      { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics', rating: 4.8 },
-      { id: 't2', name: 'Prof. S. Gupta', email: 's.gupta@example.com', subject: 'Chemistry', rating: 4.5 },
-      { id: 't3', name: 'Dr. R.K. Yadav', email: 'rk.yadav@example.com', subject: 'Mathematics', rating: 4.9 },
-      { id: 't4', name: 'Ms. Tanya Bose', email: 'tanya.bose@example.com', subject: 'Biology', rating: 4.2 },
-      { id: 't5', name: 'Mr. Arjun Malhotra', email: 'arjun.m@example.com', subject: 'Mathematics', rating: 4.6 },
-      { id: 't6', name: 'Dr. Leena Rao', email: 'leena.rao@example.com', subject: 'Chemistry', rating: 4.7 },
-    ]);
   }, []);
 
   const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -3163,7 +3159,7 @@ function BatchFacultyPickerModal({
   open: boolean;
   selectedBatch: Batch | null;
   batches: BatchInfo[];
-  faculty: Faculty[];
+  faculty: import('../api/faculties').ApiFaculty[];
   onClose: () => void;
   onAssign: (facultyName: string, batch: Batch) => void;
 }) {
@@ -3234,7 +3230,7 @@ function BatchFormModal({
   open: boolean;
   mode: 'create' | 'edit';
   batches: BatchInfo[];
-  faculty: Faculty[];
+  faculty: import('../api/faculties').ApiFaculty[];
   batchLabel?: string;
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { User } from '../App';
+import { User, Tab } from '../App';
 import {
   LogOut,
   GraduationCap,
@@ -41,6 +41,7 @@ import { QuestionBank } from './QuestionBank';
 import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import demotimetable from '../assets/demotimetable.jpg';
 
 interface FacultyDashboardProps {
   user: User;
@@ -64,10 +65,10 @@ interface FacultyDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
-type FacultySection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series';
-type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean };
+export type FacultySection = 'batches' | 'students' | 'test-series';
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
 
 interface Student {
   id: string;
@@ -521,7 +522,7 @@ export function FacultyDashboard({
     if (data.id) {
       setStudents(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name, rollNumber: data.rollNumber, batch: data.batch } : s));
     } else {
-      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch }, ...prev]);
+      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch, phoneNumber: data.phoneNumber, dateOfBirth: data.dateOfBirth, address: data.address, parentContact: data.parentContact }, ...prev]);
     }
   };
 
@@ -529,9 +530,7 @@ export function FacultyDashboard({
     if (window.confirm('Are you sure you want to delete this student?')) {
       setStudents(prev => prev.filter(s => s.id !== id));
     }
-  };
-
-  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+  }; const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
     if (window.confirm('Remove this student from the current batch?')) {
       setStudents((prev) =>
         prev.map((student) =>
@@ -567,7 +566,7 @@ export function FacultyDashboard({
     ((user as any).facultyDetails?.subjectSpecialty ||
       faculty.find(
         (f) =>
-          (user.loginId && f.email.toLowerCase() === user.loginId.toLowerCase()) ||
+          (user.email && f.email.toLowerCase() === user.email.toLowerCase()) ||
           f.name.toLowerCase() === user.name.toLowerCase()
       )?.subject) ?? null;
   const handleSaveFacultySubjectRating = (
@@ -679,7 +678,7 @@ export function FacultyDashboard({
             }
           };
 
-          const values = Object.values(updatedSubjectRatings);
+          const values = Object.values(updatedSubjectRatings) as { attendance: number; tests: number; dppPerformance: number; behavior: number; }[];
           const avg = values.length > 0
             ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) / values.length
             : student.rating;
@@ -735,8 +734,8 @@ export function FacultyDashboard({
                       }
                     }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     <section.icon className="w-5 h-5" />
@@ -755,8 +754,8 @@ export function FacultyDashboard({
                     key={tab.id}
                     onClick={() => onNavigate(tab.id as Tab)}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${activeTab === tab.id && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     <tab.icon className="w-5 h-5" />
@@ -841,7 +840,7 @@ export function FacultyDashboard({
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('content')} />
           ) : activeTab === 'profile' ? (
-            <FacultyProfile user={user} onLogout={onLogout} />
+            <FacultyProfile user={user as any} onLogout={onLogout} />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -1143,7 +1142,7 @@ function StudentsTab({
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
@@ -1530,8 +1529,8 @@ function TestSeriesManagementTab({
             >
               <div className="flex justify-between items-start mb-4">
                 <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${test.status === 'live' ? 'bg-green-100 text-green-700' :
-                    test.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
+                  test.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
                   }`}>
                   {test.status}
                 </div>

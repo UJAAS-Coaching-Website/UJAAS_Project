@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
-import { AdminDashboard } from './components/AdminDashboard';
-import { FacultyDashboard } from './components/FacultyDashboard';
+import { AdminDashboard, type AdminTab, type AdminSection } from './components/AdminDashboard';
+import { FacultyDashboard, type FacultyTab, type FacultySection } from './components/FacultyDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
@@ -20,6 +20,7 @@ import {
   deleteBatch as apiDeleteBatch,
   type ApiBatch,
 } from './api/batches';
+import { fetchFaculties, type ApiFaculty } from './api/faculties';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -93,30 +94,45 @@ export interface PublishedTest {
   status: 'upcoming' | 'live' | 'completed';
 }
 
-function App() {
-  const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
-  const adminTabs = [
-    'home',
-    'students',
-    'faculty',
-    'content',
-    'analytics',
-    'test-series',
-    'ratings',
-    'rankings',
-    'create-test',
-    'create-dpp',
-    'upload-notice',
-    'upload-notes',
-    'profile',
-    'preview-test',
-    'question-bank',
-  ] as const;
+export const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
+export const adminTabs = [
+  'home',
+  'students',
+  'faculty',
+  'content',
+  'analytics',
+  'test-series',
+  'ratings',
+  'rankings',
+  'create-test',
+  'create-dpp',
+  'upload-notice',
+  'upload-notes',
+  'profile',
+  'preview-test',
+  'question-bank',
+] as const;
 
-  type StudentTab = (typeof studentTabs)[number];
-  type AdminTab = (typeof adminTabs)[number];
+export const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
+
+export type StudentTab = (typeof studentTabs)[number];
+export type Tab = StudentTab | AdminTab | FacultyTab | 'add-student';
+
+export type AdminLandingSection = AdminSection | FacultySection;
+
+function App() {
   type AdminBatch = string;
-  type AdminBatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; };
+  type AdminBatchInfo = {
+    id?: string;
+    label: string;
+    slug: string;
+    subjects?: string[];
+    facultyAssigned?: string[];
+    is_active?: boolean;
+    studentCount?: number;
+    testsConducted?: number;
+    averagePerformance?: number;
+  };
   const initialAdminBatches: AdminBatchInfo[] = [
     { label: '11th JEE', slug: '11th-jee' },
     { label: '11th NEET', slug: '11th-neet' },
@@ -134,9 +150,10 @@ function App() {
     subjects: b.subjects ?? undefined,
     facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
     is_active: b.is_active,
+    studentCount: b.studentCount,
+    testsConducted: b.testsConducted,
+    averagePerformance: b.averagePerformance,
   });
-  const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
-  type AdminLandingSection = (typeof adminLandingSections)[number];
 
   const [user, setUser] = useState<User | null>(null);
   const hasShownStorageWarning = useRef(false);
@@ -157,6 +174,7 @@ function App() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<Tab>('home');
   const [queries, setQueries] = useState<LandingQuery[]>([]);
 
   const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
@@ -415,42 +433,10 @@ function App() {
     }
   };
 
-  const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
-    const stored = localStorage.getItem('ujaasAdminBatches');
-    if (!stored) return initialAdminBatches;
-    try {
-      const parsed = JSON.parse(stored) as AdminBatchInfo[];
-      if (!Array.isArray(parsed) || parsed.length === 0) return initialAdminBatches;
-      const normalized = parsed
-        .filter((entry) => entry && typeof entry.label === 'string' && typeof entry.slug === 'string')
-        .map((entry) => {
-          const subjectList = Array.isArray(entry.subjects)
-            ? entry.subjects.map((subject) => subject.trim()).filter(Boolean)
-            : entry.subject
-              ? [String(entry.subject).trim()].filter(Boolean)
-              : [];
-          const facultyList = Array.isArray(entry.facultyAssigned)
-            ? entry.facultyAssigned.map((faculty) => faculty.trim()).filter(Boolean)
-            : entry.facultyAssigned
-              ? [String(entry.facultyAssigned).trim()].filter(Boolean)
-              : [];
-
-          return {
-            label: entry.label.trim(),
-            slug: entry.slug.trim(),
-            subjects: subjectList.length ? subjectList : undefined,
-            facultyAssigned: facultyList.length ? facultyList : undefined,
-          };
-        })
-        .filter((entry) => entry.label && entry.slug);
-      return normalized.length ? normalized : initialAdminBatches;
-    } catch {
-      return initialAdminBatches;
-    }
-  });
+  const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGetStarted, setShowGetStarted] = useState(true);
-  const [activeTab, setActiveTab] = useState<StudentTab | AdminTab>('home');
+  const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -491,58 +477,43 @@ function App() {
 
   const addAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
     const trimmedLabel = label.trim();
-    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
-    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
-    if (!trimmedLabel) {
-      return { ok: false, error: 'Batch name is required.' };
-    }
-    if (trimmedSubjects.length === 0) {
-      return { ok: false, error: 'At least one subject is required.' };
-    }
-    if (trimmedFaculty.length === 0) {
-      return { ok: false, error: 'At least one faculty is required.' };
+    if (adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase())) {
+      return { ok: false, error: 'A batch with this name already exists' };
     }
 
-    // Check for duplicate locally first
-    const exists = adminBatches.some((batch) => batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-    if (exists) {
-      return { ok: false, error: 'Batch already exists.' };
-    }
+    const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
+    const facultyIds = (facultyAssigned ?? []).map(name => {
+      const fac = adminFaculties.find(f => f.name === name);
+      return fac?.id;
+    }).filter((id): id is string => !!id);
 
-    const baseSlug = trimmedLabel
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '') || 'batch';
-    let slug = baseSlug;
-    let counter = 2;
-    const existingSlugs = new Set(adminBatches.map((batch) => batch.slug));
-    while (existingSlugs.has(slug)) {
-      slug = `${baseSlug}-${counter}`;
-      counter += 1;
-    }
-
-    // Optimistically add to local state
-    const optimisticBatch: AdminBatchInfo = {
+    // Optimistically create local batch
+    const newLocalBatch: AdminBatchInfo = {
       label: trimmedLabel,
-      slug,
+      slug: trimmedLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch', // Temporary slug
       subjects: trimmedSubjects,
-      facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
+      studentCount: 0,
+      facultyAssigned: facultyAssigned || [],
+      testsConducted: 0,
+      averagePerformance: 0,
+      is_active: true,
     };
-    setAdminBatches((prev) => [...prev, optimisticBatch]);
+    setAdminBatches((prev) => [...prev, newLocalBatch]);
 
     // Sync with API in the background
-    showBatchToast('saving', 'Saving batch to database…');
+    showBatchToast('saving', 'Creating batch in database…');
     apiCreateBatch({
       name: trimmedLabel,
       subjects: trimmedSubjects,
+      facultyIds: facultyIds,
     }).then((apiBatch) => {
-      // Update with server-generated ID
       setAdminBatches((prev) =>
         prev.map((b) => b.label === trimmedLabel && !b.id ? apiBatchToInfo(apiBatch) : b)
       );
-      showBatchToast('saved', 'Batch created and saved to database ✓');
+      showBatchToast('saved', 'Batch created in database ✓');
     }).catch((err) => {
       console.error('Failed to create batch in API:', err);
+      // We don't roll back the UI automatically to avoid confusing jumps, but we show an error
       showBatchToast('error', 'Failed to save batch to database');
     });
 
@@ -550,38 +521,37 @@ function App() {
   };
 
   const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
+    const targetLabel = oldLabel || label;
     const trimmedLabel = label.trim();
-    const targetLabel = oldLabel || trimmedLabel;
-    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
-    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
 
-    if (!trimmedLabel) {
-      return { ok: false, error: 'Batch name is required.' };
+    // Find the batch we are updating to get its ID
+    const batchToUpdate = adminBatches.find((b) => b.label === targetLabel);
+    const batchId = batchToUpdate?.id;
+
+    if (trimmedLabel !== targetLabel && adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase() && b.id !== batchId)) {
+      return { ok: false, error: 'A batch with this name already exists' };
     }
 
-    const index = adminBatches.findIndex((batch) => batch.label === targetLabel);
-    if (index === -1) {
-      return { ok: false, error: 'Batch not found.' };
-    }
-
-    const exists = adminBatches.some((batch, idx) => idx !== index && batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-    if (exists) {
-      return { ok: false, error: 'A batch with this name already exists.' };
-    }
-
-    const batchId = adminBatches[index].id;
+    const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
+    const facultyIds = (facultyAssigned ?? []).map(name => {
+      const fac = adminFaculties.find(f => f.name === name);
+      return fac?.id;
+    }).filter((id): id is string => !!id);
 
     // Optimistically update local state
-    setAdminBatches((prev) => {
-      const next = [...prev];
-      next[index] = {
-        ...next[index],
-        label: trimmedLabel,
-        subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
-        facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
-      };
-      return next;
-    });
+    setAdminBatches((prev) =>
+      prev.map((b) => {
+        if (b.label === targetLabel) {
+          return {
+            ...b,
+            label: trimmedLabel,
+            subjects: trimmedSubjects.length > 0 ? trimmedSubjects : b.subjects,
+            facultyAssigned: facultyAssigned ?? b.facultyAssigned,
+          };
+        }
+        return b;
+      })
+    );
 
     if (adminBatch === targetLabel) {
       setAdminBatch(trimmedLabel);
@@ -593,6 +563,7 @@ function App() {
       apiUpdateBatch(batchId, {
         name: trimmedLabel,
         subjects: trimmedSubjects,
+        facultyIds: facultyIds,
       }).then((apiBatch) => {
         setAdminBatches((prev) =>
           prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
@@ -841,45 +812,46 @@ function App() {
 
   useEffect(() => {
     const initializeSession = async () => {
-      // Fetch landing data from API (public, no auth needed)
       try {
-        const apiLanding = await fetchLandingData();
-        if (apiLanding && apiLanding.courses) {
-          setLandingData(apiLanding);
-        }
-      } catch {
-        console.warn('Could not fetch landing data from API, using defaults');
-      }
+        const [apiLanding, profileResponse, apiBatches, apiFaculties] = await Promise.all([
+          fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
+          me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
+          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+        ]);
 
-      try {
-        const profile = await me();
-        const loggedInUser = profile.user as User;
-        setUser(loggedInUser);
-        setShowGetStarted(false);
+        if (profileResponse && profileResponse.user) {
+          const loggedInUser = profileResponse.user as User;
+          setUser(loggedInUser);
+          setShowGetStarted(false);
 
-        // Fetch queries for admin users
-        if (loggedInUser.role === 'admin') {
-          try {
-            const { queries: dbQueries } = await fetchQueries();
-            setQueries(dbQueries as LandingQuery[]);
-          } catch {
-            console.warn('Could not fetch queries from API');
-          }
-        }
-
-        // Fetch batches from API for admin and faculty users
-        if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-          try {
-            const apiBatches = await apiFetchBatches();
-            if (apiBatches && apiBatches.length > 0) {
-              setAdminBatches(apiBatches.map(apiBatchToInfo));
+          if (loggedInUser.role === 'admin') {
+            try {
+              const { queries: dbQueries } = await fetchQueries();
+              setQueries(dbQueries as LandingQuery[]);
+            } catch {
+              console.warn('Could not fetch queries from API');
             }
-          } catch {
-            console.warn('Could not fetch batches from API, using local data');
           }
+
+          if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
+            if (apiBatches.length > 0) {
+              setAdminBatches(apiBatches.map(apiBatchToInfo));
+            } else {
+              // If no batches from API, use initial defaults
+              setAdminBatches(initialAdminBatches);
+            }
+            setAdminFaculties(apiFaculties);
+          }
+        } else {
+          setUser(null);
+          // If no user, and no batches from API, use initial defaults
+          setAdminBatches(initialAdminBatches);
         }
-      } catch {
+      } catch (error) {
+        console.error('Error during session initialization:', error);
         setUser(null);
+        setAdminBatches(initialAdminBatches); // Fallback to initial defaults on error
       }
 
       setLoading(false);
@@ -952,7 +924,7 @@ function App() {
     }
   }, [notifications]);
 
-  const handleLogin = (userData: User) => {
+  const handleLogin = async (userData: User) => {
     setUser(userData);
     setShowGetStarted(false);
 
@@ -1012,11 +984,22 @@ function App() {
 
     // Fetch batches and queries from API for admin/faculty
     if (userData.role === 'admin' || userData.role === 'faculty') {
-      apiFetchBatches().then((apiBatches) => {
-        if (apiBatches && apiBatches.length > 0) {
+      try {
+        const [apiBatches, apiFaculties] = await Promise.all([
+          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+        ]);
+
+        if (apiBatches.length > 0) {
           setAdminBatches(apiBatches.map(apiBatchToInfo));
+        } else {
+          setAdminBatches(initialAdminBatches);
         }
-      }).catch(() => console.warn('Could not fetch batches from API'));
+        setAdminFaculties(apiFaculties);
+      } catch (error) {
+        console.warn('Error fetching batches/faculties on login:', error);
+        setAdminBatches(initialAdminBatches);
+      }
 
       if (userData.role === 'admin') {
         fetchQueries().then(({ queries: dbQueries }) => {
@@ -1134,9 +1117,9 @@ function App() {
           >
             <FacultyDashboard
               user={user}
-              activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
+              activeTab={(isAdminTab(activeTab) ? activeTab : 'home') as import('./components/FacultyDashboard').FacultyTab}
               onNavigate={navigateTab}
-              adminSection={adminLandingSection}
+              adminSection={adminLandingSection as import('./components/FacultyDashboard').FacultySection}
               onNavigateSection={handleAdminNavigateSection}
               selectedBatch={adminBatch}
               onSelectBatch={handleAdminSelectBatch}
@@ -1172,6 +1155,7 @@ function App() {
               onSelectBatch={handleAdminSelectBatch}
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
+              adminFaculties={adminFaculties}
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}
               onDeleteBatch={deleteAdminBatch}

@@ -8,6 +8,7 @@ import healthRoutes from "./routes/healthRoutes.js";
 import landingRoutes from "./routes/landingRoutes.js";
 import queryRoutes from "./routes/queryRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js";
+import facultyRoutes from "./routes/facultyRoutes.js";
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/landing", landingRoutes);
 app.use("/api/queries", queryRoutes);
 app.use("/api/batches", batchRoutes);
+app.use("/api/faculties", facultyRoutes);
 app.use(healthRoutes);
 
 export default app;

@@ -1,0 +1,1 @@
+Allow student to review faculties.
