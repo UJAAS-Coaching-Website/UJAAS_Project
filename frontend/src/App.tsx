@@ -13,6 +13,13 @@ import {
   submitQuery as apiSubmitQuery,
   updateQueryStatus as apiUpdateQueryStatus,
 } from './api/landing';
+import {
+  fetchBatches as apiFetchBatches,
+  createBatch as apiCreateBatch,
+  updateBatch as apiUpdateBatch,
+  deleteBatch as apiDeleteBatch,
+  type ApiBatch,
+} from './api/batches';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -109,7 +116,7 @@ function App() {
   type StudentTab = (typeof studentTabs)[number];
   type AdminTab = (typeof adminTabs)[number];
   type AdminBatch = string;
-  type AdminBatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
+  type AdminBatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
   const initialAdminBatches: AdminBatchInfo[] = [
     { label: '11th JEE', slug: '11th-jee' },
     { label: '11th NEET', slug: '11th-neet' },
@@ -118,6 +125,15 @@ function App() {
     { label: 'Dropper JEE', slug: 'dropper-jee' },
     { label: 'Dropper NEET', slug: 'dropper-neet' },
   ];
+
+  /** Convert API batch to local AdminBatchInfo format */
+  const apiBatchToInfo = (b: ApiBatch): AdminBatchInfo => ({
+    id: b.id,
+    label: b.name,
+    slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch',
+    subjects: b.subjects ?? undefined,
+    facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
+  });
   const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
   type AdminLandingSection = (typeof adminLandingSections)[number];
 
@@ -437,6 +453,18 @@ function App() {
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [batchSaveToast, setBatchSaveToast] = useState<{ visible: boolean; status: 'saving' | 'saved' | 'error'; message: string }>({ visible: false, status: 'saving', message: '' });
+  const batchSaveToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBatchToast = (status: 'saving' | 'saved' | 'error', message: string, autoHideMs = 2500) => {
+    if (batchSaveToastTimer.current) clearTimeout(batchSaveToastTimer.current);
+    setBatchSaveToast({ visible: true, status, message });
+    if (status !== 'saving') {
+      batchSaveToastTimer.current = setTimeout(() => {
+        setBatchSaveToast(prev => ({ ...prev, visible: false }));
+      }, autoHideMs);
+    }
+  };
 
   const isStudentTab = (tab?: string): tab is (typeof studentTabs)[number] =>
     !!tab && studentTabs.includes(tab as (typeof studentTabs)[number]);
@@ -474,39 +502,50 @@ function App() {
       return { ok: false, error: 'At least one faculty is required.' };
     }
 
-    let result: { ok: boolean; error?: string; label?: string } = { ok: false, error: 'Unknown error.' };
-    setAdminBatches((prev) => {
-      const exists = prev.some((batch) => batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-      if (exists) {
-        result = { ok: false, error: 'Batch already exists.' };
-        return prev;
-      }
+    // Check for duplicate locally first
+    const exists = adminBatches.some((batch) => batch.label.toLowerCase() === trimmedLabel.toLowerCase());
+    if (exists) {
+      return { ok: false, error: 'Batch already exists.' };
+    }
 
-      const baseSlug = trimmedLabel
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '') || 'batch';
-      let slug = baseSlug;
-      let counter = 2;
-      const existingSlugs = new Set(prev.map((batch) => batch.slug));
-      while (existingSlugs.has(slug)) {
-        slug = `${baseSlug}-${counter}`;
-        counter += 1;
-      }
+    const baseSlug = trimmedLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '') || 'batch';
+    let slug = baseSlug;
+    let counter = 2;
+    const existingSlugs = new Set(adminBatches.map((batch) => batch.slug));
+    while (existingSlugs.has(slug)) {
+      slug = `${baseSlug}-${counter}`;
+      counter += 1;
+    }
 
-      result = { ok: true, label: trimmedLabel };
-      return [
-        ...prev,
-        {
-          label: trimmedLabel,
-          slug,
-          subjects: trimmedSubjects,
-          facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
-        },
-      ];
+    // Optimistically add to local state
+    const optimisticBatch: AdminBatchInfo = {
+      label: trimmedLabel,
+      slug,
+      subjects: trimmedSubjects,
+      facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
+    };
+    setAdminBatches((prev) => [...prev, optimisticBatch]);
+
+    // Sync with API in the background
+    showBatchToast('saving', 'Saving batch to database…');
+    apiCreateBatch({
+      name: trimmedLabel,
+      subjects: trimmedSubjects,
+    }).then((apiBatch) => {
+      // Update with server-generated ID
+      setAdminBatches((prev) =>
+        prev.map((b) => b.label === trimmedLabel && !b.id ? apiBatchToInfo(apiBatch) : b)
+      );
+      showBatchToast('saved', 'Batch created and saved to database ✓');
+    }).catch((err) => {
+      console.error('Failed to create batch in API:', err);
+      showBatchToast('error', 'Failed to save batch to database');
     });
 
-    return result;
+    return { ok: true, label: trimmedLabel };
   };
 
   const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
@@ -519,20 +558,20 @@ function App() {
       return { ok: false, error: 'Batch name is required.' };
     }
 
-    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
+    const index = adminBatches.findIndex((batch) => batch.label === targetLabel);
+    if (index === -1) {
+      return { ok: false, error: 'Batch not found.' };
+    }
+
+    const exists = adminBatches.some((batch, idx) => idx !== index && batch.label.toLowerCase() === trimmedLabel.toLowerCase());
+    if (exists) {
+      return { ok: false, error: 'A batch with this name already exists.' };
+    }
+
+    const batchId = adminBatches[index].id;
+
+    // Optimistically update local state
     setAdminBatches((prev) => {
-      const index = prev.findIndex((batch) => batch.label === targetLabel);
-      if (index === -1) {
-        result = { ok: false, error: 'Batch not found.' };
-        return prev;
-      }
-
-      const exists = prev.some((batch, idx) => idx !== index && batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-      if (exists) {
-        result = { ok: false, error: 'A batch with this name already exists.' };
-        return prev;
-      }
-
       const next = [...prev];
       next[index] = {
         ...next[index],
@@ -540,37 +579,58 @@ function App() {
         subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
         facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
       };
-
-      if (adminBatch === targetLabel) {
-        setAdminBatch(trimmedLabel);
-      }
-
-      result = { ok: true };
       return next;
     });
 
-    return result;
+    if (adminBatch === targetLabel) {
+      setAdminBatch(trimmedLabel);
+    }
+
+    // Sync with API in the background
+    if (batchId) {
+      showBatchToast('saving', 'Saving changes to database…');
+      apiUpdateBatch(batchId, {
+        name: trimmedLabel,
+        subjects: trimmedSubjects,
+      }).then((apiBatch) => {
+        setAdminBatches((prev) =>
+          prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
+        );
+        showBatchToast('saved', 'Batch updated and saved to database ✓');
+      }).catch((err) => {
+        console.error('Failed to update batch in API:', err);
+        showBatchToast('error', 'Failed to save changes to database');
+      });
+    }
+
+    return { ok: true };
   };
 
   const deleteAdminBatch = (label: string) => {
-    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
-    setAdminBatches((prev) => {
-      const index = prev.findIndex((batch) => batch.label === label);
-      if (index === -1) {
-        result = { ok: false, error: 'Batch not found.' };
-        return prev;
-      }
-      const next = prev.filter((batch) => batch.label !== label);
-      result = { ok: true };
+    const batch = adminBatches.find((b) => b.label === label);
+    if (!batch) {
+      return { ok: false, error: 'Batch not found.' };
+    }
 
-      // Clear selected batch if it was the one deleted
-      if (adminBatch === label) {
-        setAdminBatch(null);
-      }
+    // Optimistically remove from local state
+    setAdminBatches((prev) => prev.filter((b) => b.label !== label));
 
-      return next;
-    });
-    return result;
+    if (adminBatch === label) {
+      setAdminBatch(null);
+    }
+
+    // Sync with API in the background
+    if (batch.id) {
+      showBatchToast('saving', 'Deleting batch from database…');
+      apiDeleteBatch(batch.id).then(() => {
+        showBatchToast('saved', 'Batch deleted from database ✓');
+      }).catch((err) => {
+        console.error('Failed to delete batch in API:', err);
+        showBatchToast('error', 'Failed to delete batch from database');
+      });
+    }
+
+    return { ok: true };
   };
 
   const parsePath = () => {
@@ -805,6 +865,18 @@ function App() {
             console.warn('Could not fetch queries from API');
           }
         }
+
+        // Fetch batches from API for admin and faculty users
+        if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
+          try {
+            const apiBatches = await apiFetchBatches();
+            if (apiBatches && apiBatches.length > 0) {
+              setAdminBatches(apiBatches.map(apiBatchToInfo));
+            }
+          } catch {
+            console.warn('Could not fetch batches from API, using local data');
+          }
+        }
       } catch {
         setUser(null);
       }
@@ -855,6 +927,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Keep localStorage as a cache for faster initial loads, but API is the source of truth
     safeSetLocalStorage('ujaasAdminBatches', JSON.stringify(adminBatches));
   }, [adminBatches]);
 
@@ -935,6 +1008,21 @@ function App() {
       '',
       userData.role === 'faculty' ? '/faculty' : '/admin'
     );
+
+    // Fetch batches and queries from API for admin/faculty
+    if (userData.role === 'admin' || userData.role === 'faculty') {
+      apiFetchBatches().then((apiBatches) => {
+        if (apiBatches && apiBatches.length > 0) {
+          setAdminBatches(apiBatches.map(apiBatchToInfo));
+        }
+      }).catch(() => console.warn('Could not fetch batches from API'));
+
+      if (userData.role === 'admin') {
+        fetchQueries().then(({ queries: dbQueries }) => {
+          setQueries(dbQueries as LandingQuery[]);
+        }).catch(() => console.warn('Could not fetch queries from API'));
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -985,7 +1073,7 @@ function App() {
     );
   }
 
-  return (
+  return (<>
     <MotionConfig reducedMotion="always">
       <AnimatePresence mode="wait">
         {showGetStarted && !user ? (
@@ -1106,7 +1194,80 @@ function App() {
         )}
       </AnimatePresence>
     </MotionConfig>
-  );
+
+    {/* Batch Save-to-Database Toast */}
+    <AnimatePresence>
+      {batchSaveToast.visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '14px 22px',
+            borderRadius: 16,
+            background: batchSaveToast.status === 'error'
+              ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
+              : batchSaveToast.status === 'saved'
+                ? 'linear-gradient(135deg, #059669, #047857)'
+                : 'linear-gradient(135deg, #0891b2, #0e7490)',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 14,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            backdropFilter: 'blur(8px)',
+            minWidth: 220,
+          }}
+        >
+          {batchSaveToast.status === 'saving' && (
+            <span style={{
+              display: 'inline-block',
+              width: 18,
+              height: 18,
+              border: '2.5px solid rgba(255,255,255,0.3)',
+              borderTopColor: '#fff',
+              borderRadius: '50%',
+              animation: 'spin 0.7s linear infinite',
+              flexShrink: 0,
+            }} />
+          )}
+          {batchSaveToast.status === 'saved' && (
+            <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
+          )}
+          {batchSaveToast.status === 'error' && (
+            <span style={{ fontSize: 18, flexShrink: 0 }}>✕</span>
+          )}
+          <span>{batchSaveToast.message}</span>
+          <button
+            onClick={() => setBatchSaveToast(prev => ({ ...prev, visible: false }))}
+            style={{
+              marginLeft: 'auto',
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            ✕
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Inline keyframes for spinner */}
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </>);
 }
 
 export default App;
