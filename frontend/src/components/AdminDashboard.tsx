@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { User, LandingData } from '../App';
 import {
   LogOut,
@@ -298,7 +299,7 @@ export function AdminDashboard({
       const obtainedMarks = Math.floor(Math.random() * test.totalMarks);
       const accuracy = Math.floor(Math.random() * 40) + 60;
       const correctAnswers = Math.floor((accuracy / 100) * test.questions.length);
-      
+
       return {
         studentId: student.id,
         studentName: student.name,
@@ -335,14 +336,14 @@ export function AdminDashboard({
   useEffect(() => {
     // Simulated data fetch
     const seededStudents: Student[] = [
-      { 
-        id: '1', 
-        name: 'Rahul Sharma', 
-        rollNumber: '2024001', 
-        enrolledCourses: ['JEE Main'], 
-        joinDate: '2024-01-15', 
-        performance: 85, 
-        rating: 4.5, 
+      {
+        id: '1',
+        name: 'Rahul Sharma',
+        rollNumber: '2024001',
+        enrolledCourses: ['JEE Main'],
+        joinDate: '2024-01-15',
+        performance: 85,
+        rating: 4.5,
         batch: '12th JEE',
         phoneNumber: '+91 99999 11111',
         dateOfBirth: '2007-04-12',
@@ -359,14 +360,14 @@ export function AdminDashboard({
           'Mathematics': 'Excellent consistency and speed in problem solving.'
         }
       },
-      { 
-        id: '2', 
-        name: 'Priya Patel', 
-        rollNumber: '2024002', 
-        enrolledCourses: ['NEET'], 
-        joinDate: '2024-01-20', 
-        performance: 92, 
-        rating: 4.8, 
+      {
+        id: '2',
+        name: 'Priya Patel',
+        rollNumber: '2024002',
+        enrolledCourses: ['NEET'],
+        joinDate: '2024-01-20',
+        performance: 92,
+        rating: 4.8,
         batch: '12th NEET',
         phoneNumber: '+91 88888 11111',
         dateOfBirth: '2007-06-18',
@@ -383,14 +384,14 @@ export function AdminDashboard({
           'Chemistry': 'Very disciplined and improving test performance.'
         }
       },
-      { 
-        id: '3', 
-        name: 'Amit Kumar', 
-        rollNumber: '2024003', 
-        enrolledCourses: ['JEE Advanced'], 
-        joinDate: '2024-02-05', 
-        performance: 78, 
-        rating: 4.2, 
+      {
+        id: '3',
+        name: 'Amit Kumar',
+        rollNumber: '2024003',
+        enrolledCourses: ['JEE Advanced'],
+        joinDate: '2024-02-05',
+        performance: 78,
+        rating: 4.2,
         batch: 'Dropper JEE',
         phoneNumber: '+91 77777 11111',
         dateOfBirth: '2006-09-22',
@@ -405,18 +406,18 @@ export function AdminDashboard({
           'Mathematics': 'Good progress. Keep practicing advanced level questions.'
         }
       },
-      { 
-        id: '4', 
-        name: 'Sneha Mehta', 
-        rollNumber: '2024004', 
-        enrolledCourses: ['JEE Main', 'NEET'], 
-        joinDate: '2024-02-12', 
-        performance: 88, 
-        rating: 4.6, 
-        batch: '11th JEE', 
-        phoneNumber: '+91 98989 11111', 
-        dateOfBirth: '2008-01-05', 
-        address: 'Satellite Road, Ahmedabad, Gujarat', 
+      {
+        id: '4',
+        name: 'Sneha Mehta',
+        rollNumber: '2024004',
+        enrolledCourses: ['JEE Main', 'NEET'],
+        joinDate: '2024-02-12',
+        performance: 88,
+        rating: 4.6,
+        batch: '11th JEE',
+        phoneNumber: '+91 98989 11111',
+        dateOfBirth: '2008-01-05',
+        address: 'Satellite Road, Ahmedabad, Gujarat',
         parentContact: '+91 98989 22222',
         subjectRatings: {
           'Physics': { attendance: 4.5, tests: 4.6, dppPerformance: 4.4, behavior: 4.8 },
@@ -427,18 +428,18 @@ export function AdminDashboard({
           'Mathematics': 'Accurate approach. Work slightly on time management.'
         }
       },
-      { 
-        id: '5', 
-        name: 'Karan Desai', 
-        rollNumber: '2024005', 
-        enrolledCourses: ['NEET'], 
-        joinDate: '2024-03-03', 
-        performance: 79, 
-        rating: 4.1, 
-        batch: '11th NEET', 
-        phoneNumber: '+91 97979 11111', 
-        dateOfBirth: '2008-03-15', 
-        address: 'Banjara Hills, Hyderabad, Telangana', 
+      {
+        id: '5',
+        name: 'Karan Desai',
+        rollNumber: '2024005',
+        enrolledCourses: ['NEET'],
+        joinDate: '2024-03-03',
+        performance: 79,
+        rating: 4.1,
+        batch: '11th NEET',
+        phoneNumber: '+91 97979 11111',
+        dateOfBirth: '2008-03-15',
+        address: 'Banjara Hills, Hyderabad, Telangana',
         parentContact: '+91 97979 22222',
         subjectRatings: {
           'Biology': { attendance: 4.0, tests: 3.9, dppPerformance: 4.1, behavior: 4.3 },
@@ -449,18 +450,18 @@ export function AdminDashboard({
           'Chemistry': 'Maintain short notes and increase daily question count.'
         }
       },
-      { 
-        id: '6', 
-        name: 'Ananya Kapoor', 
-        rollNumber: '2024006', 
-        enrolledCourses: ['JEE Advanced', 'NEET'], 
-        joinDate: '2024-03-10', 
-        performance: 91, 
-        rating: 4.9, 
-        batch: '12th JEE', 
-        phoneNumber: '+91 96969 11111', 
-        dateOfBirth: '2007-11-30', 
-        address: 'Civil Lines, Delhi', 
+      {
+        id: '6',
+        name: 'Ananya Kapoor',
+        rollNumber: '2024006',
+        enrolledCourses: ['JEE Advanced', 'NEET'],
+        joinDate: '2024-03-10',
+        performance: 91,
+        rating: 4.9,
+        batch: '12th JEE',
+        phoneNumber: '+91 96969 11111',
+        dateOfBirth: '2007-11-30',
+        address: 'Civil Lines, Delhi',
         parentContact: '+91 96969 22222',
         subjectRatings: {
           'Physics': { attendance: 5.0, tests: 4.9, dppPerformance: 4.8, behavior: 5.0 },
@@ -535,8 +536,8 @@ export function AdminDashboard({
 
   const handleSaveStudent = (data: StudentFormState) => {
     if (data.id) {
-      setStudents(prev => prev.map(s => s.id === data.id ? { 
-        ...s, 
+      setStudents(prev => prev.map(s => s.id === data.id ? {
+        ...s,
         name: data.name,
         rollNumber: data.rollNumber,
         batch: data.batch,
@@ -594,10 +595,10 @@ export function AdminDashboard({
         prev.map((student) =>
           student.id === id && student.batch === batch
             ? {
-                ...student,
-                batch: 'Unassigned',
-                enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
-              }
+              ...student,
+              batch: 'Unassigned',
+              enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
+            }
             : student
         )
       );
@@ -617,9 +618,9 @@ export function AdminDashboard({
       prev.map((student) =>
         student.id === studentId
           ? {
-              ...student,
-              batch,
-            }
+            ...student,
+            batch,
+          }
           : student
       )
     );
@@ -661,12 +662,12 @@ export function AdminDashboard({
 
   useBodyScrollLock(
     studentModal.open ||
-      facultyModal.open ||
-      batchModal.open ||
-      batchStudentPicker.open ||
-      batchFacultyPicker.open ||
-      ratingModal.open ||
-      showFullTimetable
+    facultyModal.open ||
+    batchModal.open ||
+    batchStudentPicker.open ||
+    batchFacultyPicker.open ||
+    ratingModal.open ||
+    showFullTimetable
   );
 
   return (
@@ -701,11 +702,10 @@ export function AdminDashboard({
                   <motion.button
                     key={section.id}
                     onClick={() => onNavigateSection(section.id as AdminSection)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      (adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     <section.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{section.label}</span>
@@ -721,11 +721,10 @@ export function AdminDashboard({
                   <motion.button
                     key={tab.id}
                     onClick={() => onNavigate(tab.id as Tab)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      activeTab === tab.id && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${activeTab === tab.id && activeTab !== 'profile'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     <tab.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -780,7 +779,7 @@ export function AdminDashboard({
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestTaking 
+              <TestTaking
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
                 duration={selectedPreviewTest.duration}
@@ -807,9 +806,9 @@ export function AdminDashboard({
             /* GLOBAL CONTEXT */
             <>
               {adminSection === 'landing' && (
-                <LandingManagementTab 
-                  data={landingData} 
-                  onUpdate={onUpdateLandingData} 
+                <LandingManagementTab
+                  data={landingData}
+                  onUpdate={onUpdateLandingData}
                 />
               )}
               {adminSection === 'batches' && (
@@ -839,10 +838,10 @@ export function AdminDashboard({
                 />
               )}
               {adminSection === 'test-series' && (
-                <TestSeriesManagementTab 
-                  onNavigate={onNavigate} 
-                  selectedBatch={null as unknown as Batch} 
-                  onChangeBatch={() => {}} 
+                <TestSeriesManagementTab
+                  onNavigate={onNavigate}
+                  selectedBatch={null as unknown as Batch}
+                  onChangeBatch={() => { }}
                   publishedTests={publishedTests}
                   onPreviewTest={onPreviewTest}
                   onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
@@ -850,8 +849,8 @@ export function AdminDashboard({
                 />
               )}
               {adminSection === 'queries' && (
-                <QueriesManagementTab 
-                  queries={queries} 
+                <QueriesManagementTab
+                  queries={queries}
                   onViewQuery={openQueryDetails}
                   onDeleteQuery={handleDeleteQuery}
                   onStatusChange={handleQueryStatusChange}
@@ -982,8 +981,8 @@ export function AdminDashboard({
                     <h3 className="text-xl font-bold">Query Details</h3>
                     <p className="text-teal-50 text-sm opacity-90">{new Date(queryModal.query.date).toLocaleString()}</p>
                   </div>
-                  <button 
-                    onClick={closeQueryDetails} 
+                  <button
+                    onClick={closeQueryDetails}
                     className="p-2 hover:bg-white/20 rounded-full transition-colors"
                   >
                     <X className="w-5 h-5" />
@@ -1034,11 +1033,10 @@ export function AdminDashboard({
                           <button
                             key={s}
                             onClick={() => handleQueryStatusChange(queryModal.query!.id, s)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${
-                              queryModal.query!.status === s
-                                ? 'bg-teal-600 text-white shadow-md'
-                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                            }`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${queryModal.query!.status === s
+                              ? 'bg-teal-600 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
                           >
                             {s}
                           </button>
@@ -1175,11 +1173,11 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
           <p className="text-gray-600">Post a text update with an accompanying image</p>
         </div>
       </div>
-      
+
       <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onNavigate('content'); }}>
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">Notice</label>
-          <input 
+          <input
             type="text"
             required
             placeholder="Type the notice message here..."
@@ -1190,11 +1188,11 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">Upload Image</label>
           <div className="p-8 bg-orange-50 border-2 border-dashed border-orange-200 rounded-2xl text-center group hover:bg-orange-100 transition-colors cursor-pointer relative">
-            <input 
-              type="file" 
+            <input
+              type="file"
               accept="image/*"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={() => {}} 
+              onChange={() => { }}
             />
             <ImageIcon className="w-10 h-10 text-orange-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
             <p className="text-sm text-gray-600 font-medium">Click or drag to upload notice image</p>
@@ -1203,14 +1201,14 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <button 
+          <button
             type="button"
             onClick={() => onNavigate('content')}
             className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
           >
             Cancel
           </button>
-          <button 
+          <button
             type="submit"
             className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
           >
@@ -1222,7 +1220,7 @@ function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   );
 }
 
-function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate: (data: LandingData) => void }) {
+function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate: (data: LandingData) => void | Promise<void> }) {
   const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers' | 'visions'>('overview');
   const [newCourse, setNewCourse] = useState('');
   const [isAddingFaculty, setIsAddingFaculty] = useState(false);
@@ -1231,6 +1229,27 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const [isAddingVision, setIsAddingVision] = useState(false);
   const [editingVisionIndex, setEditingVisionIndex] = useState<number | null>(null);
   const maxImageUploadSizeBytes = 600 * 1024;
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
+    setSaveStatus({ type, message });
+    saveStatusTimer.current = setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  const safeUpdate = async (newData: LandingData) => {
+    setIsSaving(true);
+    try {
+      await onUpdate(newData);
+      showToast('success', 'Changes saved to database!');
+    } catch {
+      showToast('error', 'Failed to save. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const readImageAsDataUrl = (file: File, onReady: (url: string) => void, fallbackUrl: string) => {
     if (file && file.size > 0) {
@@ -1249,13 +1268,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const handleAddCourse = (e: FormEvent) => {
     e.preventDefault();
     if (newCourse.trim()) {
-      onUpdate({ ...data, courses: [...data.courses, newCourse.trim()] });
+      safeUpdate({ ...data, courses: [...data.courses, newCourse.trim()] });
       setNewCourse('');
     }
   };
 
   const handleRemoveCourse = (index: number) => {
-    onUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) });
+    safeUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) });
   };
 
   const handleAddFaculty = (e: FormEvent) => {
@@ -1263,7 +1282,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
     const save = (url: string) => {
-      onUpdate({
+      safeUpdate({
         ...data,
         faculty: [...data.faculty, {
           name: formData.get('name') as string,
@@ -1293,7 +1312,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         experience: formData.get('experience') as string,
         image: url
       };
-      onUpdate({ ...data, faculty: next });
+      safeUpdate({ ...data, faculty: next });
       setEditingFacultyIndex(null);
     };
     readImageAsDataUrl(file, save, existing);
@@ -1304,7 +1323,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
     const save = (url: string) => {
-      onUpdate({
+      safeUpdate({
         ...data,
         achievers: [...data.achievers, {
           name: formData.get('name') as string,
@@ -1323,7 +1342,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
     const save = (url: string) => {
-      onUpdate({
+      safeUpdate({
         ...data,
         visions: [...(data.visions || []), {
           id: `v-${Date.now()}`,
@@ -1353,7 +1372,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         vision: formData.get('vision') as string,
         image: url
       };
-      onUpdate({ ...data, visions: next });
+      safeUpdate({ ...data, visions: next });
       setEditingVisionIndex(null);
     };
     readImageAsDataUrl(file, save, existing);
@@ -1374,12 +1393,12 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           {data.courses.map((c, i) => (
             <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl group">
               <span className="font-medium text-gray-700">{c}</span>
-              <button 
+              <button
                 onClick={() => {
                   if (confirm(`Are you sure you want to remove the course "${c}"?`)) {
                     handleRemoveCourse(i);
                   }
-                }} 
+                }}
                 className="p-2 text-red-500 opacity-0 group-hover:opacity-100"
               >
                 <Trash2 className="w-5 h-5" />
@@ -1431,12 +1450,12 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 relative group">
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => { setEditingFacultyIndex(i); setIsAddingFaculty(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg"><Edit className="w-4 h-4" /></button>
-                <button 
+                <button
                   onClick={() => {
                     if (confirm(`Are you sure you want to remove ${m.name} from faculty?`)) {
-                      onUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) });
+                      safeUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) });
                     }
-                  }} 
+                  }}
                   className="p-2 bg-red-50 text-red-500 rounded-lg"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -1477,12 +1496,12 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.achievers.map((a, i) => (
             <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 relative group">
-              <button 
+              <button
                 onClick={() => {
                   if (confirm(`Are you sure you want to remove achiever "${a.name}"?`)) {
-                    onUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) });
+                    safeUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) });
                   }
-                }} 
+                }}
                 className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 className="w-4 h-4" />
@@ -1546,12 +1565,12 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <div key={v.id} className="bg-white p-6 rounded-2xl border border-gray-100 relative group flex flex-col md:flex-row gap-6 items-center">
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => { setEditingVisionIndex(i); setIsAddingVision(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg" title="Edit Vision"><Edit className="w-4 h-4" /></button>
-                <button 
+                <button
                   onClick={() => {
                     if (confirm(`Are you sure you want to remove vision for "${v.name}"?`)) {
-                      onUpdate({ ...data, visions: data.visions.filter((_, idx) => idx !== i) });
+                      safeUpdate({ ...data, visions: data.visions.filter((_, idx) => idx !== i) });
                     }
-                  }} 
+                  }}
                   className="p-2 bg-red-50 text-red-500 rounded-lg"
                   title="Delete Vision"
                 >
@@ -1577,28 +1596,54 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-          <Layout className="w-6 h-6 text-white" />
-        </div>
-        <div><h2 className="text-3xl font-bold text-gray-900">Landing Page Management</h2><p className="text-gray-600">Customize the content of your public landing page</p></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { id: 'courses', title: 'Courses', description: 'Manage available courses' },
-          { id: 'faculty', title: 'Faculty', icon: GraduationCap, description: 'Update faculty showcase' },
-          { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
-          { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
-        ].map((item) => (
-          <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-            <p className="text-sm text-gray-600 mb-4">{item.description}</p>
-            <button onClick={() => setActiveSubSection(item.id as any)} className="text-cyan-600 font-semibold text-sm hover:underline">Edit Section →</button>
+    <>
+      {/* Saving Overlay — portaled to body */}
+      {isSaving && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 max-w-sm mx-4">
+            <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+            <p className="text-lg font-bold text-gray-900">Saving to database...</p>
+            <p className="text-sm text-gray-500">Please wait while your changes are being saved</p>
           </div>
-        ))}
+        </div>,
+        document.body
+      )}
+
+      {/* Toast Notification — portaled to body */}
+      {saveStatus && createPortal(
+        <div className={`fixed top-6 right-6 z-[99999] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 transition-all ${saveStatus.type === 'success'
+          ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white'
+          : 'bg-gradient-to-r from-red-500 to-rose-500 text-white'
+          }`}>
+          <span className="text-lg">{saveStatus.type === 'success' ? '✓' : '✕'}</span>
+          <span className="font-semibold">{saveStatus.message}</span>
+        </div>,
+        document.body
+      )}
+
+      <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <Layout className="w-6 h-6 text-white" />
+          </div>
+          <div><h2 className="text-3xl font-bold text-gray-900">Landing Page Management</h2><p className="text-gray-600">Customize the content of your public landing page</p></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { id: 'courses', title: 'Courses', description: 'Manage available courses' },
+            { id: 'faculty', title: 'Faculty', description: 'Update faculty showcase' },
+            { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
+            { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
+          ].map((item) => (
+            <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+              <p className="text-sm text-gray-600 mb-4">{item.description}</p>
+              <button onClick={() => setActiveSubSection(item.id as any)} className="text-cyan-600 font-semibold text-sm hover:underline">Edit Section →</button>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1624,13 +1669,13 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
   );
 }
 
-function QueriesManagementTab({ 
-  queries, 
-  onViewQuery, 
-  onDeleteQuery, 
-  onStatusChange 
-}: { 
-  queries: import('../App').LandingQuery[]; 
+function QueriesManagementTab({
+  queries,
+  onViewQuery,
+  onDeleteQuery,
+  onStatusChange
+}: {
+  queries: import('../App').LandingQuery[];
   onViewQuery: (q: import('../App').LandingQuery) => void;
   onDeleteQuery: (id: string) => void;
   onStatusChange: (id: string, status: 'new' | 'contacted' | 'completed') => void;
@@ -1655,8 +1700,8 @@ function QueriesManagementTab({
           </thead>
           <tbody className="divide-y divide-gray-50">
             {queries.map((q) => (
-              <tr 
-                key={q.id} 
+              <tr
+                key={q.id}
                 onClick={() => onViewQuery(q)}
                 className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
               >
@@ -1676,25 +1721,24 @@ function QueriesManagementTab({
                   </p>
                 </td>
                 <td className="py-4 px-4">
-                  <span className={`text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-md ${
-                    q.status === 'new' ? 'bg-orange-100 text-orange-700' : 
-                    q.status === 'contacted' ? 'bg-blue-100 text-blue-700' : 
-                    'bg-green-100 text-green-700'
-                  }`}>
+                  <span className={`text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-md ${q.status === 'new' ? 'bg-orange-100 text-orange-700' :
+                    q.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
                     {q.status}
                   </span>
                 </td>
                 <td className="py-4 px-4 text-right">
                   <div className="flex justify-end gap-1">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onViewQuery(q); }} 
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onViewQuery(q); }}
                       className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
                       title="View Details"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onDeleteQuery(q.id); }} 
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDeleteQuery(q.id); }}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                       title="Delete Query"
                     >
@@ -1711,9 +1755,9 @@ function QueriesManagementTab({
   );
 }
 
-function OverviewTab({ 
-  selectedBatch, 
-  onEditBatch, 
+function OverviewTab({
+  selectedBatch,
+  onEditBatch,
   students,
   faculty,
   batches,
@@ -1722,9 +1766,9 @@ function OverviewTab({
   onViewTimetable,
   onUpdateBatch,
   onOpenAddFaculty
-}: { 
-  selectedBatch: Batch | null; 
-  onEditBatch: (l: string) => void; 
+}: {
+  selectedBatch: Batch | null;
+  onEditBatch: (l: string) => void;
   students: Student[];
   faculty: Faculty[];
   batches: BatchInfo[];
@@ -1736,12 +1780,12 @@ function OverviewTab({
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
-  
+
   // Faculty logic
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const assigned = currentBatch?.facultyAssigned ?? [];
   const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
-  
+
   const handleRemoveFacultyFromBatch = (facultyName: string) => {
     if (!currentBatch) return;
     if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
@@ -1758,8 +1802,8 @@ function OverviewTab({
           <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => onEditBatch(selectedBatch)} 
+          <button
+            onClick={() => onEditBatch(selectedBatch)}
             className="px-8 py-3 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold border border-white/30 shadow-lg hover:bg-white/30 transition-all text-sm"
           >
             Batch Settings
@@ -1776,14 +1820,14 @@ function OverviewTab({
             </div>
             <h3 className="text-xl font-bold text-gray-900">Batch Faculty</h3>
           </div>
-          <button 
+          <button
             onClick={onOpenAddFaculty}
             className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
           >
             Assign Faculty
           </button>
         </div>
-        
+
         {assignedFaculty.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {assignedFaculty.map(t => (
@@ -1797,7 +1841,7 @@ function OverviewTab({
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => handleRemoveFacultyFromBatch(t.name)}
                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                   title="Remove from batch"
@@ -1867,8 +1911,8 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1989,11 +2033,11 @@ function NotesManagementTab({
     if (newSubjectName.trim()) {
       const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
       const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      
-      setSubjects([...subjects, { 
-        id: `s${Date.now()}`, 
-        name: newSubjectName.trim(), 
-        color: randomColor 
+
+      setSubjects([...subjects, {
+        id: `s${Date.now()}`,
+        name: newSubjectName.trim(),
+        color: randomColor
       }]);
       setChapters({ ...chapters, [newSubjectName.trim()]: [] });
       setNewSubjectName('');
@@ -2256,176 +2300,174 @@ function NotesManagementTab({
 
       {currentView === 'root' && (
         <>
-                    {/* Subject Folders */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
-                      {subjects.map((sub, index) => (
-                        <motion.div
-                          key={sub.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          onClick={() => navigateToSubject(sub.name)}
-                          className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteSubject(sub.id, sub.name);
-                            }}
-                            style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}
-                            className="p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 shadow-sm"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <div 
-                            className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
-                            style={{ backgroundColor: sub.color }}
-                          >
-                            <Folder className="w-8 h-8 text-white" />
+          {/* Subject Folders */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
+            {subjects.map((sub, index) => (
+              <motion.div
+                key={sub.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={() => navigateToSubject(sub.name)}
+                className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSubject(sub.id, sub.name);
+                  }}
+                  style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}
+                  className="p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <div
+                  className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
+                  style={{ backgroundColor: sub.color }}
+                >
+                  <Folder className="w-8 h-8 text-white" />
+                </div>
+                <div className="text-center">
+                  <h4 className="font-bold text-gray-900">{sub.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
+          {chapters[selectedSubject].map((chapter, index) => (
+            <motion.button
+              key={chapter}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              onClick={() => navigateToChapter(chapter)}
+              className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-teal-600 transition-colors">
+                  <Folder className="w-5 h-5 text-teal-600 group-hover:text-white" />
+                </div>
+                <span className="font-bold text-gray-900">{chapter}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteChapter(chapter);
+                  }}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      )}
+
+      {currentView === 'chapter' && selectedChapter && (
+        <div className="space-y-6 relative z-0">
+          {/* Internal Navigation */}
+          <div className="flex items-center gap-4 border-b border-gray-200">
+            <button
+              onClick={() => setActiveContentType('notes')}
+              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Study Notes
+              {activeContentType === 'notes' && (
+                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveContentType('dpps')}
+              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Daily Practice Problems (DPPs)
+              {activeContentType === 'dpps' && (
+                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
+              )}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeContentType === 'notes' ? (
+              notes
+                .filter(n => n.chapter === selectedChapter)
+                .map((note, index) => (
+                  <motion.div
+                    key={note.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
+                        <FileText className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
+                          <div className="flex gap-1">
+                            <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                            <button
+                              onClick={() => handleDeleteNote(note.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                          <div className="text-center">
-                            <h4 className="font-bold text-gray-900">{sub.name}</h4>
-                            <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </>
-                )}
-          
-                {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
-                    {chapters[selectedSubject].map((chapter, index) => (
-                      <motion.button
-                        key={chapter}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        onClick={() => navigateToChapter(chapter)}
-                        className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-teal-600 transition-colors">
-                            <Folder className="w-5 h-5 text-teal-600 group-hover:text-white" />
-                          </div>
-                          <span className="font-bold text-gray-900">{chapter}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteChapter(chapter);
-                            }}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+            ) : (
+              dpps
+                .filter(d => d.chapter === selectedChapter)
+                .map((dpp, index) => (
+                  <motion.div
+                    key={dpp.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
+                        <ClipboardList className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
+                          <div className="flex gap-1">
+                            <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
+                            <button
+                              onClick={() => handleDeleteDPP(dpp.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-          
-                {currentView === 'chapter' && selectedChapter && (
-                  <div className="space-y-6 relative z-0">
-                    {/* Internal Navigation */}
-                    <div className="flex items-center gap-4 border-b border-gray-200">
-                      <button
-                        onClick={() => setActiveContentType('notes')}
-                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
-                          activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        Study Notes
-                        {activeContentType === 'notes' && (
-                          <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setActiveContentType('dpps')}
-                        className={`pb-4 px-6 text-sm font-bold transition-all relative ${
-                          activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        Daily Practice Problems (DPPs)
-                        {activeContentType === 'dpps' && (
-                          <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-                        )}
-                      </button>
+                      </div>
                     </div>
-          
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {activeContentType === 'notes' ? (
-                        notes
-                          .filter(n => n.chapter === selectedChapter)
-                          .map((note, index) => (
-                          <motion.div
-                            key={note.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                          >
-                            <div className="flex items-start gap-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
-                                <FileText className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
-                                  <div className="flex gap-1">
-                                    <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                                    <button 
-                                      onClick={() => handleDeleteNote(note.id)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))
-                      ) : (
-                        dpps
-                          .filter(d => d.chapter === selectedChapter)
-                          .map((dpp, index) => (
-                          <motion.div
-                            key={dpp.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                          >
-                            <div className="flex items-start gap-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
-                                <ClipboardList className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
-                                  <div className="flex gap-1">
-                                    <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                                    <button 
-                                      onClick={() => handleDeleteDPP(dpp.id)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                  </motion.div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2456,12 +2498,12 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <input 
-              type="text" 
-              value={q} 
-              onChange={(e) => setQ(e.target.value)} 
-              placeholder="Search students..." 
-              className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" 
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search students..."
+              className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64"
             />
           </div>
           <select
@@ -2502,8 +2544,8 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent
                   </span>
                 </td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} 
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -2527,21 +2569,21 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map(t => (
-          <div 
-            key={t.id} 
+          <div
+            key={t.id}
             onClick={() => onViewFaculty(t)}
             className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative group cursor-pointer hover:shadow-md hover:border-teal-100 transition-all"
           >
             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={(e) => { e.stopPropagation(); onEditFaculty(t); }} 
+              <button
+                onClick={(e) => { e.stopPropagation(); onEditFaculty(t); }}
                 className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"
                 title="Edit Faculty"
               >
                 <Edit className="w-4 h-4" />
               </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDeleteFaculty(t.id); }} 
+              <button
+                onClick={(e) => { e.stopPropagation(); onDeleteFaculty(t.id); }}
                 className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
                 title="Delete Faculty"
               >
@@ -2571,15 +2613,15 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
   );
 }
 
-function TestSeriesManagementTab({ 
-  onNavigate, 
-  publishedTests, 
+function TestSeriesManagementTab({
+  onNavigate,
+  publishedTests,
   onPreviewTest,
   onViewInsights,
   onDeletePublishedTest
-}: { 
-  onNavigate: (t: Tab) => void; 
-  selectedBatch: Batch | null; 
+}: {
+  onNavigate: (t: Tab) => void;
+  selectedBatch: Batch | null;
   onChangeBatch: () => void;
   publishedTests: import('../App').PublishedTest[];
   onPreviewTest: (testId: string) => void;
@@ -2602,19 +2644,18 @@ function TestSeriesManagementTab({
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {publishedTests.map((test) => (
-            <div 
-              key={test.id} 
+            <div
+              key={test.id}
               onClick={() => onViewInsights(test.id)}
               className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative cursor-pointer hover:shadow-2xl hover:scale-[1.02] transition-all"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                    test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' : 
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
                     test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                  }`}>{test.format}</span>
-                  <button 
+                    }`}>{test.format}</span>
+                  <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete Test Series"
@@ -2630,7 +2671,7 @@ function TestSeriesManagementTab({
                 <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ')}</div>
               </div>
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
                   className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
                 >
@@ -3534,14 +3575,14 @@ function StudentRatingsModal({
     const subjectRatingsHtml =
       student.subjectRatings && Object.keys(student.subjectRatings).length > 0
         ? `<div class="subjects-grid">${Object.entries(student.subjectRatings)
-            .map(([subject, r]) => {
-              const subjectAverage = calculateSubjectRating(r);
-              const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
-              
-              const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
-              const subjectFaculty = batchFacultyNames.find(name => true);
+          .map(([subject, r]) => {
+            const subjectAverage = calculateSubjectRating(r);
+            const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
 
-              return `
+            const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
+            const subjectFaculty = batchFacultyNames.find(name => true);
+
+            return `
                 <section class="subject-card">
                   <div class="subject-header">
                     <h3>${escapeHtml(subject)}</h3>
@@ -3567,8 +3608,8 @@ function StudentRatingsModal({
                   ` : ''}
                 </section>
               `;
-            })
-            .join('')}</div>`
+          })
+          .join('')}</div>`
         : '<p class="empty">No rating data available for this student.</p>';
 
     const adminRemarkHtml = (student.adminRemark || '').trim() ? `
@@ -4062,11 +4103,10 @@ function StudentRatingsModal({
                     {mockTestPerformance.map((perf, idx) => {
                       const isAttempted = perf.status === 'Attempted';
                       return (
-                        <tr 
-                          key={idx} 
-                          className={`transition-colors ${
-                            isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
-                          }`}
+                        <tr
+                          key={idx}
+                          className={`transition-colors ${isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
+                            }`}
                         >
                           <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
                             {perf.title}

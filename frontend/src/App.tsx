@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -6,6 +6,13 @@ import { FacultyDashboard } from './components/FacultyDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
+import {
+  fetchLandingData,
+  updateLandingData as apiUpdateLanding,
+  fetchQueries,
+  submitQuery as apiSubmitQuery,
+  updateQueryStatus as apiUpdateQueryStatus,
+} from './api/landing';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -133,24 +140,39 @@ function App() {
     }
   };
 
-  const [queries, setQueries] = useState<LandingQuery[]>(() => {
-    const stored = localStorage.getItem('ujaasQueries');
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [queries, setQueries] = useState<LandingQuery[]>([]);
 
-  useEffect(() => {
-    safeSetLocalStorage('ujaasQueries', JSON.stringify(queries));
-  }, [queries]);
-
-  const handleAddQuery = (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
-    const newQuery: LandingQuery = {
-      ...query,
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toISOString(),
-      status: 'new'
-    };
-    setQueries(prev => [newQuery, ...prev]);
+  const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
+    try {
+      const newQuery = await apiSubmitQuery(query);
+      setQueries(prev => [newQuery as LandingQuery, ...prev]);
+    } catch (error) {
+      console.error('Failed to submit query:', error);
+      // Fallback: add locally
+      const fallback: LandingQuery = {
+        ...query,
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date().toISOString(),
+        status: 'new'
+      };
+      setQueries(prev => [fallback, ...prev]);
+    }
   };
+
+  const handleUpdateQueries = useCallback(async (updatedQueries: LandingQuery[]) => {
+    // Find queries whose status changed and sync with API
+    for (const q of updatedQueries) {
+      const prev = queries.find(old => old.id === q.id);
+      if (prev && prev.status !== q.status) {
+        try {
+          await apiUpdateQueryStatus(q.id, q.status);
+        } catch (error) {
+          console.error('Failed to update query status:', error);
+        }
+      }
+    }
+    setQueries(updatedQueries);
+  }, [queries]);
 
   const [landingData, setLandingData] = useState<LandingData>(() => {
     const defaultData = {
@@ -262,7 +284,7 @@ function App() {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        
+
         // Merge visions: keep stored ones, but add any defaults that are missing by ID
         const mergedVisions = [...(Array.isArray(parsed.visions) ? parsed.visions : [])];
         defaultData.visions.forEach(v => {
@@ -287,14 +309,20 @@ function App() {
     return defaultData;
   });
 
-  useEffect(() => {
-    safeSetLocalStorage('ujaasLandingData', JSON.stringify(landingData));
-  }, [landingData]);
+  const handleUpdateLandingData = useCallback(async (data: LandingData) => {
+    setLandingData(data);
+    try {
+      await apiUpdateLanding(data);
+    } catch (error) {
+      console.error('Failed to save landing data to API:', error);
+      throw error;
+    }
+  }, []);
 
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
     const stored = localStorage.getItem('ujaasPublishedTests');
     if (stored) return JSON.parse(stored);
-    
+
     // Default mock tests for demo
     return [
       {
@@ -353,7 +381,7 @@ function App() {
       if (test.id !== testId) return test;
       return { ...test, ...updates };
     }));
-    
+
     setSelectedPreviewTest(prev => {
       if (!prev || prev.id !== testId) return prev;
       return { ...prev, ...updates };
@@ -382,13 +410,13 @@ function App() {
           const subjectList = Array.isArray(entry.subjects)
             ? entry.subjects.map((subject) => subject.trim()).filter(Boolean)
             : entry.subject
-            ? [String(entry.subject).trim()].filter(Boolean)
-            : [];
+              ? [String(entry.subject).trim()].filter(Boolean)
+              : [];
           const facultyList = Array.isArray(entry.facultyAssigned)
             ? entry.facultyAssigned.map((faculty) => faculty.trim()).filter(Boolean)
             : entry.facultyAssigned
-            ? [String(entry.facultyAssigned).trim()].filter(Boolean)
-            : [];
+              ? [String(entry.facultyAssigned).trim()].filter(Boolean)
+              : [];
 
           return {
             label: entry.label.trim(),
@@ -512,11 +540,11 @@ function App() {
         subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
         facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
       };
-      
+
       if (adminBatch === targetLabel) {
         setAdminBatch(trimmedLabel);
       }
-      
+
       result = { ok: true };
       return next;
     });
@@ -534,12 +562,12 @@ function App() {
       }
       const next = prev.filter((batch) => batch.label !== label);
       result = { ok: true };
-      
+
       // Clear selected batch if it was the one deleted
       if (adminBatch === label) {
         setAdminBatch(null);
       }
-      
+
       return next;
     });
     return result;
@@ -555,8 +583,8 @@ function App() {
     }
     const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'student') {
-      return { 
-        view: 'student' as const, 
+      return {
+        view: 'student' as const,
         tab: parts[1] || 'home',
         subTab: parts[2]
       };
@@ -681,12 +709,12 @@ function App() {
     const canonicalPath = parsedBatch
       ? tabToPath(isFacultyRole ? 'faculty' : 'admin', adminTab, parsedBatch)
       : adminTab === 'profile'
-      ? isFacultyRole
-        ? '/faculty/profile'
-        : '/admin/profile'
-      : isFacultyRole
-      ? facultySectionToPath(parsedSection)
-      : adminSectionToPath(parsedSection);
+        ? isFacultyRole
+          ? '/faculty/profile'
+          : '/admin/profile'
+        : isFacultyRole
+          ? facultySectionToPath(parsedSection)
+          : adminSectionToPath(parsedSection);
     if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
       window.history.replaceState({ tab: adminTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
     }
@@ -695,7 +723,7 @@ function App() {
   const navigateTab = (tab: StudentTab | AdminTab, subTab?: string) => {
     if (!user) return;
     setActiveTab(tab);
-    
+
     let path = '';
     if (user.role === 'student') {
       path = tabToPath('student', tab as StudentTab, null, subTab);
@@ -752,10 +780,31 @@ function App() {
 
   useEffect(() => {
     const initializeSession = async () => {
+      // Fetch landing data from API (public, no auth needed)
+      try {
+        const apiLanding = await fetchLandingData();
+        if (apiLanding && apiLanding.courses) {
+          setLandingData(apiLanding);
+        }
+      } catch {
+        console.warn('Could not fetch landing data from API, using defaults');
+      }
+
       try {
         const profile = await me();
-        setUser(profile.user as User);
+        const loggedInUser = profile.user as User;
+        setUser(loggedInUser);
         setShowGetStarted(false);
+
+        // Fetch queries for admin users
+        if (loggedInUser.role === 'admin') {
+          try {
+            const { queries: dbQueries } = await fetchQueries();
+            setQueries(dbQueries as LandingQuery[]);
+          } catch {
+            console.warn('Could not fetch queries from API');
+          }
+        }
       } catch {
         setUser(null);
       }
@@ -858,12 +907,12 @@ function App() {
       const canonicalPath = parsedBatch
         ? tabToPath(isFacultyRole ? 'faculty' : 'admin', parsedTab, parsedBatch)
         : parsedTab === 'profile'
-        ? isFacultyRole
-          ? '/faculty/profile'
-          : '/admin/profile'
-        : isFacultyRole
-        ? facultySectionToPath(parsedSection)
-        : adminSectionToPath(parsedSection);
+          ? isFacultyRole
+            ? '/faculty/profile'
+            : '/admin/profile'
+          : isFacultyRole
+            ? facultySectionToPath(parsedSection)
+            : adminSectionToPath(parsedSection);
       if (window.location.pathname.replace(/\/+$/, '') !== canonicalPath || isRoleMismatch) {
         window.history.replaceState({ tab: parsedTab, batch: parsedBatch, section: parsedSection }, '', canonicalPath);
       }
@@ -922,7 +971,7 @@ function App() {
 
   if (loading) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -947,11 +996,11 @@ function App() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 }}
           >
-            <GetStarted 
-              onGetStarted={handleGetStarted} 
-              isNewUser={false} 
-              userName="" 
-              landingData={landingData} 
+            <GetStarted
+              onGetStarted={handleGetStarted}
+              isNewUser={false}
+              userName=""
+              landingData={landingData}
               onSubmitQuery={handleAddQuery}
             />
           </motion.div>
@@ -973,8 +1022,8 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <StudentDashboard 
-              user={user} 
+            <StudentDashboard
+              user={user}
               activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
               subTab={parsePath().view === 'student' ? parsePath().subTab : undefined}
               onNavigate={navigateTab}
@@ -994,8 +1043,8 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <FacultyDashboard 
-              user={user} 
+            <FacultyDashboard
+              user={user}
               activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
               onNavigate={navigateTab}
               adminSection={adminLandingSection}
@@ -1024,8 +1073,8 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <AdminDashboard 
-              user={user} 
+            <AdminDashboard
+              user={user}
               activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
               onNavigate={navigateTab}
               adminSection={adminLandingSection}
@@ -1043,9 +1092,9 @@ function App() {
               onMarkAllAsRead={handleMarkAllAsRead}
               onDeleteNotification={handleDeleteNotification}
               landingData={landingData}
-              onUpdateLandingData={setLandingData}
+              onUpdateLandingData={handleUpdateLandingData}
               queries={queries}
-              onUpdateQueries={setQueries}
+              onUpdateQueries={handleUpdateQueries}
               publishedTests={publishedTests}
               onPublishTest={handlePublishTest}
               onPreviewTest={handlePreviewTest}
