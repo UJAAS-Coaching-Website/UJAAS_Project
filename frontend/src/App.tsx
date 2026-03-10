@@ -116,7 +116,7 @@ function App() {
   type StudentTab = (typeof studentTabs)[number];
   type AdminTab = (typeof adminTabs)[number];
   type AdminBatch = string;
-  type AdminBatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
+  type AdminBatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; };
   const initialAdminBatches: AdminBatchInfo[] = [
     { label: '11th JEE', slug: '11th-jee' },
     { label: '11th NEET', slug: '11th-neet' },
@@ -133,6 +133,7 @@ function App() {
     slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch',
     subjects: b.subjects ?? undefined,
     facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
+    is_active: b.is_active,
   });
   const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
   type AdminLandingSection = (typeof adminLandingSections)[number];
@@ -612,8 +613,8 @@ function App() {
       return { ok: false, error: 'Batch not found.' };
     }
 
-    // Optimistically remove from local state
-    setAdminBatches((prev) => prev.filter((b) => b.label !== label));
+    // Optimistically update local state to inactive instead of removing
+    setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
 
     if (adminBatch === label) {
       setAdminBatch(null);

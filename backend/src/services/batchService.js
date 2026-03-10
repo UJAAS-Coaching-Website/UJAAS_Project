@@ -65,7 +65,15 @@ export async function createBatch({ name, subjects, facultyIds }) {
     try {
         await client.query("BEGIN");
 
-        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch';
+        const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch';
+        let slug = baseSlug;
+        let counter = 2;
+        while (true) {
+            const exists = await client.query("SELECT id FROM batches WHERE slug = $1", [slug]);
+            if (exists.rowCount === 0) break;
+            slug = `${baseSlug}-${counter}`;
+            counter++;
+        }
 
         const batchResult = await client.query(
             `INSERT INTO batches (id, name, slug, subjects, is_active)
@@ -105,15 +113,30 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds })
     try {
         await client.query("BEGIN");
 
+        let newSlug = null;
+        if (name) {
+            const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch';
+            newSlug = baseSlug;
+            let counter = 2;
+            while (true) {
+                const exists = await client.query("SELECT id FROM batches WHERE slug = $1 AND id != $2", [newSlug, id]);
+                if (exists.rowCount === 0) break;
+                newSlug = `${baseSlug}-${counter}`;
+                counter++;
+            }
+        }
+
         await client.query(
             `UPDATE batches
              SET name = COALESCE($2, name),
-                 is_active = COALESCE($3, is_active),
-                 subjects = COALESCE($4, subjects)
+                 slug = COALESCE($3, slug),
+                 is_active = COALESCE($4, is_active),
+                 subjects = COALESCE($5, subjects)
              WHERE id = $1`,
             [
                 id,
                 name || null,
+                newSlug,
                 is_active !== undefined ? is_active : null,
                 subjects !== undefined ? (subjects && subjects.length ? subjects : null) : null,
             ]
@@ -147,13 +170,11 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds })
     }
 }
 
-/**
- * Delete a batch by ID. Cascading deletes handle join tables.
- */
 export async function deleteBatch(id) {
+    const deletedSuffix = `-deleted-${Date.now()}`;
     const result = await pool.query(
-        "DELETE FROM batches WHERE id = $1 RETURNING id",
-        [id]
+        "UPDATE batches SET is_active = false, slug = slug || $2 WHERE id = $1 RETURNING id",
+        [id, deletedSuffix]
     );
     return result.rowCount > 0;
 }
