@@ -397,6 +397,15 @@ export function FacultyDashboard({
   const [batchModal, setBatchModal] = useState<{ open: boolean; batchLabel?: string; }>({ open: false });
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student; }>({ open: false });
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+
+  useEffect(() => {
+    if (showFullTimetable) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showFullTimetable]);
   const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
     open: false,
     batch: null
@@ -964,7 +973,7 @@ export function FacultyDashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-50"
+              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-modal"
               onClick={() => setShowFullTimetable(false)}
             >
               <motion.div
@@ -972,7 +981,7 @@ export function FacultyDashboard({
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-50"
+                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
