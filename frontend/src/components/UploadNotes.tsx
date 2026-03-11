@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { apiCreateNote } from '../api/notes';
+import { useEffect } from 'react';
 
 interface UploadNotesProps {
   onBack: () => void;
@@ -28,6 +30,15 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [chapterInfo, setChapterInfo] = useState<{id: string, name: string} | null>(null);
+
+  useEffect(() => {
+    const id = localStorage.getItem('uploadTargetChapterId');
+    const name = localStorage.getItem('uploadTargetChapterName');
+    if (id && name) {
+      setChapterInfo({ id, name });
+    }
+  }, []);
   useBodyScrollLock(showSuccess);
 
   const handleDrag = (e: React.DragEvent) => {
@@ -84,24 +95,34 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   };
 
   const handleSubmit = async () => {
+    if (!chapterInfo || !notesData.title || files.length === 0) return;
     setUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setUploading(false);
-          setShowSuccess(true);
-          setTimeout(() => {
-            onBack();
-          }, 2000);
-          return 100;
+    try {
+        // Since we don't have a real S3 upload service in this context yet,
+        // we will create note entries with placeholder URLs.
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            await apiCreateNote({
+                chapter_id: chapterInfo.id,
+                title: i === 0 ? notesData.title : `${notesData.title} (Part ${i+1})`,
+                file_url: `https://dummy-bucket.s3.amazonaws.com/notes/${Date.now()}_${file.name}`
+            });
+            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
         }
-        return prev + 10;
-      });
-    }, 200);
+
+        setUploading(false);
+        setShowSuccess(true);
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+    } catch (err) {
+        console.error(err);
+        alert('Failed to upload notes');
+        setUploading(false);
+    }
   };
 
   const isFormValid = notesData.title && files.length > 0;
@@ -130,7 +151,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Upload Study Notes</h1>
-                <p className="text-gray-600">Share learning materials with your students</p>
+                <p className="text-gray-600">Uploading to chapter: <span className="text-teal-600 font-bold">{chapterInfo?.name || 'Loading...'}</span></p>
               </div>
             </div>
           </div>

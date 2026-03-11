@@ -47,6 +47,7 @@ import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
+import { NotesManagementTab } from './NotesManagementTab';
 
 interface AdminDashboardProps {
   user: User;
@@ -138,6 +139,7 @@ type StudentFormState = {
   dateOfBirth: string;
   address: string;
   parentContact: string;
+  email?: string;
 };
 
 type FacultyFormState = {
@@ -573,24 +575,37 @@ export function AdminDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const handleSaveStudentProfile = (
+  const handleSaveStudentProfile = async (
     studentId: string,
     updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
-    setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
-    setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+    try {
+      await onUpdateStudent(studentId, {
+        name: updates.name,
+        phone: updates.phoneNumber,
+        dateOfBirth: updates.dateOfBirth,
+        parentContact: updates.parentContact,
+        address: updates.address
+      });
+      setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+    } catch (error: any) {
+      window.alert(`Error updating student: ${error.message}`);
+    }
   };
-  const handleSaveAdminRemark = (studentId: string, remark: string) => {
+  const handleSaveAdminRemark = async (studentId: string, remark: string) => {
     const cleanedRemark = remark.trim();
-    setStudents((prev) =>
-      prev.map((student) => (student.id === studentId ? { ...student, adminRemark: cleanedRemark } : student))
-    );
-    setRatingModal((prev) =>
-      prev.student?.id === studentId
-        ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
-        : prev
-    );
-    writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
+    try {
+        // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
+        // but we can store it in the local storage bridge we have.
+        setRatingModal((prev) =>
+          prev.student?.id === studentId
+            ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
+            : prev
+        );
+        writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
+    } catch (error: any) {
+        console.error(error);
+    }
   };
 
   useBodyScrollLock(
@@ -1822,7 +1837,23 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({ 
+  students, 
+  selectedBatch, 
+  onChangeBatch: _onChangeBatch, 
+  onAddStudent, 
+  onEditStudent,
+  onDeleteStudent, 
+  onViewStudent 
+}: { 
+  students: Student[]; 
+  selectedBatch: Batch; 
+  onChangeBatch: () => void; 
+  onAddStudent: () => void; 
+  onEditStudent: (s: Student) => void;
+  onDeleteStudent: (id: string) => void; 
+  onViewStudent: (s: Student) => void 
+}) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -1853,6 +1884,13 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                    title="Edit Student"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
@@ -1923,507 +1961,22 @@ function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpe
   );
 }
 
-function NotesManagementTab({
-  onNavigate,
-  selectedBatch,
-  onChangeBatch,
-  onViewTimetable,
-  batches,
-}: {
-  onNavigate: (tab: Tab) => void;
-  selectedBatch: Batch | null;
-  onChangeBatch: () => void;
-  onViewTimetable: () => void;
-  batches: BatchInfo[];
+
+function StudentsDirectoryTab({ 
+  students, 
+  batches, 
+  onAddStudent, 
+  onEditStudent,
+  onDeleteStudent, 
+  onViewStudent 
+}: { 
+  students: Student[]; 
+  batches: BatchInfo[]; 
+  onAddStudent: () => void; 
+  onEditStudent: (s: Student) => void;
+  onDeleteStudent: (id: string) => void; 
+  onViewStudent: (s: Student) => void;
 }) {
-  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
-
-  const allSubjects = [
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ];
-
-  const currentBatch = batches.find(b => b.label === selectedBatch);
-  const batchSubjects = currentBatch?.subjects || [];
-  
-  const [subjects, setSubjects] = useState(
-    allSubjects.filter(sub => batchSubjects.includes(sub.name))
-  );
-
-  const [chapters, setChapters] = useState<Record<string, string[]>>({
-    'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
-    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
-    'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
-    'Biology': ['Cell Division', 'Genetics', 'Evolution'],
-  });
-
-  const [notes, setNotes] = useState([
-    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-    { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
-  ]);
-
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
-  ]);
-
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newChapterName, setNewChapterName] = useState('');
-
-  useBodyScrollLock(isAddSubjectModalOpen || isAddChapterModalOpen);
-
-  const handleAddSubject = (e: FormEvent) => {
-    e.preventDefault();
-    if (newSubjectName.trim()) {
-      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-      setSubjects([...subjects, {
-        id: `s${Date.now()}`,
-        name: newSubjectName.trim(),
-        color: randomColor
-      }]);
-      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
-      setNewSubjectName('');
-      setIsAddSubjectModalOpen(false);
-    }
-  };
-
-  const handleAddChapter = (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedSubject) return;
-    if (newChapterName.trim()) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
-      });
-      setNewChapterName('');
-      setIsAddChapterModalOpen(false);
-    }
-  };
-
-  const handleDeleteSubject = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete the subject "${name}"? This will also remove its chapters.`)) {
-      setSubjects(subjects.filter(s => s.id !== id));
-      const nextChapters = { ...chapters };
-      delete nextChapters[name];
-      setChapters(nextChapters);
-    }
-  };
-
-  const handleDeleteChapter = (chapterName: string) => {
-    if (!selectedSubject) return;
-    if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: chapters[selectedSubject].filter(c => c !== chapterName)
-      });
-      // Also cleanup notes and dpps for this chapter
-      setNotes(notes.filter(n => n.chapter !== chapterName));
-      setDpps(dpps.filter(d => d.chapter !== chapterName));
-    }
-  };
-
-  const handleDeleteNote = (id: string) => {
-    if (confirm('Are you sure you want to delete this note?')) {
-      setNotes(notes.filter(n => n.id !== id));
-    }
-  };
-
-  const handleDeleteDPP = (id: string) => {
-    if (confirm('Are you sure you want to delete this DPP?')) {
-      setDpps(dpps.filter(d => d.id !== id));
-    }
-  };
-
-  const navigateToSubject = (subject: string) => {
-    setSelectedSubject(subject);
-    setCurrentView('subject');
-  };
-
-  const navigateToChapter = (chapter: string) => {
-    setSelectedChapter(chapter);
-    setCurrentView('chapter');
-    setActiveContentType('notes');
-  };
-
-  const goBack = () => {
-    if (currentView === 'chapter') {
-      setCurrentView('subject');
-      setSelectedChapter(null);
-    } else if (currentView === 'subject') {
-      setCurrentView('root');
-      setSelectedSubject(null);
-    }
-  };
-
-  return (
-    <div className="space-y-6 relative z-0">
-      {/* Header & Breadcrumbs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            {currentView !== 'root' && (
-              <motion.button
-                onClick={goBack}
-                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-700" />
-              </motion.button>
-            )}
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                {selectedSubject && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('subject'); setSelectedChapter(null); }}>{selectedSubject}</span>
-                  </>
-                )}
-                {selectedChapter && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {currentView === 'root' && (
-              <>
-                <motion.button
-                  onClick={onViewTimetable}
-                  className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
-                >
-                  <Calendar className="w-5 h-5" />
-                  Time Table
-                </motion.button>
-                <motion.button
-                  onClick={() => setIsAddSubjectModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Subject
-                </motion.button>
-              </>
-            )}
-            {currentView === 'subject' && (
-              <motion.button
-                onClick={() => setIsAddChapterModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-              >
-                <Plus className="w-5 h-5" />
-                Add Chapter
-              </motion.button>
-            )}
-            <motion.button
-              onClick={() => onNavigate('upload-notice')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-            >
-              <Bell className="w-5 h-5" />
-              Upload Notice
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Add Subject Modal */}
-      <AnimatePresence>
-        {isAddSubjectModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddSubjectModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
-                <h3 className="text-xl font-bold">Add New Subject</h3>
-                <p className="text-teal-50 text-sm">Create a new subject folder</p>
-              </div>
-              <form onSubmit={handleAddSubject} className="p-6 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    placeholder="e.g., Organic Chemistry"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddSubjectModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Subject
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Chapter Modal */}
-      <AnimatePresence>
-        {isAddChapterModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddChapterModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
-                <h3 className="text-xl font-bold">Add New Chapter</h3>
-                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
-              </div>
-              <form onSubmit={handleAddChapter} className="p-6 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newChapterName}
-                    onChange={(e) => setNewChapterName(e.target.value)}
-                    placeholder="e.g., Rotation Mechanics"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddChapterModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Chapter
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {currentView === 'root' && (
-        <>
-          {/* Subject Folders */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
-            {subjects.map((sub, index) => (
-              <motion.div
-                key={sub.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => navigateToSubject(sub.name)}
-                className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSubject(sub.id, sub.name);
-                  }}
-                  style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}
-                  className="p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 shadow-sm"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div
-                  className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
-                  style={{ backgroundColor: sub.color }}
-                >
-                  <Folder className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-center">
-                  <h4 className="font-bold text-gray-900">{sub.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
-          {chapters[selectedSubject].map((chapter, index) => (
-            <motion.button
-              key={chapter}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              onClick={() => navigateToChapter(chapter)}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-teal-600 transition-colors">
-                  <Folder className="w-5 h-5 text-teal-600 group-hover:text-white" />
-                </div>
-                <span className="font-bold text-gray-900">{chapter}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteChapter(chapter);
-                  }}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      {currentView === 'chapter' && selectedChapter && (
-        <div className="space-y-6 relative z-0">
-          {/* Internal Navigation */}
-          <div className="flex items-center gap-4 border-b border-gray-200">
-            <button
-              onClick={() => setActiveContentType('notes')}
-              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              Study Notes
-              {activeContentType === 'notes' && (
-                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveContentType('dpps')}
-              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              Daily Practice Problems (DPPs)
-              {activeContentType === 'dpps' && (
-                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-              )}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeContentType === 'notes' ? (
-              notes
-                .filter(n => n.chapter === selectedChapter)
-                .map((note, index) => (
-                  <motion.div
-                    key={note.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
-                        <FileText className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
-                          <div className="flex gap-1">
-                            <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                            <button
-                              onClick={() => handleDeleteNote(note.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-            ) : (
-              dpps
-                .filter(d => d.chapter === selectedChapter)
-                .map((dpp, index) => (
-                  <motion.div
-                    key={dpp.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
-                        <ClipboardList className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
-                          <div className="flex gap-1">
-                            <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                            <button
-                              onClick={() => handleDeleteDPP(dpp.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const [q, setQ] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
 
@@ -2496,8 +2049,16 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent
                 </td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
                   <button
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                    title="Edit Student"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                    title="Delete Student"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -2672,7 +2233,6 @@ function AddStudentModal({
   const createInitialState = (batch: Batch | null, initial?: Student): StudentFormState => ({
     id: initial?.id,
     name: initial?.name ?? '',
-    email: initial?.email ?? '',
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
     phoneNumber: initial?.phoneNumber ?? '',
@@ -3573,7 +3133,7 @@ function StudentRatingsModal({
     const adminRemarkHtml = (student.adminRemark || '').trim() ? `
       <section class="admin-remark">
         <h2>Overall Remark</h2>
-        <p>${escapeHtml(student.adminRemark.trim())}</p>
+        <p>${escapeHtml((student.adminRemark || '').trim())}</p>
       </section>
     ` : '';
 
