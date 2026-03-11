@@ -245,7 +245,7 @@ export async function getBatchStudents(batchId) {
  */
 export async function getBatchFaculty(batchId) {
     const result = await pool.query(`
-        SELECT u.id, u.name, f.subject_specialty, f.phone
+        SELECT u.id, u.name, f.subject, f.phone
         FROM faculty_batches fb
         JOIN faculties f ON f.user_id = fb.faculty_id
         JOIN users u ON u.id = f.user_id

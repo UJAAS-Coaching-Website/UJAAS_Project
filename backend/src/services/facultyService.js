@@ -20,12 +20,11 @@ export async function getAllFaculties() {
             u.login_id as email, 
             f.subject, 
             f.designation, 
-            f.experience, 
-            f.bio,
-            f.phone
+            f.phone,
+            TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
         FROM users u
         INNER JOIN faculties f ON u.id = f.user_id
-        WHERE u.role = 'faculty' AND u.is_active = true
+        WHERE u.role = 'faculty'
         ORDER BY u.name ASC
     `);
 
@@ -38,7 +37,7 @@ export async function getAllFaculties() {
 /**
  * Create a new faculty: inserts into users + faculties.
  */
-export async function createFaculty({ name, email, subject, phone, designation, experience }) {
+export async function createFaculty({ name, email, subject, phone, designation }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -54,9 +53,9 @@ export async function createFaculty({ name, email, subject, phone, designation, 
         const userId = userResult.rows[0].id;
 
         await client.query(
-            `INSERT INTO faculties (user_id, phone, subject, designation, experience)
-             VALUES ($1, $2, $3, $4, $5)`,
-            [userId, phone || null, subject || null, designation || null, experience || null]
+            `INSERT INTO faculties (user_id, phone, subject, designation)
+             VALUES ($1, $2, $3, $4)`,
+            [userId, phone || null, subject || null, designation || null]
         );
 
         await client.query("COMMIT");
@@ -67,7 +66,6 @@ export async function createFaculty({ name, email, subject, phone, designation, 
             email,
             subject: subject || null,
             designation: designation || null,
-            experience: experience || null,
             phone: phone || null,
             rating: 4.5,
         };
@@ -82,7 +80,7 @@ export async function createFaculty({ name, email, subject, phone, designation, 
 /**
  * Update faculty details.
  */
-export async function updateFaculty(id, { name, email, subject, phone, designation, experience }) {
+export async function updateFaculty(id, { name, email, subject, phone, designation }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -98,17 +96,17 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
             `UPDATE faculties
              SET phone = COALESCE($2, phone),
                  subject = COALESCE($3, subject),
-                 designation = COALESCE($4, designation),
-                 experience = COALESCE($5, experience)
+                 designation = COALESCE($4, designation)
              WHERE user_id = $1`,
-            [id, phone || null, subject || null, designation || null, experience || null]
+            [id, phone || null, subject || null, designation || null]
         );
 
         await client.query("COMMIT");
 
         // Fetch and return the updated faculty
         const result = await pool.query(`
-            SELECT u.id, u.name, u.login_id as email, f.subject, f.designation, f.experience, f.bio, f.phone
+            SELECT u.id, u.name, u.login_id as email, f.subject, f.designation, f.phone,
+                   TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
             FROM users u INNER JOIN faculties f ON u.id = f.user_id
             WHERE u.id = $1
         `, [id]);
