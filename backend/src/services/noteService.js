@@ -1,4 +1,4 @@
-import { pool } from "../config/index.js";
+import { pool } from "../db/index.js";
 
 // Fetch notes for a specific chapter
 export const getNotesByChapter = async (chapterId) => {

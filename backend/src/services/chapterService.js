@@ -1,4 +1,4 @@
-import { pool } from "../config/index.js";
+import { pool } from "../db/index.js";
 
 // Fetch chapters for a specific batch and subject
 export const getChapters = async (batchId, subjectName) => {
