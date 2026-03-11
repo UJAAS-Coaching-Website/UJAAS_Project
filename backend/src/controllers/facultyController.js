@@ -12,7 +12,7 @@ export async function listFaculties(req, res) {
 
 export async function handleCreateFaculty(req, res) {
     try {
-        const { name, email, subject, phone, designation, experience } = req.body;
+        const { name, email, subject, phone, designation, joinDate } = req.body;
         if (!name || !name.trim()) {
             return res.status(400).json({ message: "faculty name is required" });
         }
@@ -22,7 +22,7 @@ export async function handleCreateFaculty(req, res) {
         const faculty = await createFaculty({
             name: name.trim(),
             email: email.trim(),
-            subject, phone, designation, experience,
+            subject, phone, designation, joinDate,
         });
         return res.status(201).json(faculty);
     } catch (error) {

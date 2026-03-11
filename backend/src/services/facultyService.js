@@ -37,7 +37,7 @@ export async function getAllFaculties() {
 /**
  * Create a new faculty: inserts into users + faculties.
  */
-export async function createFaculty({ name, email, subject, phone, designation }) {
+export async function createFaculty({ name, email, subject, phone, designation, joinDate }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -53,9 +53,9 @@ export async function createFaculty({ name, email, subject, phone, designation }
         const userId = userResult.rows[0].id;
 
         await client.query(
-            `INSERT INTO faculties (user_id, phone, subject, designation)
-             VALUES ($1, $2, $3, $4)`,
-            [userId, phone || null, subject || null, designation || null]
+            `INSERT INTO faculties (user_id, phone, subject, designation, "joining-date")
+             VALUES ($1, $2, $3, $4, $5)`,
+            [userId, phone || null, subject || null, designation || null, joinDate || null]
         );
 
         await client.query("COMMIT");
@@ -67,6 +67,7 @@ export async function createFaculty({ name, email, subject, phone, designation }
             subject: subject || null,
             designation: designation || null,
             phone: phone || null,
+            joining_date: joinDate || null,
             rating: 4.5,
         };
     } catch (error) {
@@ -80,7 +81,7 @@ export async function createFaculty({ name, email, subject, phone, designation }
 /**
  * Update faculty details.
  */
-export async function updateFaculty(id, { name, email, subject, phone, designation }) {
+export async function updateFaculty(id, { name, email, subject, phone, designation, joinDate }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -96,9 +97,10 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
             `UPDATE faculties
              SET phone = COALESCE($2, phone),
                  subject = COALESCE($3, subject),
-                 designation = COALESCE($4, designation)
+                 designation = COALESCE($4, designation),
+                 "joining-date" = COALESCE($5, "joining-date")
              WHERE user_id = $1`,
-            [id, phone || null, subject || null, designation || null]
+            [id, phone || null, subject || null, designation || null, joinDate || undefined]
         );
 
         await client.query("COMMIT");

@@ -62,6 +62,7 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
       return {
         phone: '+91 99999 11111',
         subjectSpecialty: 'General',
+        designation: 'Senior Faculty',
         joinDate: '2024-06-01'
       };
     }
@@ -69,6 +70,7 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
     return {
       phone: details.phone || '',
       subjectSpecialty: details.subjectSpecialty || '',
+      designation: details.designation || '',
       joinDate: normalizeDateForInput(details.joinDate)
     };
   };
@@ -207,6 +209,7 @@ function OverviewSection({
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
             { label: 'Subject', value: details.subjectSpecialty, icon: BookOpen, key: 'subjectSpecialty' },
+            { label: 'Designation', value: details.designation || 'N/A', icon: User, key: 'designation' },
             { label: 'Join Date', value: details.joinDate, icon: Calendar, key: 'joinDate', type: 'date' }
           ].map((field, index) => (
             <motion.div

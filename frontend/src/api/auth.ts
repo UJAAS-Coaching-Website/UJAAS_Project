@@ -19,6 +19,7 @@ export interface StudentDetails {
 export interface FacultyDetails {
   phone: string;
   subjectSpecialty: string;
+  designation?: string;
   joinDate: string | null;
 }
 
@@ -48,7 +49,7 @@ interface AuthResponse {
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
 let refreshInFlight: Promise<boolean> | null = null;
 
-function getAuthHeaders() {
+function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("ujaasToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }

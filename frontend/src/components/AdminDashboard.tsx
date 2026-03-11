@@ -123,6 +123,7 @@ interface Faculty {
   name: string;
   email: string;
   subject: string;
+  designation?: string;
   phone?: string;
   rating?: number;
   joinDate?: string;
@@ -144,6 +145,7 @@ type FacultyFormState = {
   name: string;
   email: string;
   subject: string;
+  designation: string;
   phone: string;
   joinDate: string;
   rating: number;
@@ -293,8 +295,17 @@ export function AdminDashboard({
   });
 
   const students = adminStudents.map(apiToLocalStudent);
-  // Use adminFaculties prop directly instead of local state mock
-  const faculty = adminFaculties as Faculty[];
+  // Use adminFaculties prop directly, ensuring we format joining_date to joinDate
+  const faculty: Faculty[] = adminFaculties.map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    email: f.email,
+    subject: f.subject,
+    designation: f.designation,
+    phone: f.phone,
+    rating: f.rating,
+    joinDate: f.joining_date
+  }));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -480,14 +491,18 @@ export function AdminDashboard({
           name: data.name,
           email: data.email,
           subject: data.subject,
+          designation: data.designation,
           phone: data.phone,
+          joinDate: data.joinDate,
         });
       } else {
         await onCreateFaculty({
           name: data.name,
           email: data.email,
           subject: data.subject,
+          designation: data.designation,
           phone: data.phone,
+          joinDate: data.joinDate,
         });
         const initialPassword = data.name.split(' ')[0].toLowerCase() + '@123';
         window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
@@ -2520,7 +2535,8 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
               <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
-            <p className="text-sm font-semibold text-teal-600 uppercase mb-2">{t.subject}</p>
+            <p className="text-sm font-semibold text-teal-600 uppercase mb-1">{t.subject}</p>
+            {t.designation && <p className="text-xs text-gray-600 font-medium mb-3">{t.designation}</p>}
             {t.rating && (
               <div className="mb-4">
                 {renderPerformanceStars(t.rating)}
@@ -2818,6 +2834,7 @@ function AddFacultyModal({
   const [formState, setFormState] = useState<FacultyFormState>({
     id: initialData?.id,
     subject: initialData?.subject ?? '',
+    designation: initialData?.designation ?? '',
     name: initialData?.name ?? '',
     phone: initialData?.phone ?? '',
     email: initialData?.email ?? '',
@@ -2831,6 +2848,7 @@ function AddFacultyModal({
     setFormState({
       id: initialData?.id,
       subject: initialData?.subject ?? '',
+      designation: initialData?.designation ?? '',
       name: initialData?.name ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
@@ -2889,6 +2907,18 @@ function AddFacultyModal({
                 onChange={handleChange('subject')}
                 className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="e.g. Physics"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Designation</span>
+              <input
+                type="text"
+                readOnly={!isEditing}
+                value={formState.designation}
+                onChange={handleChange('designation')}
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+                placeholder="e.g. Senior Lecturer"
               />
             </label>
 

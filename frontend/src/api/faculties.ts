@@ -40,6 +40,7 @@ export interface ApiFaculty {
     bio?: string;
     phone?: string;
     rating?: number;
+    joining_date?: string;
 }
 
 export async function fetchFaculties(): Promise<ApiFaculty[]> {
@@ -53,6 +54,7 @@ export interface CreateFacultyPayload {
     phone?: string;
     designation?: string;
     experience?: string;
+    joinDate?: string;
 }
 
 export async function createFaculty(data: CreateFacultyPayload): Promise<ApiFaculty> {
