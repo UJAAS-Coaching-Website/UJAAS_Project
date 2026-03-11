@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '../App';
 import { 
   GraduationCap,
@@ -15,6 +15,7 @@ import {
   BookOpen,
   ClipboardList
 } from 'lucide-react';
+import { fetchBatches, ApiBatch } from '../api/batches';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { DPPPractice } from './DPPPractice';
@@ -524,6 +525,38 @@ function BatchDashboard({
   onStartDPP: (dpp: any, subjectName?: string) => void;
   dppAttempts: Record<string, { attempts: number, score: number }>;
 }) {
+  const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadBatch = async () => {
+      try {
+        const batches = await fetchBatches();
+        const studentBatch = batches.find(b => b.name === user.studentDetails?.batch);
+        if (studentBatch) {
+          setBatchDetails(studentBatch);
+        }
+      } catch (err) {
+        console.error("Failed to fetch batch details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user.studentDetails?.batch) {
+      loadBatch();
+    } else {
+      setLoading(false);
+    }
+  }, [user.studentDetails?.batch]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
@@ -549,7 +582,11 @@ function BatchDashboard({
           <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
         </div>
         <div className="p-1">
-          <StudentContentTab onStartDPP={onStartDPP} dppAttempts={dppAttempts} />
+          <StudentContentTab 
+            onStartDPP={onStartDPP} 
+            dppAttempts={dppAttempts} 
+            batchSubjects={batchDetails?.subjects || []}
+          />
         </div>
       </div>
     </div>
@@ -558,22 +595,30 @@ function BatchDashboard({
 
 function StudentContentTab({ 
   onStartDPP,
-  dppAttempts
+  dppAttempts,
+  batchSubjects
 }: { 
   onStartDPP: (dpp: any, subjectName: string) => void;
   dppAttempts: Record<string, { attempts: number, score: number }>;
+  batchSubjects: string[];
 }) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const subjects = [
+  const allSubjects = [
     { id: 's1', name: 'Physics', color: '#3b82f6' },
     { id: 's2', name: 'Chemistry', color: '#10b981' },
     { id: 's3', name: 'Mathematics', color: '#f59e0b' },
     { id: 's4', name: 'Biology', color: '#f43f5e' },
   ];
+
+  // Filter subjects based on those assigned to the batch
+  const subjects = batchSubjects.length > 0 
+    ? allSubjects.filter(sub => batchSubjects.includes(sub.name))
+    : allSubjects; // fallback if empty
+
 
   const chapters: Record<string, string[]> = {
     'Physics': ['Kinematics', 'Laws of Motion', 'Work Power Energy'],

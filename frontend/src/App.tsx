@@ -157,14 +157,6 @@ function App() {
     testsConducted?: number;
     averagePerformance?: number;
   };
-  const initialAdminBatches: AdminBatchInfo[] = [
-    { label: '11th JEE', slug: '11th-jee' },
-    { label: '11th NEET', slug: '11th-neet' },
-    { label: '12th JEE', slug: '12th-jee' },
-    { label: '12th NEET', slug: '12th-neet' },
-    { label: 'Dropper JEE', slug: 'dropper-jee' },
-    { label: 'Dropper NEET', slug: 'dropper-neet' },
-  ];
 
   /** Convert API batch to local AdminBatchInfo format */
   const apiBatchToInfo = (b: ApiBatch): AdminBatchInfo => ({
@@ -174,9 +166,9 @@ function App() {
     subjects: b.subjects ?? undefined,
     facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
     is_active: b.is_active,
-    studentCount: b.studentCount,
-    testsConducted: b.testsConducted,
-    averagePerformance: b.averagePerformance,
+    studentCount: b.student_count || 0,
+    testsConducted: (b as any).testsConducted || 0,
+    averagePerformance: (b as any).averagePerformance || 0,
   });
 
   const [user, setUser] = useState<User | null>(null);
@@ -924,24 +916,20 @@ function App() {
           }
 
           if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-            if (apiBatches.length > 0) {
-              setAdminBatches(apiBatches.map(apiBatchToInfo));
-            } else {
-              setAdminBatches(initialAdminBatches);
-            }
+            setAdminBatches(apiBatches.map(apiBatchToInfo));
             setAdminFaculties(apiFaculties);
             setAdminStudents(apiStudents);
             setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
           }
         } else {
           setUser(null);
-          // If no user, and no batches from API, use initial defaults
-          setAdminBatches(initialAdminBatches);
+          // If no user, set empty batches
+          setAdminBatches([]);
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
         setUser(null);
-        setAdminBatches(initialAdminBatches); // Fallback to initial defaults on error
+        setAdminBatches([]); // Fallback to empty on error
       }
 
       setLoading(false);
@@ -1082,17 +1070,13 @@ function App() {
           apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
         ]);
 
-        if (apiBatches.length > 0) {
-          setAdminBatches(apiBatches.map(apiBatchToInfo));
-        } else {
-          setAdminBatches(initialAdminBatches);
-        }
+        setAdminBatches(apiBatches.map(apiBatchToInfo));
         setAdminFaculties(apiFaculties);
         setAdminStudents(apiStudents);
         setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
       } catch (error) {
         console.warn('Error fetching batches/faculties on login:', error);
-        setAdminBatches(initialAdminBatches);
+        setAdminBatches([]);
       }
 
       if (userData.role === 'admin') {

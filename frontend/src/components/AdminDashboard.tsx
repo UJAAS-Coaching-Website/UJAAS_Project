@@ -1814,6 +1814,7 @@ function OverviewTab({
             selectedBatch={selectedBatch}
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
+            batches={batches}
           />
         </div>
       </div>
@@ -1927,23 +1928,34 @@ function NotesManagementTab({
   selectedBatch,
   onChangeBatch,
   onViewTimetable,
+  batches,
 }: {
   onNavigate: (tab: Tab) => void;
   selectedBatch: Batch | null;
   onChangeBatch: () => void;
   onViewTimetable: () => void;
+  batches: BatchInfo[];
 }) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const [subjects, setSubjects] = useState([
+  const allSubjects = [
     { id: 's1', name: 'Physics', color: '#3b82f6' },
     { id: 's2', name: 'Chemistry', color: '#10b981' },
     { id: 's3', name: 'Mathematics', color: '#f59e0b' },
     { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ]);
+  ];
+
+  const currentBatch = batches.find(b => b.label === selectedBatch);
+  const batchSubjects = currentBatch?.subjects || [];
+  
+  const [subjects, setSubjects] = useState(
+    batchSubjects.length > 0 
+      ? allSubjects.filter(sub => batchSubjects.includes(sub.name))
+      : allSubjects
+  );
 
   const [chapters, setChapters] = useState<Record<string, string[]>>({
     'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
