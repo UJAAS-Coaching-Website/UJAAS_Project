@@ -24,6 +24,8 @@ import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import demotimetable from '../assets/demotimetable.jpg';
+import { X, Calendar } from 'lucide-react';
 
 interface StudentDashboardProps {
   user: User;
@@ -74,6 +76,7 @@ export function StudentDashboard({
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+  const [showFullTimetable, setShowFullTimetable] = useState(false);
 
   const [dppAttempts, setDppAttempts] = useState<Record<string, { attempts: number, score: number }>>(() => {
     const saved = localStorage.getItem('dppAttempts');
@@ -246,6 +249,7 @@ export function StudentDashboard({
               onBack={() => onNavigate('home')} 
               onStartDPP={handleStartDPP}
               dppAttempts={dppAttempts}
+              onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
           {activeTab === 'question-bank' && (
@@ -260,6 +264,43 @@ export function StudentDashboard({
 
       {/* Footer */}
       {!isNavbarHidden && <Footer />}
+
+      {/* Timetable Modal */}
+      <AnimatePresence>
+        {showFullTimetable && (
+          <motion.div
+            key="timetable-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-50"
+            onClick={() => setShowFullTimetable(false)}
+          >
+            <motion.div
+              key="timetable-modal-content"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-50"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
+               </div>
+              <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
+                <div className="w-full h-full flex items-center justify-center">
+                  <img src={demotimetable} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
+                </div>
+              </div>
+              <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
+                <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"><Download className="w-4 h-4" />Download PDF</button>
+                <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -518,12 +559,14 @@ function BatchDashboard({
   user, 
   onBack, 
   onStartDPP,
-  dppAttempts
+  dppAttempts,
+  onViewTimetable
 }: { 
   user: User; 
   onBack: () => void; 
   onStartDPP: (dpp: any, subjectName?: string) => void;
   dppAttempts: Record<string, { attempts: number, score: number }>;
+  onViewTimetable: () => void;
 }) {
   const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
   const [loading, setLoading] = useState(true);
@@ -566,11 +609,20 @@ function BatchDashboard({
             onClick={onBack}
             className="flex items-center gap-2 text-teal-100 hover:text-white mb-4 font-bold transition-colors group"
           >
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             Back to Dashboard
           </button>
-          <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch} Dashboard</h2>
-          <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
+          <div className="flex items-center gap-4">
+            <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch} Dashboard</h2>
+            <button 
+              onClick={onViewTimetable}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20"
+            >
+              <Calendar className="w-5 h-5" />
+              Time Table
+            </button>
+          </div>
+          <p className="text-teal-50/90 font-medium mt-1">Batch Academic Overview & Content</p>
         </div>
       </div>
 
@@ -615,9 +667,7 @@ function StudentContentTab({
   ];
 
   // Filter subjects based on those assigned to the batch
-  const subjects = batchSubjects.length > 0 
-    ? allSubjects.filter(sub => batchSubjects.includes(sub.name))
-    : allSubjects; // fallback if empty
+  const subjects = allSubjects.filter(sub => batchSubjects.includes(sub.name)); // fallback removed
 
 
   const chapters: Record<string, string[]> = {

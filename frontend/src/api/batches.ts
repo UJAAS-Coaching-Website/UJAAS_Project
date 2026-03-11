@@ -49,6 +49,7 @@ export interface ApiBatch {
     slug: string;
     is_active: boolean;
     subjects: string[] | null;
+    timetable_url: string | null;
     faculty: ApiBatchFaculty[];
     student_count: number;
 }
@@ -60,6 +61,7 @@ export interface CreateBatchPayload {
     endDate?: string;
     description?: string;
     subjects?: string[];
+    timetable_url?: string;
     facultyIds?: string[];
 }
 
@@ -67,6 +69,7 @@ export interface UpdateBatchPayload {
     name?: string;
     is_active?: boolean;
     subjects?: string[];
+    timetable_url?: string;
     facultyIds?: string[];
 }
 

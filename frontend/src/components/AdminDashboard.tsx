@@ -1952,9 +1952,7 @@ function NotesManagementTab({
   const batchSubjects = currentBatch?.subjects || [];
   
   const [subjects, setSubjects] = useState(
-    batchSubjects.length > 0 
-      ? allSubjects.filter(sub => batchSubjects.includes(sub.name))
-      : allSubjects
+    allSubjects.filter(sub => batchSubjects.includes(sub.name))
   );
 
   const [chapters, setChapters] = useState<Record<string, string[]>>({

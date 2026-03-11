@@ -37,7 +37,7 @@ export async function getBatch(req, res) {
 
 export async function handleCreateBatch(req, res) {
     try {
-        const { name, subjects, facultyIds } = req.body;
+        const { name, subjects, facultyIds, timetable_url } = req.body;
         if (!name || typeof name !== "string" || !name.trim()) {
             return res.status(400).json({ message: "batch name is required" });
         }
@@ -45,6 +45,7 @@ export async function handleCreateBatch(req, res) {
             name: name.trim(),
             subjects,
             facultyIds,
+            timetable_url,
         });
         return res.status(201).json(batch);
     } catch (error) {
@@ -58,12 +59,13 @@ export async function handleCreateBatch(req, res) {
 
 export async function handleUpdateBatch(req, res) {
     try {
-        const { name, is_active, subjects, facultyIds } = req.body;
+        const { name, is_active, subjects, facultyIds, timetable_url } = req.body;
         const batch = await updateBatch(req.params.id, {
             name,
             is_active,
             subjects,
             facultyIds,
+            timetable_url,
         });
         if (!batch) {
             return res.status(404).json({ message: "batch not found" });

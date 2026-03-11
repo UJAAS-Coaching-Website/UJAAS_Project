@@ -16,24 +16,24 @@ import { authenticate, requireRole } from "../middleware/auth.js";
 
 const router = Router();
 
-// All batch routes require admin authentication
-router.use(authenticate, requireRole("admin"));
+// All batch routes require authentication
+router.use(authenticate);
 
-// Batch CRUD
+// Batch CRUD (Read-only for all, write for admin)
 router.get("/", listBatches);
 router.get("/:id", getBatch);
-router.post("/", handleCreateBatch);
-router.put("/:id", handleUpdateBatch);
-router.delete("/:id", handleDeleteBatch);
+router.post("/", requireRole("admin"), handleCreateBatch);
+router.put("/:id", requireRole("admin"), handleUpdateBatch);
+router.delete("/:id", requireRole("admin"), handleDeleteBatch);
 
-// Student assignment
-router.get("/:id/students", handleGetBatchStudents);
-router.post("/:id/students", handleAssignStudent);
-router.delete("/:id/students/:studentId", handleRemoveStudent);
+// Student assignment (Admin only)
+router.get("/:id/students", requireRole("admin"), handleGetBatchStudents);
+router.post("/:id/students", requireRole("admin"), handleAssignStudent);
+router.delete("/:id/students/:studentId", requireRole("admin"), handleRemoveStudent);
 
-// Faculty assignment
-router.get("/:id/faculty", handleGetBatchFaculty);
-router.post("/:id/faculty", handleAssignFaculty);
-router.delete("/:id/faculty/:facultyId", handleRemoveFaculty);
+// Faculty assignment (Admin only)
+router.get("/:id/faculty", requireRole("admin"), handleGetBatchFaculty);
+router.post("/:id/faculty", requireRole("admin"), handleAssignFaculty);
+router.delete("/:id/faculty/:facultyId", requireRole("admin"), handleRemoveFaculty);
 
 export default router;

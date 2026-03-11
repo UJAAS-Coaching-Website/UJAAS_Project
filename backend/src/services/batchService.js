@@ -12,6 +12,7 @@ export async function getAllBatches() {
             b.slug,
             b.subjects,
             b.is_active,
+            b.timetable_url,
             COALESCE(
                 json_agg(
                     json_build_object('id', u.id, 'name', u.name)
@@ -40,6 +41,7 @@ export async function getBatchById(id) {
             b.slug,
             b.subjects,
             b.is_active,
+            b.timetable_url,
             COALESCE(
                 json_agg(
                     json_build_object('id', u.id, 'name', u.name)
@@ -60,7 +62,7 @@ export async function getBatchById(id) {
 /**
  * Create a new batch with optional faculty assignments.
  */
-export async function createBatch({ name, subjects, facultyIds }) {
+export async function createBatch({ name, subjects, facultyIds, timetable_url }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -76,10 +78,10 @@ export async function createBatch({ name, subjects, facultyIds }) {
         }
 
         const batchResult = await client.query(
-            `INSERT INTO batches (id, name, slug, subjects, is_active)
-             VALUES (gen_random_uuid(), $1, $2, $3, true)
+            `INSERT INTO batches (id, name, slug, subjects, is_active, timetable_url)
+             VALUES (gen_random_uuid(), $1, $2, $3, true, $4)
              RETURNING *`,
-            [name, slug, subjects && subjects.length ? subjects : null]
+            [name, slug, subjects && subjects.length ? subjects : null, timetable_url || null]
         );
         const batch = batchResult.rows[0];
 
@@ -108,7 +110,7 @@ export async function createBatch({ name, subjects, facultyIds }) {
 /**
  * Update batch details and faculty assignments.
  */
-export async function updateBatch(id, { name, is_active, subjects, facultyIds }) {
+export async function updateBatch(id, { name, is_active, subjects, facultyIds, timetable_url }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -131,7 +133,8 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds })
              SET name = COALESCE($2, name),
                  slug = COALESCE($3, slug),
                  is_active = COALESCE($4, is_active),
-                 subjects = COALESCE($5, subjects)
+                 subjects = COALESCE($5, subjects),
+                 timetable_url = COALESCE($6, timetable_url)
              WHERE id = $1`,
             [
                 id,
@@ -139,6 +142,7 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds })
                 newSlug,
                 is_active !== undefined ? is_active : null,
                 subjects !== undefined ? (subjects && subjects.length ? subjects : null) : null,
+                timetable_url !== undefined ? (timetable_url || null) : null
             ]
         );
 
