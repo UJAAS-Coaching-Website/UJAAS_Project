@@ -16,9 +16,16 @@ router.use(authenticate);
 router.get("/", handleGetChapters);
 router.get("/:id", handleGetChapterById);
 
-// Admin-only modifying routes
-router.post("/", requireRole("admin"), handleCreateChapter);
-router.put("/:id", requireRole("admin"), handleUpdateChapter);
-router.delete("/:id", requireRole("admin"), handleDeleteChapter);
+// Admin and Faculty can manage chapters
+const canManageContent = (req, res, next) => {
+    if (req.user?.role === "admin" || req.user?.role === "faculty") {
+        return next();
+    }
+    return res.status(403).json({ message: "forbidden" });
+};
+
+router.post("/", canManageContent, handleCreateChapter);
+router.put("/:id", canManageContent, handleUpdateChapter);
+router.delete("/:id", canManageContent, handleDeleteChapter);
 
 export default router;

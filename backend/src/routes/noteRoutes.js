@@ -16,9 +16,16 @@ router.use(authenticate);
 router.get("/", handleGetNotes);
 router.get("/:id", handleGetNoteById);
 
-// Admin-only modifying routes
-router.post("/", requireRole("admin"), handleCreateNote);
-router.put("/:id", requireRole("admin"), handleUpdateNote);
-router.delete("/:id", requireRole("admin"), handleDeleteNote);
+// Admin and Faculty can manage notes
+const canManageContent = (req, res, next) => {
+    if (req.user?.role === "admin" || req.user?.role === "faculty") {
+        return next();
+    }
+    return res.status(403).json({ message: "forbidden" });
+};
+
+router.post("/", canManageContent, handleCreateNote);
+router.put("/:id", canManageContent, handleUpdateNote);
+router.delete("/:id", canManageContent, handleDeleteNote);
 
 export default router;

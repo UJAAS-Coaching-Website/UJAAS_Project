@@ -1830,6 +1830,7 @@ function OverviewTab({
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
             batches={batches}
+            variant="admin"
           />
         </div>
       </div>

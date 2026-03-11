@@ -1121,6 +1121,7 @@ function OverviewTab({
             onViewTimetable={onViewTimetable}
             facultySubject={facultySubject}
             batches={batches}
+            variant="faculty"
           />
         </div>
       </div>

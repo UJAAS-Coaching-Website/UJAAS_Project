@@ -654,6 +654,7 @@ function BatchDashboard({
             onViewTimetable={onViewTimetable}
             batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}
             readOnly={true}
+            variant="student"
           />
         </div>
       </div>
