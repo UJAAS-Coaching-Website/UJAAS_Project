@@ -278,7 +278,7 @@ export function AdminDashboard({
     enrolledCourses: s.batches.map(b => b.name),
     joinDate: s.join_date || '',
     performance: 0,
-    rating: (s.rating_attendance + s.rating_assignments + s.rating_tests + s.rating_participation + s.rating_behavior + s.rating_engagement) / 6,
+    rating: (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
     batch: s.batches.length > 0 ? s.batches[0].name : 'Unassigned',
     phoneNumber: s.phone || '',
     dateOfBirth: s.date_of_birth || '',
@@ -2988,17 +2988,9 @@ function BatchStudentPickerModal({
 }) {
   if (!open || !selectedBatch) return null;
 
-  const availableStudents = students.filter((student) => student.batch !== selectedBatch);
+  const availableStudents = students.filter((student) => !student.batch || student.batch === 'Unassigned');
 
   const handleAssign = (student: Student) => {
-    if (
-      student.batch &&
-      student.batch !== 'Unassigned' &&
-      student.batch !== selectedBatch &&
-      !window.confirm(`Move ${student.name} from ${student.batch} to ${selectedBatch}?`)
-    ) {
-      return;
-    }
     onAssign(student.id, selectedBatch);
   };
 

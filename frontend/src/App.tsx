@@ -1172,27 +1172,68 @@ function App() {
               adminFaculties={adminFaculties}
               adminStudents={adminStudents}
               onCreateStudent={async (data: import('./api/students').CreateStudentPayload) => {
-                const student = await apiCreateStudent(data);
-                setAdminStudents(prev => [...prev, student]);
-                return student;
+                showBatchToast('saving', 'Saving student to database...');
+                try {
+                  const student = await apiCreateStudent(data);
+                  setAdminStudents(prev => [...prev, student]);
+                  // Refresh batches to update student count
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student created successfully');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to create student');
+                  throw err;
+                }
               }}
               onUpdateStudent={async (id: string, data: import('./api/students').UpdateStudentPayload) => {
-                const student = await apiUpdateStudent(id, data);
-                setAdminStudents(prev => prev.map(s => s.id === id ? student : s));
-                return student;
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const student = await apiUpdateStudent(id, data);
+                  setAdminStudents(prev => prev.map(s => s.id === id ? student : s));
+                  showBatchToast('saved', 'Student updated successfully');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to update student');
+                  throw err;
+                }
               }}
               onDeleteStudent={async (id: string) => {
-                await apiDeleteStudent(id);
-                setAdminStudents(prev => prev.filter(s => s.id !== id));
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiDeleteStudent(id);
+                  setAdminStudents(prev => prev.filter(s => s.id !== id));
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student deleted successfully');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to delete student');
+                  throw err;
+                }
               }}
               onAssignStudentToBatch={async (studentId: string, batchId: string) => {
-                const student = await apiAssignStudentToBatch(studentId, batchId);
-                setAdminStudents(prev => prev.map(s => s.id === studentId ? student : s));
-                return student;
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const student = await apiAssignStudentToBatch(studentId, batchId);
+                  setAdminStudents(prev => prev.map(s => s.id === studentId ? student : s));
+                  // Refresh batches to update student count
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student assigned to batch');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to assign student');
+                  throw err;
+                }
               }}
               onRemoveStudentFromBatch={async (studentId: string, batchId: string) => {
-                await apiRemoveStudentFromBatch(studentId, batchId);
-                setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, batches: s.batches.filter(b => b.id !== batchId) } : s));
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiRemoveStudentFromBatch(studentId, batchId);
+                  setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, batches: s.batches.filter(b => b.id !== batchId) } : s));
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student removed from batch');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to remove student');
+                  throw err;
+                }
               }}
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}

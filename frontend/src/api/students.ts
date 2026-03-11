@@ -47,10 +47,8 @@ export interface ApiStudent {
     join_date: string | null;
     rating_attendance: number;
     rating_assignments: number;
-    rating_tests: number;
     rating_participation: number;
     rating_behavior: number;
-    rating_engagement: number;
     batches: ApiStudentBatch[];
 }
 

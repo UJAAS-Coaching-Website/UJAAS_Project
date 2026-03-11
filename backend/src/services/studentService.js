@@ -26,10 +26,8 @@ export async function getAllStudents() {
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
             COALESCE(r.assignments, 0) AS rating_assignments,
-            COALESCE(r.tests, 0) AS rating_tests,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
-            COALESCE(r.engagement, 0) AS rating_engagement,
             COALESCE(
                 json_agg(
                     json_build_object('id', b.id, 'name', b.name)
@@ -45,7 +43,7 @@ export async function getAllStudents() {
         GROUP BY
             u.id, u.name, u.login_id,
             s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
-            r.attendance, r.assignments, r.tests, r.participation, r.behavior, r.engagement
+            r.attendance, r.assignments, r.participation, r.behavior
         ORDER BY u.name
     `);
     return result.rows;
@@ -68,10 +66,8 @@ export async function getStudentById(id) {
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
             COALESCE(r.assignments, 0) AS rating_assignments,
-            COALESCE(r.tests, 0) AS rating_tests,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
-            COALESCE(r.engagement, 0) AS rating_engagement,
             COALESCE(
                 json_agg(
                     json_build_object('id', b.id, 'name', b.name)
@@ -87,7 +83,7 @@ export async function getStudentById(id) {
         GROUP BY
             u.id, u.name, u.login_id,
             s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
-            r.attendance, r.assignments, r.tests, r.participation, r.behavior, r.engagement
+            r.attendance, r.assignments, r.participation, r.behavior
     `, [id]);
     return result.rows[0] || null;
 }
