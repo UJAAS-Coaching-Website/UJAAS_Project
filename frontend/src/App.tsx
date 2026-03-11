@@ -20,7 +20,13 @@ import {
   deleteBatch as apiDeleteBatch,
   type ApiBatch,
 } from './api/batches';
-import { fetchFaculties, type ApiFaculty } from './api/faculties';
+import {
+  fetchFaculties,
+  createFaculty as apiCreateFaculty,
+  updateFaculty as apiUpdateFaculty,
+  deleteFacultyApi as apiDeleteFaculty,
+  type ApiFaculty,
+} from './api/faculties';
 import {
   fetchStudents as apiFetchStudents,
   createStudent as apiCreateStudent,
@@ -1170,6 +1176,41 @@ function App() {
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
               adminFaculties={adminFaculties}
+              onCreateFaculty={async (data: import('./api/faculties').CreateFacultyPayload) => {
+                showBatchToast('saving', 'Saving faculty to database...');
+                try {
+                  const fac = await apiCreateFaculty(data);
+                  setAdminFaculties(prev => [...prev, fac]);
+                  showBatchToast('saved', 'Faculty created successfully');
+                  return fac;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to create faculty');
+                  throw err;
+                }
+              }}
+              onUpdateFaculty={async (id: string, data: Partial<import('./api/faculties').CreateFacultyPayload>) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const fac = await apiUpdateFaculty(id, data);
+                  setAdminFaculties(prev => prev.map(f => f.id === id ? fac : f));
+                  showBatchToast('saved', 'Faculty updated successfully');
+                  return fac;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to update faculty');
+                  throw err;
+                }
+              }}
+              onDeleteFaculty={async (id: string) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiDeleteFaculty(id);
+                  setAdminFaculties(prev => prev.filter(f => f.id !== id));
+                  showBatchToast('saved', 'Faculty deleted successfully');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to delete faculty');
+                  throw err;
+                }
+              }}
               adminStudents={adminStudents}
               onCreateStudent={async (data: import('./api/students').CreateStudentPayload) => {
                 showBatchToast('saving', 'Saving student to database...');

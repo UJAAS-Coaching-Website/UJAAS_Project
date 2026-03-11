@@ -59,6 +59,9 @@ interface AdminDashboardProps {
   onClearBatch: () => void;
   batches: BatchInfo[];
   adminFaculties: import('../api/faculties').ApiFaculty[];
+  onCreateFaculty: (data: import('../api/faculties').CreateFacultyPayload) => Promise<import('../api/faculties').ApiFaculty>;
+  onUpdateFaculty: (id: string, data: Partial<import('../api/faculties').CreateFacultyPayload>) => Promise<import('../api/faculties').ApiFaculty>;
+  onDeleteFaculty: (id: string) => Promise<void>;
   adminStudents: import('../api/students').ApiStudent[];
   onCreateStudent: (data: import('../api/students').CreateStudentPayload) => Promise<import('../api/students').ApiStudent>;
   onUpdateStudent: (id: string, data: import('../api/students').UpdateStudentPayload) => Promise<import('../api/students').ApiStudent>;
@@ -245,6 +248,9 @@ export function AdminDashboard({
   onClearBatch,
   batches,
   adminFaculties,
+  onCreateFaculty,
+  onUpdateFaculty,
+  onDeleteFaculty,
   adminStudents,
   onCreateStudent,
   onUpdateStudent,
@@ -467,17 +473,27 @@ export function AdminDashboard({
     closeStudentModal();
   };
 
-  const handleSaveFaculty = (data: FacultyFormState) => {
-    if (data.id) {
-      setFaculty(prev => prev.map(f => f.id === data.id ? { ...f, ...data } : f));
-    } else {
-      const initialPassword = generateInitialPassword(data.name);
-      const newFaculty: Faculty = {
-        ...data,
-        id: `faculty-${Date.now()}`,
-      };
-      setFaculty(prev => [...prev, newFaculty]);
-      window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+  const handleSaveFaculty = async (data: FacultyFormState) => {
+    try {
+      if (data.id) {
+        await onUpdateFaculty(data.id, {
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          phone: data.phone,
+        });
+      } else {
+        await onCreateFaculty({
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          phone: data.phone,
+        });
+        const initialPassword = data.name.split(' ')[0].toLowerCase() + '@123';
+        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+      }
+    } catch (error: any) {
+      window.alert(`Error: ${error.message || 'Failed to save faculty'}`);
     }
     closeFacultyModal();
   };
@@ -505,9 +521,13 @@ export function AdminDashboard({
     }
   };
 
-  const handleDeleteFaculty = (id: string) => {
+  const handleDeleteFaculty = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this faculty?')) {
-      setFaculty(faculty.filter(f => f.id !== id));
+      try {
+        await onDeleteFaculty(id);
+      } catch (error: any) {
+        window.alert(`Error deleting faculty: ${error.message}`);
+      }
     }
   };
 

@@ -45,3 +45,30 @@ export interface ApiFaculty {
 export async function fetchFaculties(): Promise<ApiFaculty[]> {
     return request<ApiFaculty[]>('/api/faculties');
 }
+
+export interface CreateFacultyPayload {
+    name: string;
+    email: string;
+    subject?: string;
+    phone?: string;
+    designation?: string;
+    experience?: string;
+}
+
+export async function createFaculty(data: CreateFacultyPayload): Promise<ApiFaculty> {
+    return request<ApiFaculty>('/api/faculties', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function updateFaculty(id: string, data: Partial<CreateFacultyPayload>): Promise<ApiFaculty> {
+    return request<ApiFaculty>(`/api/faculties/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+export async function deleteFacultyApi(id: string): Promise<void> {
+    await request(`/api/faculties/${id}`, { method: 'DELETE' });
+}
