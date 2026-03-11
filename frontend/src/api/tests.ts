@@ -93,6 +93,13 @@ export async function createTest(data: CreateTestPayload): Promise<ApiTest> {
     });
 }
 
+export async function updateTestApi(id: string, data: Partial<CreateTestPayload>): Promise<ApiTest> {
+    return request<ApiTest>(`/api/tests/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
 export async function updateTestStatus(id: string, status: 'upcoming' | 'live' | 'completed'): Promise<ApiTest> {
     return request<ApiTest>(`/api/tests/${id}/status`, {
         method: 'PATCH',

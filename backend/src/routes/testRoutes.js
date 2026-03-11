@@ -6,6 +6,7 @@ import {
     handleCreateTest,
     handleUpdateTestStatus,
     handleDeleteTest,
+    handleUpdateTest
 } from "../controllers/testController.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.use(authenticate, requireRole("admin"));
 router.get("/", listTests);
 router.get("/:id", getTest);
 router.post("/", handleCreateTest);
+router.put("/:id", handleUpdateTest);
 router.patch("/:id/status", handleUpdateTestStatus);
 router.delete("/:id", handleDeleteTest);
 

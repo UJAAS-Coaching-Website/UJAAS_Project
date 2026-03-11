@@ -1,4 +1,4 @@
-import { getAllTests, getTestById, createTest, updateTestStatus, deleteTest } from "../services/testService.js";
+import { getAllTests, getTestById, createTest, updateTestStatus, updateTest, deleteTest } from "../services/testService.js";
 
 export async function listTests(req, res) {
     try {
@@ -53,6 +53,41 @@ export async function handleCreateTest(req, res) {
     } catch (error) {
         console.error("createTest error:", error.message);
         return res.status(500).json({ message: "failed to create test", error: error.message });
+    }
+}
+
+export async function handleUpdateTest(req, res) {
+    try {
+        const {
+            title, format, durationMinutes, totalMarks,
+            scheduleDate, scheduleTime, instructions,
+            batchIds, questions
+        } = req.body;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({ message: "test title is required" });
+        }
+
+        const test = await updateTest(req.params.id, {
+            title: title.trim(),
+            format,
+            durationMinutes,
+            totalMarks,
+            scheduleDate,
+            scheduleTime,
+            instructions,
+            batchIds,
+            questions
+        });
+
+        if (!test) {
+            return res.status(404).json({ message: "test not found" });
+        }
+
+        return res.status(200).json(test);
+    } catch (error) {
+        console.error("updateTest error:", error.message);
+        return res.status(500).json({ message: "failed to update test", error: error.message });
     }
 }
 

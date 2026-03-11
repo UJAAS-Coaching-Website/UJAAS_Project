@@ -66,7 +66,7 @@ export async function getTestById(id) {
     const questionsResult = await pool.query(`
         SELECT
             id, subject, section, type, question_text, question_img,
-            options, option_imgs, correct_answer, marks, neg_marks,
+            options, option_imgs, COALESCE(correct_ans, correct_answer) AS correct_answer, marks, neg_marks,
             explanation, explanation_img, order_index, difficulty
         FROM questions
         WHERE test_id = $1
@@ -158,6 +158,81 @@ export async function updateTestStatus(id, status) {
     );
     if (result.rowCount === 0) return null;
     return getTestById(id);
+}
+
+/**
+ * Update test details, batches, and questions.
+ */
+export async function updateTest(id, {
+    title, format, durationMinutes, totalMarks,
+    scheduleDate, scheduleTime, instructions,
+    batchIds, questions
+}) {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        // Update test details
+        await client.query(
+            `UPDATE tests 
+             SET title = $1, format = $2, duration_minutes = $3, total_marks = $4, 
+                 scheduled_at = NULLIF($5, '')::date, schedule_time = $6, instructions = $7
+             WHERE id = $8`,
+            [title, format, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, id]
+        );
+
+        // Update batch assignments (delete and recreate)
+        await client.query(`DELETE FROM test_target_batches WHERE test_id = $1`, [id]);
+        if (batchIds && batchIds.length > 0) {
+            const batchValues = batchIds.map((_, i) => `($1, $${i + 2})`).join(", ");
+            const batchParams = [id, ...batchIds];
+            await client.query(
+                `INSERT INTO test_target_batches (test_id, batch_id) VALUES ${batchValues}`,
+                batchParams
+            );
+        }
+
+        // Update questions (simplest way is to clear and recreate to handle deletions/additions easily)
+        await client.query(`DELETE FROM questions WHERE test_id = $1`, [id]);
+        if (questions && questions.length > 0) {
+            for (let i = 0; i < questions.length; i++) {
+                const q = questions[i];
+                await client.query(
+                    `INSERT INTO questions (
+                        id, test_id, subject, section, type, question_text, question_img, 
+                        options, option_imgs, correct_ans, marks, neg_marks, 
+                        explanation, explanation_img, order_index, difficulty
+                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                    [
+                        q.id || undefined, // use existing ID if present
+                        id,
+                        q.subject || null,
+                        q.section || q.metadata?.section || null,
+                        q.type || 'MCQ',
+                        q.question || q.question_text || '',
+                        q.questionImage || q.question_img || null,
+                        q.options ? JSON.stringify(q.options) : null,
+                        q.optionImages ? JSON.stringify(q.optionImages) : null,
+                        String(q.correctAnswer ?? q.correct_answer ?? ''),
+                        q.marks ?? 4,
+                        q.negativeMarks ?? q.neg_marks ?? 0,
+                        q.explanation || null,
+                        q.explanationImage || q.explanation_img || null,
+                        i,
+                        q.difficulty || null,
+                    ]
+                );
+            }
+        }
+
+        await client.query("COMMIT");
+        return getTestById(id);
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 /**

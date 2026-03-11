@@ -704,8 +704,8 @@ export function AdminDashboard({
                 questions={selectedPreviewTest.questions}
                 onSubmit={() => onNavigate('test-series')}
                 onExit={() => onNavigate('test-series')}
-                onSave={(testId, updatedQuestions, updatedTitle, updatedBatches) => {
-                  onUpdatePublishedTest(testId, {
+                onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                  await onUpdatePublishedTest(testId, {
                     questions: updatedQuestions,
                     title: updatedTitle,
                     batches: updatedBatches

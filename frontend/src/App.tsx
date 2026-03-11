@@ -41,6 +41,7 @@ import {
   fetchTestById as apiFetchTestById,
   createTest as apiCreateTest,
   updateTestStatus as apiUpdateTestStatus,
+  updateTestApi,
   deleteTestApi as apiDeleteTest,
   type ApiTest,
 } from './api/tests';
@@ -452,16 +453,53 @@ function App() {
     }
   };
 
-  const updatePublishedTest = (testId: string, updates: Partial<PublishedTest>) => {
-    setPublishedTests(prev => prev.map(test => {
-      if (test.id !== testId) return test;
-      return { ...test, ...updates };
-    }));
+  const updatePublishedTest = async (testId: string, updates: Partial<PublishedTest>) => {
+    showBatchToast('saving', 'Saving test changes...');
+    try {
+      const test = publishedTests.find(t => t.id === testId);
+      if (!test) throw new Error("Test not found");
 
-    setSelectedPreviewTest(prev => {
-      if (!prev || prev.id !== testId) return prev;
-      return { ...prev, ...updates };
-    });
+      // We need to map batch names back to IDs if batches are updated
+      let batchIds;
+      if (updates.batches) {
+        batchIds = adminBatches
+          .filter(b => updates.batches!.includes(b.label))
+          .map(b => b.id)
+          .filter(Boolean) as string[];
+      } else {
+        batchIds = adminBatches
+          .filter(b => test.batches.includes(b.label))
+          .map(b => b.id)
+          .filter(Boolean) as string[];
+      }
+
+      await updateTestApi(testId, {
+        title: updates.title || test.title,
+        format: updates.format || test.format,
+        durationMinutes: updates.duration || test.duration,
+        totalMarks: updates.totalMarks || test.totalMarks,
+        scheduleDate: updates.scheduleDate || test.scheduleDate,
+        scheduleTime: updates.scheduleTime || test.scheduleTime,
+        instructions: updates.instructions !== undefined ? updates.instructions : test.instructions,
+        batchIds,
+        questions: updates.questions || test.questions,
+      });
+
+      setPublishedTests(prev => prev.map(t => {
+        if (t.id !== testId) return t;
+        return { ...t, ...updates };
+      }));
+
+      setSelectedPreviewTest(prev => {
+        if (!prev || prev.id !== testId) return prev;
+        return { ...prev, ...updates };
+      });
+
+      showBatchToast('saved', 'Test changes saved successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to save test changes');
+      throw err;
+    }
   };
 
   const handleDeletePublishedTest = async (testId: string) => {
