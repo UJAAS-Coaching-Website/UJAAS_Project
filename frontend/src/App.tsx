@@ -36,6 +36,14 @@ import {
   removeStudentFromBatch as apiRemoveStudentFromBatch,
   type ApiStudent,
 } from './api/students';
+import {
+  fetchTests as apiFetchTests,
+  fetchTestById as apiFetchTestById,
+  createTest as apiCreateTest,
+  updateTestStatus as apiUpdateTestStatus,
+  deleteTestApi as apiDeleteTest,
+  type ApiTest,
+} from './api/tests';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -369,60 +377,78 @@ function App() {
     }
   }, []);
 
-  const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
-    const stored = localStorage.getItem('ujaasPublishedTests');
-    if (stored) return JSON.parse(stored);
+  const [publishedTests, setPublishedTests] = useState<PublishedTest[]>([]);
 
-    // Default mock tests for demo
-    return [
-      {
-        id: 'mock-test-1',
-        title: 'JEE Mains Full Syllabus Mock Test',
-        format: 'JEE MAIN',
-        batches: ['11th JEE', '12th JEE'],
-        duration: 180,
-        totalMarks: 300,
-        scheduleDate: '2025-03-01',
-        scheduleTime: '09:00',
-        status: 'live',
-        instructions: '1. The test consists of 90 questions (30 each in Physics, Chemistry, and Mathematics).\n2. Section A contains 20 MCQs with +4/-1 marking.\n3. Section B contains 10 Numerical questions, attempt any 5 (+4/0 marking).\n4. Total time is 180 minutes.',
-        questions: [
-          {
-            id: 'q1',
-            type: 'MCQ',
-            subject: 'Physics',
-            question: 'What is the dimensional formula of gravitational constant G?',
-            options: ['[M^-1 L^3 T^-2]', '[M^1 L^3 T^-2]', '[M^-1 L^2 T^-2]', '[M^1 L^2 T^-1]'],
-            correctAnswer: 0,
-            marks: 4,
-            negativeMarks: 1,
-            metadata: { section: 'Section A' }
-          }
-        ]
-      }
-    ];
+  const apiTestToPublished = (t: ApiTest): PublishedTest => ({
+    id: t.id,
+    title: t.title,
+    format: t.format || 'Custom',
+    batches: t.batches.map(b => b.name),
+    duration: t.duration_minutes,
+    totalMarks: t.total_marks,
+    scheduleDate: t.schedule_date || '',
+    scheduleTime: t.schedule_time || '',
+    instructions: t.instructions || undefined,
+    status: t.status,
+    questions: (t.questions || []).map((q, i) => ({
+      id: q.id,
+      type: q.type,
+      subject: q.subject,
+      question: q.question_text,
+      options: q.options || undefined,
+      correctAnswer: q.type === 'MCQ' ? Number(q.correct_answer) : q.correct_answer,
+      marks: q.marks,
+      negativeMarks: q.neg_marks,
+      metadata: { section: q.section || undefined },
+    })),
   });
-
-  useEffect(() => {
-    safeSetLocalStorage('ujaasPublishedTests', JSON.stringify(publishedTests));
-  }, [publishedTests]);
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 
-  const handlePublishTest = (test: Omit<PublishedTest, 'id' | 'status'>) => {
-    const newTest: PublishedTest = {
-      ...test,
-      id: `test-${Date.now()}`,
-      status: 'upcoming'
-    };
-    setPublishedTests(prev => [newTest, ...prev]);
+  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'>) => {
+    showBatchToast('saving', 'Publishing test to database...');
+    try {
+      // Map batch names to batch IDs
+      const batchIds = adminBatches
+        .filter(b => test.batches.includes(b.label))
+        .map(b => b.id)
+        .filter(Boolean) as string[];
+
+      const apiTest = await apiCreateTest({
+        title: test.title,
+        format: test.format,
+        durationMinutes: test.duration,
+        totalMarks: test.totalMarks,
+        scheduleDate: test.scheduleDate,
+        scheduleTime: test.scheduleTime,
+        instructions: test.instructions,
+        batchIds,
+        questions: test.questions,
+      });
+      setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
+      showBatchToast('saved', 'Test published successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to publish test');
+      throw err;
+    }
   };
 
-  const handlePreviewTest = (testId: string) => {
-    const test = publishedTests.find(t => t.id === testId);
-    if (test) {
-      setSelectedPreviewTest(test);
+  const handlePreviewTest = async (testId: string) => {
+    // Show a loading toast while fetching the test details
+    showBatchToast('saving', 'Loading test details...');
+    try {
+      // Fetch full test details including questions
+      const apiTest = await apiFetchTestById(testId);
+      const fullTest = apiTestToPublished(apiTest);
+
+      // Update the test in our state so it has the questions
+      setPublishedTests(prev => prev.map(t => t.id === testId ? fullTest : t));
+
+      setSelectedPreviewTest(fullTest);
+      showBatchToast('saved', 'Test loaded for preview');
       navigateTab('preview-test');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to load test details');
     }
   };
 
@@ -438,13 +464,20 @@ function App() {
     });
   };
 
-  const handleDeletePublishedTest = (testId: string) => {
-    setPublishedTests(prev => prev.filter(test => test.id !== testId));
-    if (selectedPreviewTest?.id === testId) {
-      setSelectedPreviewTest(null);
-      if (activeTab === 'preview-test') {
-        setActiveTab('test-series');
+  const handleDeletePublishedTest = async (testId: string) => {
+    showBatchToast('saving', 'Deleting test from database...');
+    try {
+      await apiDeleteTest(testId);
+      setPublishedTests(prev => prev.filter(test => test.id !== testId));
+      if (selectedPreviewTest?.id === testId) {
+        setSelectedPreviewTest(null);
+        if (activeTab === 'preview-test') {
+          setActiveTab('test-series');
+        }
       }
+      showBatchToast('saved', 'Test deleted successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to delete test');
     }
   };
 
@@ -829,12 +862,13 @@ function App() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        const [apiLanding, profileResponse, apiBatches, apiFaculties, apiStudents] = await Promise.all([
+        const [apiLanding, profileResponse, apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
           fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
           me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
           apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
           fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
           apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
         ]);
 
         if (profileResponse && profileResponse.user) {
@@ -855,11 +889,11 @@ function App() {
             if (apiBatches.length > 0) {
               setAdminBatches(apiBatches.map(apiBatchToInfo));
             } else {
-              // If no batches from API, use initial defaults
               setAdminBatches(initialAdminBatches);
             }
             setAdminFaculties(apiFaculties);
             setAdminStudents(apiStudents);
+            setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
           }
         } else {
           setUser(null);
@@ -1003,10 +1037,11 @@ function App() {
     // Fetch batches and queries from API for admin/faculty
     if (userData.role === 'admin' || userData.role === 'faculty') {
       try {
-        const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
+        const [apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
           apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
           fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
           apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
         ]);
 
         if (apiBatches.length > 0) {
@@ -1016,6 +1051,7 @@ function App() {
         }
         setAdminFaculties(apiFaculties);
         setAdminStudents(apiStudents);
+        setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
       } catch (error) {
         console.warn('Error fetching batches/faculties on login:', error);
         setAdminBatches(initialAdminBatches);
