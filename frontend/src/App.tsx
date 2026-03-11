@@ -21,6 +21,15 @@ import {
   type ApiBatch,
 } from './api/batches';
 import { fetchFaculties, type ApiFaculty } from './api/faculties';
+import {
+  fetchStudents as apiFetchStudents,
+  createStudent as apiCreateStudent,
+  updateStudent as apiUpdateStudent,
+  deleteStudent as apiDeleteStudent,
+  assignStudentToBatch as apiAssignStudentToBatch,
+  removeStudentFromBatch as apiRemoveStudentFromBatch,
+  type ApiStudent,
+} from './api/students';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -437,6 +446,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
+  const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -813,11 +823,12 @@ function App() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        const [apiLanding, profileResponse, apiBatches, apiFaculties] = await Promise.all([
+        const [apiLanding, profileResponse, apiBatches, apiFaculties, apiStudents] = await Promise.all([
           fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
           me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
           apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
           fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
         ]);
 
         if (profileResponse && profileResponse.user) {
@@ -842,6 +853,7 @@ function App() {
               setAdminBatches(initialAdminBatches);
             }
             setAdminFaculties(apiFaculties);
+            setAdminStudents(apiStudents);
           }
         } else {
           setUser(null);
@@ -985,9 +997,10 @@ function App() {
     // Fetch batches and queries from API for admin/faculty
     if (userData.role === 'admin' || userData.role === 'faculty') {
       try {
-        const [apiBatches, apiFaculties] = await Promise.all([
+        const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
           apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
           fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
         ]);
 
         if (apiBatches.length > 0) {
@@ -996,6 +1009,7 @@ function App() {
           setAdminBatches(initialAdminBatches);
         }
         setAdminFaculties(apiFaculties);
+        setAdminStudents(apiStudents);
       } catch (error) {
         console.warn('Error fetching batches/faculties on login:', error);
         setAdminBatches(initialAdminBatches);
@@ -1156,6 +1170,30 @@ function App() {
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
               adminFaculties={adminFaculties}
+              adminStudents={adminStudents}
+              onCreateStudent={async (data: import('./api/students').CreateStudentPayload) => {
+                const student = await apiCreateStudent(data);
+                setAdminStudents(prev => [...prev, student]);
+                return student;
+              }}
+              onUpdateStudent={async (id: string, data: import('./api/students').UpdateStudentPayload) => {
+                const student = await apiUpdateStudent(id, data);
+                setAdminStudents(prev => prev.map(s => s.id === id ? student : s));
+                return student;
+              }}
+              onDeleteStudent={async (id: string) => {
+                await apiDeleteStudent(id);
+                setAdminStudents(prev => prev.filter(s => s.id !== id));
+              }}
+              onAssignStudentToBatch={async (studentId: string, batchId: string) => {
+                const student = await apiAssignStudentToBatch(studentId, batchId);
+                setAdminStudents(prev => prev.map(s => s.id === studentId ? student : s));
+                return student;
+              }}
+              onRemoveStudentFromBatch={async (studentId: string, batchId: string) => {
+                await apiRemoveStudentFromBatch(studentId, batchId);
+                setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, batches: s.batches.filter(b => b.id !== batchId) } : s));
+              }}
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}
               onDeleteBatch={deleteAdminBatch}

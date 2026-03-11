@@ -9,6 +9,7 @@ import landingRoutes from "./routes/landingRoutes.js";
 import queryRoutes from "./routes/queryRoutes.js";
 import batchRoutes from "./routes/batchRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/landing", landingRoutes);
 app.use("/api/queries", queryRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/faculties", facultyRoutes);
+app.use("/api/students", studentRoutes);
 app.use(healthRoutes);
 
 export default app;

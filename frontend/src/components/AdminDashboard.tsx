@@ -59,6 +59,12 @@ interface AdminDashboardProps {
   onClearBatch: () => void;
   batches: BatchInfo[];
   adminFaculties: import('../api/faculties').ApiFaculty[];
+  adminStudents: import('../api/students').ApiStudent[];
+  onCreateStudent: (data: import('../api/students').CreateStudentPayload) => Promise<import('../api/students').ApiStudent>;
+  onUpdateStudent: (id: string, data: import('../api/students').UpdateStudentPayload) => Promise<import('../api/students').ApiStudent>;
+  onDeleteStudent: (id: string) => Promise<void>;
+  onAssignStudentToBatch: (studentId: string, batchId: string) => Promise<import('../api/students').ApiStudent>;
+  onRemoveStudentFromBatch: (studentId: string, batchId: string) => Promise<void>;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
@@ -239,6 +245,12 @@ export function AdminDashboard({
   onClearBatch,
   batches,
   adminFaculties,
+  adminStudents,
+  onCreateStudent,
+  onUpdateStudent,
+  onDeleteStudent,
+  onAssignStudentToBatch,
+  onRemoveStudentFromBatch,
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
@@ -258,7 +270,23 @@ export function AdminDashboard({
   onDeletePublishedTest,
   selectedPreviewTest,
 }: AdminDashboardProps) {
-  const [students, setStudents] = useState<Student[]>([]);
+  // Convert API students to local Student[] format
+  const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => ({
+    id: s.id,
+    name: s.name,
+    rollNumber: s.roll_number,
+    enrolledCourses: s.batches.map(b => b.name),
+    joinDate: s.join_date || '',
+    performance: 0,
+    rating: (s.rating_attendance + s.rating_assignments + s.rating_tests + s.rating_participation + s.rating_behavior + s.rating_engagement) / 6,
+    batch: s.batches.length > 0 ? s.batches[0].name : 'Unassigned',
+    phoneNumber: s.phone || '',
+    dateOfBirth: s.date_of_birth || '',
+    address: s.address || '',
+    parentContact: s.parent_contact || '',
+  });
+
+  const students = adminStudents.map(apiToLocalStudent);
   // Use adminFaculties prop directly instead of local state mock
   const faculty = adminFaculties as Faculty[];
   const [showFullTimetable, setShowFullTimetable] = useState(false);
@@ -338,150 +366,10 @@ export function AdminDashboard({
     });
   };
 
+  // Remarks are stored locally; load from localStorage
   useEffect(() => {
-    // Simulated data fetch
-    const seededStudents: Student[] = [
-      {
-        id: '1',
-        name: 'Rahul Sharma',
-        rollNumber: '2024001',
-        enrolledCourses: ['JEE Main'],
-        joinDate: '2024-01-15',
-        performance: 85,
-        rating: 4.5,
-        batch: '12th JEE',
-        phoneNumber: '+91 99999 11111',
-        dateOfBirth: '2007-04-12',
-        address: 'Sector 15, Vasundhara, Ghaziabad',
-        parentContact: '+91 99999 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.8, tests: 4.5, dppPerformance: 4.6, behavior: 4.9 },
-          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.5 },
-          'Mathematics': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 }
-        },
-        subjectRemarks: {
-          'Physics': 'Good conceptual clarity. Keep revising numericals regularly.',
-          'Chemistry': 'Theory is decent, focus more on reaction mechanism practice.',
-          'Mathematics': 'Excellent consistency and speed in problem solving.'
-        }
-      },
-      {
-        id: '2',
-        name: 'Priya Patel',
-        rollNumber: '2024002',
-        enrolledCourses: ['NEET'],
-        joinDate: '2024-01-20',
-        performance: 92,
-        rating: 4.8,
-        batch: '12th NEET',
-        phoneNumber: '+91 88888 11111',
-        dateOfBirth: '2007-06-18',
-        address: 'MG Road, Pune, Maharashtra',
-        parentContact: '+91 88888 22222',
-        subjectRatings: {
-          'Biology': { attendance: 5.0, tests: 4.9, dppPerformance: 4.9, behavior: 5.0 },
-          'Physics': { attendance: 4.5, tests: 4.2, dppPerformance: 4.4, behavior: 4.6 },
-          'Chemistry': { attendance: 4.8, tests: 4.7, dppPerformance: 4.7, behavior: 4.9 }
-        },
-        subjectRemarks: {
-          'Biology': 'Strong retention and neat diagram presentation.',
-          'Physics': 'Needs more confidence in multi-step numericals.',
-          'Chemistry': 'Very disciplined and improving test performance.'
-        }
-      },
-      {
-        id: '3',
-        name: 'Amit Kumar',
-        rollNumber: '2024003',
-        enrolledCourses: ['JEE Advanced'],
-        joinDate: '2024-02-05',
-        performance: 78,
-        rating: 4.2,
-        batch: 'Dropper JEE',
-        phoneNumber: '+91 77777 11111',
-        dateOfBirth: '2006-09-22',
-        address: 'Indira Nagar, Bengaluru, Karnataka',
-        parentContact: '+91 77777 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.9, behavior: 4.2 },
-          'Mathematics': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.5 }
-        },
-        subjectRemarks: {
-          'Physics': 'Basics are clear, but revise formulas before tests.',
-          'Mathematics': 'Good progress. Keep practicing advanced level questions.'
-        }
-      },
-      {
-        id: '4',
-        name: 'Sneha Mehta',
-        rollNumber: '2024004',
-        enrolledCourses: ['JEE Main', 'NEET'],
-        joinDate: '2024-02-12',
-        performance: 88,
-        rating: 4.6,
-        batch: '11th JEE',
-        phoneNumber: '+91 98989 11111',
-        dateOfBirth: '2008-01-05',
-        address: 'Satellite Road, Ahmedabad, Gujarat',
-        parentContact: '+91 98989 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.5, tests: 4.6, dppPerformance: 4.4, behavior: 4.8 },
-          'Mathematics': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.7 }
-        },
-        subjectRemarks: {
-          'Physics': 'Very attentive in class and asks relevant doubts.',
-          'Mathematics': 'Accurate approach. Work slightly on time management.'
-        }
-      },
-      {
-        id: '5',
-        name: 'Karan Desai',
-        rollNumber: '2024005',
-        enrolledCourses: ['NEET'],
-        joinDate: '2024-03-03',
-        performance: 79,
-        rating: 4.1,
-        batch: '11th NEET',
-        phoneNumber: '+91 97979 11111',
-        dateOfBirth: '2008-03-15',
-        address: 'Banjara Hills, Hyderabad, Telangana',
-        parentContact: '+91 97979 22222',
-        subjectRatings: {
-          'Biology': { attendance: 4.0, tests: 3.9, dppPerformance: 4.1, behavior: 4.3 },
-          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.0, behavior: 4.2 }
-        },
-        subjectRemarks: {
-          'Biology': 'Regular in class; needs deeper NCERT revision.',
-          'Chemistry': 'Maintain short notes and increase daily question count.'
-        }
-      },
-      {
-        id: '6',
-        name: 'Ananya Kapoor',
-        rollNumber: '2024006',
-        enrolledCourses: ['JEE Advanced', 'NEET'],
-        joinDate: '2024-03-10',
-        performance: 91,
-        rating: 4.9,
-        batch: '12th JEE',
-        phoneNumber: '+91 96969 11111',
-        dateOfBirth: '2007-11-30',
-        address: 'Civil Lines, Delhi',
-        parentContact: '+91 96969 22222',
-        subjectRatings: {
-          'Physics': { attendance: 5.0, tests: 4.9, dppPerformance: 4.8, behavior: 5.0 },
-          'Mathematics': { attendance: 4.9, tests: 5.0, dppPerformance: 4.9, behavior: 4.9 },
-          'Chemistry': { attendance: 4.8, tests: 4.8, dppPerformance: 4.9, behavior: 4.8 }
-        },
-        subjectRemarks: {
-          'Physics': 'Outstanding class participation and analytical skills.',
-          'Mathematics': 'Excellent accuracy. Continue with mixed mock practice.',
-          'Chemistry': 'Consistent performer with very good discipline.'
-        }
-      },
-    ];
-    setStudents(withStoredRemarks(seededStudents));
-  }, []);
+    // Apply stored remarks to students rendered from API
+  }, [adminStudents]);
 
   const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -530,36 +418,51 @@ export function AdminDashboard({
     }
   };
 
-  const handleSaveStudent = (data: StudentFormState) => {
-    if (data.id) {
-      setStudents(prev => prev.map(s => s.id === data.id ? {
-        ...s,
-        name: data.name,
-        rollNumber: data.rollNumber,
-        batch: data.batch,
-        phoneNumber: data.phoneNumber,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
-        parentContact: data.parentContact
-      } : s));
-    } else {
-      const initialPassword = generateInitialPassword(data.name);
-      const newStudent: Student = {
-        id: `student-${Date.now()}`,
-        name: data.name,
-        rollNumber: data.rollNumber,
-        batch: data.batch,
-        phoneNumber: data.phoneNumber,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
-        parentContact: data.parentContact,
-        enrolledCourses: [data.batch],
-        joinDate: new Date().toISOString().split('T')[0],
-        performance: 0,
-        rating: 0,
-      };
-      setStudents(prev => [...prev, newStudent]);
-      window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+  const handleSaveStudent = async (data: StudentFormState) => {
+    try {
+      if (data.id) {
+        // Find the batch ID for the selected batch name
+        const batchInfo = batches.find(b => b.label === data.batch);
+        const apiStudent = adminStudents.find(s => s.id === data.id);
+
+        await onUpdateStudent(data.id, {
+          name: data.name,
+          rollNumber: data.rollNumber,
+          phone: data.phoneNumber,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          parentContact: data.parentContact,
+        });
+
+        // Handle batch change: if batch changed, remove from old and assign to new
+        if (apiStudent && batchInfo?.id) {
+          const currentBatchIds = apiStudent.batches.map(b => b.id);
+          if (!currentBatchIds.includes(batchInfo.id)) {
+            // Remove from all current batches
+            for (const b of apiStudent.batches) {
+              await onRemoveStudentFromBatch(data.id, b.id);
+            }
+            // Assign to new batch
+            await onAssignStudentToBatch(data.id, batchInfo.id);
+          }
+        }
+      } else {
+        // Find the batch ID for assignment
+        const batchInfo = batches.find(b => b.label === data.batch);
+        await onCreateStudent({
+          name: data.name,
+          rollNumber: data.rollNumber,
+          phone: data.phoneNumber,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          parentContact: data.parentContact,
+          batchId: batchInfo?.id,
+        });
+        const initialPassword = generateInitialPassword(data.name);
+        window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+      }
+    } catch (error: any) {
+      window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
     closeStudentModal();
   };
@@ -579,25 +482,26 @@ export function AdminDashboard({
     closeFacultyModal();
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(s => s.id !== id));
+      try {
+        await onDeleteStudent(id);
+      } catch (error: any) {
+        window.alert(`Error deleting student: ${error.message}`);
+      }
     }
   };
 
-  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+  const handleRemoveStudentFromBatch = async (id: string, batch: Batch) => {
     if (window.confirm('Remove this student from the current batch?')) {
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === id && student.batch === batch
-            ? {
-              ...student,
-              batch: 'Unassigned',
-              enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
-            }
-            : student
-        )
-      );
+      try {
+        const batchInfo = batches.find(b => b.label === batch);
+        if (batchInfo?.id) {
+          await onRemoveStudentFromBatch(id, batchInfo.id);
+        }
+      } catch (error: any) {
+        window.alert(`Error removing student from batch: ${error.message}`);
+      }
     }
   };
 
@@ -609,17 +513,15 @@ export function AdminDashboard({
 
   const openBatchStudentPicker = (batch: Batch) => setBatchStudentPicker({ open: true, batch });
   const closeBatchStudentPicker = () => setBatchStudentPicker({ open: false, batch: null });
-  const handleAssignExistingStudentToBatch = (studentId: string, batch: Batch) => {
-    setStudents((prev) =>
-      prev.map((student) =>
-        student.id === studentId
-          ? {
-            ...student,
-            batch,
-          }
-          : student
-      )
-    );
+  const handleAssignExistingStudentToBatch = async (studentId: string, batch: Batch) => {
+    try {
+      const batchInfo = batches.find(b => b.label === batch);
+      if (batchInfo?.id) {
+        await onAssignStudentToBatch(studentId, batchInfo.id);
+      }
+    } catch (error: any) {
+      window.alert(`Error assigning student to batch: ${error.message}`);
+    }
   };
   const openBatchFacultyPicker = (batch: Batch) => setBatchFacultyPicker({ open: true, batch });
   const closeBatchFacultyPicker = () => setBatchFacultyPicker({ open: false, batch: null });
