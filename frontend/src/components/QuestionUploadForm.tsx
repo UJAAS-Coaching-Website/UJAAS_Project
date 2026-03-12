@@ -499,7 +499,7 @@ export function QuestionUploadForm({
           <motion.button
             onClick={handleAdd}
             disabled={isUploadingImage}
-            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-amber-600 to-orange-600' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-orange-500 to-red-500' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
           >
             {editingQuestion ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             {editingQuestion ? 'Update Question' : buttonLabel}

@@ -2214,7 +2214,7 @@ function TestSeriesManagementTab({
                 {test.status === 'draft' ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
-                    className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
                   >
                     <Edit className="w-4 h-4" /> Resume Editing
                   </button>
