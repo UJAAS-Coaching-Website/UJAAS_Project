@@ -47,17 +47,24 @@ export function NotesManagementTab({
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const allSubjects = [
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
+  const defaultSubjects = [
+    { name: 'Physics', color: '#3b82f6' },
+    { name: 'Chemistry', color: '#10b981' },
+    { name: 'Mathematics', color: '#f59e0b' },
+    { name: 'Biology', color: '#f43f5e' },
   ];
+
+  const extraColors = ['#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1'];
 
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const batchSubjects = currentBatch?.subjects || [];
 
-  const subjects = allSubjects.filter(sub => batchSubjects.includes(sub.name));
+  const subjects = batchSubjects.map((subName: string, index: number) => {
+    const existing = defaultSubjects.find((s: { name: string; color: string }) => s.name === subName);
+    if (existing) return { id: `sub-${index}`, name: subName, color: existing.color };
+    const color = extraColors[index % extraColors.length];
+    return { id: `sub-${index}`, name: subName, color };
+  });
 
   // Modals
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
@@ -264,7 +271,7 @@ export function NotesManagementTab({
 
       {currentView === 'root' && (
         <div className={`grid gap-6 ${variant === 'admin' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
-          {subjects.map((sub, index) => (
+          {subjects.map((sub: { id: string; name: string; color: string }, index: number) => (
             <motion.div
               key={sub.id}
               initial={{ opacity: 0, y: 20 }}
