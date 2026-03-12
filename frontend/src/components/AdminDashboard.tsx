@@ -2178,10 +2178,10 @@ function TestSeriesManagementTab({
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {publishedTests.map((test) => (
-            <div key={test.id}>
+            <div key={test.id} className="h-full">
             <div
               onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
-              className={`bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
+              className={`h-full bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>

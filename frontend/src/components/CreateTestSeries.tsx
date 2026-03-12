@@ -750,26 +750,26 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                 >
                   Previous
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-gray-100 italic text-xs text-gray-500">
-                    <div className={`w-2 h-2 rounded-full ${isSavingDraft ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
-                    {isSavingDraft ? 'Auto-saving...' : 'Draft saved'}
-                  </div>
-                  {onSaveDraft && (
-                    <motion.button
-                      onClick={() => handleSaveDraftClick()}
-                      disabled={isSavingDraft}
-                      className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
-                    >
-                      {isSavingDraft ? (
-                        <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <FileText className="w-4 h-4" />
-                      )}
-                      {isSavingDraft ? 'Saving...' : draftId ? 'Update Draft' : 'Save as Draft'}
-                    </motion.button>
-                  )}
-                  <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-gray-100 italic text-xs text-gray-500">
+                      <div className={`w-2 h-2 rounded-full ${isSavingDraft ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
+                      {isSavingDraft ? 'Auto-saving...' : 'Draft saved'}
+                    </div>
+                    {onSaveDraft && (
+                      <motion.button
+                        onClick={() => handleSaveDraftClick()}
+                        disabled={isSavingDraft}
+                        className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
+                      >
+                        {isSavingDraft ? (
+                          <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                        {isSavingDraft ? 'Saving...' : draftId ? 'Update Draft' : 'Save as Draft'}
+                      </motion.button>
+                    )}
                     <motion.button
                       onClick={() => isStep2Valid && setStep(3)}
                       disabled={!isStep2Valid}
@@ -777,10 +777,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                     >
                       Review & Publish
                     </motion.button>
-                    <p className="text-xs text-gray-500 font-medium">
-                      Total: {questions.length} / {getRequiredCount()} questions added
-                    </p>
                   </div>
+                  <p className="w-full text-right text-xs text-gray-500 font-medium">
+                    Total: {questions.length} / {getRequiredCount()} questions added
+                  </p>
                 </div>
               </div>
             </motion.div>
