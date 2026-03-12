@@ -314,38 +314,30 @@ export function NotesManagementTab({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => navigateToSubject(sub.name)}
-              className={`${variant === 'admin'
-                ? 'bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md flex items-center gap-4 cursor-pointer group transition-all'
-                : 'bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group cursor-pointer hover:shadow-xl transition-all'
-                }`}
+              className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group cursor-pointer hover:shadow-xl transition-all relative"
             >
-              <div className={`${variant === 'admin'
-                ? 'w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0'
-                : 'w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white'
-                }`} style={{ backgroundColor: sub.color }}>
-                <Folder className={`${variant === 'admin' ? 'w-6 h-6' : 'w-8 h-8'}`} />
-              </div>
-              <div className={variant === 'admin' ? 'flex-1' : 'text-center'}>
-                <h4 className="font-bold text-gray-900">{sub.name}</h4>
-                {variant === 'admin' && <p className="text-xs text-gray-500">Manage chapters & theory</p>}
-              </div>
-              {variant === 'admin' ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSubject(sub.name);
-                    }}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    title="Delete Subject"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
-                </div>
-              ) : (
-                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
+              {variant === 'admin' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSubject(sub.name);
+                  }}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                  title="Delete Subject"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               )}
+              <div
+                className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white"
+                style={{ backgroundColor: sub.color }}
+              >
+                <Folder className="w-8 h-8" />
+              </div>
+              <div className="text-center">
+                <h4 className="font-bold text-gray-900">{sub.name}</h4>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
             </motion.div>
           ))}
           {subjects.length === 0 && (
