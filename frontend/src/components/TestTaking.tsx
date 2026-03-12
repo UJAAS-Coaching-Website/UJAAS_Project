@@ -86,6 +86,8 @@ export function TestTaking({
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
+    Boolean(item.explanation?.trim() || item.explanationImage);
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
@@ -560,7 +562,7 @@ export function TestTaking({
                           <AlertCircle className="w-5 h-5" />
                           <h3 className="font-bold">Explanation</h3>
                         </div>
-                        {isFacultyPreview && !question.explanation && (
+                        {isFacultyPreview && !hasExplanationContent(question) && (
                           <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
                             Needs Explanation
                           </span>
@@ -819,7 +821,7 @@ export function TestTaking({
                           ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
                           : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : isAnyPreview && q.explanation && !hideExplanations
+                            : isAnyPreview && hasExplanationContent(q) && !hideExplanations
                               ? 'bg-teal-50 text-teal-700 border border-teal-200'
                               : !isAnyPreview && flaggedQuestions.has(q.id)
                                 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
@@ -830,7 +832,7 @@ export function TestTaking({
                         {!isAnyPreview && flaggedQuestions.has(q.id) && (
                           <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
                         )}
-                        {isAnyPreview && !q.explanation && !hideExplanations && (
+                        {isAnyPreview && !hasExplanationContent(q) && !hideExplanations && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
                         )}
                       </motion.button>

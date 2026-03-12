@@ -82,6 +82,8 @@ export function StudentTestTaking({
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
+    Boolean(item.explanation?.trim() || item.explanationImage);
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
@@ -524,7 +526,7 @@ export function StudentTestTaking({
                           <AlertCircle className="w-5 h-5" />
                           <h3 className="font-bold">Explanation</h3>
                         </div>
-                        {isFacultyPreview && !question.explanation && (
+                        {isFacultyPreview && !hasExplanationContent(question) && (
                           <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
                             Needs Explanation
                           </span>
@@ -770,7 +772,7 @@ export function StudentTestTaking({
                             ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
                             : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : isAnyPreview && q.explanation
+                            : isAnyPreview && hasExplanationContent(q)
                             ? 'bg-teal-50 text-teal-700 border border-teal-200'
                             : !isAnyPreview && flaggedQuestions.has(q.id)
                             ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
@@ -783,7 +785,7 @@ export function StudentTestTaking({
                         {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
                           <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
-                        {isAnyPreview && !q.explanation && (
+                        {isAnyPreview && !hasExplanationContent(q) && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
                         )}
                       </motion.button>
