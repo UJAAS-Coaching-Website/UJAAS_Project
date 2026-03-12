@@ -24,9 +24,43 @@ interface BatchInfo {
 interface CreateTestSeriesProps {
   onBack: () => void;
   batches: BatchInfo[];
-  onPublish?: (test: any) => Promise<void> | void;
+  onPublish?: (test: {
+    id?: string;
+    title: string;
+    format: 'JEE MAIN' | 'NEET' | 'Custom';
+    batches: string[];
+    duration: number;
+    totalMarks: number;
+    scheduleDate: string;
+    scheduleTime: string;
+    questions: Question[];
+    instructions: string;
+    requiresSaveBeforePublish?: boolean;
+  }) => Promise<void> | void;
   onSaveDraft?: (test: any) => Promise<string>;
   resumeTest?: import('../App').PublishedTest;
+}
+
+function getMetadataSnapshot(data: {
+  title: string;
+  format: string;
+  selectedBatches: string[];
+  duration: number;
+  totalMarks: number;
+  scheduleDate: string;
+  scheduleTime: string;
+  instructions: string;
+}) {
+  return JSON.stringify({
+    title: data.title,
+    format: data.format,
+    selectedBatches: data.selectedBatches,
+    duration: data.duration,
+    totalMarks: data.totalMarks,
+    scheduleDate: data.scheduleDate,
+    scheduleTime: data.scheduleTime,
+    instructions: data.instructions
+  });
 }
 
 export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resumeTest }: CreateTestSeriesProps) {
@@ -44,17 +78,30 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     scheduleTime: '09:00',
     instructions: ''
   });
+  const [lastSavedMetadataSnapshot, setLastSavedMetadataSnapshot] = useState(() => getMetadataSnapshot({
+    title: '',
+    format: 'JEE MAIN',
+    selectedBatches: [],
+    duration: 180,
+    totalMarks: 300,
+    scheduleDate: '',
+    scheduleTime: '09:00',
+    instructions: ''
+  }));
+  const [isDraftDirty, setIsDraftDirty] = useState(false);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const latestSavePromiseRef = useRef<Promise<string | undefined> | null>(null);
+  const isDraftDirtyRef = useRef(isDraftDirty);
 
   // Resume from draft: pre-populate data
   useEffect(() => {
     if (resumeTest) {
-      setTestData({
+      const resumedTestData = {
         title: resumeTest.title || '',
         format: (resumeTest.format || 'Custom') as any,
         selectedBatches: resumeTest.batches || [],
@@ -64,7 +111,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         scheduleDate: resumeTest.scheduleDate || '',
         scheduleTime: resumeTest.scheduleTime || '09:00',
         instructions: resumeTest.instructions || ''
-      });
+      };
+      setTestData(resumedTestData);
+      setLastSavedMetadataSnapshot(getMetadataSnapshot(resumedTestData));
+      setIsDraftDirty(false);
       setQuestions(resumeTest.questions || []);
       // Jump to step 2 if config is already filled
       if (resumeTest.title && resumeTest.batches?.length) {
@@ -72,6 +122,14 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       }
     }
   }, []);
+
+  useEffect(() => {
+    setIsDraftDirty(getMetadataSnapshot(testData) !== lastSavedMetadataSnapshot);
+  }, [testData, lastSavedMetadataSnapshot]);
+
+  useEffect(() => {
+    isDraftDirtyRef.current = isDraftDirty;
+  }, [isDraftDirty]);
 
   const handleEditClick = (q: Question) => {
     setEditingQuestion(q);
@@ -144,6 +202,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       handleSaveDraftClick(undefined, nextQuestions);
       return nextQuestions;
     });
+    setIsDraftDirty(true);
     setEditingQuestion(null);
   };
 
@@ -155,6 +214,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const handleRemoveQuestion = (id: string) => {
     const nextQuestions = questions.filter(q => q.id !== id);
     setQuestions(nextQuestions);
+    setIsDraftDirty(true);
     // Auto-save
     handleSaveDraftClick(undefined, nextQuestions);
   };
@@ -251,6 +311,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     if (onPublish) {
       setIsPublishing(true);
       try {
+        if (latestSavePromiseRef.current) {
+          await latestSavePromiseRef.current;
+        }
+
         await onPublish({
           id: draftId || undefined,
           title: testData.title,
@@ -261,7 +325,8 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           scheduleDate: testData.scheduleDate,
           scheduleTime: testData.scheduleTime,
           questions: questions,
-          instructions: testData.instructions
+          instructions: testData.instructions,
+          requiresSaveBeforePublish: Boolean(draftId && isDraftDirtyRef.current)
         });
         setShowSuccess(true);
         setTimeout(() => {
@@ -282,28 +347,51 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const handleSaveDraftClick = async (overrideTestData?: typeof testData, overrideQuestions?: Question[]) => {
     if (!onSaveDraft) return;
-    setIsSavingDraft(true);
-    try {
-      const dataToSave = {
-        id: draftId || undefined,
-        title: (overrideTestData?.title || testData.title) || 'Untitled Draft',
-        format: overrideTestData?.format || testData.format,
-        batches: overrideTestData?.selectedBatches || testData.selectedBatches,
-        duration: overrideTestData?.duration || testData.duration,
-        totalMarks: overrideTestData?.totalMarks || testData.totalMarks,
-        scheduleDate: overrideTestData?.scheduleDate || testData.scheduleDate,
-        scheduleTime: overrideTestData?.scheduleTime || testData.scheduleTime,
-        questions: overrideQuestions || questions,
-        instructions: overrideTestData?.instructions || testData.instructions
-      };
-      
-      const newId = await onSaveDraft(dataToSave);
-      if (newId) setDraftId(newId);
-    } catch (error) {
-      console.error("Failed to save draft:", error);
-    } finally {
-      setIsSavingDraft(false);
+    const savePromise = (async () => {
+      setIsSavingDraft(true);
+      try {
+        const metadataToSave = {
+          title: (overrideTestData?.title || testData.title) || 'Untitled Draft',
+          format: overrideTestData?.format || testData.format,
+          selectedBatches: overrideTestData?.selectedBatches || testData.selectedBatches,
+          duration: overrideTestData?.duration || testData.duration,
+          totalMarks: overrideTestData?.totalMarks || testData.totalMarks,
+          scheduleDate: overrideTestData?.scheduleDate || testData.scheduleDate,
+          scheduleTime: overrideTestData?.scheduleTime || testData.scheduleTime,
+          instructions: overrideTestData?.instructions || testData.instructions
+        };
+        const dataToSave = {
+          id: draftId || undefined,
+          title: metadataToSave.title,
+          format: metadataToSave.format,
+          batches: metadataToSave.selectedBatches,
+          duration: metadataToSave.duration,
+          totalMarks: metadataToSave.totalMarks,
+          scheduleDate: metadataToSave.scheduleDate,
+          scheduleTime: metadataToSave.scheduleTime,
+          questions: overrideQuestions || questions,
+          instructions: metadataToSave.instructions
+        };
+
+        const newId = await onSaveDraft(dataToSave);
+        if (newId) setDraftId(newId);
+        setLastSavedMetadataSnapshot(getMetadataSnapshot(metadataToSave));
+        setIsDraftDirty(false);
+        return newId;
+      } catch (error) {
+        console.error("Failed to save draft:", error);
+        return undefined;
+      } finally {
+        setIsSavingDraft(false);
+      }
+    })();
+
+    latestSavePromiseRef.current = savePromise;
+    const result = await savePromise;
+    if (latestSavePromiseRef.current === savePromise) {
+      latestSavePromiseRef.current = null;
     }
+    return result;
   };
 
   const handleContinueToAddQuestions = async () => {

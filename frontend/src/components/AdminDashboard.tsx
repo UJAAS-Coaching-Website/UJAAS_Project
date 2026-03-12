@@ -82,7 +82,7 @@ interface AdminDashboardProps {
   queries: import('../App').LandingQuery[];
   onUpdateQueries: (queries: import('../App').LandingQuery[]) => void;
   publishedTests: import('../App').PublishedTest[];
-  onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
+  onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => Promise<void> | void;
   onSaveDraft: (test: Omit<import('../App').PublishedTest, 'id' | 'status'> & { id?: string }) => Promise<string>;
   resumeDraftId: string | null;
   onClearResumeDraft: () => void;

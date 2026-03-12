@@ -403,7 +403,7 @@ function App() {
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 
-  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
+  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => {
     showBatchToast('saving', 'Publishing test to database...');
     try {
       const batchIds = adminBatches
@@ -413,19 +413,20 @@ function App() {
 
       if (test.id) {
         // Publishing from an existing draft — update it and change status
-        await updateTestApi(test.id, {
-          title: test.title,
-          format: test.format,
-          durationMinutes: test.duration,
-          totalMarks: test.totalMarks,
-          scheduleDate: test.scheduleDate,
-          scheduleTime: test.scheduleTime,
-          instructions: test.instructions,
-          batchIds,
-          questions: test.questions,
-        });
-        await apiUpdateTestStatus(test.id, 'upcoming');
-        const updatedApiTest = await apiFetchTestById(test.id);
+        if (test.requiresSaveBeforePublish) {
+          await updateTestApi(test.id, {
+            title: test.title,
+            format: test.format,
+            durationMinutes: test.duration,
+            totalMarks: test.totalMarks,
+            scheduleDate: test.scheduleDate,
+            scheduleTime: test.scheduleTime,
+            instructions: test.instructions,
+            batchIds,
+            questions: test.questions,
+          });
+        }
+        const updatedApiTest = await apiUpdateTestStatus(test.id, 'upcoming');
         setPublishedTests(prev => prev.map(t => t.id === test.id ? apiTestToPublished(updatedApiTest) : t));
       } else {
         // Fresh publish
