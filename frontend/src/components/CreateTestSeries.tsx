@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  ArrowLeft, 
-  Trash2, 
-  Calendar, 
-  Clock, 
+import {
+  ArrowLeft,
+  Trash2,
+  Calendar,
+  Clock,
   FileText,
   CheckCircle,
   AlertCircle,
@@ -24,7 +24,7 @@ interface BatchInfo {
 interface CreateTestSeriesProps {
   onBack: () => void;
   batches: BatchInfo[];
-  onPublish?: (test: any) => void;
+  onPublish?: (test: any) => Promise<void> | void;
 }
 
 export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSeriesProps) {
@@ -45,6 +45,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handleEditClick = (q: Question) => {
     setEditingQuestion(q);
@@ -86,7 +87,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   }, [allWebsiteSubjects, customSubjects]);
 
   const formats = ['JEE MAIN', 'NEET', 'Custom'];
-  
+
   const getSubjects = () => {
     if (testData.format === 'JEE MAIN') return ['Physics', 'Chemistry', 'Mathematics'];
     if (testData.format === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
@@ -103,7 +104,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
         section: testData.format === 'JEE MAIN' ? activeSection : undefined
       }
     };
-    
+
     setQuestions(prev => {
       const exists = prev.findIndex(q => q.id === question.id);
       if (exists > -1) {
@@ -116,8 +117,8 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
     setEditingQuestion(null);
   };
 
-  const filteredQuestions = questions.filter(q => 
-    q.subject === activeSubject && 
+  const filteredQuestions = questions.filter(q =>
+    q.subject === activeSubject &&
     (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
   );
 
@@ -129,7 +130,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
     const demoQuestions: any[] = [];
     const subjects = getSubjects();
     const timestamp = Date.now();
-    
+
     if (testData.format === 'JEE MAIN') {
       subjects.forEach(subject => {
         // 20 MCQ (Section A)
@@ -192,14 +193,14 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
           type: 'MCQ',
           question: `Custom Practice Question ${i}`,
           options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 1,
-            subject: subjects[(i - 1) % subjects.length]
-          });
-        }
+          correctAnswer: 0,
+          difficulty: 'Medium',
+          marks: 4,
+          negativeMarks: 1,
+          subject: subjects[(i - 1) % subjects.length]
+        });
       }
+    }
     setQuestions(demoQuestions);
   };
 
@@ -212,28 +213,41 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (onPublish) {
-      onPublish({
-        title: testData.title,
-        format: testData.format,
-        batches: testData.selectedBatches,
-        duration: testData.duration,
-        totalMarks: testData.totalMarks,
-        scheduleDate: testData.scheduleDate,
-        scheduleTime: testData.scheduleTime,
-        questions: questions,
-        instructions: testData.instructions
-      });
+      setIsPublishing(true);
+      try {
+        await onPublish({
+          title: testData.title,
+          format: testData.format,
+          batches: testData.selectedBatches,
+          duration: testData.duration,
+          totalMarks: testData.totalMarks,
+          scheduleDate: testData.scheduleDate,
+          scheduleTime: testData.scheduleTime,
+          questions: questions,
+          instructions: testData.instructions
+        });
+        setShowSuccess(true);
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      } catch (error) {
+        // Error is handled by the toast in App.tsx
+        console.error("Failed to publish test:", error);
+      } finally {
+        setIsPublishing(false);
+      }
+    } else {
+      setShowSuccess(true);
+      setTimeout(() => {
+        onBack();
+      }, 2000);
     }
-    setShowSuccess(true);
-    setTimeout(() => {
-      onBack();
-    }, 2000);
   };
 
   const isStep1Valid = testData.title && testData.selectedBatches.length > 0 && testData.scheduleDate;
-  
+
   const getRequiredCount = () => {
     if (testData.format === 'JEE MAIN') return 90;
     if (testData.format === 'NEET') return 180;
@@ -272,7 +286,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
             <ArrowLeft className="w-5 h-5" />
             Back to Dashboard
           </button>
-          
+
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-4 mb-4">
               <div className="w-14 h-14 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl flex items-center justify-center">
@@ -281,8 +295,8 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Create {testData.format} Test</h1>
                 <p className="text-gray-600">
-                  {testData.format === 'Custom' 
-                    ? 'Design a custom test with flexible configuration' 
+                  {testData.format === 'Custom'
+                    ? 'Design a custom test with flexible configuration'
                     : `Follow standard ${testData.format} examination pattern`}
                 </p>
               </div>
@@ -296,23 +310,20 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               ].map((s, idx) => (
                 <div key={s.num} className="flex items-center flex-1">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                      step >= s.num 
-                        ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg' 
-                        : 'bg-gray-200 text-gray-500'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${step >= s.num
+                      ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg'
+                      : 'bg-gray-200 text-gray-500'
+                      }`}>
                       {step > s.num ? <CheckCircle className="w-5 h-5" /> : s.num}
                     </div>
-                    <span className={`text-sm font-medium hidden sm:inline ${
-                      step >= s.num ? 'text-teal-600' : 'text-gray-500'
-                    }`}>
+                    <span className={`text-sm font-medium hidden sm:inline ${step >= s.num ? 'text-teal-600' : 'text-gray-500'
+                      }`}>
                       {s.label}
                     </span>
                   </div>
                   {idx < 2 && (
-                    <div className={`h-1 flex-1 mx-2 rounded-full transition-all ${
-                      step > s.num ? 'bg-gradient-to-r from-teal-600 to-cyan-600' : 'bg-gray-200'
-                    }`} />
+                    <div className={`h-1 flex-1 mx-2 rounded-full transition-all ${step > s.num ? 'bg-gradient-to-r from-teal-600 to-cyan-600' : 'bg-gray-200'
+                      }`} />
                   )}
                 </div>
               ))}
@@ -362,11 +373,10 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                             const marks = f === 'JEE MAIN' ? 300 : f === 'NEET' ? 720 : 300;
                             setTestData({ ...testData, format: f as any, duration, totalMarks: marks });
                           }}
-                          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${
-                            testData.format === f
-                              ? 'bg-white text-teal-600 shadow-md'
-                              : 'text-gray-500 hover:text-gray-700'
-                          }`}
+                          className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${testData.format === f
+                            ? 'bg-white text-teal-600 shadow-md'
+                            : 'text-gray-500 hover:text-gray-700'
+                            }`}
                         >
                           {f}
                         </button>
@@ -384,11 +394,10 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                         <button
                           key={batch.slug}
                           onClick={() => toggleBatch(batch.label)}
-                          className={`px-4 py-2 rounded-xl border-2 transition-all font-semibold text-sm ${
-                            testData.selectedBatches.includes(batch.label)
-                              ? 'border-teal-500 bg-teal-50 text-teal-700'
-                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                          }`}
+                          className={`px-4 py-2 rounded-xl border-2 transition-all font-semibold text-sm ${testData.selectedBatches.includes(batch.label)
+                            ? 'border-teal-500 bg-teal-50 text-teal-700'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                            }`}
                         >
                           {batch.label}
                         </button>
@@ -517,11 +526,10 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                           <button
                             key={s}
                             onClick={() => setActiveSubject(s)}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                              activeSubject === s
-                                ? 'bg-teal-600 text-white'
-                                : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
-                            }`}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeSubject === s
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300'
+                              }`}
                           >
                             {s}
                           </button>
@@ -537,11 +545,10 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                             setActiveSubject(s);
                             setActiveSection('Section A');
                           }}
-                          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                            activeSubject === s
-                              ? 'bg-teal-600 text-white shadow-lg scale-105'
-                              : 'bg-white text-gray-600 hover:bg-gray-50'
-                          }`}
+                          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeSubject === s
+                            ? 'bg-teal-600 text-white shadow-lg scale-105'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                            }`}
                         >
                           {s}
                         </button>
@@ -564,13 +571,12 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                     <button
                       key={sec}
                       onClick={() => setActiveSection(sec)}
-                      className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${
-                        activeSection === sec
-                          ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                          : 'border-white bg-white/50 text-gray-500'
-                      }`}
+                      className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${activeSection === sec
+                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                        : 'border-white bg-white/50 text-gray-500'
+                        }`}
                     >
-                      {sec} 
+                      {sec}
                       <span className="ml-2 text-xs opacity-60">
                         ({questions.filter(q => q.subject === activeSubject && (q as any).metadata?.section === sec).length} questions)
                       </span>
@@ -594,14 +600,14 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
               )}
 
               <div ref={formRef} className="scroll-mt-8">
-                <QuestionUploadForm 
-                  onAddQuestion={handleAddQuestion} 
+                <QuestionUploadForm
+                  onAddQuestion={handleAddQuestion}
                   buttonLabel={`Add to ${activeSubject}${testData.format === 'JEE MAIN' ? ` - ${activeSection}` : ''}`}
                   showMarks={testData.format === 'Custom'}
                   showSubject={false}
                   subjects={currentSubjects}
                   fixedType={
-                    testData.format === 'JEE MAIN' 
+                    testData.format === 'JEE MAIN'
                       ? (activeSection === 'Section A' ? 'MCQ' : 'Numerical')
                       : testData.format === 'NEET' ? 'MCQ' : undefined
                   }
@@ -625,16 +631,14 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         onClick={() => handleEditClick(q)}
-                        className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer group ${
-                          editingQuestion?.id === q.id 
-                            ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200' 
-                            : 'bg-teal-50 border-teal-100 hover:border-teal-300 hover:shadow-md'
-                        }`}
+                        className={`flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer group ${editingQuestion?.id === q.id
+                          ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-200'
+                          : 'bg-teal-50 border-teal-100 hover:border-teal-300 hover:shadow-md'
+                          }`}
                         title="Click to edit question"
                       >
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-semibold ${
-                          editingQuestion?.id === q.id ? 'bg-amber-600' : 'bg-teal-600'
-                        } text-white`}>
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-semibold ${editingQuestion?.id === q.id ? 'bg-amber-600' : 'bg-teal-600'
+                          } text-white`}>
                           {index + 1}
                         </div>
                         <div className="flex-1">
@@ -761,7 +765,8 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                   </button>
                   <motion.button
                     onClick={handleSubmit}
-                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                    disabled={isPublishing}
+                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
                   >
                     <CheckCircle className="w-5 h-5" />
                     Publish Test Series
@@ -773,7 +778,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
         </AnimatePresence>
 
         <AnimatePresence>
-          {showSuccess && (
+          {(showSuccess || isPublishing) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -786,13 +791,27 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto text-center shadow-2xl"
               >
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-10 h-10 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Test Series Created!</h3>
-                <p className="text-gray-600">
-                  Your test series has been successfully published and is now available to students.
-                </p>
+                {isPublishing ? (
+                  <>
+                    <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Creating Test Series...</h3>
+                    <p className="text-gray-600">
+                      Please wait while we set up your test and save the questions.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
+                      <CheckCircle className="w-10 h-10 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Test Series Created!</h3>
+                    <p className="text-gray-600">
+                      Your test series has been successfully published and is now available to students.
+                    </p>
+                  </>
+                )}
               </motion.div>
             </motion.div>
           )}

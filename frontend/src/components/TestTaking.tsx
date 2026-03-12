@@ -40,7 +40,7 @@ interface TestTakingProps {
   questions: Question[];
   onSubmit: (answers: Record<string, number | null>, timeSpent: number) => void;
   onExit: () => void;
-  onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
+  onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => Promise<void> | void;
   initialAnswers?: Record<string, number | null>;
   initialTimeSpent?: number;
   isPreview?: boolean;
@@ -80,6 +80,7 @@ export function TestTaking({
   const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
@@ -121,12 +122,22 @@ export function TestTaking({
     }
   };
 
-  const handleConfirmExit = (save: boolean) => {
+  const handleConfirmExit = async (save: boolean) => {
     if (isAnyPreview) {
       if (save && onSave) {
-        onSave(testId, questions, testTitle, selectedBatches);
+        setIsSaving(true);
+        try {
+          await onSave(testId, questions, testTitle, selectedBatches);
+          onExit();
+        } catch (error) {
+          console.error("Failed to save test changes:", error);
+          // Don't exit if it failed, let the user see the toaster error
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        onExit();
       }
-      onExit();
     } else {
       // For students, confirm exit means submit
       handleSubmit();
@@ -155,7 +166,7 @@ export function TestTaking({
 
   useEffect(() => {
     if (isAnyPreview) return;
-    
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -248,9 +259,8 @@ export function TestTaking({
                       {selectedBatches.join(', ') || 'No batches assigned'}
                     </span>
                     {!disableEditing && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                        isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
-                      }`}>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                        }`}>
                         {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
                       </span>
                     )}
@@ -262,23 +272,20 @@ export function TestTaking({
             <div className="flex items-center gap-3">
               {/* Timer - only for students */}
               {!isAnyPreview && (
-                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
-                  timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
+                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
                   timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
-                  'bg-blue-50 border-blue-300'
-                }`}>
-                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                    timeLeft <= 300 ? 'text-red-600' :
+                    'bg-blue-50 border-blue-300'
+                  }`}>
+                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${timeLeft <= 300 ? 'text-red-600' :
                     timeLeft <= 600 ? 'text-yellow-600' :
-                    'text-blue-600'
-                  }`} />
+                      'text-blue-600'
+                    }`} />
                   <div>
                     <p className="text-xs text-gray-600">Time Left</p>
-                    <p className={`text-lg sm:text-2xl font-bold ${
-                      timeLeft <= 300 ? 'text-red-600' :
+                    <p className={`text-lg sm:text-2xl font-bold ${timeLeft <= 300 ? 'text-red-600' :
                       timeLeft <= 600 ? 'text-yellow-600' :
-                      'text-blue-600'
-                    }`}>
+                        'text-blue-600'
+                      }`}>
                       {formatTime(timeLeft)}
                     </p>
                   </div>
@@ -308,11 +315,10 @@ export function TestTaking({
                     const firstIdx = questions.findIndex(q => q.subject === s);
                     if (firstIdx > -1) setCurrentQuestion(firstIdx);
                   }}
-                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                    currentSubject === s
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
                 >
                   {s}
                 </button>
@@ -329,13 +335,12 @@ export function TestTaking({
                       const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
-                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${
-                      currentSection === sec
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                        : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
-                    }`}
+                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${currentSection === sec
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                      : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
+                      }`}
                   >
-                    {sec} 
+                    {sec}
                     <span className="ml-2 text-xs opacity-60">
                       ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
                     </span>
@@ -391,11 +396,10 @@ export function TestTaking({
                     {!isAnyPreview && (
                       <button
                         onClick={() => toggleFlag(question.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          flaggedQuestions.has(question.id)
-                            ? 'bg-amber-100 text-amber-600'
-                            : 'bg-gray-100 text-gray-400 hover:text-amber-600'
-                        }`}
+                        className={`p-2 rounded-lg transition-colors ${flaggedQuestions.has(question.id)
+                          ? 'bg-amber-100 text-amber-600'
+                          : 'bg-gray-100 text-gray-400 hover:text-amber-600'
+                          }`}
                       >
                         <Flag className="w-5 h-5" />
                       </button>
@@ -408,28 +412,26 @@ export function TestTaking({
                       question.options?.map((option, index) => {
                         const isCorrect = isAnyPreview && (
                           question.type === 'MCQ' ? question.correctAnswer === index :
-                          Array.isArray(question.correctAnswer) && (question.correctAnswer as number[]).includes(index)
+                            Array.isArray(question.correctAnswer) && (question.correctAnswer as number[]).includes(index)
                         );
-                        
+
                         return (
                           <div key={index} className="space-y-2">
                             <button
                               onClick={() => !isAnyPreview && selectAnswer(question.id, index)}
                               disabled={isAnyPreview}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                                isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
                                 answers[question.id] === index
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
                                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  isCorrect ? 'border-green-500 bg-green-500' :
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isCorrect ? 'border-green-500 bg-green-500' :
                                   answers[question.id] === index
                                     ? 'border-blue-500 bg-blue-500'
                                     : 'border-gray-300'
-                                }`}>
+                                  }`}>
                                   {(answers[question.id] === index || isCorrect) && (
                                     <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
@@ -539,8 +541,8 @@ export function TestTaking({
                             {editForm.options?.map((opt, idx) => (
                               <div key={idx} className="flex gap-3">
                                 <div className="pt-3">
-                                  <input 
-                                    type={editForm.type === 'MCQ' ? 'radio' : 'checkbox'} 
+                                  <input
+                                    type={editForm.type === 'MCQ' ? 'radio' : 'checkbox'}
                                     checked={editForm.type === 'MCQ' ? editForm.correctAnswer === idx : Array.isArray(editForm.correctAnswer) && editForm.correctAnswer.includes(idx)}
                                     onChange={() => {
                                       if (editForm.type === 'MCQ') {
@@ -644,11 +646,10 @@ export function TestTaking({
               <motion.button
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                  currentQuestion === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
-                }`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${currentQuestion === 0
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
+                  }`}
               >
                 <ChevronLeft className="w-5 h-5" />
                 Previous
@@ -716,17 +717,16 @@ export function TestTaking({
                       <motion.button
                         key={q.id}
                         onClick={() => setCurrentQuestion(q.globalIndex)}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${
-                          currentQuestion === q.globalIndex
-                            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                          : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
                             ? 'bg-green-100 text-green-700 hover:bg-green-200'
                             : isAnyPreview && q.explanation && !hideExplanations
-                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                            : !isAnyPreview && flaggedQuestions.has(q.id)
-                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                              ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                              : !isAnyPreview && flaggedQuestions.has(q.id)
+                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
                       >
                         {q.globalIndex + 1}
                         {!isAnyPreview && flaggedQuestions.has(q.id) && (
@@ -833,38 +833,50 @@ export function TestTaking({
             >
               <div className="text-center mb-6">
                 <div className={`w-20 h-20 ${isAnyPreview ? 'bg-amber-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                  {isAnyPreview ? <Save className="w-10 h-10 text-amber-600" /> : <AlertCircle className="w-10 h-10 text-red-600" />}
+                  {isSaving ? (
+                    <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                  ) : isAnyPreview ? (
+                    <Save className="w-10 h-10 text-amber-600" />
+                  ) : (
+                    <AlertCircle className="w-10 h-10 text-red-600" />
+                  )}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">{isAnyPreview ? 'Save Changes?' : 'Exit & Submit?'}</h3>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {isSaving ? 'Saving Changes...' : isAnyPreview ? 'Save Changes?' : 'Exit & Submit?'}
+                </h3>
                 <p className="text-gray-600 mt-2">
-                  {isAnyPreview 
-                    ? 'You have made edits to this test. Would you like to keep these changes?'
-                    : 'Tests cannot be paused. If you exit now, your current answers will be submitted and the test will end.'}
+                  {isSaving
+                    ? 'Please wait while we update the database.'
+                    : isAnyPreview
+                      ? 'You have made edits to this test. Would you like to keep these changes?'
+                      : 'Tests cannot be paused. If you exit now, your current answers will be submitted and the test will end.'}
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <motion.button
-                  onClick={() => isAnyPreview ? handleConfirmExit(true) : handleConfirmExit(false)}
-                  className={`w-full py-4 bg-gradient-to-r ${isAnyPreview ? 'from-teal-600 to-cyan-600' : 'from-orange-500 to-red-600'} text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all`}
-                >
-                  {isAnyPreview ? 'Save & Exit' : 'Exit & Submit Now'}
-                </motion.button>
-                {isAnyPreview && (
+              {!isSaving && (
+                <div className="flex flex-col gap-3">
                   <motion.button
-                    onClick={() => handleConfirmExit(false)}
-                    className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                    onClick={() => isAnyPreview ? handleConfirmExit(true) : handleConfirmExit(false)}
+                    className={`w-full py-4 bg-gradient-to-r ${isAnyPreview ? 'from-teal-600 to-cyan-600' : 'from-orange-500 to-red-600'} text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all`}
                   >
-                    Discard Changes
+                    {isAnyPreview ? 'Save & Exit' : 'Exit & Submit Now'}
                   </motion.button>
-                )}
-                <button
-                  onClick={() => setShowExitConfirm(false)}
-                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
+                  {isAnyPreview && (
+                    <motion.button
+                      onClick={() => handleConfirmExit(false)}
+                      className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                    >
+                      Discard Changes
+                    </motion.button>
+                  )}
+                  <button
+                    onClick={() => setShowExitConfirm(false)}
+                    className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
@@ -911,11 +923,10 @@ export function TestTaking({
                           setSelectedBatches(next);
                           setHasChanges(true);
                         }}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                          selectedBatches.includes(batch.label)
-                            ? 'bg-blue-50 border-blue-500 text-blue-700'
-                            : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
-                        }`}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${selectedBatches.includes(batch.label)
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                          }`}
                       >
                         {batch.label}
                       </button>

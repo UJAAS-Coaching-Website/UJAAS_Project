@@ -1,0 +1,26 @@
+[
+  {
+    "id": "e69cf10c-dc8a-4f52-a300-bbc90bfbc1ac",
+    "type": "jsonb",
+    "options": [
+      "Option A",
+      "Option B",
+      "Option C",
+      "Option D"
+    ],
+    "correct_ans": "3",
+    "correct_answer": null
+  },
+  {
+    "id": "ec79e387-b7f9-4b9a-83da-60d798613c3f",
+    "type": "jsonb",
+    "options": [
+      "Option A",
+      "Option B",
+      "Option C",
+      "Option D"
+    ],
+    "correct_ans": "0",
+    "correct_answer": null
+  }
+]

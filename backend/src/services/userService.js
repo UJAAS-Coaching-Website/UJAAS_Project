@@ -33,8 +33,7 @@ export function toApiUser(row) {
                     phone: row.faculty_phone ?? "",
                     subjectSpecialty: row.faculty_subject ?? "",
                     designation: row.faculty_designation ?? "",
-                    experience: row.faculty_experience ?? "",
-                    bio: row.faculty_bio ?? "",
+                    joinDate: row.faculty_join_date ?? null,
                 }
                 : null,
     };
@@ -56,8 +55,7 @@ export async function fetchUserProfileById(userId) {
       f.phone AS faculty_phone,
       f.subject AS faculty_subject,
       f.designation AS faculty_designation,
-      f.experience AS faculty_experience,
-      f.bio AS faculty_bio,
+      TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS faculty_join_date,
       COALESCE(r.attendance, 0) AS attendance,
       COALESCE(r.assignments, 0) AS assignments,
       COALESCE(r.participation, 0) AS participation,
@@ -77,7 +75,7 @@ export async function fetchUserProfileById(userId) {
     GROUP BY
       u.id, u.name, u.login_id, u.role,
       s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
-      f.phone, f.subject, f.designation, f.experience, f.bio,
+      f.phone, f.subject, f.designation, f."joining-date",
       r.attendance, r.assignments, r.participation, r.behavior
   `;
 

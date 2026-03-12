@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { User, LandingData } from '../App';
+import { User, LandingData, Tab } from '../App';
 import {
   LogOut,
   GraduationCap,
@@ -47,6 +47,7 @@ import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
+import { NotesManagementTab } from './NotesManagementTab';
 
 interface AdminDashboardProps {
   user: User;
@@ -58,6 +59,16 @@ interface AdminDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
+  adminFaculties: import('../api/faculties').ApiFaculty[];
+  onCreateFaculty: (data: import('../api/faculties').CreateFacultyPayload) => Promise<import('../api/faculties').ApiFaculty>;
+  onUpdateFaculty: (id: string, data: Partial<import('../api/faculties').CreateFacultyPayload>) => Promise<import('../api/faculties').ApiFaculty>;
+  onDeleteFaculty: (id: string) => Promise<void>;
+  adminStudents: import('../api/students').ApiStudent[];
+  onCreateStudent: (data: import('../api/students').CreateStudentPayload) => Promise<import('../api/students').ApiStudent>;
+  onUpdateStudent: (id: string, data: import('../api/students').UpdateStudentPayload) => Promise<import('../api/students').ApiStudent>;
+  onDeleteStudent: (id: string) => Promise<void>;
+  onAssignStudentToBatch: (studentId: string, batchId: string) => Promise<import('../api/students').ApiStudent>;
+  onRemoveStudentFromBatch: (studentId: string, batchId: string) => Promise<void>;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
@@ -78,10 +89,12 @@ interface AdminDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
-type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
-type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
+export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
+export type FacultySection = 'batches' | 'students' | 'test-series';
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
 
 interface Student {
   id: string;
@@ -111,6 +124,7 @@ interface Faculty {
   name: string;
   email: string;
   subject: string;
+  designation?: string;
   phone?: string;
   rating?: number;
   joinDate?: string;
@@ -125,6 +139,7 @@ type StudentFormState = {
   dateOfBirth: string;
   address: string;
   parentContact: string;
+  email?: string;
 };
 
 type FacultyFormState = {
@@ -132,6 +147,7 @@ type FacultyFormState = {
   name: string;
   email: string;
   subject: string;
+  designation: string;
   phone: string;
   joinDate: string;
   rating: number;
@@ -235,6 +251,16 @@ export function AdminDashboard({
   onSelectBatch,
   onClearBatch,
   batches,
+  adminFaculties,
+  onCreateFaculty,
+  onUpdateFaculty,
+  onDeleteFaculty,
+  adminStudents,
+  onCreateStudent,
+  onUpdateStudent,
+  onDeleteStudent,
+  onAssignStudentToBatch,
+  onRemoveStudentFromBatch,
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
@@ -254,8 +280,34 @@ export function AdminDashboard({
   onDeletePublishedTest,
   selectedPreviewTest,
 }: AdminDashboardProps) {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
+  // Convert API students to local Student[] format
+  const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => ({
+    id: s.id,
+    name: s.name,
+    rollNumber: s.roll_number,
+    enrolledCourses: s.batches.map(b => b.name),
+    joinDate: s.join_date || '',
+    performance: 0,
+    rating: (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
+    batch: s.batches.length > 0 ? s.batches[0].name : 'Unassigned',
+    phoneNumber: s.phone || '',
+    dateOfBirth: s.date_of_birth || '',
+    address: s.address || '',
+    parentContact: s.parent_contact || '',
+  });
+
+  const students = adminStudents.map(apiToLocalStudent);
+  // Use adminFaculties prop directly, ensuring we format joining_date to joinDate
+  const faculty: Faculty[] = adminFaculties.map((f: any) => ({
+    id: f.id,
+    name: f.name,
+    email: f.email,
+    subject: f.subject,
+    designation: f.designation,
+    phone: f.phone,
+    rating: f.rating,
+    joinDate: f.joining_date
+  }));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -333,159 +385,10 @@ export function AdminDashboard({
     });
   };
 
+  // Remarks are stored locally; load from localStorage
   useEffect(() => {
-    // Simulated data fetch
-    const seededStudents: Student[] = [
-      {
-        id: '1',
-        name: 'Rahul Sharma',
-        rollNumber: '2024001',
-        enrolledCourses: ['JEE Main'],
-        joinDate: '2024-01-15',
-        performance: 85,
-        rating: 4.5,
-        batch: '12th JEE',
-        phoneNumber: '+91 99999 11111',
-        dateOfBirth: '2007-04-12',
-        address: 'Sector 15, Vasundhara, Ghaziabad',
-        parentContact: '+91 99999 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.8, tests: 4.5, dppPerformance: 4.6, behavior: 4.9 },
-          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.5 },
-          'Mathematics': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 }
-        },
-        subjectRemarks: {
-          'Physics': 'Good conceptual clarity. Keep revising numericals regularly.',
-          'Chemistry': 'Theory is decent, focus more on reaction mechanism practice.',
-          'Mathematics': 'Excellent consistency and speed in problem solving.'
-        }
-      },
-      {
-        id: '2',
-        name: 'Priya Patel',
-        rollNumber: '2024002',
-        enrolledCourses: ['NEET'],
-        joinDate: '2024-01-20',
-        performance: 92,
-        rating: 4.8,
-        batch: '12th NEET',
-        phoneNumber: '+91 88888 11111',
-        dateOfBirth: '2007-06-18',
-        address: 'MG Road, Pune, Maharashtra',
-        parentContact: '+91 88888 22222',
-        subjectRatings: {
-          'Biology': { attendance: 5.0, tests: 4.9, dppPerformance: 4.9, behavior: 5.0 },
-          'Physics': { attendance: 4.5, tests: 4.2, dppPerformance: 4.4, behavior: 4.6 },
-          'Chemistry': { attendance: 4.8, tests: 4.7, dppPerformance: 4.7, behavior: 4.9 }
-        },
-        subjectRemarks: {
-          'Biology': 'Strong retention and neat diagram presentation.',
-          'Physics': 'Needs more confidence in multi-step numericals.',
-          'Chemistry': 'Very disciplined and improving test performance.'
-        }
-      },
-      {
-        id: '3',
-        name: 'Amit Kumar',
-        rollNumber: '2024003',
-        enrolledCourses: ['JEE Advanced'],
-        joinDate: '2024-02-05',
-        performance: 78,
-        rating: 4.2,
-        batch: 'Dropper JEE',
-        phoneNumber: '+91 77777 11111',
-        dateOfBirth: '2006-09-22',
-        address: 'Indira Nagar, Bengaluru, Karnataka',
-        parentContact: '+91 77777 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.9, behavior: 4.2 },
-          'Mathematics': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.5 }
-        },
-        subjectRemarks: {
-          'Physics': 'Basics are clear, but revise formulas before tests.',
-          'Mathematics': 'Good progress. Keep practicing advanced level questions.'
-        }
-      },
-      {
-        id: '4',
-        name: 'Sneha Mehta',
-        rollNumber: '2024004',
-        enrolledCourses: ['JEE Main', 'NEET'],
-        joinDate: '2024-02-12',
-        performance: 88,
-        rating: 4.6,
-        batch: '11th JEE',
-        phoneNumber: '+91 98989 11111',
-        dateOfBirth: '2008-01-05',
-        address: 'Satellite Road, Ahmedabad, Gujarat',
-        parentContact: '+91 98989 22222',
-        subjectRatings: {
-          'Physics': { attendance: 4.5, tests: 4.6, dppPerformance: 4.4, behavior: 4.8 },
-          'Mathematics': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.7 }
-        },
-        subjectRemarks: {
-          'Physics': 'Very attentive in class and asks relevant doubts.',
-          'Mathematics': 'Accurate approach. Work slightly on time management.'
-        }
-      },
-      {
-        id: '5',
-        name: 'Karan Desai',
-        rollNumber: '2024005',
-        enrolledCourses: ['NEET'],
-        joinDate: '2024-03-03',
-        performance: 79,
-        rating: 4.1,
-        batch: '11th NEET',
-        phoneNumber: '+91 97979 11111',
-        dateOfBirth: '2008-03-15',
-        address: 'Banjara Hills, Hyderabad, Telangana',
-        parentContact: '+91 97979 22222',
-        subjectRatings: {
-          'Biology': { attendance: 4.0, tests: 3.9, dppPerformance: 4.1, behavior: 4.3 },
-          'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.0, behavior: 4.2 }
-        },
-        subjectRemarks: {
-          'Biology': 'Regular in class; needs deeper NCERT revision.',
-          'Chemistry': 'Maintain short notes and increase daily question count.'
-        }
-      },
-      {
-        id: '6',
-        name: 'Ananya Kapoor',
-        rollNumber: '2024006',
-        enrolledCourses: ['JEE Advanced', 'NEET'],
-        joinDate: '2024-03-10',
-        performance: 91,
-        rating: 4.9,
-        batch: '12th JEE',
-        phoneNumber: '+91 96969 11111',
-        dateOfBirth: '2007-11-30',
-        address: 'Civil Lines, Delhi',
-        parentContact: '+91 96969 22222',
-        subjectRatings: {
-          'Physics': { attendance: 5.0, tests: 4.9, dppPerformance: 4.8, behavior: 5.0 },
-          'Mathematics': { attendance: 4.9, tests: 5.0, dppPerformance: 4.9, behavior: 4.9 },
-          'Chemistry': { attendance: 4.8, tests: 4.8, dppPerformance: 4.9, behavior: 4.8 }
-        },
-        subjectRemarks: {
-          'Physics': 'Outstanding class participation and analytical skills.',
-          'Mathematics': 'Excellent accuracy. Continue with mixed mock practice.',
-          'Chemistry': 'Consistent performer with very good discipline.'
-        }
-      },
-    ];
-    setStudents(withStoredRemarks(seededStudents));
-
-    setFaculty([
-      { id: 't1', name: 'Dr. V.K. Sharma', email: 'vk.sharma@example.com', subject: 'Physics', rating: 4.8 },
-      { id: 't2', name: 'Prof. S. Gupta', email: 's.gupta@example.com', subject: 'Chemistry', rating: 4.5 },
-      { id: 't3', name: 'Dr. R.K. Yadav', email: 'rk.yadav@example.com', subject: 'Mathematics', rating: 4.9 },
-      { id: 't4', name: 'Ms. Tanya Bose', email: 'tanya.bose@example.com', subject: 'Biology', rating: 4.2 },
-      { id: 't5', name: 'Mr. Arjun Malhotra', email: 'arjun.m@example.com', subject: 'Mathematics', rating: 4.6 },
-      { id: 't6', name: 'Dr. Leena Rao', email: 'leena.rao@example.com', subject: 'Chemistry', rating: 4.7 },
-    ]);
-  }, []);
+    // Apply stored remarks to students rendered from API
+  }, [adminStudents]);
 
   const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -534,96 +437,128 @@ export function AdminDashboard({
     }
   };
 
-  const handleSaveStudent = (data: StudentFormState) => {
-    if (data.id) {
-      setStudents(prev => prev.map(s => s.id === data.id ? {
-        ...s,
-        name: data.name,
-        rollNumber: data.rollNumber,
-        batch: data.batch,
-        phoneNumber: data.phoneNumber,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
-        parentContact: data.parentContact
-      } : s));
-    } else {
-      const initialPassword = generateInitialPassword(data.name);
-      const newStudent: Student = {
-        id: `student-${Date.now()}`,
-        name: data.name,
-        rollNumber: data.rollNumber,
-        batch: data.batch,
-        phoneNumber: data.phoneNumber,
-        dateOfBirth: data.dateOfBirth,
-        address: data.address,
-        parentContact: data.parentContact,
-        enrolledCourses: [data.batch],
-        joinDate: new Date().toISOString().split('T')[0],
-        performance: 0,
-        rating: 0,
-      };
-      setStudents(prev => [...prev, newStudent]);
-      window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+  const handleSaveStudent = async (data: StudentFormState) => {
+    try {
+      if (data.id) {
+        // Find the batch ID for the selected batch name
+        const batchInfo = batches.find(b => b.label === data.batch);
+        const apiStudent = adminStudents.find(s => s.id === data.id);
+
+        await onUpdateStudent(data.id, {
+          name: data.name,
+          rollNumber: data.rollNumber,
+          phone: data.phoneNumber,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          parentContact: data.parentContact,
+        });
+
+        // Handle batch change: if batch changed, remove from old and assign to new
+        if (apiStudent && batchInfo?.id) {
+          const currentBatchIds = apiStudent.batches.map(b => b.id);
+          if (!currentBatchIds.includes(batchInfo.id)) {
+            // Remove from all current batches
+            for (const b of apiStudent.batches) {
+              await onRemoveStudentFromBatch(data.id, b.id);
+            }
+            // Assign to new batch
+            await onAssignStudentToBatch(data.id, batchInfo.id);
+          }
+        }
+      } else {
+        // Find the batch ID for assignment
+        const batchInfo = batches.find(b => b.label === data.batch);
+        await onCreateStudent({
+          name: data.name,
+          rollNumber: data.rollNumber,
+          phone: data.phoneNumber,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth,
+          parentContact: data.parentContact,
+          batchId: batchInfo?.id,
+        });
+        const initialPassword = generateInitialPassword(data.name);
+        window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+      }
+    } catch (error: any) {
+      window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
     closeStudentModal();
   };
 
-  const handleSaveFaculty = (data: FacultyFormState) => {
-    if (data.id) {
-      setFaculty(prev => prev.map(f => f.id === data.id ? { ...f, ...data } : f));
-    } else {
-      const initialPassword = generateInitialPassword(data.name);
-      const newFaculty: Faculty = {
-        ...data,
-        id: `faculty-${Date.now()}`,
-      };
-      setFaculty(prev => [...prev, newFaculty]);
-      window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+  const handleSaveFaculty = async (data: FacultyFormState) => {
+    try {
+      if (data.id) {
+        await onUpdateFaculty(data.id, {
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          designation: data.designation,
+          phone: data.phone,
+          joinDate: data.joinDate,
+        });
+      } else {
+        await onCreateFaculty({
+          name: data.name,
+          email: data.email,
+          subject: data.subject,
+          designation: data.designation,
+          phone: data.phone,
+          joinDate: data.joinDate,
+        });
+        const initialPassword = data.name.split(' ')[0].toLowerCase() + '@123';
+        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+      }
+    } catch (error: any) {
+      window.alert(`Error: ${error.message || 'Failed to save faculty'}`);
     }
     closeFacultyModal();
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(s => s.id !== id));
+      try {
+        await onDeleteStudent(id);
+      } catch (error: any) {
+        window.alert(`Error deleting student: ${error.message}`);
+      }
     }
   };
 
-  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+  const handleRemoveStudentFromBatch = async (id: string, batch: Batch) => {
     if (window.confirm('Remove this student from the current batch?')) {
-      setStudents((prev) =>
-        prev.map((student) =>
-          student.id === id && student.batch === batch
-            ? {
-              ...student,
-              batch: 'Unassigned',
-              enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
-            }
-            : student
-        )
-      );
+      try {
+        const batchInfo = batches.find(b => b.label === batch);
+        if (batchInfo?.id) {
+          await onRemoveStudentFromBatch(id, batchInfo.id);
+        }
+      } catch (error: any) {
+        window.alert(`Error removing student from batch: ${error.message}`);
+      }
     }
   };
 
-  const handleDeleteFaculty = (id: string) => {
+  const handleDeleteFaculty = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this faculty?')) {
-      setFaculty(faculty.filter(f => f.id !== id));
+      try {
+        await onDeleteFaculty(id);
+      } catch (error: any) {
+        window.alert(`Error deleting faculty: ${error.message}`);
+      }
     }
   };
 
   const openBatchStudentPicker = (batch: Batch) => setBatchStudentPicker({ open: true, batch });
   const closeBatchStudentPicker = () => setBatchStudentPicker({ open: false, batch: null });
-  const handleAssignExistingStudentToBatch = (studentId: string, batch: Batch) => {
-    setStudents((prev) =>
-      prev.map((student) =>
-        student.id === studentId
-          ? {
-            ...student,
-            batch,
-          }
-          : student
-      )
-    );
+  const handleAssignExistingStudentToBatch = async (studentId: string, batch: Batch) => {
+    try {
+      const batchInfo = batches.find(b => b.label === batch);
+      if (batchInfo?.id) {
+        await onAssignStudentToBatch(studentId, batchInfo.id);
+      }
+    } catch (error: any) {
+      window.alert(`Error assigning student to batch: ${error.message}`);
+    }
   };
   const openBatchFacultyPicker = (batch: Batch) => setBatchFacultyPicker({ open: true, batch });
   const closeBatchFacultyPicker = () => setBatchFacultyPicker({ open: false, batch: null });
@@ -640,24 +575,37 @@ export function AdminDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const handleSaveStudentProfile = (
+  const handleSaveStudentProfile = async (
     studentId: string,
     updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
-    setStudents((prev) => prev.map((s) => (s.id === studentId ? { ...s, ...updates } : s)));
-    setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+    try {
+      await onUpdateStudent(studentId, {
+        name: updates.name,
+        phone: updates.phoneNumber,
+        dateOfBirth: updates.dateOfBirth,
+        parentContact: updates.parentContact,
+        address: updates.address
+      });
+      setRatingModal((prev) => (prev.student?.id === studentId ? { ...prev, student: { ...prev.student, ...updates } } : prev));
+    } catch (error: any) {
+      window.alert(`Error updating student: ${error.message}`);
+    }
   };
-  const handleSaveAdminRemark = (studentId: string, remark: string) => {
+  const handleSaveAdminRemark = async (studentId: string, remark: string) => {
     const cleanedRemark = remark.trim();
-    setStudents((prev) =>
-      prev.map((student) => (student.id === studentId ? { ...student, adminRemark: cleanedRemark } : student))
-    );
-    setRatingModal((prev) =>
-      prev.student?.id === studentId
-        ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
-        : prev
-    );
-    writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
+    try {
+      // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
+      // but we can store it in the local storage bridge we have.
+      setRatingModal((prev) =>
+        prev.student?.id === studentId
+          ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
+          : prev
+      );
+      writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
+    } catch (error: any) {
+      console.error(error);
+    }
   };
 
   useBodyScrollLock(
@@ -786,8 +734,8 @@ export function AdminDashboard({
                 questions={selectedPreviewTest.questions}
                 onSubmit={() => onNavigate('test-series')}
                 onExit={() => onNavigate('test-series')}
-                onSave={(testId, updatedQuestions, updatedTitle, updatedBatches) => {
-                  onUpdatePublishedTest(testId, {
+                onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                  await onUpdatePublishedTest(testId, {
                     questions: updatedQuestions,
                     title: updatedTitle,
                     batches: updatedBatches
@@ -1648,18 +1596,28 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
 }
 
 function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: BatchInfo[]; onSelectBatch: (b: Batch) => void; onAddBatch: () => void }) {
+  const sortedBatches = [...batches].sort((a, b) => {
+    if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
+    return a.is_active === false ? 1 : -1;
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {batches.map((batch) => (
-        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group">
-          <div className="w-14 h-14 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 group-hover:scale-110 transition-transform">
-            <BookOpen className="w-7 h-7 text-white" />
+      {sortedBatches.map((batch) => (
+        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}>
+          <div className="flex-1">
+            <div className="mb-1">
+              <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
+              {batch.label}
+              {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
+            </h3>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{batch.label}</h3>
-          <p className="text-gray-500 text-sm">View and manage this batch's academic progress</p>
+          <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
         </motion.button>
       ))}
-      <motion.button onClick={onAddBatch} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group">
+      <motion.button onClick={onAddBatch} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group hover:bg-white/60 transition-colors">
         <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-teal-50 transition-colors">
           <Plus className="w-7 h-7 text-gray-400 group-hover:text-teal-600" />
         </div>
@@ -1873,6 +1831,9 @@ function OverviewTab({
             selectedBatch={selectedBatch}
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
+            onUpdateBatch={onUpdateBatch}
+            batches={batches}
+            variant="admin"
           />
         </div>
       </div>
@@ -1880,7 +1841,23 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; selectedBatch: Batch; onChangeBatch: () => void; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
+function StudentsTab({
+  students,
+  selectedBatch,
+  onChangeBatch: _onChangeBatch,
+  onAddStudent,
+  onEditStudent,
+  onDeleteStudent,
+  onViewStudent
+}: {
+  students: Student[];
+  selectedBatch: Batch;
+  onChangeBatch: () => void;
+  onAddStudent: () => void;
+  onEditStudent: (s: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewStudent: (s: Student) => void
+}) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -1911,6 +1888,13 @@ function StudentsTab({ students, selectedBatch, onChangeBatch: _onChangeBatch, o
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                    title="Edit Student"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
@@ -1981,498 +1965,22 @@ function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpe
   );
 }
 
-function NotesManagementTab({
-  onNavigate,
-  selectedBatch,
-  onChangeBatch,
-  onViewTimetable,
+
+function StudentsDirectoryTab({
+  students,
+  batches,
+  onAddStudent,
+  onEditStudent,
+  onDeleteStudent,
+  onViewStudent
 }: {
-  onNavigate: (tab: Tab) => void;
-  selectedBatch: Batch | null;
-  onChangeBatch: () => void;
-  onViewTimetable: () => void;
+  students: Student[];
+  batches: BatchInfo[];
+  onAddStudent: () => void;
+  onEditStudent: (s: Student) => void;
+  onDeleteStudent: (id: string) => void;
+  onViewStudent: (s: Student) => void;
 }) {
-  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
-
-  const [subjects, setSubjects] = useState([
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ]);
-
-  const [chapters, setChapters] = useState<Record<string, string[]>>({
-    'Physics': ['Kinematics', 'Laws of Motion', 'Work Energy Power'],
-    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'States of Matter'],
-    'Mathematics': ['Integration Basics', 'Differentiation', 'Calculus'],
-    'Biology': ['Cell Division', 'Genetics', 'Evolution'],
-  });
-
-  const [notes, setNotes] = useState([
-    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-    { id: 'n2', chapter: 'Kinematics', title: '1D Motion Formula Sheet', size: '1.2 MB', date: '2025-09-21' },
-  ]);
-
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile', questions: 20, date: '2025-09-23' },
-  ]);
-
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newChapterName, setNewChapterName] = useState('');
-
-  useBodyScrollLock(isAddSubjectModalOpen || isAddChapterModalOpen);
-
-  const handleAddSubject = (e: FormEvent) => {
-    e.preventDefault();
-    if (newSubjectName.trim()) {
-      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899', '#06b6d4'];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-
-      setSubjects([...subjects, {
-        id: `s${Date.now()}`,
-        name: newSubjectName.trim(),
-        color: randomColor
-      }]);
-      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
-      setNewSubjectName('');
-      setIsAddSubjectModalOpen(false);
-    }
-  };
-
-  const handleAddChapter = (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedSubject) return;
-    if (newChapterName.trim()) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
-      });
-      setNewChapterName('');
-      setIsAddChapterModalOpen(false);
-    }
-  };
-
-  const handleDeleteSubject = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete the subject "${name}"? This will also remove its chapters.`)) {
-      setSubjects(subjects.filter(s => s.id !== id));
-      const nextChapters = { ...chapters };
-      delete nextChapters[name];
-      setChapters(nextChapters);
-    }
-  };
-
-  const handleDeleteChapter = (chapterName: string) => {
-    if (!selectedSubject) return;
-    if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: chapters[selectedSubject].filter(c => c !== chapterName)
-      });
-      // Also cleanup notes and dpps for this chapter
-      setNotes(notes.filter(n => n.chapter !== chapterName));
-      setDpps(dpps.filter(d => d.chapter !== chapterName));
-    }
-  };
-
-  const handleDeleteNote = (id: string) => {
-    if (confirm('Are you sure you want to delete this note?')) {
-      setNotes(notes.filter(n => n.id !== id));
-    }
-  };
-
-  const handleDeleteDPP = (id: string) => {
-    if (confirm('Are you sure you want to delete this DPP?')) {
-      setDpps(dpps.filter(d => d.id !== id));
-    }
-  };
-
-  const navigateToSubject = (subject: string) => {
-    setSelectedSubject(subject);
-    setCurrentView('subject');
-  };
-
-  const navigateToChapter = (chapter: string) => {
-    setSelectedChapter(chapter);
-    setCurrentView('chapter');
-    setActiveContentType('notes');
-  };
-
-  const goBack = () => {
-    if (currentView === 'chapter') {
-      setCurrentView('subject');
-      setSelectedChapter(null);
-    } else if (currentView === 'subject') {
-      setCurrentView('root');
-      setSelectedSubject(null);
-    }
-  };
-
-  return (
-    <div className="space-y-6 relative z-0">
-      {/* Header & Breadcrumbs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            {currentView !== 'root' && (
-              <motion.button
-                onClick={goBack}
-                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-700" />
-              </motion.button>
-            )}
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                {selectedSubject && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold cursor-pointer' : 'cursor-pointer'} onClick={() => { setCurrentView('subject'); setSelectedChapter(null); }}>{selectedSubject}</span>
-                  </>
-                )}
-                {selectedChapter && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {currentView === 'root' && (
-              <>
-                <motion.button
-                  onClick={onViewTimetable}
-                  className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition border border-indigo-100 font-semibold shadow-sm"
-                >
-                  <Calendar className="w-5 h-5" />
-                  Time Table
-                </motion.button>
-                <motion.button
-                  onClick={() => setIsAddSubjectModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Subject
-                </motion.button>
-              </>
-            )}
-            {currentView === 'subject' && (
-              <motion.button
-                onClick={() => setIsAddChapterModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-              >
-                <Plus className="w-5 h-5" />
-                Add Chapter
-              </motion.button>
-            )}
-            <motion.button
-              onClick={() => onNavigate('upload-notice')}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"
-            >
-              <Bell className="w-5 h-5" />
-              Upload Notice
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Add Subject Modal */}
-      <AnimatePresence>
-        {isAddSubjectModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddSubjectModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
-                <h3 className="text-xl font-bold">Add New Subject</h3>
-                <p className="text-teal-50 text-sm">Create a new subject folder</p>
-              </div>
-              <form onSubmit={handleAddSubject} className="p-6 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    placeholder="e.g., Organic Chemistry"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddSubjectModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Subject
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Chapter Modal */}
-      <AnimatePresence>
-        {isAddChapterModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddChapterModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
-                <h3 className="text-xl font-bold">Add New Chapter</h3>
-                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
-              </div>
-              <form onSubmit={handleAddChapter} className="p-6 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newChapterName}
-                    onChange={(e) => setNewChapterName(e.target.value)}
-                    placeholder="e.g., Rotation Mechanics"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddChapterModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Chapter
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {currentView === 'root' && (
-        <>
-          {/* Subject Folders */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6 relative z-0">
-            {subjects.map((sub, index) => (
-              <motion.div
-                key={sub.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => navigateToSubject(sub.name)}
-                className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSubject(sub.id, sub.name);
-                  }}
-                  style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}
-                  className="p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100 shadow-sm"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div
-                  className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform"
-                  style={{ backgroundColor: sub.color }}
-                >
-                  <Folder className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-center">
-                  <h4 className="font-bold text-gray-900">{sub.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {currentView === 'subject' && selectedSubject && chapters[selectedSubject] && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative z-0">
-          {chapters[selectedSubject].map((chapter, index) => (
-            <motion.button
-              key={chapter}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
-              onClick={() => navigateToChapter(chapter)}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-teal-600 transition-colors">
-                  <Folder className="w-5 h-5 text-teal-600 group-hover:text-white" />
-                </div>
-                <span className="font-bold text-gray-900">{chapter}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteChapter(chapter);
-                  }}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 transition-colors" />
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      {currentView === 'chapter' && selectedChapter && (
-        <div className="space-y-6 relative z-0">
-          {/* Internal Navigation */}
-          <div className="flex items-center gap-4 border-b border-gray-200">
-            <button
-              onClick={() => setActiveContentType('notes')}
-              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              Study Notes
-              {activeContentType === 'notes' && (
-                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveContentType('dpps')}
-              className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              Daily Practice Problems (DPPs)
-              {activeContentType === 'dpps' && (
-                <motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-teal-600 rounded-t-full" />
-              )}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activeContentType === 'notes' ? (
-              notes
-                .filter(n => n.chapter === selectedChapter)
-                .map((note, index) => (
-                  <motion.div
-                    key={note.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center shrink-0">
-                        <FileText className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{note.title}</h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">{note.size} â€¢ {note.date}</span>
-                          <div className="flex gap-1">
-                            <button className="p-2 text-teal-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                            <button
-                              onClick={() => handleDeleteNote(note.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-            ) : (
-              dpps
-                .filter(d => d.chapter === selectedChapter)
-                .map((dpp, index) => (
-                  <motion.div
-                    key={dpp.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shrink-0">
-                        <ClipboardList className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{dpp.title}</h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">{dpp.questions} Questions â€¢ {dpp.date}</span>
-                          <div className="flex gap-1">
-                            <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                            <button
-                              onClick={() => handleDeleteDPP(dpp.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void }) {
   const [q, setQ] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
 
@@ -2545,8 +2053,16 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onDeleteStudent
                 </td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
                   <button
+                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
+                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                    title="Edit Student"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                    title="Delete Student"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -2594,7 +2110,8 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
               <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
-            <p className="text-sm font-semibold text-teal-600 uppercase mb-2">{t.subject}</p>
+            <p className="text-sm font-semibold text-teal-600 uppercase mb-1">{t.subject}</p>
+            {t.designation && <p className="text-xs text-gray-600 font-medium mb-3">{t.designation}</p>}
             {t.rating && (
               <div className="mb-4">
                 {renderPerformanceStars(t.rating)}
@@ -2720,7 +2237,6 @@ function AddStudentModal({
   const createInitialState = (batch: Batch | null, initial?: Student): StudentFormState => ({
     id: initial?.id,
     name: initial?.name ?? '',
-    email: initial?.email ?? '',
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
     phoneNumber: initial?.phoneNumber ?? '',
@@ -2892,6 +2408,7 @@ function AddFacultyModal({
   const [formState, setFormState] = useState<FacultyFormState>({
     id: initialData?.id,
     subject: initialData?.subject ?? '',
+    designation: initialData?.designation ?? '',
     name: initialData?.name ?? '',
     phone: initialData?.phone ?? '',
     email: initialData?.email ?? '',
@@ -2905,6 +2422,7 @@ function AddFacultyModal({
     setFormState({
       id: initialData?.id,
       subject: initialData?.subject ?? '',
+      designation: initialData?.designation ?? '',
       name: initialData?.name ?? '',
       phone: initialData?.phone ?? '',
       email: initialData?.email ?? '',
@@ -2963,6 +2481,18 @@ function AddFacultyModal({
                 onChange={handleChange('subject')}
                 className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
                 placeholder="e.g. Physics"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Designation</span>
+              <input
+                type="text"
+                readOnly={!isEditing}
+                value={formState.designation}
+                onChange={handleChange('designation')}
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+                placeholder="e.g. Senior Lecturer"
               />
             </label>
 
@@ -3082,17 +2612,9 @@ function BatchStudentPickerModal({
 }) {
   if (!open || !selectedBatch) return null;
 
-  const availableStudents = students.filter((student) => student.batch !== selectedBatch);
+  const availableStudents = students.filter((student) => !student.batch || student.batch === 'Unassigned');
 
   const handleAssign = (student: Student) => {
-    if (
-      student.batch &&
-      student.batch !== 'Unassigned' &&
-      student.batch !== selectedBatch &&
-      !window.confirm(`Move ${student.name} from ${student.batch} to ${selectedBatch}?`)
-    ) {
-      return;
-    }
     onAssign(student.id, selectedBatch);
   };
 
@@ -3155,7 +2677,7 @@ function BatchFacultyPickerModal({
   open: boolean;
   selectedBatch: Batch | null;
   batches: BatchInfo[];
-  faculty: Faculty[];
+  faculty: import('../api/faculties').ApiFaculty[];
   onClose: () => void;
   onAssign: (facultyName: string, batch: Batch) => void;
 }) {
@@ -3226,7 +2748,7 @@ function BatchFormModal({
   open: boolean;
   mode: 'create' | 'edit';
   batches: BatchInfo[];
-  faculty: Faculty[];
+  faculty: import('../api/faculties').ApiFaculty[];
   batchLabel?: string;
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
@@ -3615,7 +3137,7 @@ function StudentRatingsModal({
     const adminRemarkHtml = (student.adminRemark || '').trim() ? `
       <section class="admin-remark">
         <h2>Overall Remark</h2>
-        <p>${escapeHtml(student.adminRemark.trim())}</p>
+        <p>${escapeHtml((student.adminRemark || '').trim())}</p>
       </section>
     ` : '';
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '../App';
 import { 
   GraduationCap,
@@ -15,6 +15,7 @@ import {
   BookOpen,
   ClipboardList
 } from 'lucide-react';
+import { fetchBatches, ApiBatch } from '../api/batches';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { DPPPractice } from './DPPPractice';
@@ -23,6 +24,9 @@ import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import demotimetable from '../assets/demotimetable.jpg';
+import { X, Calendar } from 'lucide-react';
+import { NotesManagementTab } from './NotesManagementTab';
 
 interface StudentDashboardProps {
   user: User;
@@ -73,6 +77,16 @@ export function StudentDashboard({
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+  const [showFullTimetable, setShowFullTimetable] = useState(false);
+
+  useEffect(() => {
+    if (showFullTimetable) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showFullTimetable]);
 
   const [dppAttempts, setDppAttempts] = useState<Record<string, { attempts: number, score: number }>>(() => {
     const saved = localStorage.getItem('dppAttempts');
@@ -243,8 +257,10 @@ export function StudentDashboard({
             <BatchDashboard 
               user={user} 
               onBack={() => onNavigate('home')} 
+              onNavigate={onNavigate}
               onStartDPP={handleStartDPP}
               dppAttempts={dppAttempts}
+              onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
           {activeTab === 'question-bank' && (
@@ -259,6 +275,43 @@ export function StudentDashboard({
 
       {/* Footer */}
       {!isNavbarHidden && <Footer />}
+
+      {/* Timetable Modal */}
+      <AnimatePresence>
+        {showFullTimetable && (
+          <motion.div
+            key="timetable-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-modal"
+            onClick={() => setShowFullTimetable(false)}
+          >
+            <motion.div
+              key="timetable-modal-content"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
+               </div>
+              <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
+                <div className="w-full h-full flex items-center justify-center">
+                  <img src={demotimetable} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
+                </div>
+              </div>
+              <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
+                <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"><Download className="w-4 h-4" />Download PDF</button>
+                <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -516,14 +569,50 @@ function HomeTab({
 function BatchDashboard({ 
   user, 
   onBack, 
+  onNavigate,
   onStartDPP,
-  dppAttempts
+  dppAttempts,
+  onViewTimetable
 }: { 
   user: User; 
   onBack: () => void; 
+  onNavigate: (tab: Tab, subTab?: string) => void;
   onStartDPP: (dpp: any, subjectName?: string) => void;
   dppAttempts: Record<string, { attempts: number, score: number }>;
+  onViewTimetable: () => void;
 }) {
+  const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadBatch = async () => {
+      try {
+        const batches = await fetchBatches();
+        const studentBatch = batches.find(b => b.name === user.studentDetails?.batch);
+        if (studentBatch) {
+          setBatchDetails(studentBatch);
+        }
+      } catch (err) {
+        console.error("Failed to fetch batch details:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user.studentDetails?.batch) {
+      loadBatch();
+    } else {
+      setLoading(false);
+    }
+  }, [user.studentDetails?.batch]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
@@ -533,11 +622,20 @@ function BatchDashboard({
             onClick={onBack}
             className="flex items-center gap-2 text-teal-100 hover:text-white mb-4 font-bold transition-colors group"
           >
-            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             Back to Dashboard
           </button>
-          <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch} Dashboard</h2>
-          <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
+          <div className="flex items-center gap-4">
+            <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch} Dashboard</h2>
+            <button 
+              onClick={onViewTimetable}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20"
+            >
+              <Calendar className="w-5 h-5" />
+              Time Table
+            </button>
+          </div>
+          <p className="text-teal-50/90 font-medium mt-1">Batch Academic Overview & Content</p>
         </div>
       </div>
 
@@ -549,473 +647,19 @@ function BatchDashboard({
           <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
         </div>
         <div className="p-1">
-          <StudentContentTab onStartDPP={onStartDPP} dppAttempts={dppAttempts} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StudentContentTab({ 
-  onStartDPP,
-  dppAttempts
-}: { 
-  onStartDPP: (dpp: any, subjectName: string) => void;
-  dppAttempts: Record<string, { attempts: number, score: number }>;
-}) {
-  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
-
-  const subjects = [
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ];
-
-  const chapters: Record<string, string[]> = {
-    'Physics': ['Kinematics', 'Laws of Motion', 'Work Power Energy'],
-    'Chemistry': ['Atomic Structure', 'Chemical Bonding', 'Thermodynamics'],
-    'Mathematics': ['Sets', 'Relations & Functions', 'Trigonometry'],
-    'Biology': ['Cell Structure', 'Cell Cycle', 'Plant Kingdom'],
-  };
-
-  const notes = [
-    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-    { id: 'n2', chapter: 'Atomic Structure', title: 'Atomic Model Basics', size: '1.8 MB', date: '2025-09-22' },
-  ];
-
-  const dpps = [
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - One Dimensional Motion', questions: 15, date: '2025-09-22' },
-    { id: 'd2', chapter: 'Kinematics', title: 'Kinematics DPP 02 - Projectile Motion', questions: 20, date: '2025-09-25' },
-    { id: 'd3', chapter: 'Atomic Structure', title: 'Atomic Structure DPP 01 - Bohr Model', questions: 12, date: '2025-09-28' },
-    { id: 'd4', chapter: 'Laws of Motion', title: 'Laws of Motion DPP 01 - Friction Basics', questions: 18, date: '2025-10-02' },
-  ];
-
-  const renderSubjectGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-      {subjects.map((subject) => (
-        <motion.div
-          key={subject.id}
-          onClick={() => {
-            setSelectedSubject(subject.name);
-            setCurrentView('subject');
-          }}
-          className="p-6 bg-white rounded-2xl shadow-md border border-gray-100 flex flex-col items-center text-center group transition-all cursor-pointer"
-        >
-          <div 
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:rotate-6 transition-transform"
-            style={{ backgroundColor: `${subject.color}15`, color: subject.color }}
-          >
-            <BookOpen className="w-8 h-8" />
-          </div>
-          <h4 className="text-lg font-bold text-gray-900">{subject.name}</h4>
-          <p className="text-sm text-gray-500 mt-1">{chapters[subject.name]?.length || 0} Chapters</p>
-        </motion.div>
-      ))}
-    </div>
-  );
-
-  const renderBreadcrumbs = () => (
-    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6 px-4">
-      {selectedSubject && (
-        <>
-          <ChevronRight 
-            className="w-4 h-4 cursor-pointer hover:text-teal-600 transition-colors" 
-            onClick={() => setCurrentView('root')}
+          <NotesManagementTab 
+            onNavigate={onNavigate}
+            selectedBatch={user.studentDetails?.batch || null}
+            onChangeBatch={() => onNavigate('home')}
+            onViewTimetable={onViewTimetable}
+            batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}
+            readOnly={true}
+            variant="student"
           />
-          <span 
-            className={`cursor-pointer hover:text-teal-600 transition-colors ${currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}`}
-            onClick={() => setCurrentView('subject')}
-          >
-            {selectedSubject}
-          </span>
-        </>
-      )}
-      {selectedChapter && (
-        <>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-teal-600 font-semibold">
-            {selectedChapter}
-          </span>
-        </>
-      )}
-    </div>
-  );
-
-  const renderChapterList = () => (
-    <div className="space-y-4 p-4">
-      {renderBreadcrumbs()}
-      <button 
-        onClick={() => setCurrentView('root')}
-        className="flex items-center gap-2 text-teal-600 font-bold mb-2 hover:underline"
-      >
-        <ChevronLeft className="w-4 h-4" /> Back to Subjects
-      </button>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {chapters[selectedSubject!]?.map((chapter) => (
-          <motion.div
-            key={chapter}
-            onClick={() => {
-              setSelectedChapter(chapter);
-              setCurrentView('chapter');
-            }}
-            className="flex items-center justify-between p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                <Folder className="w-5 h-5" />
-              </div>
-              <span className="font-bold text-gray-900">{chapter}</span>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderContentItems = () => {
-    const relevantNotes = notes.filter(n => n.chapter === selectedChapter);
-    const relevantDpps = dpps.filter(d => d.chapter === selectedChapter);
-
-    const handleDownloadDPPPDF = (dpp: any) => {
-      const escapeHtml = (unsafe: string) => {
-        return unsafe
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      };
-
-      const dppQuestions = generateQuestions(dpp.questions || 20);
-
-      const questionsHtml = dppQuestions.map((q, idx) => `
-        <div class="question-container">
-          <div class="question-header">
-            <span class="question-number">Q${idx + 1}.</span>
-            <div class="question-text">${escapeHtml(q.question)}</div>
-          </div>
-          <div class="options-grid">
-            ${q.options.map((opt, optIdx) => `
-              <div class="option">
-                <span class="option-label">(${String.fromCharCode(65 + optIdx)})</span>
-                <span class="option-text">${escapeHtml(opt)}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `).join('');
-
-      const printableHtml = `
-        <!doctype html>
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <title>${escapeHtml(dpp.title)}</title>
-            <style>
-              * { box-sizing: border-box; }
-              @page { size: A4 portrait; margin: 15mm; }
-              body {
-                margin: 0;
-                padding: 0;
-                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-                color: #0f172a;
-                background: #ffffff;
-                font-size: 12px;
-                line-height: 1.5;
-              }
-              .header {
-                border-bottom: 2px solid #0d9488;
-                padding-bottom: 15px;
-                margin-bottom: 25px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-              }
-              .brand {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-              }
-              .brand-logo {
-                width: 50px;
-                height: 50px;
-                object-fit: contain;
-              }
-              .brand-title {
-                margin: 0;
-                font-size: 20px;
-                color: #0f172a;
-                font-weight: 700;
-              }
-              .brand-location {
-                margin: 2px 0 0;
-                color: #334155;
-                font-size: 12px;
-                font-weight: 600;
-              }
-              .dpp-info {
-                text-align: right;
-              }
-              .dpp-info h1 {
-                margin: 0;
-                font-size: 18px;
-                color: #0d9488;
-              }
-              .metadata {
-                margin-top: 5px;
-                font-size: 11px;
-                color: #64748b;
-                font-weight: 600;
-              }
-              .info-banner {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 10px 15px;
-                margin-bottom: 25px;
-                display: flex;
-                justify-content: space-between;
-              }
-              .info-item b { color: #0f766e; }
-              .question-container {
-                margin-bottom: 20px;
-                page-break-inside: avoid;
-              }
-              .question-header {
-                display: flex;
-                gap: 10px;
-                margin-bottom: 10px;
-                font-weight: 600;
-              }
-              .question-number {
-                color: #0d9488;
-                flex-shrink: 0;
-              }
-              .options-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-                padding-left: 30px;
-              }
-              .option {
-                display: flex;
-                gap: 8px;
-              }
-              .option-label {
-                font-weight: 700;
-                color: #64748b;
-              }
-              .footer {
-                margin-top: 40px;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 10px;
-                text-align: center;
-                font-size: 10px;
-                color: #94a3b8;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <div class="brand">
-                <img src="${logo}" alt="Logo" class="brand-logo" />
-                <div>
-                  <p class="brand-title">UJAAS Career Institute</p>
-                  <p class="brand-location">Navsari</p>
-                </div>
-              </div>
-              <div class="dpp-info">
-                <h1>Daily Practice Paper</h1>
-                <div class="metadata">Date: ${escapeHtml(dpp.date)}</div>
-              </div>
-            </div>
-
-            <div class="info-banner">
-              <div class="info-item"><b>Subject:</b> ${escapeHtml(selectedSubject || '')}</div>
-              <div class="info-item"><b>Chapter:</b> ${escapeHtml(selectedChapter || '')}</div>
-              <div class="info-item"><b>Questions:</b> ${dpp.questions}</div>
-            </div>
-
-            <div class="dpp-title" style="margin-bottom: 20px; font-size: 16px; font-weight: 700; color: #1e293b; text-align: center;">
-              ${escapeHtml(dpp.title)}
-            </div>
-
-            <div class="questions-list">
-              ${questionsHtml}
-            </div>
-
-            <div class="footer">
-              © ${new Date().getFullYear()} UJAAS Career Institute, Navsari. All Rights Reserved.
-            </div>
-          </body>
-        </html>
-      `;
-
-      const printFrame = document.createElement('iframe');
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = '0';
-      document.body.appendChild(printFrame);
-
-      const doc = printFrame.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(printableHtml);
-        doc.close();
-
-        printFrame.onload = () => {
-          printFrame.contentWindow?.focus();
-          printFrame.contentWindow?.print();
-          setTimeout(() => {
-            document.body.removeChild(printFrame);
-          }, 1000);
-        };
-      }
-    };
-
-    return (
-      <div className="space-y-6 p-4">
-        {renderBreadcrumbs()}
-        <button 
-          onClick={() => setCurrentView('subject')}
-          className="flex items-center gap-2 text-teal-600 font-bold mb-2 hover:underline"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to Chapters
-        </button>
-
-        <div className="flex bg-gray-100 p-1 rounded-xl w-fit">
-          <button
-            onClick={() => setActiveContentType('notes')}
-            className={`px-6 py-2 rounded-lg font-bold transition-all ${activeContentType === 'notes' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500'}`}
-          >
-            Notes
-          </button>
-          <button
-            onClick={() => setActiveContentType('dpps')}
-            className={`px-6 py-2 rounded-lg font-bold transition-all ${activeContentType === 'dpps' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500'}`}
-          >
-            DPPs
-          </button>
-        </div>
-
-        <div className={activeContentType === 'notes' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
-          {activeContentType === 'notes' ? (
-            relevantNotes.length > 0 ? relevantNotes.map(note => (
-              <motion.div
-                key={note.id}
-                className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition group"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-6 h-6 text-teal-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{note.title}</h3>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">{selectedSubject}</span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">{note.chapter}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                      <span>{note.size}</span>
-                      <span>•</span>
-                      <span>{note.date}</span>
-                    </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg transition shadow-md hover:shadow-lg font-bold text-sm">
-                      <Download className="w-4 h-4" /> Download PDF
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )) : <div className="md:col-span-2 text-center py-12 text-gray-500 font-medium bg-gray-50 rounded-2xl border-2 border-dashed">No notes available for this chapter yet.</div>
-          ) : (
-            relevantDpps.length > 0 ? relevantDpps.map(dpp => {
-              const attemptInfo = dppAttempts[dpp.id];
-              return (
-                <motion.div
-                  key={dpp.id}
-                  className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition group"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">{dpp.title}</h3>
-                        {attemptInfo && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                            Completed
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-1">
-                          <ClipboardList className="w-4 h-4 text-teal-600" />
-                          <span>{dpp.questions} Questions</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-4 h-4 text-teal-600" />
-                          <span>{dpp.date}</span>
-                        </div>
-                        {attemptInfo && (
-                          <>
-                            <div className="flex items-center gap-1 text-teal-700 font-bold">
-                              <Target className="w-4 h-4" />
-                              <span>Latest Score: {attemptInfo.score}%</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-blue-700 font-bold">
-                              <Star className="w-4 h-4" />
-                              <span>Attempts: {attemptInfo.attempts}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button 
-                        onClick={() => handleDownloadDPPPDF(dpp)}
-                        className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition shadow-sm font-bold flex-shrink-0"
-                        title="Download as PDF"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">PDF</span>
-                      </button>
-                      <button 
-                        onClick={() => onStartDPP(dpp, selectedSubject!)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl transition shadow-md hover:shadow-xl flex-shrink-0 font-bold ${
-                          attemptInfo 
-                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' 
-                          : 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white hover:from-teal-700 hover:to-cyan-700'
-                        }`}
-                      >
-                        <Play className={`w-4 h-4 ${attemptInfo ? 'text-gray-500' : 'text-white'}`} />
-                        {attemptInfo ? 'Re-attempt' : 'Start Practice'}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            }) : <div className="text-center py-12 text-gray-500 font-medium bg-gray-50 rounded-2xl border-2 border-dashed">No DPPs available for this chapter yet.</div>
-          )}
         </div>
       </div>
-    );
-  };
-
-  return (
-    <div className="min-h-[400px]">
-      {currentView === 'root' && renderSubjectGrid()}
-      {currentView === 'subject' && renderChapterList()}
-      {currentView === 'chapter' && renderContentItems()}
     </div>
   );
 }
+
+

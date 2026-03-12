@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
-import { AdminDashboard } from './components/AdminDashboard';
-import { FacultyDashboard } from './components/FacultyDashboard';
+import { AdminDashboard, type AdminTab, type AdminSection } from './components/AdminDashboard';
+import { FacultyDashboard, type FacultyTab, type FacultySection } from './components/FacultyDashboard';
 import { GetStarted } from './components/GetStarted';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
@@ -13,6 +13,38 @@ import {
   submitQuery as apiSubmitQuery,
   updateQueryStatus as apiUpdateQueryStatus,
 } from './api/landing';
+import {
+  fetchBatches as apiFetchBatches,
+  createBatch as apiCreateBatch,
+  updateBatch as apiUpdateBatch,
+  deleteBatch as apiDeleteBatch,
+  type ApiBatch,
+} from './api/batches';
+import {
+  fetchFaculties,
+  createFaculty as apiCreateFaculty,
+  updateFaculty as apiUpdateFaculty,
+  deleteFacultyApi as apiDeleteFaculty,
+  type ApiFaculty,
+} from './api/faculties';
+import {
+  fetchStudents as apiFetchStudents,
+  createStudent as apiCreateStudent,
+  updateStudent as apiUpdateStudent,
+  deleteStudent as apiDeleteStudent,
+  assignStudentToBatch as apiAssignStudentToBatch,
+  removeStudentFromBatch as apiRemoveStudentFromBatch,
+  type ApiStudent,
+} from './api/students';
+import {
+  fetchTests as apiFetchTests,
+  fetchTestById as apiFetchTestById,
+  createTest as apiCreateTest,
+  updateTestStatus as apiUpdateTestStatus,
+  updateTestApi,
+  deleteTestApi as apiDeleteTest,
+  type ApiTest,
+} from './api/tests';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 
 export interface User {
@@ -86,40 +118,58 @@ export interface PublishedTest {
   status: 'upcoming' | 'live' | 'completed';
 }
 
-function App() {
-  const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
-  const adminTabs = [
-    'home',
-    'students',
-    'faculty',
-    'content',
-    'analytics',
-    'test-series',
-    'ratings',
-    'rankings',
-    'create-test',
-    'create-dpp',
-    'upload-notice',
-    'upload-notes',
-    'profile',
-    'preview-test',
-    'question-bank',
-  ] as const;
+export const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
+export const adminTabs = [
+  'home',
+  'students',
+  'faculty',
+  'content',
+  'analytics',
+  'test-series',
+  'ratings',
+  'rankings',
+  'create-test',
+  'create-dpp',
+  'upload-notice',
+  'upload-notes',
+  'profile',
+  'preview-test',
+  'question-bank',
+] as const;
 
-  type StudentTab = (typeof studentTabs)[number];
-  type AdminTab = (typeof adminTabs)[number];
+export const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
+
+export type StudentTab = (typeof studentTabs)[number];
+export type Tab = StudentTab | AdminTab | FacultyTab | 'add-student';
+
+export type AdminLandingSection = AdminSection | FacultySection;
+
+function App() {
   type AdminBatch = string;
-  type AdminBatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
-  const initialAdminBatches: AdminBatchInfo[] = [
-    { label: '11th JEE', slug: '11th-jee' },
-    { label: '11th NEET', slug: '11th-neet' },
-    { label: '12th JEE', slug: '12th-jee' },
-    { label: '12th NEET', slug: '12th-neet' },
-    { label: 'Dropper JEE', slug: 'dropper-jee' },
-    { label: 'Dropper NEET', slug: 'dropper-neet' },
-  ];
-  const adminLandingSections = ['landing', 'batches', 'students', 'faculty', 'test-series', 'queries'] as const;
-  type AdminLandingSection = (typeof adminLandingSections)[number];
+  type AdminBatchInfo = {
+    id?: string;
+    label: string;
+    slug: string;
+    subjects?: string[];
+    facultyAssigned?: string[];
+    is_active?: boolean;
+    studentCount?: number;
+    testsConducted?: number;
+    averagePerformance?: number;
+  };
+
+  /** Convert API batch to local AdminBatchInfo format */
+  const apiBatchToInfo = (b: ApiBatch): AdminBatchInfo => ({
+    id: b.id,
+    label: b.name,
+    slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch',
+    subjects: b.subjects ?? undefined,
+    facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
+    is_active: b.is_active,
+    studentCount: b.student_count || 0,
+    testsConducted: (b as any).testsConducted || 0,
+    averagePerformance: (b as any).averagePerformance || 0,
+  });
 
   const [user, setUser] = useState<User | null>(null);
   const hasShownStorageWarning = useRef(false);
@@ -140,6 +190,7 @@ function App() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<Tab>('home');
   const [queries, setQueries] = useState<LandingQuery[]>([]);
 
   const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
@@ -319,124 +370,167 @@ function App() {
     }
   }, []);
 
-  const [publishedTests, setPublishedTests] = useState<PublishedTest[]>(() => {
-    const stored = localStorage.getItem('ujaasPublishedTests');
-    if (stored) return JSON.parse(stored);
+  const [publishedTests, setPublishedTests] = useState<PublishedTest[]>([]);
 
-    // Default mock tests for demo
-    return [
-      {
-        id: 'mock-test-1',
-        title: 'JEE Mains Full Syllabus Mock Test',
-        format: 'JEE MAIN',
-        batches: ['11th JEE', '12th JEE'],
-        duration: 180,
-        totalMarks: 300,
-        scheduleDate: '2025-03-01',
-        scheduleTime: '09:00',
-        status: 'live',
-        instructions: '1. The test consists of 90 questions (30 each in Physics, Chemistry, and Mathematics).\n2. Section A contains 20 MCQs with +4/-1 marking.\n3. Section B contains 10 Numerical questions, attempt any 5 (+4/0 marking).\n4. Total time is 180 minutes.',
-        questions: [
-          {
-            id: 'q1',
-            type: 'MCQ',
-            subject: 'Physics',
-            question: 'What is the dimensional formula of gravitational constant G?',
-            options: ['[M^-1 L^3 T^-2]', '[M^1 L^3 T^-2]', '[M^-1 L^2 T^-2]', '[M^1 L^2 T^-1]'],
-            correctAnswer: 0,
-            marks: 4,
-            negativeMarks: 1,
-            metadata: { section: 'Section A' }
-          }
-        ]
-      }
-    ];
+  const apiTestToPublished = (t: ApiTest): PublishedTest => ({
+    id: t.id,
+    title: t.title,
+    format: t.format || 'Custom',
+    batches: t.batches.map(b => b.name),
+    duration: t.duration_minutes,
+    totalMarks: t.total_marks,
+    scheduleDate: t.schedule_date || '',
+    scheduleTime: t.schedule_time || '',
+    instructions: t.instructions || undefined,
+    status: t.status,
+    questions: (t.questions || []).map((q, i) => ({
+      id: q.id,
+      type: q.type,
+      subject: q.subject,
+      question: q.question_text,
+      options: q.options || undefined,
+      correctAnswer: q.type === 'MCQ' ? Number(q.correct_answer) : q.correct_answer,
+      marks: q.marks,
+      negativeMarks: q.neg_marks,
+      metadata: { section: q.section || undefined },
+    })),
   });
-
-  useEffect(() => {
-    safeSetLocalStorage('ujaasPublishedTests', JSON.stringify(publishedTests));
-  }, [publishedTests]);
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 
-  const handlePublishTest = (test: Omit<PublishedTest, 'id' | 'status'>) => {
-    const newTest: PublishedTest = {
-      ...test,
-      id: `test-${Date.now()}`,
-      status: 'upcoming'
-    };
-    setPublishedTests(prev => [newTest, ...prev]);
-  };
-
-  const handlePreviewTest = (testId: string) => {
-    const test = publishedTests.find(t => t.id === testId);
-    if (test) {
-      setSelectedPreviewTest(test);
-      navigateTab('preview-test');
-    }
-  };
-
-  const updatePublishedTest = (testId: string, updates: Partial<PublishedTest>) => {
-    setPublishedTests(prev => prev.map(test => {
-      if (test.id !== testId) return test;
-      return { ...test, ...updates };
-    }));
-
-    setSelectedPreviewTest(prev => {
-      if (!prev || prev.id !== testId) return prev;
-      return { ...prev, ...updates };
-    });
-  };
-
-  const handleDeletePublishedTest = (testId: string) => {
-    setPublishedTests(prev => prev.filter(test => test.id !== testId));
-    if (selectedPreviewTest?.id === testId) {
-      setSelectedPreviewTest(null);
-      if (activeTab === 'preview-test') {
-        setActiveTab('test-series');
-      }
-    }
-  };
-
-  const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>(() => {
-    const stored = localStorage.getItem('ujaasAdminBatches');
-    if (!stored) return initialAdminBatches;
+  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'>) => {
+    showBatchToast('saving', 'Publishing test to database...');
     try {
-      const parsed = JSON.parse(stored) as AdminBatchInfo[];
-      if (!Array.isArray(parsed) || parsed.length === 0) return initialAdminBatches;
-      const normalized = parsed
-        .filter((entry) => entry && typeof entry.label === 'string' && typeof entry.slug === 'string')
-        .map((entry) => {
-          const subjectList = Array.isArray(entry.subjects)
-            ? entry.subjects.map((subject) => subject.trim()).filter(Boolean)
-            : entry.subject
-              ? [String(entry.subject).trim()].filter(Boolean)
-              : [];
-          const facultyList = Array.isArray(entry.facultyAssigned)
-            ? entry.facultyAssigned.map((faculty) => faculty.trim()).filter(Boolean)
-            : entry.facultyAssigned
-              ? [String(entry.facultyAssigned).trim()].filter(Boolean)
-              : [];
+      // Map batch names to batch IDs
+      const batchIds = adminBatches
+        .filter(b => test.batches.includes(b.label))
+        .map(b => b.id)
+        .filter(Boolean) as string[];
 
-          return {
-            label: entry.label.trim(),
-            slug: entry.slug.trim(),
-            subjects: subjectList.length ? subjectList : undefined,
-            facultyAssigned: facultyList.length ? facultyList : undefined,
-          };
-        })
-        .filter((entry) => entry.label && entry.slug);
-      return normalized.length ? normalized : initialAdminBatches;
-    } catch {
-      return initialAdminBatches;
+      const apiTest = await apiCreateTest({
+        title: test.title,
+        format: test.format,
+        durationMinutes: test.duration,
+        totalMarks: test.totalMarks,
+        scheduleDate: test.scheduleDate,
+        scheduleTime: test.scheduleTime,
+        instructions: test.instructions,
+        batchIds,
+        questions: test.questions,
+      });
+      setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
+      showBatchToast('saved', 'Test published successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to publish test');
+      throw err;
     }
-  });
+  };
+
+  const handlePreviewTest = async (testId: string) => {
+    // Show a loading toast while fetching the test details
+    showBatchToast('saving', 'Loading test details...');
+    try {
+      // Fetch full test details including questions
+      const apiTest = await apiFetchTestById(testId);
+      const fullTest = apiTestToPublished(apiTest);
+
+      // Update the test in our state so it has the questions
+      setPublishedTests(prev => prev.map(t => t.id === testId ? fullTest : t));
+
+      setSelectedPreviewTest(fullTest);
+      showBatchToast('saved', 'Test loaded for preview');
+      navigateTab('preview-test');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to load test details');
+    }
+  };
+
+  const updatePublishedTest = async (testId: string, updates: Partial<PublishedTest>) => {
+    showBatchToast('saving', 'Saving test changes...');
+    try {
+      const test = publishedTests.find(t => t.id === testId);
+      if (!test) throw new Error("Test not found");
+
+      // We need to map batch names back to IDs if batches are updated
+      let batchIds;
+      if (updates.batches) {
+        batchIds = adminBatches
+          .filter(b => updates.batches!.includes(b.label))
+          .map(b => b.id)
+          .filter(Boolean) as string[];
+      } else {
+        batchIds = adminBatches
+          .filter(b => test.batches.includes(b.label))
+          .map(b => b.id)
+          .filter(Boolean) as string[];
+      }
+
+      await updateTestApi(testId, {
+        title: updates.title || test.title,
+        format: updates.format || test.format,
+        durationMinutes: updates.duration || test.duration,
+        totalMarks: updates.totalMarks || test.totalMarks,
+        scheduleDate: updates.scheduleDate || test.scheduleDate,
+        scheduleTime: updates.scheduleTime || test.scheduleTime,
+        instructions: updates.instructions !== undefined ? updates.instructions : test.instructions,
+        batchIds,
+        questions: updates.questions || test.questions,
+      });
+
+      setPublishedTests(prev => prev.map(t => {
+        if (t.id !== testId) return t;
+        return { ...t, ...updates };
+      }));
+
+      setSelectedPreviewTest(prev => {
+        if (!prev || prev.id !== testId) return prev;
+        return { ...prev, ...updates };
+      });
+
+      showBatchToast('saved', 'Test changes saved successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to save test changes');
+      throw err;
+    }
+  };
+
+  const handleDeletePublishedTest = async (testId: string) => {
+    showBatchToast('saving', 'Deleting test from database...');
+    try {
+      await apiDeleteTest(testId);
+      setPublishedTests(prev => prev.filter(test => test.id !== testId));
+      if (selectedPreviewTest?.id === testId) {
+        setSelectedPreviewTest(null);
+        if (activeTab === 'preview-test') {
+          setActiveTab('test-series');
+        }
+      }
+      showBatchToast('saved', 'Test deleted successfully');
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to delete test');
+    }
+  };
+
+  const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGetStarted, setShowGetStarted] = useState(true);
-  const [activeTab, setActiveTab] = useState<StudentTab | AdminTab>('home');
+  const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
+  const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [batchSaveToast, setBatchSaveToast] = useState<{ visible: boolean; status: 'saving' | 'saved' | 'error'; message: string }>({ visible: false, status: 'saving', message: '' });
+  const batchSaveToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBatchToast = (status: 'saving' | 'saved' | 'error', message: string, autoHideMs = 2500) => {
+    if (batchSaveToastTimer.current) clearTimeout(batchSaveToastTimer.current);
+    setBatchSaveToast({ visible: true, status, message });
+    if (status !== 'saving') {
+      batchSaveToastTimer.current = setTimeout(() => {
+        setBatchSaveToast(prev => ({ ...prev, visible: false }));
+      }, autoHideMs);
+    }
+  };
 
   const isStudentTab = (tab?: string): tab is (typeof studentTabs)[number] =>
     !!tab && studentTabs.includes(tab as (typeof studentTabs)[number]);
@@ -462,115 +556,132 @@ function App() {
 
   const addAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
     const trimmedLabel = label.trim();
-    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
-    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
-    if (!trimmedLabel) {
-      return { ok: false, error: 'Batch name is required.' };
-    }
-    if (trimmedSubjects.length === 0) {
-      return { ok: false, error: 'At least one subject is required.' };
-    }
-    if (trimmedFaculty.length === 0) {
-      return { ok: false, error: 'At least one faculty is required.' };
+    if (adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase())) {
+      return { ok: false, error: 'A batch with this name already exists' };
     }
 
-    let result: { ok: boolean; error?: string; label?: string } = { ok: false, error: 'Unknown error.' };
-    setAdminBatches((prev) => {
-      const exists = prev.some((batch) => batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-      if (exists) {
-        result = { ok: false, error: 'Batch already exists.' };
-        return prev;
-      }
+    const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
+    const facultyIds = (facultyAssigned ?? []).map(name => {
+      const fac = adminFaculties.find(f => f.name === name);
+      return fac?.id;
+    }).filter((id): id is string => !!id);
 
-      const baseSlug = trimmedLabel
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '') || 'batch';
-      let slug = baseSlug;
-      let counter = 2;
-      const existingSlugs = new Set(prev.map((batch) => batch.slug));
-      while (existingSlugs.has(slug)) {
-        slug = `${baseSlug}-${counter}`;
-        counter += 1;
-      }
+    // Optimistically create local batch
+    const newLocalBatch: AdminBatchInfo = {
+      label: trimmedLabel,
+      slug: trimmedLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch', // Temporary slug
+      subjects: trimmedSubjects,
+      studentCount: 0,
+      facultyAssigned: facultyAssigned || [],
+      testsConducted: 0,
+      averagePerformance: 0,
+      is_active: true,
+    };
+    setAdminBatches((prev) => [...prev, newLocalBatch]);
 
-      result = { ok: true, label: trimmedLabel };
-      return [
-        ...prev,
-        {
-          label: trimmedLabel,
-          slug,
-          subjects: trimmedSubjects,
-          facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
-        },
-      ];
+    // Sync with API in the background
+    showBatchToast('saving', 'Creating batch in database…');
+    apiCreateBatch({
+      name: trimmedLabel,
+      subjects: trimmedSubjects,
+      facultyIds: facultyIds,
+    }).then((apiBatch) => {
+      setAdminBatches((prev) =>
+        prev.map((b) => b.label === trimmedLabel && !b.id ? apiBatchToInfo(apiBatch) : b)
+      );
+      showBatchToast('saved', 'Batch created in database ✓');
+    }).catch((err) => {
+      console.error('Failed to create batch in API:', err);
+      // We don't roll back the UI automatically to avoid confusing jumps, but we show an error
+      showBatchToast('error', 'Failed to save batch to database');
     });
 
-    return result;
+    return { ok: true, label: trimmedLabel };
   };
 
   const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
+    const targetLabel = oldLabel || label;
     const trimmedLabel = label.trim();
-    const targetLabel = oldLabel || trimmedLabel;
-    const trimmedSubjects = (subjects ?? []).map((subject) => subject.trim()).filter(Boolean);
-    const trimmedFaculty = (facultyAssigned ?? []).map((faculty) => faculty.trim()).filter(Boolean);
 
-    if (!trimmedLabel) {
-      return { ok: false, error: 'Batch name is required.' };
+    // Find the batch we are updating to get its ID
+    const batchToUpdate = adminBatches.find((b) => b.label === targetLabel);
+    const batchId = batchToUpdate?.id;
+
+    if (trimmedLabel !== targetLabel && adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase() && b.id !== batchId)) {
+      return { ok: false, error: 'A batch with this name already exists' };
     }
 
-    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
-    setAdminBatches((prev) => {
-      const index = prev.findIndex((batch) => batch.label === targetLabel);
-      if (index === -1) {
-        result = { ok: false, error: 'Batch not found.' };
-        return prev;
-      }
+    const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
+    const facultyIds = (facultyAssigned ?? []).map(name => {
+      const fac = adminFaculties.find(f => f.name === name);
+      return fac?.id;
+    }).filter((id): id is string => !!id);
 
-      const exists = prev.some((batch, idx) => idx !== index && batch.label.toLowerCase() === trimmedLabel.toLowerCase());
-      if (exists) {
-        result = { ok: false, error: 'A batch with this name already exists.' };
-        return prev;
-      }
+    // Optimistically update local state
+    setAdminBatches((prev) =>
+      prev.map((b) => {
+        if (b.label === targetLabel) {
+          return {
+            ...b,
+            label: trimmedLabel,
+            subjects: trimmedSubjects.length > 0 ? trimmedSubjects : b.subjects,
+            facultyAssigned: facultyAssigned ?? b.facultyAssigned,
+          };
+        }
+        return b;
+      })
+    );
 
-      const next = [...prev];
-      next[index] = {
-        ...next[index],
-        label: trimmedLabel,
-        subjects: trimmedSubjects.length ? trimmedSubjects : undefined,
-        facultyAssigned: trimmedFaculty.length ? trimmedFaculty : undefined,
-      };
+    if (adminBatch === targetLabel) {
+      setAdminBatch(trimmedLabel);
+    }
 
-      if (adminBatch === targetLabel) {
-        setAdminBatch(trimmedLabel);
-      }
+    // Sync with API in the background
+    if (batchId) {
+      showBatchToast('saving', 'Saving changes to database…');
+      apiUpdateBatch(batchId, {
+        name: trimmedLabel,
+        subjects: trimmedSubjects,
+        facultyIds: facultyIds,
+      }).then((apiBatch) => {
+        setAdminBatches((prev) =>
+          prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
+        );
+        showBatchToast('saved', 'Batch updated and saved to database ✓');
+      }).catch((err) => {
+        console.error('Failed to update batch in API:', err);
+        showBatchToast('error', 'Failed to save changes to database');
+      });
+    }
 
-      result = { ok: true };
-      return next;
-    });
-
-    return result;
+    return { ok: true };
   };
 
   const deleteAdminBatch = (label: string) => {
-    let result: { ok: boolean; error?: string } = { ok: false, error: 'Batch not found.' };
-    setAdminBatches((prev) => {
-      const index = prev.findIndex((batch) => batch.label === label);
-      if (index === -1) {
-        result = { ok: false, error: 'Batch not found.' };
-        return prev;
-      }
-      const next = prev.filter((batch) => batch.label !== label);
-      result = { ok: true };
+    const batch = adminBatches.find((b) => b.label === label);
+    if (!batch) {
+      return { ok: false, error: 'Batch not found.' };
+    }
 
-      // Clear selected batch if it was the one deleted
-      if (adminBatch === label) {
-        setAdminBatch(null);
-      }
+    // Optimistically update local state to inactive instead of removing
+    setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
 
-      return next;
-    });
-    return result;
+    if (adminBatch === label) {
+      setAdminBatch(null);
+    }
+
+    // Sync with API in the background
+    if (batch.id) {
+      showBatchToast('saving', 'Deleting batch from database…');
+      apiDeleteBatch(batch.id).then(() => {
+        showBatchToast('saved', 'Batch deleted from database ✓');
+      }).catch((err) => {
+        console.error('Failed to delete batch in API:', err);
+        showBatchToast('error', 'Failed to delete batch from database');
+      });
+    }
+
+    return { ok: true };
   };
 
   const parsePath = () => {
@@ -780,33 +891,45 @@ function App() {
 
   useEffect(() => {
     const initializeSession = async () => {
-      // Fetch landing data from API (public, no auth needed)
       try {
-        const apiLanding = await fetchLandingData();
-        if (apiLanding && apiLanding.courses) {
-          setLandingData(apiLanding);
-        }
-      } catch {
-        console.warn('Could not fetch landing data from API, using defaults');
-      }
+        const [apiLanding, profileResponse, apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
+          fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
+          me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
+          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
+        ]);
 
-      try {
-        const profile = await me();
-        const loggedInUser = profile.user as User;
-        setUser(loggedInUser);
-        setShowGetStarted(false);
+        if (profileResponse && profileResponse.user) {
+          const loggedInUser = profileResponse.user as User;
+          setUser(loggedInUser);
+          setShowGetStarted(false);
 
-        // Fetch queries for admin users
-        if (loggedInUser.role === 'admin') {
-          try {
-            const { queries: dbQueries } = await fetchQueries();
-            setQueries(dbQueries as LandingQuery[]);
-          } catch {
-            console.warn('Could not fetch queries from API');
+          if (loggedInUser.role === 'admin') {
+            try {
+              const { queries: dbQueries } = await fetchQueries();
+              setQueries(dbQueries as LandingQuery[]);
+            } catch {
+              console.warn('Could not fetch queries from API');
+            }
           }
+
+          if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
+            setAdminBatches(apiBatches.map(apiBatchToInfo));
+            setAdminFaculties(apiFaculties);
+            setAdminStudents(apiStudents);
+            setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+          }
+        } else {
+          setUser(null);
+          // If no user, set empty batches
+          setAdminBatches([]);
         }
-      } catch {
+      } catch (error) {
+        console.error('Error during session initialization:', error);
         setUser(null);
+        setAdminBatches([]); // Fallback to empty on error
       }
 
       setLoading(false);
@@ -855,6 +978,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Keep localStorage as a cache for faster initial loads, but API is the source of truth
     safeSetLocalStorage('ujaasAdminBatches', JSON.stringify(adminBatches));
   }, [adminBatches]);
 
@@ -878,7 +1002,7 @@ function App() {
     }
   }, [notifications]);
 
-  const handleLogin = (userData: User) => {
+  const handleLogin = async (userData: User) => {
     setUser(userData);
     setShowGetStarted(false);
 
@@ -935,6 +1059,32 @@ function App() {
       '',
       userData.role === 'faculty' ? '/faculty' : '/admin'
     );
+
+    // Fetch batches and queries from API for admin/faculty
+    if (userData.role === 'admin' || userData.role === 'faculty') {
+      try {
+        const [apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
+          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
+        ]);
+
+        setAdminBatches(apiBatches.map(apiBatchToInfo));
+        setAdminFaculties(apiFaculties);
+        setAdminStudents(apiStudents);
+        setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+      } catch (error) {
+        console.warn('Error fetching batches/faculties on login:', error);
+        setAdminBatches([]);
+      }
+
+      if (userData.role === 'admin') {
+        fetchQueries().then(({ queries: dbQueries }) => {
+          setQueries(dbQueries as LandingQuery[]);
+        }).catch(() => console.warn('Could not fetch queries from API'));
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -985,7 +1135,7 @@ function App() {
     );
   }
 
-  return (
+  return (<>
     <MotionConfig reducedMotion="always">
       <AnimatePresence mode="wait">
         {showGetStarted && !user ? (
@@ -1045,9 +1195,9 @@ function App() {
           >
             <FacultyDashboard
               user={user}
-              activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
+              activeTab={(isAdminTab(activeTab) ? activeTab : 'home') as import('./components/FacultyDashboard').FacultyTab}
               onNavigate={navigateTab}
-              adminSection={adminLandingSection}
+              adminSection={adminLandingSection as import('./components/FacultyDashboard').FacultySection}
               onNavigateSection={handleAdminNavigateSection}
               selectedBatch={adminBatch}
               onSelectBatch={handleAdminSelectBatch}
@@ -1083,6 +1233,107 @@ function App() {
               onSelectBatch={handleAdminSelectBatch}
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
+              adminFaculties={adminFaculties}
+              onCreateFaculty={async (data: import('./api/faculties').CreateFacultyPayload) => {
+                showBatchToast('saving', 'Saving faculty to database...');
+                try {
+                  const fac = await apiCreateFaculty(data);
+                  setAdminFaculties(prev => [...prev, fac]);
+                  showBatchToast('saved', 'Faculty created successfully');
+                  return fac;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to create faculty');
+                  throw err;
+                }
+              }}
+              onUpdateFaculty={async (id: string, data: Partial<import('./api/faculties').CreateFacultyPayload>) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const fac = await apiUpdateFaculty(id, data);
+                  setAdminFaculties(prev => prev.map(f => f.id === id ? fac : f));
+                  showBatchToast('saved', 'Faculty updated successfully');
+                  return fac;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to update faculty');
+                  throw err;
+                }
+              }}
+              onDeleteFaculty={async (id: string) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiDeleteFaculty(id);
+                  setAdminFaculties(prev => prev.filter(f => f.id !== id));
+                  showBatchToast('saved', 'Faculty deleted successfully');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to delete faculty');
+                  throw err;
+                }
+              }}
+              adminStudents={adminStudents}
+              onCreateStudent={async (data: import('./api/students').CreateStudentPayload) => {
+                showBatchToast('saving', 'Saving student to database...');
+                try {
+                  const student = await apiCreateStudent(data);
+                  setAdminStudents(prev => [...prev, student]);
+                  // Refresh batches to update student count
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student created successfully');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to create student');
+                  throw err;
+                }
+              }}
+              onUpdateStudent={async (id: string, data: import('./api/students').UpdateStudentPayload) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const student = await apiUpdateStudent(id, data);
+                  setAdminStudents(prev => prev.map(s => s.id === id ? student : s));
+                  showBatchToast('saved', 'Student updated successfully');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to update student');
+                  throw err;
+                }
+              }}
+              onDeleteStudent={async (id: string) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiDeleteStudent(id);
+                  setAdminStudents(prev => prev.filter(s => s.id !== id));
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student deleted successfully');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to delete student');
+                  throw err;
+                }
+              }}
+              onAssignStudentToBatch={async (studentId: string, batchId: string) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  const student = await apiAssignStudentToBatch(studentId, batchId);
+                  setAdminStudents(prev => prev.map(s => s.id === studentId ? student : s));
+                  // Refresh batches to update student count
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student assigned to batch');
+                  return student;
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to assign student');
+                  throw err;
+                }
+              }}
+              onRemoveStudentFromBatch={async (studentId: string, batchId: string) => {
+                showBatchToast('saving', 'Saving changes to database...');
+                try {
+                  await apiRemoveStudentFromBatch(studentId, batchId);
+                  setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, batches: s.batches.filter(b => b.id !== batchId) } : s));
+                  apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
+                  showBatchToast('saved', 'Student removed from batch');
+                } catch (err: any) {
+                  showBatchToast('error', err.message || 'Failed to remove student');
+                  throw err;
+                }
+              }}
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}
               onDeleteBatch={deleteAdminBatch}
@@ -1106,7 +1357,80 @@ function App() {
         )}
       </AnimatePresence>
     </MotionConfig>
-  );
+
+    {/* Batch Save-to-Database Toast */}
+    <AnimatePresence>
+      {batchSaveToast.visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '14px 22px',
+            borderRadius: 16,
+            background: batchSaveToast.status === 'error'
+              ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
+              : batchSaveToast.status === 'saved'
+                ? 'linear-gradient(135deg, #059669, #047857)'
+                : 'linear-gradient(135deg, #0891b2, #0e7490)',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 14,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            backdropFilter: 'blur(8px)',
+            minWidth: 220,
+          }}
+        >
+          {batchSaveToast.status === 'saving' && (
+            <span style={{
+              display: 'inline-block',
+              width: 18,
+              height: 18,
+              border: '2.5px solid rgba(255,255,255,0.3)',
+              borderTopColor: '#fff',
+              borderRadius: '50%',
+              animation: 'spin 0.7s linear infinite',
+              flexShrink: 0,
+            }} />
+          )}
+          {batchSaveToast.status === 'saved' && (
+            <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
+          )}
+          {batchSaveToast.status === 'error' && (
+            <span style={{ fontSize: 18, flexShrink: 0 }}>✕</span>
+          )}
+          <span>{batchSaveToast.message}</span>
+          <button
+            onClick={() => setBatchSaveToast(prev => ({ ...prev, visible: false }))}
+            style={{
+              marginLeft: 'auto',
+              background: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            ✕
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Inline keyframes for spinner */}
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </>);
 }
 
 export default App;

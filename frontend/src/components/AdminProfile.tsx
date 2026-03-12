@@ -9,11 +9,11 @@ interface AdminProfileProps {
   user: {
     id: string;
     name: string;
-    email: string;
+    email?: string | null;
     loginId?: string | null;
     role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
-    studentDetails?: StudentDetails | null;
+    studentDetails?: any;
   };
   onLogout: () => void;
 }

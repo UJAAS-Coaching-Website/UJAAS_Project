@@ -29,13 +29,20 @@ export function getTokenFromRequest(req) {
 export async function authenticate(req, res, next) {
     try {
         const token = getTokenFromRequest(req);
+        if (!token) {
+            console.log(`Auth failed: No token for ${req.method} ${req.originalUrl}`);
+            return res.status(401).json({ message: "unauthorized" });
+        }
+
         const payload = verifyJwt(token, jwtSecret);
 
         if (!payload?.sub || payload.type !== "access") {
+            console.log(`Auth failed: Invalid payload for ${req.method} ${req.originalUrl}`, payload);
             return res.status(401).json({ message: "unauthorized" });
         }
 
         if (await isTokenBlacklisted(payload.jti)) {
+            console.log(`Auth failed: Token blacklisted for ${req.method} ${req.originalUrl}`);
             return res.status(401).json({ message: "unauthorized" });
         }
 
@@ -54,6 +61,7 @@ export async function authenticate(req, res, next) {
 export function requireRole(role) {
     return (req, res, next) => {
         if (req.user?.role !== role) {
+            console.log(`Role check failed: Expected ${role}, got ${req.user?.role} for ${req.method} ${req.originalUrl}`);
             return res.status(403).json({ message: "forbidden" });
         }
         next();

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { User } from '../App';
+import { User, Tab } from '../App';
 import {
   LogOut,
   GraduationCap,
@@ -41,6 +41,8 @@ import { QuestionBank } from './QuestionBank';
 import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import demotimetable from '../assets/demotimetable.jpg';
+import { NotesManagementTab } from './NotesManagementTab';
 
 interface FacultyDashboardProps {
   user: User;
@@ -64,10 +66,10 @@ interface FacultyDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
 
-type Tab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
-type FacultySection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series';
-type BatchInfo = { label: string; slug: string; subjects?: string[]; facultyAssigned?: string[] };
+export type FacultySection = 'batches' | 'students' | 'test-series';
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
 
 interface Student {
   id: string;
@@ -125,21 +127,21 @@ function renderPerformanceStars(rating: number) {
         }
 
         return (
-          <div 
-            key={star} 
+          <div
+            key={star}
             className="relative inline-block select-none"
             style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
           >
             {/* Background star (Gray) */}
             <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
             {/* Fill star (Gold) */}
-            <div 
-              style={{ 
-                width: `${fillPercentage}%`, 
-                overflow: 'hidden', 
-                position: 'absolute', 
-                left: 0, 
-                top: 0, 
+            <div
+              style={{
+                width: `${fillPercentage}%`,
+                overflow: 'hidden',
+                position: 'absolute',
+                left: 0,
+                top: 0,
                 whiteSpace: 'nowrap',
                 color: '#f59e0b',
                 transition: 'width 0.3s ease'
@@ -157,120 +159,120 @@ function renderPerformanceStars(rating: number) {
 
 const MOCK_STUDENTS: Student[] = [
   // 11th JEE
-  { 
-    id: '1', name: 'Rahul Kumar', rollNumber: 'UJAAS-11J-001', 
+  {
+    id: '1', name: 'Rahul Kumar', rollNumber: 'UJAAS-11J-001',
     enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-01', performance: 87, rating: 4.2, batch: '11th JEE',
     phoneNumber: '+91 98765 43210', dateOfBirth: '2008-05-15', address: 'Mumbai', parentContact: '+91 98765 00000',
     subjectRatings: { 'Physics': { attendance: 4.5, tests: 4.0, dppPerformance: 4.2, behavior: 4.8 } }
   },
-  { 
-    id: '10', name: 'Aditya Singh', rollNumber: 'UJAAS-11J-002', 
+  {
+    id: '10', name: 'Aditya Singh', rollNumber: 'UJAAS-11J-002',
     enrolledCourses: ['JEE Mains'], joinDate: '2025-09-02', performance: 75, rating: 3.8, batch: '11th JEE',
     phoneNumber: '+91 98765 43220', dateOfBirth: '2008-06-10', address: 'Pune', parentContact: '+91 98765 00010',
     subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.5, dppPerformance: 3.8, behavior: 4.0 } }
   },
-  { 
-    id: '11', name: 'Ishaan Verma', rollNumber: 'UJAAS-11J-003', 
+  {
+    id: '11', name: 'Ishaan Verma', rollNumber: 'UJAAS-11J-003',
     enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-03', performance: 92, rating: 4.7, batch: '11th JEE',
     phoneNumber: '+91 98765 43221', dateOfBirth: '2008-07-20', address: 'Nagpur', parentContact: '+91 98765 00011',
     subjectRatings: { 'Chemistry': { attendance: 4.8, tests: 4.6, dppPerformance: 4.7, behavior: 4.9 } }
   },
 
   // 11th NEET
-  { 
-    id: '2', name: 'Priya Sharma', rollNumber: 'UJAAS-11N-001', 
+  {
+    id: '2', name: 'Priya Sharma', rollNumber: 'UJAAS-11N-001',
     enrolledCourses: ['NEET'], joinDate: '2025-09-05', performance: 92, rating: 4.5, batch: '11th NEET',
     phoneNumber: '+91 98765 43211', dateOfBirth: '2008-08-20', address: 'Delhi', parentContact: '+91 98765 11111',
     subjectRatings: { 'Biology': { attendance: 5.0, tests: 4.8, dppPerformance: 4.7, behavior: 4.9 } }
   },
-  { 
-    id: '12', name: 'Anjali Gupta', rollNumber: 'UJAAS-11N-002', 
+  {
+    id: '12', name: 'Anjali Gupta', rollNumber: 'UJAAS-11N-002',
     enrolledCourses: ['NEET'], joinDate: '2025-09-06', performance: 80, rating: 4.0, batch: '11th NEET',
     phoneNumber: '+91 98765 43222', dateOfBirth: '2008-09-15', address: 'Gurgaon', parentContact: '+91 98765 11112',
     subjectRatings: { 'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 4.0, behavior: 4.2 } }
   },
-  { 
-    id: '13', name: 'Riya Patel', rollNumber: 'UJAAS-11N-003', 
+  {
+    id: '13', name: 'Riya Patel', rollNumber: 'UJAAS-11N-003',
     enrolledCourses: ['NEET'], joinDate: '2025-09-07', performance: 85, rating: 4.2, batch: '11th NEET',
     phoneNumber: '+91 98765 43223', dateOfBirth: '2008-10-05', address: 'Noida', parentContact: '+91 98765 11113',
     subjectRatings: { 'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.3, behavior: 4.5 } }
   },
 
   // 12th JEE
-  { 
-    id: '3', name: 'Amit Patel', rollNumber: 'UJAAS-12J-001', 
+  {
+    id: '3', name: 'Amit Patel', rollNumber: 'UJAAS-12J-001',
     enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-10', performance: 78, rating: 3.8, batch: '12th JEE',
     phoneNumber: '+91 98765 43212', dateOfBirth: '2007-12-10', address: 'Surat', parentContact: '+91 98765 22222',
     subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.2, dppPerformance: 3.0, behavior: 4.0 } }
   },
-  { 
-    id: '14', name: 'Karan Mehra', rollNumber: 'UJAAS-12J-002', 
+  {
+    id: '14', name: 'Karan Mehra', rollNumber: 'UJAAS-12J-002',
     enrolledCourses: ['JEE Mains'], joinDate: '2025-09-11', performance: 82, rating: 4.1, batch: '12th JEE',
     phoneNumber: '+91 98765 43224', dateOfBirth: '2007-11-12', address: 'Ahmedabad', parentContact: '+91 98765 22223',
     subjectRatings: { 'Mathematics': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.3 } }
   },
-  { 
-    id: '15', name: 'Siddharth Jain', rollNumber: 'UJAAS-12J-003', 
+  {
+    id: '15', name: 'Siddharth Jain', rollNumber: 'UJAAS-12J-003',
     enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-12', performance: 88, rating: 4.4, batch: '12th JEE',
     phoneNumber: '+91 98765 43225', dateOfBirth: '2007-10-25', address: 'Rajkot', parentContact: '+91 98765 22224',
     subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.6 } }
   },
 
   // 12th NEET
-  { 
-    id: '4', name: 'Sneha Reddy', rollNumber: 'UJAAS-12N-001', 
+  {
+    id: '4', name: 'Sneha Reddy', rollNumber: 'UJAAS-12N-001',
     enrolledCourses: ['NEET'], joinDate: '2025-09-12', performance: 85, rating: 4.0, batch: '12th NEET',
     phoneNumber: '+91 98765 43213', dateOfBirth: '2007-06-25', address: 'Hyderabad', parentContact: '+91 98765 33333',
     subjectRatings: { 'Biology': { attendance: 4.2, tests: 4.0, dppPerformance: 3.8, behavior: 4.5 } }
   },
-  { 
-    id: '16', name: 'Megha Rao', rollNumber: 'UJAAS-12N-002', 
+  {
+    id: '16', name: 'Megha Rao', rollNumber: 'UJAAS-12N-002',
     enrolledCourses: ['NEET'], joinDate: '2025-09-13', performance: 90, rating: 4.6, batch: '12th NEET',
     phoneNumber: '+91 98765 43226', dateOfBirth: '2007-05-10', address: 'Bangalore', parentContact: '+91 98765 33334',
     subjectRatings: { 'Chemistry': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.8 } }
   },
-  { 
-    id: '17', name: 'Arjun Das', rollNumber: 'UJAAS-12N-003', 
+  {
+    id: '17', name: 'Arjun Das', rollNumber: 'UJAAS-12N-003',
     enrolledCourses: ['NEET'], joinDate: '2025-09-14', performance: 72, rating: 3.5, batch: '12th NEET',
     phoneNumber: '+91 98765 43227', dateOfBirth: '2007-04-15', address: 'Chennai', parentContact: '+91 98765 33335',
     subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.0, dppPerformance: 3.2, behavior: 4.0 } }
   },
 
   // Dropper JEE
-  { 
-    id: '5', name: 'Vikram Singh', rollNumber: 'UJAAS-DRJ-001', 
+  {
+    id: '5', name: 'Vikram Singh', rollNumber: 'UJAAS-DRJ-001',
     enrolledCourses: ['JEE Mains'], joinDate: '2025-10-01', performance: 80, rating: 3.9, batch: 'Dropper JEE',
     phoneNumber: '+91 98765 43214', dateOfBirth: '2006-11-05', address: 'Jaipur', parentContact: '+91 98765 44444',
     subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.5, behavior: 4.2 } }
   },
-  { 
-    id: '18', name: 'Rohit Balan', rollNumber: 'UJAAS-DRJ-002', 
+  {
+    id: '18', name: 'Rohit Balan', rollNumber: 'UJAAS-DRJ-002',
     enrolledCourses: ['JEE Advanced'], joinDate: '2025-10-02', performance: 85, rating: 4.2, batch: 'Dropper JEE',
     phoneNumber: '+91 98765 43228', dateOfBirth: '2006-10-10', address: 'Jodhpur', parentContact: '+91 98765 44445',
     subjectRatings: { 'Physics': { attendance: 4.3, tests: 4.1, dppPerformance: 4.0, behavior: 4.5 } }
   },
-  { 
-    id: '19', name: 'Sanjay Dutt', rollNumber: 'UJAAS-DRJ-003', 
+  {
+    id: '19', name: 'Sanjay Dutt', rollNumber: 'UJAAS-DRJ-003',
     enrolledCourses: ['JEE Mains'], joinDate: '2025-10-03', performance: 70, rating: 3.4, batch: 'Dropper JEE',
     phoneNumber: '+91 98765 43229', dateOfBirth: '2006-09-15', address: 'Udaipur', parentContact: '+91 98765 44446',
     subjectRatings: { 'Chemistry': { attendance: 3.5, tests: 3.2, dppPerformance: 3.4, behavior: 3.8 } }
   },
 
   // Dropper NEET
-  { 
-    id: '6', name: 'Ananya Gupta', rollNumber: 'UJAAS-DRN-001', 
+  {
+    id: '6', name: 'Ananya Gupta', rollNumber: 'UJAAS-DRN-001',
     enrolledCourses: ['NEET'], joinDate: '2025-10-05', performance: 88, rating: 4.3, batch: 'Dropper NEET',
     phoneNumber: '+91 98765 43215', dateOfBirth: '2006-03-12', address: 'Lucknow', parentContact: '+91 98765 55555',
     subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.2, dppPerformance: 4.0, behavior: 4.8 } }
   },
-  { 
-    id: '20', name: 'Zoya Khan', rollNumber: 'UJAAS-DRN-002', 
+  {
+    id: '20', name: 'Zoya Khan', rollNumber: 'UJAAS-DRN-002',
     enrolledCourses: ['NEET'], joinDate: '2025-10-06', performance: 94, rating: 4.8, batch: 'Dropper NEET',
     phoneNumber: '+91 98765 43230', dateOfBirth: '2006-02-10', address: 'Kanpur', parentContact: '+91 98765 55556',
     subjectRatings: { 'Biology': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 } }
   },
-  { 
-    id: '21', name: 'Vivek Oberoi', rollNumber: 'UJAAS-DRN-003', 
+  {
+    id: '21', name: 'Vivek Oberoi', rollNumber: 'UJAAS-DRN-003',
     enrolledCourses: ['NEET'], joinDate: '2025-10-07', performance: 76, rating: 3.7, batch: 'Dropper NEET',
     phoneNumber: '+91 98765 43231', dateOfBirth: '2006-01-15', address: 'Varanasi', parentContact: '+91 98765 55557',
     subjectRatings: { 'Physics': { attendance: 3.8, tests: 3.5, dppPerformance: 3.6, behavior: 4.0 } }
@@ -345,8 +347,8 @@ const withStoredRemarks = (list: Student[]): Student[] => {
   });
 };
 
-export function FacultyDashboard({ 
-  user, 
+export function FacultyDashboard({
+  user,
   activeTab,
   onNavigate,
   adminSection,
@@ -386,16 +388,25 @@ export function FacultyDashboard({
     // Ensure mock students are always loaded and correctly assigned to current batches
     setStudents(withStoredRemarks(MOCK_STUDENTS));
   }, [batches]);
-  
+
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
     open: false,
     defaultBatch: null,
     title: 'Add Student',
   });
-  
+
   const [batchModal, setBatchModal] = useState<{ open: boolean; batchLabel?: string; }>({ open: false });
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student; }>({ open: false });
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+
+  useEffect(() => {
+    if (showFullTimetable) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [showFullTimetable]);
   const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
     open: false,
     batch: null
@@ -412,7 +423,7 @@ export function FacultyDashboard({
       const obtainedMarks = Math.floor(Math.random() * test.totalMarks);
       const accuracy = Math.floor(Math.random() * 40) + 60;
       const correctAnswers = Math.floor((accuracy / 100) * test.questions.length);
-      
+
       return {
         studentId: student.id,
         studentName: student.name,
@@ -474,13 +485,13 @@ export function FacultyDashboard({
 
   useBodyScrollLock(
     studentModal.open ||
-      batchModal.open ||
-      ratingModal.open ||
-      showFullTimetable ||
-      batchStudentPicker.open ||
-      isAddSubjectModalOpen ||
-      isAddChapterModalOpen ||
-      attendanceModal.open
+    batchModal.open ||
+    ratingModal.open ||
+    showFullTimetable ||
+    batchStudentPicker.open ||
+    isAddSubjectModalOpen ||
+    isAddChapterModalOpen ||
+    attendanceModal.open
   );
 
   const handleAddSubject = (e: FormEvent) => {
@@ -516,12 +527,12 @@ export function FacultyDashboard({
     initialData: { id: student.id, name: student.name, rollNumber: student.rollNumber, batch: student.batch, phoneNumber: '', dateOfBirth: '', address: '', parentContact: '' },
   });
   const closeStudentModal = () => setStudentModal((prev) => ({ ...prev, open: false }));
-  
+
   const handleSaveStudent = (data: StudentFormState) => {
     if (data.id) {
       setStudents(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name, rollNumber: data.rollNumber, batch: data.batch } : s));
     } else {
-      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch }, ...prev]);
+      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch, phoneNumber: data.phoneNumber, dateOfBirth: data.dateOfBirth, address: data.address, parentContact: data.parentContact }, ...prev]);
     }
   };
 
@@ -529,18 +540,16 @@ export function FacultyDashboard({
     if (window.confirm('Are you sure you want to delete this student?')) {
       setStudents(prev => prev.filter(s => s.id !== id));
     }
-  };
-
-  const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
+  }; const handleRemoveStudentFromBatch = (id: string, batch: Batch) => {
     if (window.confirm('Remove this student from the current batch?')) {
       setStudents((prev) =>
         prev.map((student) =>
           student.id === id && student.batch === batch
             ? {
-                ...student,
-                batch: 'Unassigned',
-                enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
-              }
+              ...student,
+              batch: 'Unassigned',
+              enrolledCourses: student.enrolledCourses.filter((course) => course !== batch),
+            }
             : student
         )
       );
@@ -553,9 +562,9 @@ export function FacultyDashboard({
       prev.map((student) =>
         student.id === studentId
           ? {
-              ...student,
-              batch,
-            }
+            ...student,
+            batch,
+          }
           : student
       )
     );
@@ -565,14 +574,14 @@ export function FacultyDashboard({
   const closeStudentRatings = () => setRatingModal({ open: false });
   const facultySubject =
     ((user as any).facultyDetails?.subjectSpecialty ||
-    faculty.find(
-      (f) =>
-        (user.loginId && f.email.toLowerCase() === user.loginId.toLowerCase()) ||
-        f.name.toLowerCase() === user.name.toLowerCase()
-    )?.subject) ?? null;
+      faculty.find(
+        (f) =>
+          (user.email && f.email.toLowerCase() === user.email.toLowerCase()) ||
+          f.name.toLowerCase() === user.name.toLowerCase()
+      )?.subject) ?? null;
   const handleSaveFacultySubjectRating = (
-    studentId: string, 
-    subject: string, 
+    studentId: string,
+    subject: string,
     ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
   ) => {
     setStudents((prev) =>
@@ -593,7 +602,7 @@ export function FacultyDashboard({
         const avg =
           values.length > 0
             ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
-              values.length
+            values.length
             : student.rating;
 
         return {
@@ -628,12 +637,12 @@ export function FacultyDashboard({
       prev.map((student) =>
         student.id === studentId
           ? {
-              ...student,
-              subjectRemarks: {
-                ...(student.subjectRemarks ?? {}),
-                [subject]: cleanedRemark,
-              },
-            }
+            ...student,
+            subjectRemarks: {
+              ...(student.subjectRemarks ?? {}),
+              [subject]: cleanedRemark,
+            },
+          }
           : student
       )
     );
@@ -670,7 +679,7 @@ export function FacultyDashboard({
           if (student.batch !== batch) return student;
           const attended = lastMonth.studentAttendance[student.id] || 0;
           const rating = (attended / lastMonth.totalClasses) * 5;
-          
+
           const updatedSubjectRatings = {
             ...(student.subjectRatings ?? {}),
             [facultySubject]: {
@@ -679,7 +688,7 @@ export function FacultyDashboard({
             }
           };
 
-          const values = Object.values(updatedSubjectRatings);
+          const values = Object.values(updatedSubjectRatings) as { attendance: number; tests: number; dppPerformance: number; behavior: number; }[];
           const avg = values.length > 0
             ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) / values.length
             : student.rating;
@@ -734,11 +743,10 @@ export function FacultyDashboard({
                         onNavigateSection(section.id as FacultySection);
                       }
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      (activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     <section.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{section.label}</span>
@@ -755,11 +763,10 @@ export function FacultyDashboard({
                   <motion.button
                     key={tab.id}
                     onClick={() => onNavigate(tab.id as Tab)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      activeTab === tab.id && activeTab !== 'profile'
-                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${activeTab === tab.id && activeTab !== 'profile'
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                   >
                     <tab.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -793,11 +800,11 @@ export function FacultyDashboard({
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} />
           ) : activeTab === 'question-bank' ? (
-            <QuestionBank 
-              userRole="faculty" 
-              userSubject={facultySubject || 'Physics'} 
+            <QuestionBank
+              userRole="faculty"
+              userSubject={facultySubject || 'Physics'}
               batches={batches.map(b => b.label)}
-              onBack={() => onNavigate('home')} 
+              onBack={() => onNavigate('home')}
             />
           ) : performanceInsightsTestId ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
@@ -820,7 +827,7 @@ export function FacultyDashboard({
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestTaking 
+              <TestTaking
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
                 duration={selectedPreviewTest.duration}
@@ -843,7 +850,7 @@ export function FacultyDashboard({
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('content')} />
           ) : activeTab === 'profile' ? (
-            <FacultyProfile user={user} onLogout={onLogout} />
+            <FacultyProfile user={user as any} onLogout={onLogout} />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -851,13 +858,14 @@ export function FacultyDashboard({
                 <BatchSelectionTab
                   batches={batches}
                   onSelectBatch={onSelectBatch}
+                  facultyName={user.name}
                 />
               )}
               {adminSection === 'test-series' && (
-                <TestSeriesManagementTab 
-                  onNavigate={onNavigate} 
-                  selectedBatch={null as unknown as Batch} 
-                  onChangeBatch={() => {}} 
+                <TestSeriesManagementTab
+                  onNavigate={onNavigate}
+                  selectedBatch={null as unknown as Batch}
+                  onChangeBatch={() => { }}
                   publishedTests={publishedTests}
                   onPreviewTest={onPreviewTest}
                   onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
@@ -876,6 +884,7 @@ export function FacultyDashboard({
                   onViewTimetable={() => setShowFullTimetable(true)}
                   facultySubject={facultySubject}
                   onOpenAttendance={() => setAttendanceModal({ open: true, batch: selectedBatch })}
+                  batches={batches}
                 />
               )}
               {activeTab === 'students' && (
@@ -965,7 +974,7 @@ export function FacultyDashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-2000"
+              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-modal"
               onClick={() => setShowFullTimetable(false)}
             >
               <motion.div
@@ -973,7 +982,7 @@ export function FacultyDashboard({
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
@@ -1000,20 +1009,32 @@ export function FacultyDashboard({
 
 // SUB-COMPONENTS
 
-function BatchSelectionTab({ batches, onSelectBatch }: { batches: BatchInfo[]; onSelectBatch: (batch: Batch) => void; }) {
+function BatchSelectionTab({ batches, onSelectBatch, facultyName }: { batches: BatchInfo[]; onSelectBatch: (batch: Batch) => void; facultyName: string }) {
+  // Only show batches where faculty is assigned
+  const facultyBatches = batches.filter(b => b.facultyAssigned?.includes(facultyName));
+  const sortedBatches = [...facultyBatches].sort((a, b) => {
+    if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
+    return a.is_active === false ? 1 : -1;
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {batches.map((batch) => (
+      {sortedBatches.map((batch) => (
         <motion.button
           key={batch.slug}
           onClick={() => onSelectBatch(batch.label)}
-          className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group"
+          className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}
         >
-          <div className="w-14 h-14 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 group-hover:scale-110 transition-transform">
-            <BookOpen className="w-7 h-7 text-white" />
+          <div className="flex-1">
+            <div className="mb-1">
+              <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
+              {batch.label}
+              {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
+            </h3>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">{batch.label}</h3>
-          <p className="text-gray-500 text-sm">View and manage this batch's academic progress</p>
+          <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
         </motion.button>
       ))}
     </div>
@@ -1048,22 +1069,24 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
   );
 }
 
-function OverviewTab({ 
-  selectedBatch, 
+function OverviewTab({
+  selectedBatch,
   students,
   onNavigate,
   onClearBatch,
   onViewTimetable,
   facultySubject,
-  onOpenAttendance
-}: { 
-  selectedBatch: Batch | null; 
+  onOpenAttendance,
+  batches
+}: {
+  selectedBatch: Batch | null;
   students: Student[];
   onNavigate: (tab: Tab) => void;
   onClearBatch: () => void;
   onViewTimetable: () => void;
   facultySubject: string | null;
   onOpenAttendance: () => void;
+  batches: BatchInfo[];
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
@@ -1099,6 +1122,8 @@ function OverviewTab({
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
             facultySubject={facultySubject}
+            batches={batches}
+            variant="faculty"
           />
         </div>
       </div>
@@ -1106,19 +1131,19 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ 
-  students, 
-  selectedBatch, 
-  onChangeBatch: _onChangeBatch, 
+function StudentsTab({
+  students,
+  selectedBatch,
+  onChangeBatch: _onChangeBatch,
   onViewStudent,
   batchAttendance,
   editMode,
   onToggleEditMode,
   onSaveAttendance
-}: { 
-  students: Student[]; 
-  selectedBatch: Batch; 
-  onChangeBatch: () => void; 
+}: {
+  students: Student[];
+  selectedBatch: Batch;
+  onChangeBatch: () => void;
   onViewStudent: (s: Student) => void;
   batchAttendance: MonthlyAttendance[];
   editMode: boolean;
@@ -1137,7 +1162,7 @@ function StudentsTab({
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
@@ -1234,270 +1259,17 @@ function StudentsTab({
   );
 }
 
-function NotesManagementTab({ 
-  onNavigate, 
-  selectedBatch, 
-  onChangeBatch, 
-  onViewTimetable,
-  facultySubject 
-}: { 
-  onNavigate: (t: Tab) => void; 
-  selectedBatch: Batch | null; 
-  onChangeBatch: () => void; 
-  onViewTimetable: () => void; 
-  facultySubject: string | null;
-}) {
-  // Logic kept same as per request
-  const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
 
-  const [subjects, setSubjects] = useState([
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ]);
 
-  const [chapters, setChapters] = useState<Record<string, string[]>>({
-    'Physics': ['Kinematics', 'Laws of Motion'],
-    'Chemistry': ['Atomic Structure', 'Chemical Bonding'],
-  });
-
-  const [notes, setNotes] = useState([
-    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-  ]);
-
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-  ]);
-
-  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
-  const [newChapterName, setNewChapterName] = useState('');
-
-  useBodyScrollLock(isAddChapterModalOpen);
-
-  const canEdit = !!facultySubject && selectedSubject?.toLowerCase() === facultySubject.toLowerCase();
-
-  const handleAddChapter = (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedSubject || !canEdit) return;
-    if (newChapterName.trim()) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: [...(chapters[selectedSubject] || []), newChapterName.trim()]
-      });
-      setNewChapterName('');
-      setIsAddChapterModalOpen(false);
-    }
-  };
-
-  const handleDeleteChapter = (chapterName: string) => {
-    if (!selectedSubject || !canEdit) return;
-    if (confirm(`Are you sure you want to delete the chapter "${chapterName}"?`)) {
-      setChapters({
-        ...chapters,
-        [selectedSubject]: chapters[selectedSubject].filter(c => c !== chapterName)
-      });
-      setNotes(notes.filter(n => n.chapter !== chapterName));
-      setDpps(dpps.filter(d => d.chapter !== chapterName));
-    }
-  };
-
-  const handleDeleteNote = (id: string) => {
-    if (!canEdit) return;
-    if (confirm('Are you sure you want to delete this note?')) {
-      setNotes(notes.filter(n => n.id !== id));
-    }
-  };
-
-  const handleDeleteDPP = (id: string) => {
-    if (!canEdit) return;
-    if (confirm('Are you sure you want to delete this DPP?')) {
-      setDpps(dpps.filter(d => d.id !== id));
-    }
-  };
-
-  const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
-  const navigateToChapter = (chapter: string) => { setSelectedChapter(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
-  const goBack = () => { if (currentView === 'chapter') { setCurrentView('subject'); setSelectedChapter(null); } else if (currentView === 'subject') { setCurrentView('root'); setSelectedSubject(null); } };
-
-  return (
-    <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            {currentView !== 'root' && (<button onClick={goBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>)}
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Content Management</h2>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                {selectedSubject && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
-                  </>
-                )}
-                {selectedChapter && (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapter}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {currentView === 'root' && (<button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-semibold shadow-sm"><Calendar className="w-5 h-5" />Time Table</button>)}
-            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Plus className="w-5 h-5" />Add Chapter</button>)}
-            {currentView === 'chapter' && canEdit && (
-              <div className="flex items-center gap-3">
-                <button onClick={() => onNavigate('upload-notes')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Upload className="w-5 h-5" />Upload Content</button>
-                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md"><Plus className="w-5 h-5" />Upload DPP</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {currentView === 'root' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
-          {subjects.map((sub, index) => (
-            <motion.div
-              key={sub.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => navigateToSubject(sub.name)}
-              className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group relative cursor-pointer"
-            >
-              <div className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform" style={{ backgroundColor: sub.color }}><Folder className="w-8 h-8 text-white" /></div>
-              <div className="text-center"><h4 className="font-bold text-gray-900">{sub.name}</h4><p className="text-xs text-gray-500 mt-1">{chapters[sub.name]?.length || 0} Chapters</p></div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {currentView === 'subject' && selectedSubject && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {chapters[selectedSubject]?.map((chapter, index) => (
-            <motion.button key={chapter} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} onClick={() => navigateToChapter(chapter)} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group">
-              <div className="flex items-center gap-4"><div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 transition-colors"><Folder className="w-5 h-5 text-cyan-600 group-hover:text-white" /></div><span className="font-bold text-gray-900">{chapter}</span></div>
-              <div className="flex items-center gap-2">
-                {canEdit && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteChapter(chapter);
-                    }}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-600 transition-colors" />
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      {currentView === 'chapter' && selectedChapter && (
-        <div className="space-y-6">
-          <div className="flex items-center gap-4 border-b border-gray-200">
-            <button onClick={() => setActiveContentType('notes')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'notes' ? 'text-teal-600' : 'text-gray-500'}`}>Study Notes{activeContentType === 'notes' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 rounded-t-full" />)}</button>
-            <button onClick={() => setActiveContentType('dpps')} className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeContentType === 'dpps' ? 'text-teal-600' : 'text-gray-500'}`}>DPPs{activeContentType === 'dpps' && (<motion.div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 rounded-t-full" />)}</button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(activeContentType === 'notes' ? notes : dpps).filter(item => item.chapter === selectedChapter).map((item, index) => (
-              <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group">
-                <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${activeContentType === 'notes' ? 'from-cyan-500 to-blue-500' : 'from-emerald-500 to-teal-500'} rounded-xl flex items-center justify-center shrink-0`}><FileText className="w-6 h-6 text-white" /></div>
-                  <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4><div className="flex items-center justify-between"><span className="text-xs text-gray-500">{(item as any).size || (item as any).questions + ' Questions'} • {item.date}</span><div className="flex gap-1">
-                    <button className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Download className="w-4 h-4" /></button>
-                    {canEdit && (
-                      <button 
-                        onClick={() => activeContentType === 'notes' ? handleDeleteNote(item.id) : handleDeleteDPP(item.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div></div></div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Add Chapter Modal */}
-      <AnimatePresence>
-        {isAddChapterModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-1000">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddChapterModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
-                <h3 className="text-xl font-bold">Add New Chapter</h3>
-                <p className="text-teal-50 text-sm">Add to {selectedSubject}</p>
-              </div>
-              <form onSubmit={handleAddChapter} className="p-6 space-y-4 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Chapter Name</label>
-                  <input
-                    autoFocus
-                    type="text"
-                    required
-                    value={newChapterName}
-                    onChange={(e) => setNewChapterName(e.target.value)}
-                    placeholder="e.g., Rotation Mechanics"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddChapterModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-                  >
-                    Create Chapter
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function TestSeriesManagementTab({ 
-  onNavigate, 
+function TestSeriesManagementTab({
+  onNavigate,
   publishedTests,
   onPreviewTest,
   onViewInsights
-}: { 
-  onNavigate: (t: Tab) => void; 
-  selectedBatch: Batch | null; 
-  onChangeBatch: () => void; 
+}: {
+  onNavigate: (t: Tab) => void;
+  selectedBatch: Batch | null;
+  onChangeBatch: () => void;
   publishedTests: import('../App').PublishedTest[];
   onPreviewTest: (testId: string) => void;
   onViewInsights: (testId: string) => void;
@@ -1523,11 +1295,10 @@ function TestSeriesManagementTab({
               className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex flex-col h-full cursor-pointer hover:shadow-2xl hover:scale-[1.02] transition-all group"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  test.status === 'live' ? 'bg-green-100 text-green-700' :
+                <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${test.status === 'live' ? 'bg-green-100 text-green-700' :
                   test.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
+                    'bg-gray-100 text-gray-700'
+                  }`}>
                   {test.status}
                 </div>
                 <span className="text-xs font-bold text-gray-400">{test.format}</span>
@@ -1569,8 +1340,8 @@ function TestSeriesManagementTab({
   );
 }
 
-function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, title, onSubmit }: any) { 
-  if (!open) return null; 
+function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, title, onSubmit }: any) {
+  if (!open) return null;
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -1580,17 +1351,17 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
           <input name="name" defaultValue={initialData?.name} placeholder="Student Name" required className="w-full px-4 py-3 rounded-xl border border-gray-200" />
           <input name="roll" defaultValue={initialData?.rollNumber} placeholder="Roll Number" required className="w-full px-4 py-3 rounded-xl border border-gray-200" />
           <select name="batch" defaultValue={initialData?.batch || defaultBatch || ''} className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white">
-            {batches.map((b:any) => <option key={b.slug} value={b.label}>{b.label}</option>)}
+            {batches.map((b: any) => <option key={b.slug} value={b.label}>{b.label}</option>)}
           </select>
           <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold">Save</button></div>
         </form>
       </div>
     </div>
-  ); 
+  );
 }
 
-function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) { 
-  if (!open) return null; 
+function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
+  if (!open) return null;
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -1602,7 +1373,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
         </form>
       </div>
     </div>
-  ); 
+  );
 }
 
 function BatchStudentPickerModal({
@@ -1848,11 +1619,10 @@ function StudentRatingsModal({
                     {mockTestPerformance.map((perf, idx) => {
                       const isAttempted = perf.status === 'Attempted';
                       return (
-                        <tr 
-                          key={idx} 
-                          className={`transition-colors ${
-                            isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
-                          }`}
+                        <tr
+                          key={idx}
+                          className={`transition-colors ${isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
+                            }`}
                         >
                           <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
                             {perf.title}
@@ -1899,9 +1669,9 @@ function StudentRatingsModal({
                   {Object.entries(student.subjectRatings).map(([subject, r]) => {
                     const subAvg = calculateSubjectRating(r);
                     const canEditThisSubject =
-                      !!facultySubject && 
+                      !!facultySubject &&
                       (subject.toLowerCase() === facultySubject.toLowerCase() || facultySubject.toLowerCase() === 'general');
-                    
+
                     const isEditing = editingSubject === subject;
 
                     const currentDraft = draftRatings[subject] || {
@@ -1965,9 +1735,8 @@ function StudentRatingsModal({
                                         [item.key]: e.target.value
                                       }
                                     }))}
-                                    className={`w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all ${
-                                      (item as any).readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
-                                    }`}
+                                    className={`w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all ${(item as any).readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
+                                      }`}
                                   />
                                 </div>
                               ))}                            </div>
@@ -1986,7 +1755,7 @@ function StudentRatingsModal({
                                   window.alert('Please enter ratings between 0 and 5 for all factors.');
                                   return;
                                 }
-                                
+
                                 if (window.confirm(`Are you sure you want to save updated ratings for ${subject}?`)) {
                                   onSaveSubjectRating?.(student.id, subject, ratings);
                                   setEditingSubject(null);
@@ -2124,7 +1893,7 @@ function StudentRatingsModal({
 export function AttendanceCalendarModal({ open, batch, onClose, monthlyAttendance, onUpdateAttendance }: { open: boolean; batch: string; onClose: () => void; monthlyAttendance: MonthlyAttendance[]; onUpdateAttendance: (updated: MonthlyAttendance[]) => void; }) {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const year = new Date().getFullYear();
-  
+
   const handleUpdateClasses = (monthStr: string, totalClasses: number) => {
     const [y, m] = monthStr.split('-').map(Number);
     const daysInMonth = new Date(y, m, 0).getDate();
