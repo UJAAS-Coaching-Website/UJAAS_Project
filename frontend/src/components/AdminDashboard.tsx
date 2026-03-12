@@ -595,16 +595,16 @@ export function AdminDashboard({
   const handleSaveAdminRemark = async (studentId: string, remark: string) => {
     const cleanedRemark = remark.trim();
     try {
-        // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
-        // but we can store it in the local storage bridge we have.
-        setRatingModal((prev) =>
-          prev.student?.id === studentId
-            ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
-            : prev
-        );
-        writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
+      // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
+      // but we can store it in the local storage bridge we have.
+      setRatingModal((prev) =>
+        prev.student?.id === studentId
+          ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
+          : prev
+      );
+      writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
     } catch (error: any) {
-        console.error(error);
+      console.error(error);
     }
   };
 
@@ -1829,6 +1829,7 @@ function OverviewTab({
             selectedBatch={selectedBatch}
             onChangeBatch={onClearBatch}
             onViewTimetable={onViewTimetable}
+            onUpdateBatch={onUpdateBatch}
             batches={batches}
             variant="admin"
           />
@@ -1838,22 +1839,22 @@ function OverviewTab({
   );
 }
 
-function StudentsTab({ 
-  students, 
-  selectedBatch, 
-  onChangeBatch: _onChangeBatch, 
-  onAddStudent, 
+function StudentsTab({
+  students,
+  selectedBatch,
+  onChangeBatch: _onChangeBatch,
+  onAddStudent,
   onEditStudent,
-  onDeleteStudent, 
-  onViewStudent 
-}: { 
-  students: Student[]; 
-  selectedBatch: Batch; 
-  onChangeBatch: () => void; 
-  onAddStudent: () => void; 
+  onDeleteStudent,
+  onViewStudent
+}: {
+  students: Student[];
+  selectedBatch: Batch;
+  onChangeBatch: () => void;
+  onAddStudent: () => void;
   onEditStudent: (s: Student) => void;
-  onDeleteStudent: (id: string) => void; 
-  onViewStudent: (s: Student) => void 
+  onDeleteStudent: (id: string) => void;
+  onViewStudent: (s: Student) => void
 }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
@@ -1963,19 +1964,19 @@ function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpe
 }
 
 
-function StudentsDirectoryTab({ 
-  students, 
-  batches, 
-  onAddStudent, 
+function StudentsDirectoryTab({
+  students,
+  batches,
+  onAddStudent,
   onEditStudent,
-  onDeleteStudent, 
-  onViewStudent 
-}: { 
-  students: Student[]; 
-  batches: BatchInfo[]; 
-  onAddStudent: () => void; 
+  onDeleteStudent,
+  onViewStudent
+}: {
+  students: Student[];
+  batches: BatchInfo[];
+  onAddStudent: () => void;
   onEditStudent: (s: Student) => void;
-  onDeleteStudent: (id: string) => void; 
+  onDeleteStudent: (id: string) => void;
   onViewStudent: (s: Student) => void;
 }) {
   const [q, setQ] = useState('');

@@ -2,8 +2,9 @@ import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus,
-  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen
+  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen, X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
@@ -21,6 +22,7 @@ interface NotesManagementTabProps {
   batches: BatchInfo[];
   readOnly?: boolean;
   variant?: 'admin' | 'faculty' | 'student';
+  onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
 }
 
 export function NotesManagementTab({
@@ -31,15 +33,16 @@ export function NotesManagementTab({
   facultySubject,
   batches,
   readOnly = false,
-  variant = 'student'
+  variant = 'student',
+  onUpdateBatch
 }: NotesManagementTabProps) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  
+
   // API Models
   const [apiChapters, setApiChapters] = useState<ApiChapter[]>([]);
   const [apiNotes, setApiNotes] = useState<ApiNote[]>([]);
-  
+
   // Chapter State Reference
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
@@ -53,7 +56,7 @@ export function NotesManagementTab({
 
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const batchSubjects = currentBatch?.subjects || [];
-  
+
   const subjects = allSubjects.filter(sub => batchSubjects.includes(sub.name));
 
   // Modals
@@ -94,10 +97,10 @@ export function NotesManagementTab({
     if (newChapterName.trim()) {
       try {
         const newChapter = await apiCreateChapter({
-            batch_id: currentBatch.id,
-            subject_name: selectedSubject,
-            name: newChapterName.trim(),
-            order_index: apiChapters.length
+          batch_id: currentBatch.id,
+          subject_name: selectedSubject,
+          name: newChapterName.trim(),
+          order_index: apiChapters.length
         });
         setApiChapters([...apiChapters, newChapter]);
         setNewChapterName('');
@@ -139,6 +142,31 @@ export function NotesManagementTab({
     if (!canEdit) return;
     if (confirm('Are you sure you want to delete this DPP?')) {
       setDpps(dpps.filter(d => d.id !== id));
+    }
+  };
+
+  const handleDeleteSubject = async (subjectName: string) => {
+    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+
+    if (window.confirm(`Are you sure you want to delete the subject "${subjectName}" from this batch? This will NOT delete any content (notes/DPPs) but will remove the subject association for this batch.`)) {
+      try {
+        const nextSubjects = batchSubjects.filter((s: string) => s !== subjectName);
+        const assigned = currentBatch.facultyAssigned ?? [];
+
+        // Find faculty assigned to this subject in this batch (if any) and remove them too
+        // We need to look up faculty by subject
+        const result = onUpdateBatch(selectedBatch, nextSubjects, assigned);
+
+        if (result.ok) {
+          toast.success(`Subject "${subjectName}" removed successfully.`);
+          // The component should re-render because batches/selectedBatch/currentBatch likely changes via parent state
+        } else {
+          toast.error(result.error || 'Failed to remove subject.');
+        }
+      } catch (err: any) {
+        console.error(err);
+        toast.error('An error occurred while removing the subject.');
+      }
     }
   };
 
@@ -199,30 +227,44 @@ export function NotesManagementTab({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => navigateToSubject(sub.name)}
-              className={`${
-                variant === 'admin' 
+              className={`${variant === 'admin'
                 ? 'bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md flex items-center gap-4 cursor-pointer group transition-all'
                 : 'bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group cursor-pointer hover:shadow-xl transition-all'
-              }`}
+                }`}
             >
-              <div className={`${
-                variant === 'admin'
+              <div className={`${variant === 'admin'
                 ? 'w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0'
                 : 'w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white'
-              }`} style={{ backgroundColor: sub.color }}>
+                }`} style={{ backgroundColor: sub.color }}>
                 <Folder className={`${variant === 'admin' ? 'w-6 h-6' : 'w-8 h-8'}`} />
               </div>
               <div className={variant === 'admin' ? 'flex-1' : 'text-center'}>
                 <h4 className="font-bold text-gray-900">{sub.name}</h4>
                 {variant === 'admin' && <p className="text-xs text-gray-500">Manage chapters & theory</p>}
               </div>
-              {variant === 'admin' && <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />}
+              {variant === 'admin' ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSubject(sub.name);
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    title="Delete Subject"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
+                </div>
+              ) : (
+                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
+              )}
             </motion.div>
           ))}
           {subjects.length === 0 && (
             <div className="col-span-full py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-               <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-               <p className="text-gray-500 font-medium">No subjects assigned yet.</p>
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No subjects assigned yet.</p>
             </div>
           )}
         </div>
@@ -243,8 +285,8 @@ export function NotesManagementTab({
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {apiChapters.map((chapter) => (
-                    <tr 
-                      key={chapter.id} 
+                    <tr
+                      key={chapter.id}
                       onClick={() => navigateToChapter(chapter)}
                       className="hover:bg-teal-50/30 transition-colors cursor-pointer group"
                     >
@@ -259,15 +301,15 @@ export function NotesManagementTab({
                       <td className="py-4 px-6 text-sm text-gray-500">Just now</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
-                           {canEdit && (
+                          {canEdit && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteChapter(chapter); }}
                               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                           )}
-                           <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600" />
+                          )}
+                          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600" />
                         </div>
                       </td>
                     </tr>
@@ -276,13 +318,13 @@ export function NotesManagementTab({
               </table>
             </div>
           )}
-          
+
           {variant !== 'admin' && apiChapters.map((chapter, index) => (
-            <motion.div 
-              key={chapter.id} 
-              initial={{ opacity: 0, x: -10 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              transition={{ delay: index * 0.02 }} 
+            <motion.div
+              key={chapter.id}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.02 }}
               className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white flex items-center justify-between group cursor-pointer"
               onClick={() => navigateToChapter(chapter)}
             >
@@ -308,12 +350,12 @@ export function NotesManagementTab({
               </div>
             </motion.div>
           ))}
-          
+
           {apiChapters.length === 0 && (
-             <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-               <Folder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-               <p className="text-gray-500 font-medium">No chapters exist for this subject. {canEdit ? 'Create the first one!' : ''}</p>
-             </div>
+            <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+              <Folder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 font-medium">No chapters exist for this subject. {canEdit ? 'Create the first one!' : ''}</p>
+            </div>
           )}
         </div>
       )}
@@ -325,9 +367,9 @@ export function NotesManagementTab({
               { id: 'notes', label: 'Study Notes', icon: FileText },
               { id: 'dpps', label: 'Practice DPPs', icon: ClipboardList }
             ].map((tab) => (
-              <button 
+              <button
                 key={tab.id}
-                onClick={() => setActiveContentType(tab.id as any)} 
+                onClick={() => setActiveContentType(tab.id as any)}
                 className={`pb-4 px-6 text-sm font-bold transition-all relative flex items-center gap-2 ${activeContentType === tab.id ? 'text-teal-600' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -362,40 +404,7 @@ export function NotesManagementTab({
                           </td>
                           <td className="py-4 px-6 text-sm text-gray-500">{new Date(item.created_at).toLocaleDateString()}</td>
                           <td className="py-4 px-6 text-right">
-                             <div className="flex justify-end gap-1">
-                                <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
-                                {canEdit && (
-                                  <button
-                                    onClick={() => handleDeleteNote(item.id)}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                apiNotes.map((item, index) => (
-                  <motion.div 
-                    key={item.id} 
-                    initial={{ opacity: 0, y: 10 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    transition={{ delay: index * 0.05 }} 
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg"><FileText className="w-6 h-6" /></div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4>
-                        <div className="flex items-center justify-between">
-                           <span className="text-xs text-gray-400 font-medium">{new Date(item.created_at).toLocaleDateString()}</span>
-                           <div className="flex gap-1">
+                            <div className="flex justify-end gap-1">
                               <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
                               {canEdit && (
                                 <button
@@ -406,7 +415,40 @@ export function NotesManagementTab({
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
-                           </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                apiNotes.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg"><FileText className="w-6 h-6" /></div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400 font-medium">{new Date(item.created_at).toLocaleDateString()}</span>
+                          <div className="flex gap-1">
+                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
+                            {canEdit && (
+                              <button
+                                onClick={() => handleDeleteNote(item.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -420,12 +462,12 @@ export function NotesManagementTab({
                 <p className="text-gray-500 font-medium">Digital Practice Papers (DPP) are coming soon to the backend.</p>
               </div>
             )}
-            
+
             {activeContentType === 'notes' && apiNotes.length === 0 && (
-                <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No files found for this category.</p>
-                </div>
+              <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No files found for this category.</p>
+              </div>
             )}
           </div>
         </div>
