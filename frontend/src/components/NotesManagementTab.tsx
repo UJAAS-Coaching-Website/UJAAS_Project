@@ -14,6 +14,28 @@ import { createBatchNotification } from '../api/batches';
 type Tab = any;
 type BatchInfo = any;
 
+const formatRelativeTime = (dateString: string) => {
+  if (!dateString) return 'Just now';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  }
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  const days = Math.floor(diffInSeconds / 86400);
+  if (days < 30) {
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  }
+  return date.toLocaleDateString();
+};
+
 interface NotesManagementTabProps {
   onNavigate: (t: Tab) => void;
   selectedBatch: string | null;
@@ -290,15 +312,15 @@ export function NotesManagementTab({
                 )}
               </>
             )}
-            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Plus className="w-4 h-4" />Add Chapter</button>)}
+            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
             {currentView === 'chapter' && canEdit && (
               <div className="flex items-center gap-3">
                 <button onClick={() => {
                   localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
                   localStorage.setItem('uploadTargetChapterName', selectedChapterObj!.name);
                   onNavigate('upload-notes');
-                }} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Upload className="w-4 h-4" />Upload Notes</button>
-                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Plus className="w-4 h-4" />Create DPP</button>
+                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
+                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
               </div>
             )}
           </div>
@@ -351,8 +373,8 @@ export function NotesManagementTab({
 
       {/* Subject View: Chapter List */}
       {currentView === 'subject' && selectedSubject && (
-        <div className={variant === 'admin' ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
-          {variant === 'admin' && apiChapters.length > 0 && (
+        <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
+          {(variant === 'admin' || variant === 'faculty') && apiChapters.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -377,7 +399,7 @@ export function NotesManagementTab({
                           <span className="font-bold text-gray-900">{chapter.name}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">Just now</td>
+                      <td className="py-4 px-6 text-sm text-gray-500">{formatRelativeTime(chapter.created_at)}</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
@@ -398,7 +420,7 @@ export function NotesManagementTab({
             </div>
           )}
 
-          {variant !== 'admin' && apiChapters.map((chapter, index) => (
+          {variant === 'student' && apiChapters.map((chapter, index) => (
             <motion.div
               key={chapter.id}
               initial={{ opacity: 0, x: -10 }}
@@ -458,9 +480,9 @@ export function NotesManagementTab({
             ))}
           </div>
 
-          <div className={variant === 'admin' ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
+          <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
             {activeContentType === 'notes' ? (
-              variant === 'admin' && apiNotes.length > 0 ? (
+              (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>

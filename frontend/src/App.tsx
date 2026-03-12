@@ -46,6 +46,7 @@ import {
   type ApiTest,
 } from './api/tests';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
+import logo from './assets/logo.svg';
 
 export interface User {
   id: string;
@@ -1139,6 +1140,7 @@ function App() {
 
     // Fetch batches and queries from API for admin/faculty
     if (userData.role === 'admin' || userData.role === 'faculty') {
+      setLoading(true);
       try {
         const [apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
           apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
@@ -1151,15 +1153,20 @@ function App() {
         setAdminFaculties(apiFaculties);
         setAdminStudents(apiStudents);
         setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+
+        if (userData.role === 'admin') {
+          try {
+            const { queries: dbQueries } = await fetchQueries();
+            setQueries(dbQueries as LandingQuery[]);
+          } catch {
+            console.warn('Could not fetch queries from API');
+          }
+        }
       } catch (error) {
         console.warn('Error fetching batches/faculties on login:', error);
         setAdminBatches([]);
-      }
-
-      if (userData.role === 'admin') {
-        fetchQueries().then(({ queries: dbQueries }) => {
-          setQueries(dbQueries as LandingQuery[]);
-        }).catch(() => console.warn('Could not fetch queries from API'));
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -1202,11 +1209,45 @@ function App() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50"
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative overflow-hidden"
       >
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-2xl font-semibold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">Loading...</div>
+        {/* Decorative background elements */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-200/20 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+        <div className="text-center relative z-10">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="mb-8 relative"
+          >
+            <div className="w-24 h-24 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <img src={logo} alt="UJAAS Logo" className="w-12 h-12 object-contain animate-pulse" />
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+              UJAAS Career Institute
+            </h2>
+            <p className="text-gray-500 font-medium">Empowering Your Success</p>
+          </motion.div>
+
+          {/* Progress bar simulation */}
+          <div className="mt-8 w-64 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: "100%" }}
+              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+              className="w-full h-full bg-gradient-to-r from-teal-400 to-blue-500"
+            ></motion.div>
+          </div>
         </div>
       </motion.div>
     );
