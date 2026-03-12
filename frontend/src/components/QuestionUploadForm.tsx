@@ -52,7 +52,7 @@ export function QuestionUploadForm({
   onCancelEdit
 }: QuestionUploadFormProps) {
   const [currentQuestion, setCurrentQuestion] = useState<Question>({
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     type: fixedType || 'MCQ',
     question: '',
     options: (fixedType || 'MCQ') === 'Numerical' ? undefined : ['', '', '', ''],

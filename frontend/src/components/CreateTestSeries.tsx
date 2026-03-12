@@ -131,14 +131,18 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       }
     };
 
+    let nextQuestions: Question[] = [];
     setQuestions(prev => {
       const exists = prev.findIndex(q => q.id === question.id);
       if (exists > -1) {
-        const next = [...prev];
-        next[exists] = enrichedQuestion;
-        return next;
+        nextQuestions = [...prev];
+        nextQuestions[exists] = enrichedQuestion;
+      } else {
+        nextQuestions = [...prev, enrichedQuestion];
       }
-      return [...prev, enrichedQuestion];
+      // Auto-save with the new list
+      handleSaveDraftClick(undefined, nextQuestions);
+      return nextQuestions;
     });
     setEditingQuestion(null);
   };
@@ -149,7 +153,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   );
 
   const handleRemoveQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
+    const nextQuestions = questions.filter(q => q.id !== id);
+    setQuestions(nextQuestions);
+    // Auto-save
+    handleSaveDraftClick(undefined, nextQuestions);
   };
 
   const fillDemoQuestions = () => {
@@ -162,7 +169,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         // 20 MCQ (Section A)
         for (let i = 1; i <= 20; i++) {
           demoQuestions.push({
-            id: `demo-${subject}-A-${i}-${timestamp}`,
+            id: crypto.randomUUID(),
             type: 'MCQ',
             question: `${subject} - Practice Question ${i} (Section A)`,
             options: ['Option A', 'Option B', 'Option C', 'Option D'],
@@ -177,7 +184,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         // 10 Numerical (Section B)
         for (let i = 1; i <= 10; i++) {
           demoQuestions.push({
-            id: `demo-${subject}-B-${i}-${timestamp}`,
+            id: crypto.randomUUID(),
             type: 'Numerical',
             question: `${subject} - Numerical Practice ${i} (Section B)`,
             correctAnswer: '10',
@@ -199,7 +206,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         const count = neetSubjectCounts[subject] ?? 0;
         for (let i = 1; i <= count; i++) {
           demoQuestions.push({
-            id: `demo-${subject}-${i}-${timestamp}`,
+            id: crypto.randomUUID(),
             type: 'MCQ',
             question: `${subject} - NEET Practice Question ${i}`,
             options: ['Option A', 'Option B', 'Option C', 'Option D'],
@@ -212,20 +219,21 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         }
       });
     } else {
-      // Custom - fill up to required count (default 5)
-      for (let i = 1; i <= 5; i++) {
-        demoQuestions.push({
-          id: `demo-custom-${i}-${timestamp}`,
-          type: 'MCQ',
-          question: `Custom Practice Question ${i}`,
-          options: ['Option A', 'Option B', 'Option C', 'Option D'],
-          correctAnswer: 0,
-          difficulty: 'Medium',
-          marks: 4,
-          negativeMarks: 1,
-          subject: subjects[(i - 1) % subjects.length]
-        });
-      }
+      subjects.forEach(subject => {
+        for (let i = 1; i <= 2; i++) {
+          demoQuestions.push({
+            id: crypto.randomUUID(),
+            type: 'MCQ',
+            question: `${subject} - Custom Practice Question ${i}`,
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctAnswer: 0,
+            difficulty: 'Medium',
+            marks: 4,
+            negativeMarks: 0,
+            subject: subject
+          });
+        }
+      });
     }
     setQuestions(demoQuestions);
   };
@@ -272,27 +280,37 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     }
   };
 
-  const handleSaveDraftClick = async () => {
+  const handleSaveDraftClick = async (overrideTestData?: typeof testData, overrideQuestions?: Question[]) => {
     if (!onSaveDraft) return;
     setIsSavingDraft(true);
     try {
-      const newId = await onSaveDraft({
+      const dataToSave = {
         id: draftId || undefined,
-        title: testData.title || 'Untitled Draft',
-        format: testData.format,
-        batches: testData.selectedBatches,
-        duration: testData.duration,
-        totalMarks: testData.totalMarks,
-        scheduleDate: testData.scheduleDate,
-        scheduleTime: testData.scheduleTime,
-        questions: questions,
-        instructions: testData.instructions
-      });
+        title: (overrideTestData?.title || testData.title) || 'Untitled Draft',
+        format: overrideTestData?.format || testData.format,
+        batches: overrideTestData?.selectedBatches || testData.selectedBatches,
+        duration: overrideTestData?.duration || testData.duration,
+        totalMarks: overrideTestData?.totalMarks || testData.totalMarks,
+        scheduleDate: overrideTestData?.scheduleDate || testData.scheduleDate,
+        scheduleTime: overrideTestData?.scheduleTime || testData.scheduleTime,
+        questions: overrideQuestions || questions,
+        instructions: overrideTestData?.instructions || testData.instructions
+      };
+      
+      const newId = await onSaveDraft(dataToSave);
       if (newId) setDraftId(newId);
     } catch (error) {
       console.error("Failed to save draft:", error);
     } finally {
       setIsSavingDraft(false);
+    }
+  };
+
+  const handleContinueToAddQuestions = async () => {
+    if (isStep1Valid) {
+      setStep(2);
+      // Create draft when moving to step 2 if not already created
+      handleSaveDraftClick();
     }
   };
 
@@ -522,7 +540,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
                 <div className="flex justify-end mt-8">
                   <motion.button
-                    onClick={() => isStep1Valid && setStep(2)}
+                    onClick={handleContinueToAddQuestions}
                     disabled={!isStep1Valid}
                     className="px-8 py-4 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
@@ -733,9 +751,13 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                   Previous
                 </button>
                 <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-gray-100 italic text-xs text-gray-500">
+                    <div className={`w-2 h-2 rounded-full ${isSavingDraft ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
+                    {isSavingDraft ? 'Auto-saving...' : 'Draft saved'}
+                  </div>
                   {onSaveDraft && (
                     <motion.button
-                      onClick={handleSaveDraftClick}
+                      onClick={() => handleSaveDraftClick()}
                       disabled={isSavingDraft}
                       className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
                     >
@@ -830,9 +852,13 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                     Previous
                   </button>
                   <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-gray-100 italic text-xs text-gray-500">
+                      <div className={`w-2 h-2 rounded-full ${isSavingDraft ? 'bg-amber-400 animate-pulse' : 'bg-green-400'}`} />
+                      {isSavingDraft ? 'Auto-saving...' : 'Draft saved'}
+                    </div>
                     {onSaveDraft && (
                       <motion.button
-                        onClick={handleSaveDraftClick}
+                        onClick={() => handleSaveDraftClick()}
                         disabled={isSavingDraft}
                         className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
                       >

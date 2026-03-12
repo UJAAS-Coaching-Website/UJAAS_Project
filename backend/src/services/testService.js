@@ -196,16 +196,19 @@ export async function updateTest(id, {
         // Update questions (simplest way is to clear and recreate to handle deletions/additions easily)
         await client.query(`DELETE FROM questions WHERE test_id = $1`, [id]);
         if (questions && questions.length > 0) {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
+                const qId = (q.id && uuidRegex.test(q.id)) ? q.id : null;
+                
                 await client.query(
                     `INSERT INTO questions (
                         id, test_id, subject, section, type, question_text, question_img, 
                         options, option_imgs, correct_ans, correct_answer, marks, neg_marks, 
                         explanation, explanation_img, order_index, difficulty
-                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                     ) VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
                     [
-                        q.id || undefined, // use existing ID if present
+                        qId,
                         id,
                         q.subject || "General",
                         q.section || q.metadata?.section || null,
