@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus,
-  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen, X, Megaphone
+  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen, X, Megaphone, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -75,6 +75,7 @@ export function NotesManagementTab({
   const [isUploadNoticeModalOpen, setIsUploadNoticeModalOpen] = useState(false);
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeMessage, setNoticeMessage] = useState('');
+  const [isSendingNotice, setIsSendingNotice] = useState(false);
 
   useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen || isUploadNoticeModalOpen);
 
@@ -225,6 +226,7 @@ export function NotesManagementTab({
       return;
     }
 
+    setIsSendingNotice(true);
     try {
       await createBatchNotification(currentBatch.id!, { title, message });
       toast.success('Notice sent successfully to all users in this batch.');
@@ -234,6 +236,8 @@ export function NotesManagementTab({
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Failed to send notice.');
+    } finally {
+      setIsSendingNotice(false);
     }
   };
 
@@ -719,19 +723,44 @@ export function NotesManagementTab({
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
+                    disabled={isSendingNotice}
                     onClick={() => setIsUploadNoticeModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    disabled={isSendingNotice}
+                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Send Notice
+                    {isSendingNotice ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Sending...
+                      </>
+                    ) : 'Send Notice'}
                   </button>
                 </div>
               </form>
+
+              {/* Loading Overlay */}
+              <AnimatePresence>
+                {isSendingNotice && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center"
+                  >
+                    <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
+                      <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-1">Sending Notice</h4>
+                    <p className="text-gray-500">Please wait while we notify everyone in the batch...</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </div>
         )}
