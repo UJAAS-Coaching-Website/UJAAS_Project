@@ -1233,9 +1233,9 @@ function App() {
             transition={{ delay: 0.2, duration: 0.5 }}
           >
             <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-              Preparing your dashboard
+              UJAAS Career Institute
             </h2>
-            <p className="text-gray-500 font-medium">UJAAS • Empowering Your Success</p>
+            <p className="text-gray-500 font-medium">Empowering Your Success</p>
           </motion.div>
 
           {/* Progress bar simulation */}
