@@ -62,8 +62,10 @@ export function NotesManagementTab({
   // Modals
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState('');
+  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
 
-  useBodyScrollLock(isAddChapterModalOpen);
+  useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen);
 
   // canEdit is true if NOT readOnly AND (admin OR matching faculty subject)
   const canEdit = !readOnly && (variant === 'admin' || !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase()));
@@ -170,6 +172,37 @@ export function NotesManagementTab({
     }
   };
 
+  const handleAddSubject = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+
+    const name = newSubjectName.trim();
+    if (!name) return;
+
+    if (batchSubjects.includes(name)) {
+      toast.error(`Subject "${name}" already exists in this batch.`);
+      return;
+    }
+
+    try {
+      const nextSubjects = [...batchSubjects, name];
+      const assigned = currentBatch.facultyAssigned ?? [];
+
+      const result = onUpdateBatch(selectedBatch, nextSubjects, assigned);
+
+      if (result.ok) {
+        toast.success(`Subject "${name}" added successfully.`);
+        setNewSubjectName('');
+        setIsAddSubjectModalOpen(false);
+      } else {
+        toast.error(result.error || 'Failed to add subject.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('An error occurred while adding the subject.');
+    }
+  };
+
   const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
   const navigateToChapter = (chapter: ApiChapter) => { setSelectedChapterObj(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
   const goBack = () => { if (currentView === 'chapter') { setCurrentView('subject'); setSelectedChapterObj(null); } else if (currentView === 'subject') { setCurrentView('root'); setSelectedSubject(null); } };
@@ -202,7 +235,18 @@ export function NotesManagementTab({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {currentView === 'root' && (<button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm"><Calendar className="w-4 h-4" />Time Table</button>)}
+            {currentView === 'root' && (
+              <>
+                <button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm">
+                  <Calendar className="w-4 h-4" />Time Table
+                </button>
+                {variant === 'admin' && (
+                  <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
+                    <Plus className="w-4 h-4" />Add Subject
+                  </button>
+                )}
+              </>
+            )}
             {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Plus className="w-4 h-4" />Add Chapter</button>)}
             {currentView === 'chapter' && canEdit && (
               <div className="flex items-center gap-3">
@@ -520,6 +564,60 @@ export function NotesManagementTab({
                     className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
                   >
                     Create Folder
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Add Subject Modal */}
+      <AnimatePresence>
+        {isAddSubjectModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-modal">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsAddSubjectModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 leading-relaxed"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
+                <h3 className="text-xl font-bold">Add New Subject</h3>
+                <p className="text-teal-50 text-sm opacity-90">Adding to {selectedBatch} batch</p>
+              </div>
+              <form onSubmit={handleAddSubject} className="p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Subject Name</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    placeholder="e.g., Mathematics"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSubjectModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Add Subject
                   </button>
                 </div>
               </form>
