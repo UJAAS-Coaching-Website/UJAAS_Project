@@ -172,6 +172,9 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const formats = ['JEE MAIN', 'NEET', 'Custom'];
 
+  const hasValidDuration = Number.isFinite(testData.duration) && testData.duration > 0;
+  const hasValidTotalMarks = Number.isFinite(testData.totalMarks) && testData.totalMarks > 0;
+
   const getSubjects = () => {
     if (testData.format === 'JEE MAIN') return ['Physics', 'Chemistry', 'Mathematics'];
     if (testData.format === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
@@ -402,7 +405,13 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     }
   };
 
-  const isStep1Valid = testData.title && testData.selectedBatches.length > 0 && testData.scheduleDate;
+  const isStep1Valid = Boolean(
+    testData.title.trim() &&
+    testData.selectedBatches.length > 0 &&
+    testData.scheduleDate &&
+    hasValidDuration &&
+    hasValidTotalMarks
+  );
 
   const getRequiredCount = () => {
     if (testData.format === 'JEE MAIN') return 90;
@@ -589,27 +598,37 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Duration (minutes)
+                      Duration (minutes) *
                     </label>
                     <input
                       type="number"
-                      value={testData.duration}
-                      onChange={(e) => setTestData({ ...testData, duration: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
+                      min={1}
+                      required
+                      value={Number.isFinite(testData.duration) ? testData.duration : ''}
+                      onChange={(e) => setTestData({ ...testData, duration: Number(e.target.value) })}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${hasValidDuration ? 'border-gray-200' : 'border-red-300 bg-red-50/60'}`}
                     />
+                    {!hasValidDuration && (
+                      <p className="mt-2 text-sm font-medium text-red-600">Enter a valid duration greater than 0.</p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Total Marks
+                      Total Marks *
                     </label>
                     <input
                       type="number"
-                      value={testData.totalMarks}
+                      min={1}
+                      required
+                      value={Number.isFinite(testData.totalMarks) ? testData.totalMarks : ''}
                       readOnly={testData.format !== 'Custom'}
-                      onChange={(e) => setTestData({ ...testData, totalMarks: parseInt(e.target.value) })}
-                      className={`w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${testData.format !== 'Custom' ? 'bg-gray-50' : ''}`}
+                      onChange={(e) => setTestData({ ...testData, totalMarks: Number(e.target.value) })}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition ${hasValidTotalMarks ? 'border-gray-200' : 'border-red-300 bg-red-50/60'} ${testData.format !== 'Custom' ? 'bg-gray-50' : ''}`}
                     />
+                    {!hasValidTotalMarks && (
+                      <p className="mt-2 text-sm font-medium text-red-600">Enter valid total marks greater than 0.</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">

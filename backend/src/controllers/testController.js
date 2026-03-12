@@ -1,6 +1,10 @@
 import { getAllTests, getTestById, createTest, updateTestStatus, updateTest, deleteTest } from "../services/testService.js";
 import { deleteAllImagesForContext } from "../services/storageService.js";
 
+function isPositiveNumber(value) {
+    return Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
 export async function listTests(req, res) {
     try {
         let tests = await getAllTests();
@@ -46,11 +50,19 @@ export async function handleCreateTest(req, res) {
             return res.status(400).json({ message: "test title is required" });
         }
 
+        if (!isPositiveNumber(durationMinutes)) {
+            return res.status(400).json({ message: "test duration is required" });
+        }
+
+        if (!isPositiveNumber(totalMarks)) {
+            return res.status(400).json({ message: "total marks is required" });
+        }
+
         const test = await createTest({
             title: title.trim(),
             format,
-            durationMinutes,
-            totalMarks,
+            durationMinutes: Number(durationMinutes),
+            totalMarks: Number(totalMarks),
             scheduleDate,
             scheduleTime,
             instructions,
@@ -79,11 +91,19 @@ export async function handleUpdateTest(req, res) {
             return res.status(400).json({ message: "test title is required" });
         }
 
+        if (!isPositiveNumber(durationMinutes)) {
+            return res.status(400).json({ message: "test duration is required" });
+        }
+
+        if (!isPositiveNumber(totalMarks)) {
+            return res.status(400).json({ message: "total marks is required" });
+        }
+
         const test = await updateTest(req.params.id, {
             title: title.trim(),
             format,
-            durationMinutes,
-            totalMarks,
+            durationMinutes: Number(durationMinutes),
+            totalMarks: Number(totalMarks),
             scheduleDate,
             scheduleTime,
             instructions,
