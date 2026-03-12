@@ -866,7 +866,7 @@ export function FacultyDashboard({
                   onNavigate={onNavigate}
                   selectedBatch={null as unknown as Batch}
                   onChangeBatch={() => { }}
-                  publishedTests={publishedTests}
+                  publishedTests={publishedTests.filter(t => t.batches.some(tb => batches.some(b => b.label === tb && b.facultyAssigned?.includes(user.name))))}
                   onPreviewTest={onPreviewTest}
                   onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
                 />

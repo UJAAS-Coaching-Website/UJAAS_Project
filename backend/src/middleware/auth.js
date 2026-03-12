@@ -67,3 +67,17 @@ export function requireRole(role) {
         next();
     };
 }
+
+/**
+ * Express middleware factory: checks that `req.user.role` matches
+ * at least one of the required roles. Must be used after `authenticate`.
+ */
+export function requireAnyRole(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.user?.role)) {
+            console.log(`Role check failed: Expected one of [${roles.join(", ")}], got ${req.user?.role} for ${req.method} ${req.originalUrl}`);
+            return res.status(403).json({ message: "forbidden" });
+        }
+        next();
+    };
+}
