@@ -834,9 +834,11 @@ export function FacultyDashboard({
                 questions={selectedPreviewTest.questions}
                 onSubmit={() => onNavigate('test-series')}
                 onExit={() => onNavigate('test-series')}
-                onSave={(testId, updatedQuestions) => {
-                  onUpdatePublishedTest(testId, {
-                    questions: updatedQuestions
+                onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                  await onUpdatePublishedTest(testId, {
+                    questions: updatedQuestions,
+                    title: updatedTitle,
+                    batches: updatedBatches
                   });
                 }}
                 isPreview={false}
