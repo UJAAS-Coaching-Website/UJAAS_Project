@@ -199,6 +199,48 @@ export function TestTaking({
     }
   };
 
+  // Delete an image from S3 and clear it from editForm state
+  const handleImageRemove = async (type: 'question' | 'option' | 'explanation', index?: number) => {
+    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+    let imageUrl: string | undefined;
+
+    if (type === 'question') imageUrl = editForm.questionImage;
+    else if (type === 'explanation') imageUrl = editForm.explanationImage;
+    else if (type === 'option' && index !== undefined) imageUrl = editForm.optionImages?.[index];
+
+    // Clear from state immediately for responsive UI
+    if (type === 'question') {
+      setEditForm(prev => ({ ...prev, questionImage: undefined }));
+    } else if (type === 'explanation') {
+      setEditForm(prev => ({ ...prev, explanationImage: undefined }));
+    } else if (type === 'option' && index !== undefined) {
+      setEditForm(prev => {
+        const newOptionImages = [...(prev.optionImages || [])];
+        newOptionImages[index] = undefined;
+        return { ...prev, optionImages: newOptionImages };
+      });
+    }
+
+    // Fire S3 delete in background (don't block UI)
+    console.log('[S3 Delete] imageUrl:', imageUrl);
+    if (imageUrl && imageUrl.startsWith('http')) {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl })
+        });
+        const result = await resp.json();
+        console.log('[S3 Delete] Response:', result);
+      } catch (err) {
+        console.warn('Failed to delete image from S3:', err);
+      }
+    } else {
+      console.log('[S3 Delete] Skipped — not an HTTP URL');
+    }
+  };
+
   useEffect(() => {
     if (isAnyPreview) return;
 
@@ -567,7 +609,7 @@ export function TestTaking({
                             </div>
                           </label>
                           {editForm.questionImage && (
-                            <button onClick={() => setEditForm({ ...editForm, questionImage: undefined })} className="text-xs text-red-600 font-bold hover:underline">Remove Image</button>
+                            <button onClick={() => handleImageRemove('question')} className="text-xs text-red-600 font-bold hover:underline">Remove Image</button>
                           )}
                         </div>
 
@@ -603,6 +645,24 @@ export function TestTaking({
                                     className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-blue-500"
                                     placeholder={`Option ${idx + 1}`}
                                   />
+                                  {/* Option Image Controls */}
+                                  <div className="flex items-center gap-3">
+                                    <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'option', idx)} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
+                                      <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg border border-gray-200 font-bold text-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors">
+                                        {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-3.5 h-3.5" />}
+                                        {isUploadingImage ? 'Uploading...' : editForm.optionImages?.[idx] ? 'Change' : 'Image'}
+                                      </div>
+                                    </label>
+                                    {editForm.optionImages?.[idx] && (
+                                      <button onClick={() => handleImageRemove('option', idx)} className="text-[10px] text-red-600 font-bold hover:underline">Remove</button>
+                                    )}
+                                  </div>
+                                  {editForm.optionImages?.[idx] && (
+                                    <div className="rounded-lg overflow-hidden border border-gray-100 inline-block">
+                                      <img src={editForm.optionImages[idx]} alt={`Option ${idx + 1}`} className="max-h-24 w-auto object-contain" />
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -641,7 +701,7 @@ export function TestTaking({
                             </div>
                           </label>
                           {editForm.explanationImage && (
-                            <button onClick={() => setEditForm({ ...editForm, explanationImage: undefined })} className="text-[10px] text-red-600 font-bold hover:underline">Remove</button>
+                            <button onClick={() => handleImageRemove('explanation')} className="text-[10px] text-red-600 font-bold hover:underline">Remove</button>
                           )}
                         </div>
                       </div>

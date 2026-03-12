@@ -1,4 +1,5 @@
 import { getAllTests, getTestById, createTest, updateTestStatus, updateTest, deleteTest } from "../services/testService.js";
+import { deleteAllImagesForContext } from "../services/storageService.js";
 
 export async function listTests(req, res) {
     try {
@@ -110,7 +111,12 @@ export async function handleUpdateTestStatus(req, res) {
 
 export async function handleDeleteTest(req, res) {
     try {
-        const deleted = await deleteTest(req.params.id);
+        const testId = req.params.id;
+
+        // Clean up all S3 images for this test before deleting from DB
+        await deleteAllImagesForContext('tests', testId);
+
+        const deleted = await deleteTest(testId);
         if (!deleted) {
             return res.status(404).json({ message: "test not found" });
         }

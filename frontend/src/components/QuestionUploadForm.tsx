@@ -21,6 +21,7 @@ export interface Question {
   subject?: string;
   explanation?: string;
   explanationImage?: string;
+  difficulty?: string;
 }
 
 interface QuestionUploadFormProps {
@@ -62,6 +63,8 @@ export function QuestionUploadForm({
     negativeMarks: defaultNegativeMarks,
     subject: fixedSubject || subjects[0] || ''
   });
+  
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Update effect if fixed props change or editingQuestion changes
   useEffect(() => {
@@ -85,23 +88,96 @@ export function QuestionUploadForm({
     }
   }, [fixedType, defaultMarks, defaultNegativeMarks, fixedSubject, editingQuestion]);
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (type === 'question') {
-          setCurrentQuestion({ ...currentQuestion, questionImage: result });
-        } else if (type === 'explanation') {
-          setCurrentQuestion({ ...currentQuestion, explanationImage: result });
-        } else if (type === 'option' && index !== undefined) {
-          const newOptionImages = [...(currentQuestion.optionImages || [])];
-          newOptionImages[index] = result;
-          setCurrentQuestion({ ...currentQuestion, optionImages: newOptionImages });
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const context = window.location.pathname.includes('dpps') ? 'dpps' : 'tests';
+      formData.append('context', context);
+      
+      // QuestionUploadForm is often used during creation.
+      // If we don't have a testId in the URL, provide a temporary collision-resistant one
+      const pathSegments = window.location.pathname.split('/');
+      const contextId = pathSegments[pathSegments.length - 1] || Date.now().toString();
+      formData.append('contextId', contextId);
+      formData.append('itemRole', type);
+
+      const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+      
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || 'Image upload failed');
+      }
+
+      const imageUrl = data.imageUrl;
+
+      if (type === 'question') {
+        setCurrentQuestion(prev => ({ ...prev, questionImage: imageUrl }));
+      } else if (type === 'explanation') {
+        setCurrentQuestion(prev => ({ ...prev, explanationImage: imageUrl }));
+      } else if (type === 'option' && index !== undefined) {
+        setCurrentQuestion(prev => {
+          const newOptionImages = [...(prev.optionImages || [])];
+          newOptionImages[index] = imageUrl;
+          return { ...prev, optionImages: newOptionImages };
+        });
+      }
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      alert(error.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Delete an image from S3 and clear it from state
+  const handleImageRemove = async (type: 'question' | 'option' | 'explanation', index?: number) => {
+    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+    let imageUrl: string | undefined;
+
+    if (type === 'question') imageUrl = currentQuestion.questionImage;
+    else if (type === 'explanation') imageUrl = currentQuestion.explanationImage;
+    else if (type === 'option' && index !== undefined) imageUrl = currentQuestion.optionImages?.[index];
+
+    // Clear from state immediately
+    if (type === 'question') {
+      setCurrentQuestion(prev => ({ ...prev, questionImage: undefined }));
+    } else if (type === 'explanation') {
+      setCurrentQuestion(prev => ({ ...prev, explanationImage: undefined }));
+    } else if (type === 'option' && index !== undefined) {
+      setCurrentQuestion(prev => {
+        const newOptionImages = [...(prev.optionImages || [])];
+        newOptionImages[index] = undefined;
+        return { ...prev, optionImages: newOptionImages };
+      });
+    }
+
+    // Fire S3 delete in background
+    if (imageUrl && imageUrl.startsWith('http')) {
+      try {
+        await fetch(`${API_BASE_URL}/api/upload`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl })
+        });
+      } catch (err) {
+        console.warn('Failed to delete image from S3:', err);
+      }
     }
   };
 
@@ -254,12 +330,13 @@ export function QuestionUploadForm({
               <input
                 type="file"
                 accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 onChange={(e) => handleImageUpload(e, 'question')}
+                disabled={isUploadingImage}
               />
-              <button type="button" className="p-1.5 text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors border border-cyan-100 flex items-center gap-1.5 text-xs font-bold">
-                <ImageIcon className="w-4 h-4" />
-                Upload Image
+              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingImage ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-cyan-600 border-cyan-100 hover:bg-cyan-50'}`}>
+                {isUploadingImage ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                {isUploadingImage ? 'Uploading...' : 'Upload Image'}
               </button>
             </div>
           </label>
@@ -275,7 +352,7 @@ export function QuestionUploadForm({
               <div className="mt-2 relative inline-block">
                 <img src={currentQuestion.questionImage} alt="Question" className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm" />
                 <button 
-                  onClick={() => setCurrentQuestion({ ...currentQuestion, questionImage: undefined })}
+                  onClick={() => handleImageRemove('question')}
                   className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
                 >
                   <X className="w-3 h-3" />
@@ -297,10 +374,15 @@ export function QuestionUploadForm({
                         <input
                           type="file"
                           accept="image/*"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                           onChange={(e) => handleImageUpload(e, 'option', index)}
+                          disabled={isUploadingImage}
                         />
-                        <ImageIcon className="w-4 h-4 text-gray-400 hover:text-cyan-600 cursor-pointer transition-colors" />
+                        {isUploadingImage ? (
+                           <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"/>
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-gray-400 hover:text-cyan-600 cursor-pointer transition-colors" />
+                        )}
                       </div>
                     </span>
                     {currentQuestion.type === 'MCQ' ? (
@@ -349,11 +431,7 @@ export function QuestionUploadForm({
                       <div className="relative inline-block self-start">
                         <img src={currentQuestion.optionImages[index]} alt={`Option ${index}`} className="h-16 w-auto rounded-lg border border-gray-200 shadow-sm" />
                         <button 
-                          onClick={() => {
-                            const newImgs = [...(currentQuestion.optionImages || [])];
-                            newImgs[index] = undefined;
-                            setCurrentQuestion({ ...currentQuestion, optionImages: newImgs });
-                          }}
+                          onClick={() => handleImageRemove('option', index)}
                           className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 scale-75"
                         >
                           <X className="w-3 h-3" />
@@ -387,12 +465,13 @@ export function QuestionUploadForm({
               <input
                 type="file"
                 accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 onChange={(e) => handleImageUpload(e, 'explanation')}
+                disabled={isUploadingImage}
               />
-              <button type="button" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100 flex items-center gap-1.5 text-xs font-bold">
-                <ImageIcon className="w-4 h-4" />
-                Add Solution Image
+              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingImage ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-blue-600 border-blue-100 hover:bg-blue-50'}`}>
+                {isUploadingImage ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                {isUploadingImage ? 'Uploading...' : 'Add Solution Image'}
               </button>
             </div>
           </label>
@@ -406,8 +485,8 @@ export function QuestionUploadForm({
           {currentQuestion.explanationImage && (
             <div className="relative inline-block">
               <img src={currentQuestion.explanationImage} alt="Solution" className="h-24 w-auto rounded-lg border border-gray-200 shadow-sm" />
-              <button 
-                onClick={() => setCurrentQuestion({ ...currentQuestion, explanationImage: undefined })}
+               <button 
+                onClick={() => handleImageRemove('explanation')}
                 className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
               >
                 <X className="w-3 h-3" />
@@ -419,7 +498,8 @@ export function QuestionUploadForm({
         <div className="pt-4 flex items-center gap-3">
           <motion.button
             onClick={handleAdd}
-            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-amber-600 to-orange-600' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all`}
+            disabled={isUploadingImage}
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-amber-600 to-orange-600' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
           >
             {editingQuestion ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             {editingQuestion ? 'Update Question' : buttonLabel}

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadImageToStorage } from '../services/storageService.js';
+import { uploadImageToStorage, deleteImageFromStorage } from '../services/storageService.js';
 import { authenticate, requireAnyRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -50,6 +50,24 @@ router.post('/', authenticate, requireAnyRole('admin', 'faculty'), upload.single
   } catch (error) {
     console.error('Upload route error:', error);
     res.status(500).json({ status: 'error', message: error.message || 'Internal server error during upload.' });
+  }
+});
+
+// Delete an image from S3
+router.delete('/', authenticate, requireAnyRole('admin', 'faculty'), async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({ status: 'error', message: 'No imageUrl provided.' });
+    }
+
+    await deleteImageFromStorage(imageUrl);
+
+    res.status(200).json({ status: 'success', message: 'Image deleted successfully.' });
+  } catch (error) {
+    console.error('Delete route error:', error);
+    res.status(500).json({ status: 'error', message: error.message || 'Failed to delete image.' });
   }
 });
 
