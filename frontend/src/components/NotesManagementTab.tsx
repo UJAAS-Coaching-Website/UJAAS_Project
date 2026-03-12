@@ -290,15 +290,15 @@ export function NotesManagementTab({
                 )}
               </>
             )}
-            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Plus className="w-4 h-4" />Add Chapter</button>)}
+            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
             {currentView === 'chapter' && canEdit && (
               <div className="flex items-center gap-3">
                 <button onClick={() => {
                   localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
                   localStorage.setItem('uploadTargetChapterName', selectedChapterObj!.name);
                   onNavigate('upload-notes');
-                }} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Upload className="w-4 h-4" />Upload Notes</button>
-                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold text-sm"><Plus className="w-4 h-4" />Create DPP</button>
+                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
+                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
               </div>
             )}
           </div>
