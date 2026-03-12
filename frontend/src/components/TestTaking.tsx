@@ -81,6 +81,7 @@ export function TestTaking({
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
@@ -144,23 +145,57 @@ export function TestTaking({
     }
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (type === 'question') {
-          setEditForm({ ...editForm, questionImage: result });
-        } else if (type === 'explanation') {
-          setEditForm({ ...editForm, explanationImage: result });
-        } else if (type === 'option' && index !== undefined) {
-          const newOptionImages = [...(editForm.optionImages || [])];
-          newOptionImages[index] = result;
-          setEditForm({ ...editForm, optionImages: newOptionImages });
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Use 'dpps' if the URL implies a DPP flow, otherwise 'tests'
+      const context = window.location.pathname.includes('dpps') ? 'dpps' : 'tests';
+      formData.append('context', context);
+      formData.append('contextId', testId);
+      formData.append('itemRole', type);
+
+      const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+      
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        credentials: 'include', // Important for HTTP-only cookie auth
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || 'Image upload failed');
+      }
+
+      // Success, assign the URL to the correct property
+      const imageUrl = data.imageUrl;
+
+      if (type === 'question') {
+        setEditForm(prev => ({ ...prev, questionImage: imageUrl }));
+      } else if (type === 'explanation') {
+        setEditForm(prev => ({ ...prev, explanationImage: imageUrl }));
+      } else if (type === 'option' && index !== undefined) {
+        setEditForm(prev => {
+          const newOptionImages = [...(prev.optionImages || [])];
+          newOptionImages[index] = imageUrl;
+          return { ...prev, optionImages: newOptionImages };
+        });
+      }
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      alert(error.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      // Clear the input so the same file can be selected again if needed
+      e.target.value = '';
     }
   };
 
@@ -524,10 +559,11 @@ export function TestTaking({
                         </label>
 
                         <div className="flex items-center gap-4">
-                          <label className="relative cursor-pointer">
-                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'question')} className="absolute inset-0 opacity-0" />
+                          <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'question')} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
                             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-sm">
-                              <ImageIcon className="w-4 h-4" /> {editForm.questionImage ? 'Change Image' : 'Add Image'}
+                              {isUploadingImage ? <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                              {isUploadingImage ? 'Uploading...' : editForm.questionImage ? 'Change Image' : 'Add Image'}
                             </div>
                           </label>
                           {editForm.questionImage && (
@@ -597,10 +633,11 @@ export function TestTaking({
                       <div className="flex items-center justify-between mb-2">
                         <span className="block text-sm font-bold text-gray-700">Explanation</span>
                         <div className="flex items-center gap-4">
-                          <label className="relative cursor-pointer">
-                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'explanation')} className="absolute inset-0 opacity-0" />
+                          <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'explanation')} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
                             <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-xs">
-                              <ImageIcon className="w-3.5 h-3.5" /> {editForm.explanationImage ? 'Change Solution Image' : 'Add Solution Image'}
+                              {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-3.5 h-3.5" />}
+                              {isUploadingImage ? 'Uploading...' : editForm.explanationImage ? 'Change Solution Image' : 'Add Solution Image'}
                             </div>
                           </label>
                           {editForm.explanationImage && (
@@ -626,7 +663,8 @@ export function TestTaking({
                   <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
                     <button
                       onClick={handleSaveEdit}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all"
+                      disabled={isUploadingImage}
+                      className={`flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r ${isUploadingImage ? 'from-gray-400 to-gray-500 cursor-not-allowed' : 'from-blue-600 to-indigo-600 hover:shadow-lg'} text-white rounded-xl font-bold shadow-md transition-all`}
                     >
                       <Check className="w-4 h-4" /> {isFacultyPreview ? 'Confirm Explanation' : 'Save Changes'}
                     </button>
