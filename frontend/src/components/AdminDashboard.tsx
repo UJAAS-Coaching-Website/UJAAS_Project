@@ -83,6 +83,10 @@ interface AdminDashboardProps {
   onUpdateQueries: (queries: import('../App').LandingQuery[]) => void;
   publishedTests: import('../App').PublishedTest[];
   onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'>) => void;
+  onSaveDraft: (test: Omit<import('../App').PublishedTest, 'id' | 'status'> & { id?: string }) => Promise<string>;
+  resumeDraftId: string | null;
+  onClearResumeDraft: () => void;
+  onResumeDraft: (testId: string) => void;
   onPreviewTest: (testId: string) => void;
   onUpdatePublishedTest: (testId: string, updates: Partial<import('../App').PublishedTest>) => void;
   onDeletePublishedTest: (testId: string) => void;
@@ -275,6 +279,10 @@ export function AdminDashboard({
   onUpdateQueries,
   publishedTests,
   onPublishTest,
+  onSaveDraft,
+  resumeDraftId,
+  onClearResumeDraft,
+  onResumeDraft,
   onPreviewTest,
   onUpdatePublishedTest,
   onDeletePublishedTest,
@@ -705,7 +713,13 @@ export function AdminDashboard({
         >
           {/* Layered Rendering Logic */}
           {activeTab === 'create-test' ? (
-            <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} onPublish={onPublishTest} />
+            <CreateTestSeries
+              onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
+              batches={batches}
+              onPublish={onPublishTest}
+              onSaveDraft={onSaveDraft}
+              resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
+            />
           ) : performanceInsightsTestId ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
               {(() => {
@@ -794,6 +808,7 @@ export function AdminDashboard({
                   onPreviewTest={onPreviewTest}
                   onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
                   onDeletePublishedTest={onDeletePublishedTest}
+                  onResumeDraft={onResumeDraft}
                 />
               )}
               {adminSection === 'queries' && (
@@ -2135,7 +2150,8 @@ function TestSeriesManagementTab({
   publishedTests,
   onPreviewTest,
   onViewInsights,
-  onDeletePublishedTest
+  onDeletePublishedTest,
+  onResumeDraft
 }: {
   onNavigate: (t: Tab) => void;
   selectedBatch: Batch | null;
@@ -2144,6 +2160,7 @@ function TestSeriesManagementTab({
   onPreviewTest: (testId: string) => void;
   onViewInsights: (testId: string) => void;
   onDeletePublishedTest: (testId: string) => void;
+  onResumeDraft: (testId: string) => void;
 }) {
   const handleDelete = (testId: string, testTitle: string) => {
     if (window.confirm(`Are you sure you want to delete the test series "${testTitle}"? This action cannot be undone.`)) {
@@ -2161,14 +2178,17 @@ function TestSeriesManagementTab({
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {publishedTests.map((test) => (
+            <div key={test.id}>
             <div
-              key={test.id}
-              onClick={() => onViewInsights(test.id)}
-              className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative cursor-pointer hover:shadow-2xl hover:scale-[1.02] transition-all"
+              onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
+              className={`bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
                 <div className="flex items-center gap-2">
+                  {test.status === 'draft' && (
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200">Draft</span>
+                  )}
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
                     test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                     }`}>{test.format}</span>
@@ -2183,25 +2203,39 @@ function TestSeriesManagementTab({
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
               <div className="space-y-2 mb-6 flex-1">
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{new Date(test.scheduleDate).toLocaleDateString()} at {test.scheduleTime}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{test.scheduleDate ? new Date(test.scheduleDate).toLocaleDateString() : 'No date'} {test.scheduleTime ? `at ${test.scheduleTime}` : ''}</div>
                 <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ')}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
+                {test.status === 'draft' && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
+                )}
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
-                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-                >
-                  <Eye className="w-4 h-4" /> Preview
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
-                  className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <BarChart3 className="w-4 h-4" /> Performance
-                </button>
-
+                {test.status === 'draft' ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
+                    className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" /> Resume Editing
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
+                      className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" /> Preview
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
+                      className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <BarChart3 className="w-4 h-4" /> Performance
+                    </button>
+                  </>
+                )}
               </div>
+            </div>
             </div>
           ))}
         </div>

@@ -93,10 +93,10 @@ export async function createTest({
 
         // Insert test
         const testResult = await client.query(
-            `INSERT INTO tests (title, format, duration_minutes, total_marks, scheduled_at, schedule_time, instructions, status, created_by)
-             VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, $7, $8, $9)
+            `INSERT INTO tests (title, format, duration_minutes, duration_mins, total_marks, scheduled_at, schedule_time, instructions, status, created_by)
+             VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, $7, $8, $9, $10)
              RETURNING id`,
-            [title, format, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, status || 'upcoming', createdBy || null]
+            [title, format, durationMinutes, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, status || 'upcoming', createdBy || null]
         );
         const testId = testResult.rows[0].id;
 
@@ -115,17 +115,18 @@ export async function createTest({
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
                 await client.query(
-                    `INSERT INTO questions (test_id, subject, section, type, question_text, question_img, options, option_imgs, correct_ans, marks, neg_marks, explanation, explanation_img, order_index, difficulty)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+                    `INSERT INTO questions (test_id, subject, section, type, question_text, question_img, options, option_imgs, correct_ans, correct_answer, marks, neg_marks, explanation, explanation_img, order_index, difficulty)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
                     [
                         testId,
-                        q.subject || null,
+                        q.subject || "General",
                         q.section || q.metadata?.section || null,
                         q.type || 'MCQ',
                         q.question || q.question_text || '',
                         q.questionImage || q.question_img || null,
                         q.options ? JSON.stringify(q.options) : null,
                         q.optionImages ? JSON.stringify(q.optionImages) : null,
+                        String(q.correctAnswer ?? q.correct_answer ?? ''),
                         String(q.correctAnswer ?? q.correct_answer ?? ''),
                         q.marks ?? 4,
                         q.negativeMarks ?? q.neg_marks ?? 0,
@@ -175,10 +176,10 @@ export async function updateTest(id, {
         // Update test details
         await client.query(
             `UPDATE tests 
-             SET title = $1, format = $2, duration_minutes = $3, total_marks = $4, 
-                 scheduled_at = NULLIF($5, '')::date, schedule_time = $6, instructions = $7
-             WHERE id = $8`,
-            [title, format, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, id]
+             SET title = $1, format = $2, duration_minutes = $3, duration_mins = $4, total_marks = $5, 
+                 scheduled_at = NULLIF($6, '')::date, schedule_time = $7, instructions = $8
+             WHERE id = $9`,
+            [title, format, durationMinutes, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, id]
         );
 
         // Update batch assignments (delete and recreate)
@@ -200,19 +201,20 @@ export async function updateTest(id, {
                 await client.query(
                     `INSERT INTO questions (
                         id, test_id, subject, section, type, question_text, question_img, 
-                        options, option_imgs, correct_ans, marks, neg_marks, 
+                        options, option_imgs, correct_ans, correct_answer, marks, neg_marks, 
                         explanation, explanation_img, order_index, difficulty
-                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
                     [
                         q.id || undefined, // use existing ID if present
                         id,
-                        q.subject || null,
+                        q.subject || "General",
                         q.section || q.metadata?.section || null,
                         q.type || 'MCQ',
                         q.question || q.question_text || '',
                         q.questionImage || q.question_img || null,
                         q.options ? JSON.stringify(q.options) : null,
                         q.optionImages ? JSON.stringify(q.optionImages) : null,
+                        String(q.correctAnswer ?? q.correct_answer ?? ''),
                         String(q.correctAnswer ?? q.correct_answer ?? ''),
                         q.marks ?? 4,
                         q.negativeMarks ?? q.neg_marks ?? 0,

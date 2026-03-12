@@ -25,10 +25,14 @@ interface CreateTestSeriesProps {
   onBack: () => void;
   batches: BatchInfo[];
   onPublish?: (test: any) => Promise<void> | void;
+  onSaveDraft?: (test: any) => Promise<string>;
+  resumeTest?: import('../App').PublishedTest;
 }
 
-export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSeriesProps) {
+export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resumeTest }: CreateTestSeriesProps) {
   const [step, setStep] = useState(1);
+  const [draftId, setDraftId] = useState<string | null>(resumeTest?.id || null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [testData, setTestData] = useState({
     title: '',
     format: 'JEE MAIN' as 'JEE MAIN' | 'NEET' | 'Custom',
@@ -46,6 +50,28 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+
+  // Resume from draft: pre-populate data
+  useEffect(() => {
+    if (resumeTest) {
+      setTestData({
+        title: resumeTest.title || '',
+        format: (resumeTest.format || 'Custom') as any,
+        selectedBatches: resumeTest.batches || [],
+        duration: resumeTest.duration || 180,
+        totalMarks: resumeTest.totalMarks || 300,
+        passingMarks: 120,
+        scheduleDate: resumeTest.scheduleDate || '',
+        scheduleTime: resumeTest.scheduleTime || '09:00',
+        instructions: resumeTest.instructions || ''
+      });
+      setQuestions(resumeTest.questions || []);
+      // Jump to step 2 if config is already filled
+      if (resumeTest.title && resumeTest.batches?.length) {
+        setStep(2);
+      }
+    }
+  }, []);
 
   const handleEditClick = (q: Question) => {
     setEditingQuestion(q);
@@ -218,6 +244,7 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
       setIsPublishing(true);
       try {
         await onPublish({
+          id: draftId || undefined,
           title: testData.title,
           format: testData.format,
           batches: testData.selectedBatches,
@@ -233,7 +260,6 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
           onBack();
         }, 2000);
       } catch (error) {
-        // Error is handled by the toast in App.tsx
         console.error("Failed to publish test:", error);
       } finally {
         setIsPublishing(false);
@@ -243,6 +269,30 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
       setTimeout(() => {
         onBack();
       }, 2000);
+    }
+  };
+
+  const handleSaveDraftClick = async () => {
+    if (!onSaveDraft) return;
+    setIsSavingDraft(true);
+    try {
+      const newId = await onSaveDraft({
+        id: draftId || undefined,
+        title: testData.title || 'Untitled Draft',
+        format: testData.format,
+        batches: testData.selectedBatches,
+        duration: testData.duration,
+        totalMarks: testData.totalMarks,
+        scheduleDate: testData.scheduleDate,
+        scheduleTime: testData.scheduleTime,
+        questions: questions,
+        instructions: testData.instructions
+      });
+      if (newId) setDraftId(newId);
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -682,17 +732,33 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                 >
                   Previous
                 </button>
-                <div className="flex flex-col items-end gap-2">
-                  <motion.button
-                    onClick={() => isStep2Valid && setStep(3)}
-                    disabled={!isStep2Valid}
-                    className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Review & Publish
-                  </motion.button>
-                  <p className="text-xs text-gray-500 font-medium">
-                    Total: {questions.length} / {getRequiredCount()} questions added
-                  </p>
+                <div className="flex items-center gap-3">
+                  {onSaveDraft && (
+                    <motion.button
+                      onClick={handleSaveDraftClick}
+                      disabled={isSavingDraft}
+                      className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
+                    >
+                      {isSavingDraft ? (
+                        <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
+                      {isSavingDraft ? 'Saving...' : draftId ? 'Update Draft' : 'Save as Draft'}
+                    </motion.button>
+                  )}
+                  <div className="flex flex-col items-end gap-2">
+                    <motion.button
+                      onClick={() => isStep2Valid && setStep(3)}
+                      disabled={!isStep2Valid}
+                      className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Review & Publish
+                    </motion.button>
+                    <p className="text-xs text-gray-500 font-medium">
+                      Total: {questions.length} / {getRequiredCount()} questions added
+                    </p>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -763,14 +829,30 @@ export function CreateTestSeries({ onBack, batches, onPublish }: CreateTestSerie
                   >
                     Previous
                   </button>
-                  <motion.button
-                    onClick={handleSubmit}
-                    disabled={isPublishing}
-                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                    Publish Test Series
-                  </motion.button>
+                  <div className="flex items-center gap-3">
+                    {onSaveDraft && (
+                      <motion.button
+                        onClick={handleSaveDraftClick}
+                        disabled={isSavingDraft}
+                        className="px-6 py-3 bg-amber-100 text-amber-700 rounded-xl font-semibold border border-amber-200 hover:bg-amber-200 transition-all disabled:opacity-60 flex items-center gap-2"
+                      >
+                        {isSavingDraft ? (
+                          <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                        {isSavingDraft ? 'Saving...' : draftId ? 'Update Draft' : 'Save as Draft'}
+                      </motion.button>
+                    )}
+                    <motion.button
+                      onClick={handleSubmit}
+                      disabled={isPublishing}
+                      className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-70"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      Publish Test Series
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </motion.div>

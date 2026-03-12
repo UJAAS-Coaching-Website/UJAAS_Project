@@ -57,7 +57,7 @@ export interface ApiTest {
     schedule_date: string | null;
     schedule_time: string | null;
     instructions: string | null;
-    status: 'upcoming' | 'live' | 'completed';
+    status: 'draft' | 'upcoming' | 'live' | 'completed';
     created_by: string | null;
     question_count: number;
     batches: ApiTestBatch[];
@@ -74,6 +74,7 @@ export interface CreateTestPayload {
     instructions?: string;
     batchIds: string[];
     questions: any[];
+    status?: 'draft' | 'upcoming';
 }
 
 // ── API Functions ──────────────────────────────────
@@ -100,7 +101,7 @@ export async function updateTestApi(id: string, data: Partial<CreateTestPayload>
     });
 }
 
-export async function updateTestStatus(id: string, status: 'upcoming' | 'live' | 'completed'): Promise<ApiTest> {
+export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' | 'live' | 'completed'): Promise<ApiTest> {
     return request<ApiTest>(`/api/tests/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),

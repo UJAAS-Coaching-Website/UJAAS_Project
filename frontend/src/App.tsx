@@ -115,7 +115,7 @@ export interface PublishedTest {
   scheduleTime: string;
   questions: any[];
   instructions?: string;
-  status: 'upcoming' | 'live' | 'completed';
+  status: 'draft' | 'upcoming' | 'live' | 'completed';
 }
 
 export const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
@@ -403,30 +403,101 @@ function App() {
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 
-  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'>) => {
+  const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
     showBatchToast('saving', 'Publishing test to database...');
     try {
-      // Map batch names to batch IDs
       const batchIds = adminBatches
         .filter(b => test.batches.includes(b.label))
         .map(b => b.id)
         .filter(Boolean) as string[];
 
-      const apiTest = await apiCreateTest({
-        title: test.title,
-        format: test.format,
-        durationMinutes: test.duration,
-        totalMarks: test.totalMarks,
-        scheduleDate: test.scheduleDate,
-        scheduleTime: test.scheduleTime,
-        instructions: test.instructions,
-        batchIds,
-        questions: test.questions,
-      });
-      setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
+      if (test.id) {
+        // Publishing from an existing draft — update it and change status
+        await updateTestApi(test.id, {
+          title: test.title,
+          format: test.format,
+          durationMinutes: test.duration,
+          totalMarks: test.totalMarks,
+          scheduleDate: test.scheduleDate,
+          scheduleTime: test.scheduleTime,
+          instructions: test.instructions,
+          batchIds,
+          questions: test.questions,
+        });
+        await apiUpdateTestStatus(test.id, 'upcoming');
+        const updatedApiTest = await apiFetchTestById(test.id);
+        setPublishedTests(prev => prev.map(t => t.id === test.id ? apiTestToPublished(updatedApiTest) : t));
+      } else {
+        // Fresh publish
+        const apiTest = await apiCreateTest({
+          title: test.title,
+          format: test.format,
+          durationMinutes: test.duration,
+          totalMarks: test.totalMarks,
+          scheduleDate: test.scheduleDate,
+          scheduleTime: test.scheduleTime,
+          instructions: test.instructions,
+          batchIds,
+          questions: test.questions,
+        });
+        setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
+      }
+
+      setResumeDraftId(null);
       showBatchToast('saved', 'Test published successfully');
     } catch (err: any) {
       showBatchToast('error', err.message || 'Failed to publish test');
+      throw err;
+    }
+  };
+
+  const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
+
+  const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
+    showBatchToast('saving', 'Saving draft...');
+    try {
+      const batchIds = adminBatches
+        .filter(b => test.batches.includes(b.label))
+        .map(b => b.id)
+        .filter(Boolean) as string[];
+
+      if (test.id) {
+        // Update existing draft
+        await updateTestApi(test.id, {
+          title: test.title,
+          format: test.format,
+          durationMinutes: test.duration,
+          totalMarks: test.totalMarks,
+          scheduleDate: test.scheduleDate,
+          scheduleTime: test.scheduleTime,
+          instructions: test.instructions,
+          batchIds,
+          questions: test.questions,
+        });
+        const updatedApiTest = await apiFetchTestById(test.id);
+        setPublishedTests(prev => prev.map(t => t.id === test.id ? apiTestToPublished(updatedApiTest) : t));
+        showBatchToast('saved', 'Draft saved successfully');
+        return test.id;
+      } else {
+        // Create new draft
+        const apiTest = await apiCreateTest({
+          title: test.title || 'Untitled Draft',
+          format: test.format,
+          durationMinutes: test.duration,
+          totalMarks: test.totalMarks,
+          scheduleDate: test.scheduleDate,
+          scheduleTime: test.scheduleTime,
+          instructions: test.instructions,
+          batchIds,
+          questions: test.questions,
+          status: 'draft',
+        } as any);
+        setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
+        showBatchToast('saved', 'Draft saved successfully');
+        return apiTest.id;
+      }
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to save draft');
       throw err;
     }
   };
@@ -1353,6 +1424,10 @@ function App() {
               onUpdateQueries={handleUpdateQueries}
               publishedTests={publishedTests}
               onPublishTest={handlePublishTest}
+              onSaveDraft={handleSaveDraft}
+              resumeDraftId={resumeDraftId}
+              onClearResumeDraft={() => setResumeDraftId(null)}
+              onResumeDraft={(testId: string) => { setResumeDraftId(testId); setActiveTab('create-test' as any); }}
               onPreviewTest={handlePreviewTest}
               onUpdatePublishedTest={updatePublishedTest}
               onDeletePublishedTest={handleDeletePublishedTest}

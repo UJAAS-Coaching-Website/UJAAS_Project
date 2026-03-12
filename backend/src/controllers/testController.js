@@ -3,7 +3,11 @@ import { deleteAllImagesForContext } from "../services/storageService.js";
 
 export async function listTests(req, res) {
     try {
-        const tests = await getAllTests();
+        let tests = await getAllTests();
+        // Only admins can see drafts
+        if (req.user?.role !== 'admin') {
+            tests = tests.filter(t => t.status !== 'draft');
+        }
         return res.status(200).json(tests);
     } catch (error) {
         console.error("listTests error:", error.message);
@@ -17,6 +21,12 @@ export async function getTest(req, res) {
         if (!test) {
             return res.status(404).json({ message: "test not found" });
         }
+        
+        // Only admins can see drafts
+        if (test.status === 'draft' && req.user?.role !== 'admin') {
+            return res.status(403).json({ message: "forbidden: draft tests only visible to admin" });
+        }
+
         return res.status(200).json(test);
     } catch (error) {
         console.error("getTest error:", error.message);
@@ -29,7 +39,7 @@ export async function handleCreateTest(req, res) {
         const {
             title, format, durationMinutes, totalMarks,
             scheduleDate, scheduleTime, instructions,
-            batchIds, questions
+            status, batchIds, questions
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -44,7 +54,7 @@ export async function handleCreateTest(req, res) {
             scheduleDate,
             scheduleTime,
             instructions,
-            status: 'upcoming',
+            status: status || 'upcoming',
             batchIds,
             questions,
             createdBy: req.user?.id || null,
@@ -95,7 +105,7 @@ export async function handleUpdateTest(req, res) {
 export async function handleUpdateTestStatus(req, res) {
     try {
         const { status } = req.body;
-        if (!['upcoming', 'live', 'completed'].includes(status)) {
+        if (!['draft', 'upcoming', 'live', 'completed'].includes(status)) {
             return res.status(400).json({ message: "invalid status" });
         }
         const test = await updateTestStatus(req.params.id, status);
