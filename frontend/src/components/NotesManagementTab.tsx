@@ -373,8 +373,8 @@ export function NotesManagementTab({
 
       {/* Subject View: Chapter List */}
       {currentView === 'subject' && selectedSubject && (
-        <div className={variant === 'admin' ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
-          {variant === 'admin' && apiChapters.length > 0 && (
+        <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
+          {(variant === 'admin' || variant === 'faculty') && apiChapters.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -420,7 +420,7 @@ export function NotesManagementTab({
             </div>
           )}
 
-          {variant !== 'admin' && apiChapters.map((chapter, index) => (
+          {variant === 'student' && apiChapters.map((chapter, index) => (
             <motion.div
               key={chapter.id}
               initial={{ opacity: 0, x: -10 }}
@@ -480,9 +480,9 @@ export function NotesManagementTab({
             ))}
           </div>
 
-          <div className={variant === 'admin' ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
+          <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
             {activeContentType === 'notes' ? (
-              variant === 'admin' && apiNotes.length > 0 ? (
+              (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
