@@ -1604,15 +1604,17 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {sortedBatches.map((batch) => (
-        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'}`}>
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg mb-6 ${batch.is_active === false ? 'bg-gray-400' : 'bg-gradient-to-br from-cyan-600 to-blue-600 group-hover:scale-110 transition-transform'}`}>
-            <BookOpen className="w-7 h-7 text-white" />
+        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}>
+          <div className="flex-1">
+            <div className="mb-1">
+              <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
+              {batch.label}
+              {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
+            </h3>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-between">
-            {batch.label}
-            {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
-          </h3>
-          <p className="text-gray-500 text-sm">View and manage this batch's academic progress</p>
+          <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
         </motion.button>
       ))}
       <motion.button onClick={onAddBatch} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group hover:bg-white/60 transition-colors">

@@ -270,14 +270,14 @@ export async function createBatchNotification(batchId, { title, message, type = 
         // Insert notifications for all students and faculty in the batch
         // We use an INSERT INTO ... SELECT to do this efficiently in one go
         await client.query(`
-            INSERT INTO notifications (user_id, title, message, type, icon)
-            SELECT p.user_id, $2, $3, $4, $5
+            INSERT INTO notifications (user_id, title, message, type)
+            SELECT p.user_id, $2, $3, $4
             FROM (
                 SELECT student_id AS user_id FROM student_batches WHERE batch_id = $1
                 UNION
                 SELECT faculty_id AS user_id FROM faculty_batches WHERE batch_id = $1
             ) p
-        `, [batchId, title, message, type, 'announcement']);
+        `, [batchId, title, message, type]);
 
         await client.query("COMMIT");
     } catch (error) {
