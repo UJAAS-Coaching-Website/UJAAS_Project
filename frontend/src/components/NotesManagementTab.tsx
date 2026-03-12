@@ -14,6 +14,28 @@ import { createBatchNotification } from '../api/batches';
 type Tab = any;
 type BatchInfo = any;
 
+const formatRelativeTime = (dateString: string) => {
+  if (!dateString) return 'Just now';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  }
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  const days = Math.floor(diffInSeconds / 86400);
+  if (days < 30) {
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  }
+  return date.toLocaleDateString();
+};
+
 interface NotesManagementTabProps {
   onNavigate: (t: Tab) => void;
   selectedBatch: string | null;
@@ -377,7 +399,7 @@ export function NotesManagementTab({
                           <span className="font-bold text-gray-900">{chapter.name}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">Just now</td>
+                      <td className="py-4 px-6 text-sm text-gray-500">{formatRelativeTime(chapter.created_at)}</td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
                           {canEdit && (
