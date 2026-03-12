@@ -143,3 +143,13 @@ export async function removeFacultyFromBatch(
         method: "DELETE",
     });
 }
+
+export async function createBatchNotification(
+    batchId: string,
+    data: { title: string; message: string; type?: string }
+): Promise<void> {
+    await request(`/api/batches/${batchId}/notifications`, {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}

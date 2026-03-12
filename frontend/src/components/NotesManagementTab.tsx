@@ -2,12 +2,13 @@ import { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus,
-  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen, X
+  Upload, Folder, Trash2, Download, FileText, ClipboardList, BookOpen, X, Megaphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
+import { createBatchNotification } from '../api/batches';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -71,8 +72,11 @@ export function NotesManagementTab({
   const [newChapterName, setNewChapterName] = useState('');
   const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
+  const [isUploadNoticeModalOpen, setIsUploadNoticeModalOpen] = useState(false);
+  const [noticeTitle, setNoticeTitle] = useState('');
+  const [noticeMessage, setNoticeMessage] = useState('');
 
-  useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen);
+  useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen || isUploadNoticeModalOpen);
 
   // canEdit is true if NOT readOnly AND (admin OR matching faculty subject)
   const canEdit = !readOnly && (variant === 'admin' || !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase()));
@@ -210,6 +214,29 @@ export function NotesManagementTab({
     }
   };
 
+  const handleUploadNotice = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!canEdit || !selectedBatch || !currentBatch) return;
+
+    const title = noticeTitle.trim();
+    const message = noticeMessage.trim();
+    if (!title || !message) {
+      toast.error('Please fill in both title and message.');
+      return;
+    }
+
+    try {
+      await createBatchNotification(currentBatch.id!, { title, message });
+      toast.success('Notice sent successfully to all users in this batch.');
+      setNoticeTitle('');
+      setNoticeMessage('');
+      setIsUploadNoticeModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to send notice.');
+    }
+  };
+
   const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
   const navigateToChapter = (chapter: ApiChapter) => { setSelectedChapterObj(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
   const goBack = () => { if (currentView === 'chapter') { setCurrentView('subject'); setSelectedChapterObj(null); } else if (currentView === 'subject') { setCurrentView('root'); setSelectedSubject(null); } };
@@ -248,9 +275,14 @@ export function NotesManagementTab({
                   <Calendar className="w-4 h-4" />Time Table
                 </button>
                 {variant === 'admin' && (
-                  <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
-                    <Plus className="w-4 h-4" />Add Subject
-                  </button>
+                  <>
+                    <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
+                      <Plus className="w-4 h-4" />Add Subject
+                    </button>
+                    <button onClick={() => setIsUploadNoticeModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-purple-50 text-purple-600 rounded-xl hover:bg-purple-100 transition font-bold shadow-sm text-sm">
+                      <Megaphone className="w-4 h-4" />Upload Notice
+                    </button>
+                  </>
                 )}
               </>
             )}
@@ -625,6 +657,78 @@ export function NotesManagementTab({
                     className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
                   >
                     Add Subject
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Upload Notice Modal */}
+      <AnimatePresence>
+        {isUploadNoticeModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-modal">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsUploadNoticeModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 leading-relaxed"
+            >
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Megaphone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Upload Notice</h3>
+                    <p className="text-purple-50 text-sm opacity-90">Send to all users in {selectedBatch}</p>
+                  </div>
+                </div>
+              </div>
+              <form onSubmit={handleUploadNotice} className="p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Notice Title</label>
+                  <input
+                    autoFocus
+                    type="text"
+                    required
+                    value={noticeTitle}
+                    onChange={(e) => setNoticeTitle(e.target.value)}
+                    placeholder="e.g., Important: Class Rescheduled"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">Message Content</label>
+                  <textarea
+                    required
+                    value={noticeMessage}
+                    onChange={(e) => setNoticeMessage(e.target.value)}
+                    placeholder="Type your notice message here..."
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 outline-none transition resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsUploadNoticeModalOpen(false)}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                  >
+                    Send Notice
                   </button>
                 </div>
               </form>

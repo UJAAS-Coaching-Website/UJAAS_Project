@@ -10,6 +10,7 @@ import {
     removeFacultyFromBatch,
     getBatchStudents,
     getBatchFaculty,
+    createBatchNotification,
 } from "../services/batchService.js";
 
 export async function listBatches(req, res) {
@@ -164,5 +165,19 @@ export async function handleGetBatchFaculty(req, res) {
     } catch (error) {
         console.error("getBatchFaculty error:", error.message);
         return res.status(500).json({ message: "failed to fetch batch faculty", error: error.message });
+    }
+}
+
+export async function handleCreateBatchNotification(req, res) {
+    try {
+        const { title, message, type } = req.body;
+        if (!title || !message) {
+            return res.status(400).json({ message: "notice title and message are required" });
+        }
+        await createBatchNotification(req.params.id, { title, message, type });
+        return res.status(201).json({ message: "notice sent successfully" });
+    } catch (error) {
+        console.error("createBatchNotification error:", error.message);
+        return res.status(500).json({ message: "failed to send notice", error: error.message });
     }
 }
