@@ -270,6 +270,13 @@ export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' 
     });
 }
 
+export async function forceTestLiveNow(id: string): Promise<ApiTest> {
+    return request<ApiTest>(`/api/tests/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'live', forceLiveNow: true }),
+    });
+}
+
 export async function deleteTestApi(id: string): Promise<void> {
     await request(`/api/tests/${id}`, { method: 'DELETE' });
 }

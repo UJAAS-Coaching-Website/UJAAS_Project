@@ -41,6 +41,7 @@ import {
   fetchTestById as apiFetchTestById,
   createTest as apiCreateTest,
   updateTestStatus as apiUpdateTestStatus,
+  forceTestLiveNow as apiForceTestLiveNow,
   updateTestApi,
   deleteTestApi as apiDeleteTest,
   type ApiTest,
@@ -604,6 +605,23 @@ function App() {
       showBatchToast('saved', 'Test deleted successfully');
     } catch (err: any) {
       showBatchToast('error', err.message || 'Failed to delete test');
+    }
+  };
+
+  const handleForceTestLiveNow = async (testId: string) => {
+    showBatchToast('saving', 'Setting test live now...');
+    try {
+      const updatedApiTest = await apiForceTestLiveNow(testId);
+      const updatedTest = apiTestToPublished(updatedApiTest);
+
+      setPublishedTests(prev => prev.map(test => test.id === testId ? updatedTest : test));
+      setSelectedPreviewTest(prev => prev?.id === testId ? updatedTest : prev);
+
+      showBatchToast('saved', 'Test is now live');
+      return updatedTest;
+    } catch (err: any) {
+      showBatchToast('error', err.message || 'Failed to set test live');
+      throw err;
     }
   };
 
@@ -1515,6 +1533,7 @@ function App() {
               onResumeDraft={(testId: string) => { setResumeDraftId(testId); setActiveTab('create-test' as any); }}
               onPreviewTest={handlePreviewTest}
               onUpdatePublishedTest={updatePublishedTest}
+              onForceTestLiveNow={handleForceTestLiveNow}
               onDeletePublishedTest={handleDeletePublishedTest}
               selectedPreviewTest={selectedPreviewTest}
             />

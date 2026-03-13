@@ -44,6 +44,7 @@ import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceIn
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
 import { TestTaking } from './TestTaking';
+import { forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
@@ -89,6 +90,7 @@ interface AdminDashboardProps {
   onResumeDraft: (testId: string) => void;
   onPreviewTest: (testId: string) => void;
   onUpdatePublishedTest: (testId: string, updates: Partial<import('../App').PublishedTest>) => void;
+  onForceTestLiveNow?: (testId: string) => Promise<import('../App').PublishedTest>;
   onDeletePublishedTest: (testId: string) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
 }
@@ -285,6 +287,7 @@ export function AdminDashboard({
   onResumeDraft,
   onPreviewTest,
   onUpdatePublishedTest,
+  onForceTestLiveNow,
   onDeletePublishedTest,
   selectedPreviewTest,
 }: AdminDashboardProps) {
@@ -350,6 +353,43 @@ export function AdminDashboard({
   });
 
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
+
+  const fallbackForceTestLiveNow = async (testId: string): Promise<import('../App').PublishedTest> => {
+    const updated = await apiForceTestLiveNow(testId);
+    const existing = publishedTests.find((test) => test.id === testId);
+
+    const fallbackUpdatedTest: import('../App').PublishedTest = existing
+      ? {
+          ...existing,
+          status: 'live',
+          scheduleDate: updated.schedule_date || existing.scheduleDate,
+          scheduleTime: updated.schedule_time || existing.scheduleTime,
+        }
+      : {
+          id: updated.id,
+          title: updated.title,
+          format: updated.format || 'Custom',
+          batches: updated.batches.map((batch) => batch.name),
+          duration: updated.duration_minutes,
+          totalMarks: updated.total_marks,
+          questionCount: updated.question_count,
+          enrolledCount: updated.enrolled_count,
+          scheduleDate: updated.schedule_date || '',
+          scheduleTime: updated.schedule_time || '',
+          questions: [],
+          instructions: updated.instructions || undefined,
+          status: updated.status,
+          submittedAttemptCount: updated.submitted_attempt_count,
+          maxAttempts: updated.submitted_attempt_count !== undefined ? 3 : undefined,
+          hasActiveAttempt: updated.has_active_attempt,
+          activeAttemptId: updated.active_attempt_id ?? null,
+          latestAttemptId: updated.latest_attempt_id ?? null,
+          latestAttemptSubmittedAt: updated.latest_attempt_submitted_at ?? null,
+          latestAttemptTimeSpent: updated.latest_attempt_time_spent ?? null,
+        };
+
+    return fallbackUpdatedTest;
+  };
 
   const generateMockPerformances = (testId: string): StudentPerformance[] => {
     const test = publishedTests.find(t => t.id === testId);
@@ -807,6 +847,7 @@ export function AdminDashboard({
                   onPreviewTest={onPreviewTest}
                   onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
                   onDeletePublishedTest={onDeletePublishedTest}
+                  onForceTestLiveNow={onForceTestLiveNow ?? fallbackForceTestLiveNow}
                   onResumeDraft={onResumeDraft}
                 />
               )}
@@ -2150,6 +2191,7 @@ function TestSeriesManagementTab({
   onPreviewTest,
   onViewInsights,
   onDeletePublishedTest,
+  onForceTestLiveNow,
   onResumeDraft
 }: {
   onNavigate: (t: Tab) => void;
@@ -2159,11 +2201,33 @@ function TestSeriesManagementTab({
   onPreviewTest: (testId: string) => void;
   onViewInsights: (testId: string) => void;
   onDeletePublishedTest: (testId: string) => void;
+  onForceTestLiveNow?: (testId: string) => Promise<import('../App').PublishedTest>;
   onResumeDraft: (testId: string) => void;
 }) {
+  const [forceLiveLoadingTestId, setForceLiveLoadingTestId] = useState<string | null>(null);
+  const [testOverrides, setTestOverrides] = useState<Record<string, import('../App').PublishedTest>>({});
+
   const handleDelete = (testId: string, testTitle: string) => {
     if (window.confirm(`Are you sure you want to delete the test series "${testTitle}"? This action cannot be undone.`)) {
       onDeletePublishedTest(testId);
+    }
+  };
+
+  const handleForceLiveNow = async (testId: string, testTitle: string) => {
+    const confirmed = window.confirm(
+      `Set "${testTitle}" live right now?\n\nThis emergency action will:\n- make the test live immediately\n- rewrite the scheduled date and time to the current trigger time\n- allow students to start the test right away`
+    );
+
+    if (!confirmed) return;
+    try {
+      setForceLiveLoadingTestId(testId);
+      const updatedTest = await onForceTestLiveNow(testId);
+      setTestOverrides((prev) => ({
+        ...prev,
+        [testId]: updatedTest,
+      }));
+    } finally {
+      setForceLiveLoadingTestId(null);
     }
   };
 
@@ -2176,7 +2240,9 @@ function TestSeriesManagementTab({
 
       {publishedTests.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {publishedTests.map((test) => (
+          {publishedTests.map((originalTest) => {
+            const test = testOverrides[originalTest.id] || originalTest;
+            return (
             <div key={test.id} className="h-full">
             <div
               onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
@@ -2209,7 +2275,7 @@ function TestSeriesManagementTab({
                   <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 {test.status === 'draft' ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
@@ -2219,24 +2285,51 @@ function TestSeriesManagementTab({
                   </button>
                 ) : (
                   <>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
-                      className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Eye className="w-4 h-4" /> Preview
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
-                      className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                      <BarChart3 className="w-4 h-4" /> Performance
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
+                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" /> Preview
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
+                        className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <BarChart3 className="w-4 h-4" /> Performance
+                      </button>
+                    </div>
+                    {test.status === 'upcoming' && (
+                      <button
+                        disabled={forceLiveLoadingTestId === test.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleForceLiveNow(test.id, test.title);
+                        }}
+                        className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 ${
+                          forceLiveLoadingTestId === test.id
+                            ? 'cursor-wait'
+                            : 'hover:shadow-lg'
+                        }`}
+                      >
+                        {forceLiveLoadingTestId === test.id ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            Setting Live...
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4" /> Set Live Now
+                          </>
+                        )}
+                      </button>
+                    )}
                   </>
                 )}
               </div>
             </div>
             </div>
-          ))}
+          )})}
         </div>
       ) : (
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center">

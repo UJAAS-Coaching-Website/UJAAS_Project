@@ -919,7 +919,51 @@ export async function createTest({
 /**
  * Update test status.
  */
-export async function updateTestStatus(id, status) {
+export async function updateTestStatus(id, status, options = {}) {
+    const { forceLiveNow = false } = options;
+    const existingTest = await getTestById(id);
+    if (!existingTest) return null;
+
+    if (forceLiveNow) {
+        if (status !== "live") {
+            const error = new Error("force live is only supported for live status");
+            error.code = "INVALID_FORCE_LIVE_STATUS";
+            throw error;
+        }
+
+        if (existingTest.status === "draft") {
+            const error = new Error("draft tests cannot be forced live");
+            error.code = "FORCE_LIVE_DRAFT_NOT_ALLOWED";
+            throw error;
+        }
+
+        if (existingTest.status === "live") {
+            const error = new Error("test is already live");
+            error.code = "TEST_ALREADY_LIVE";
+            throw error;
+        }
+
+        const result = await pool.query(
+            `UPDATE tests
+             SET
+                status = 'live',
+                scheduled_at = (NOW() AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}')::date,
+                schedule_time = TO_CHAR((NOW() AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}'), 'HH24:MI')
+             WHERE id = $1
+               AND status = 'upcoming'
+             RETURNING id`,
+            [id]
+        );
+
+        if (result.rowCount === 0) {
+            const error = new Error("only upcoming tests can be forced live");
+            error.code = "FORCE_LIVE_NOT_ALLOWED";
+            throw error;
+        }
+
+        return getTestById(id);
+    }
+
     const result = await pool.query(
         `UPDATE tests SET status = $1 WHERE id = $2 RETURNING id`,
         [status, id]

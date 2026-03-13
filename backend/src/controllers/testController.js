@@ -146,16 +146,27 @@ export async function handleUpdateTest(req, res) {
 
 export async function handleUpdateTestStatus(req, res) {
     try {
-        const { status } = req.body;
+        const { status, forceLiveNow = false } = req.body;
         if (!['draft', 'upcoming', 'live'].includes(status)) {
             return res.status(400).json({ message: "invalid status" });
         }
-        const test = await updateTestStatus(req.params.id, status);
+        const test = await updateTestStatus(req.params.id, status, {
+            forceLiveNow: Boolean(forceLiveNow),
+        });
         if (!test) {
             return res.status(404).json({ message: "test not found" });
         }
         return res.status(200).json(test);
     } catch (error) {
+        if (error?.code === "FORCE_LIVE_DRAFT_NOT_ALLOWED") {
+            return res.status(409).json({ message: "draft tests cannot be forced live" });
+        }
+        if (error?.code === "TEST_ALREADY_LIVE") {
+            return res.status(409).json({ message: "test is already live" });
+        }
+        if (error?.code === "FORCE_LIVE_NOT_ALLOWED" || error?.code === "INVALID_FORCE_LIVE_STATUS") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("updateTestStatus error:", error.message);
         return res.status(500).json({ message: "failed to update test status", error: error.message });
     }
