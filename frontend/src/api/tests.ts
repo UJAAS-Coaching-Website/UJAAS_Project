@@ -170,18 +170,16 @@ export interface ApiStudentAttemptResultListItem {
 }
 
 export interface ApiTestAnalysisPerformance {
-    attemptId: string;
     studentId: string;
     studentName: string;
-    attemptNo: number;
-    submittedAt: string;
-    autoSubmitted: boolean;
+    attemptCount: number;
+    latestSubmittedAt: string;
     score: number;
     totalMarks: number;
     accuracy: number;
     rank: number;
     timeSpent: number;
-    result: ApiAttemptResult;
+    attempts: ApiAttemptResult[];
 }
 
 export interface ApiTestAnalysis {

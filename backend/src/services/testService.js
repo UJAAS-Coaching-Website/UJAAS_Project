@@ -801,7 +801,7 @@ export async function getTestAttemptAnalysis(testId) {
         ORDER BY ra.submitted_at DESC, ra.attempt_no DESC
     `, [testId]);
 
-    return Promise.all(result.rows.map(async (row) => ({
+    const mappedAttempts = await Promise.all(result.rows.map(async (row) => ({
         attemptId: row.id,
         studentId: row.student_id,
         studentName: row.student_name,
@@ -817,6 +817,31 @@ export async function getTestAttemptAnalysis(testId) {
         timeSpent: Number(row.time_spent || 0),
         result: await buildAttemptResult(row.id),
     })));
+
+    const grouped = new Map();
+    for (const attempt of mappedAttempts) {
+        const existing = grouped.get(attempt.studentId);
+        if (!existing) {
+            grouped.set(attempt.studentId, {
+                studentId: attempt.studentId,
+                studentName: attempt.studentName,
+                attemptCount: 1,
+                latestSubmittedAt: attempt.submittedAt,
+                score: attempt.score,
+                totalMarks: attempt.totalMarks,
+                accuracy: attempt.accuracy,
+                rank: attempt.rank,
+                timeSpent: attempt.timeSpent,
+                attempts: [attempt.result],
+            });
+            continue;
+        }
+
+        existing.attemptCount += 1;
+        existing.attempts.push(attempt.result);
+    }
+
+    return Array.from(grouped.values());
 }
 
 /**

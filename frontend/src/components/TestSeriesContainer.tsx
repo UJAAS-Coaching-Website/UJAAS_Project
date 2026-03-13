@@ -13,6 +13,7 @@ import {
   submitMyAttempt,
   type ApiActiveAttemptPayload,
   type ApiAttemptResult,
+  type ApiAttemptHistoryEntry,
   type ApiStudentAttemptResultListItem,
   type ApiTest,
 } from '../api/tests';
@@ -40,7 +41,7 @@ type TestState =
       deadlineAt: string;
       serverNow: string;
     }
-  | { mode: 'analytics'; result?: ApiAttemptResult }
+  | { mode: 'analytics'; result?: ApiAttemptResult; history?: ApiAttemptHistoryEntry[] }
   | { mode: 'viewResults' };
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
@@ -184,8 +185,9 @@ export function TestSeriesContainer({
     try {
       setLoadingAnalysisAttemptId(attemptId);
       const result = await fetchAttemptResult(attemptId);
+      const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
-      setTestState({ mode: 'analytics', result });
+      setTestState({ mode: 'analytics', result, history: summary?.history || [] });
       pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } finally {
@@ -432,6 +434,11 @@ export function TestSeriesContainer({
     return (
       <StudentAnalytics
         result={mapAttemptResultToAnalytics(testState.result)}
+        attemptHistory={testState.history || []}
+        onSelectAttempt={(attemptId) => {
+          void openAttemptAnalytics(attemptId);
+        }}
+        loadingAttemptId={loadingAnalysisAttemptId}
         onClose={handleBackToList}
       />
     );

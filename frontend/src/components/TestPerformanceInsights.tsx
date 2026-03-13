@@ -17,17 +17,16 @@ import logo from '../assets/logo.svg';
 import { fetchTestAnalysis } from '../api/tests';
 
 export interface StudentPerformance {
-  attemptId: string;
   studentId: string;
   studentName: string;
-  attemptNo: number;
-  submittedAt: string;
+  attemptCount: number;
+  latestSubmittedAt: string;
   score: number;
   totalMarks: number;
   accuracy: number;
   rank: number;
   timeSpent: number;
-  result: any; // The full result object for StudentAnalytics
+  attempts: any[];
 }
 
 interface TestPerformanceInsightsProps {
@@ -50,6 +49,7 @@ export function TestPerformanceInsights({
   testInstructions
 }: TestPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
+  const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
 
@@ -58,19 +58,18 @@ export function TestPerformanceInsights({
       try {
         const analysis = await fetchTestAnalysis(testId);
         setPerformances(analysis.performances.map((perf) => ({
-          attemptId: perf.attemptId,
           studentId: perf.studentId,
           studentName: perf.studentName,
-          attemptNo: perf.attemptNo,
-          submittedAt: perf.submittedAt,
+          attemptCount: perf.attemptCount,
+          latestSubmittedAt: perf.latestSubmittedAt,
           score: perf.score,
           totalMarks: perf.totalMarks,
           accuracy: perf.accuracy,
           rank: perf.rank,
           timeSpent: perf.timeSpent,
-          result: {
-            ...perf.result,
-            questions: perf.result.questions.map((question) => ({
+          attempts: perf.attempts.map((attempt) => ({
+            ...attempt,
+            questions: attempt.questions.map((question) => ({
               id: question.id,
               text: question.question_text,
               question: question.question_text,
@@ -84,7 +83,7 @@ export function TestPerformanceInsights({
               explanationImage: question.explanation_img || undefined,
               userAnswer: question.user_answer,
             })),
-          },
+          })),
         })));
       } catch (error) {
         console.error('Failed to load test analysis', error);
@@ -256,11 +255,41 @@ export function TestPerformanceInsights({
   };
 
   if (selectedStudent) {
+    const attempts = selectedStudent.attempts || [];
+    const currentAttempt = attempts[selectedAttemptIndex] || attempts[0];
     return (
       <div className="fixed inset-0 bg-white z-[10005] overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{selectedStudent.studentName}</h2>
+                <p className="text-sm text-gray-600">All attempts for this test</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attempts.map((attempt: any, index: number) => (
+                  <button
+                    key={attempt.attempt_id}
+                    onClick={() => setSelectedAttemptIndex(index)}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      index === selectedAttemptIndex
+                        ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Attempt {attempt.attempt_no}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
         <StudentAnalytics 
-          result={selectedStudent.result} 
-          onClose={() => setSelectedStudent(null)} 
+          result={currentAttempt} 
+          onClose={() => {
+            setSelectedStudent(null);
+            setSelectedAttemptIndex(0);
+          }} 
           hideExplanations={true}
           hideDownload={true}
         />
@@ -288,7 +317,7 @@ export function TestPerformanceInsights({
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{testTitle}</h1>
-                <p className="text-gray-500">Performance Insights & Student Submissions</p>
+                <p className="text-gray-500">Performance Insights & Student Attempts</p>
               </div>
             </div>
             {testQuestions && (
@@ -314,7 +343,7 @@ export function TestPerformanceInsights({
             </div>
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm border border-blue-100 whitespace-nowrap">
               <Users className="w-4 h-4" />
-              {performances.length} Submissions
+              {performances.length} Students
             </div>
           </div>
         </div>
@@ -327,8 +356,8 @@ export function TestPerformanceInsights({
                 <tr className="bg-gray-50/50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempt</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted At</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Latest Submission</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
@@ -337,11 +366,14 @@ export function TestPerformanceInsights({
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filteredPerformances.map((perf) => {
-                  const status = getSubmissionStatus(perf.submittedAt, perf.timeSpent);
+                  const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
                   return (
                     <tr 
-                      key={perf.attemptId}
-                      onClick={() => setSelectedStudent(perf)}
+                      key={perf.studentId}
+                      onClick={() => {
+                        setSelectedStudent(perf);
+                        setSelectedAttemptIndex(0);
+                      }}
                       className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                     >
                       <td className="px-6 py-4">
@@ -358,14 +390,14 @@ export function TestPerformanceInsights({
                         <div className="font-bold text-gray-900">{perf.studentName}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-700">Attempt {perf.attemptNo}</div>
+                        <div className="font-semibold text-gray-700">{perf.attemptCount}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Calendar className="w-3.5 h-3.5" />
-                          {new Date(perf.submittedAt).toLocaleDateString()}
+                          {new Date(perf.latestSubmittedAt).toLocaleDateString()}
                           <Clock className="w-3.5 h-3.5 ml-1" />
-                          {new Date(perf.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(perf.latestSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
                       <td className="px-6 py-4">

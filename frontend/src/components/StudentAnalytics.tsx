@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { TestTaking } from './TestTaking';
+import type { ApiAttemptHistoryEntry } from '../api/tests';
 import {
   Trophy,
   Target,
@@ -56,9 +57,21 @@ interface StudentAnalyticsProps {
   onViewResults?: (testId: string) => void;
   hideExplanations?: boolean;
   hideDownload?: boolean;
+  attemptHistory?: ApiAttemptHistoryEntry[];
+  onSelectAttempt?: (attemptId: string) => void;
+  loadingAttemptId?: string | null;
 }
 
-export function StudentAnalytics({ result, onClose, onViewResults, hideExplanations = false, hideDownload = false }: StudentAnalyticsProps) {
+export function StudentAnalytics({
+  result,
+  onClose,
+  onViewResults,
+  hideExplanations = false,
+  hideDownload = false,
+  attemptHistory = [],
+  onSelectAttempt,
+  loadingAttemptId = null
+}: StudentAnalyticsProps) {
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
@@ -412,6 +425,39 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
             </div>
           </div>
         </div>
+
+        {attemptHistory.length > 1 && onSelectAttempt ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Your Attempts</h2>
+                <p className="text-sm text-gray-600">Switch between all submitted attempts for this test</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attemptHistory.map((attempt) => {
+                  const isActive = attempt.id === (result as any).attempt_id;
+                  const isLoading = loadingAttemptId === attempt.id;
+                  return (
+                    <button
+                      key={attempt.id}
+                      onClick={() => onSelectAttempt(attempt.id)}
+                      disabled={isLoading || isActive}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                        isActive
+                          ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white'
+                          : isLoading
+                          ? 'bg-blue-100 text-blue-700 cursor-wait'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {isLoading ? `Loading Attempt ${attempt.attempt_no}...` : `Attempt ${attempt.attempt_no}`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Score Card */}
         <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-8 mb-6 text-white relative overflow-hidden">
