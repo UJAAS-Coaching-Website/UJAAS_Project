@@ -5,9 +5,10 @@ interface ViewResultsProps {
   results: ApiStudentAttemptResultListItem[];
   onClose: () => void;
   onViewDetailedAnalytics: (attemptId: string) => void;
+  loadingAttemptId?: string | null;
 }
 
-export function ViewResults({ results, onClose, onViewDetailedAnalytics }: ViewResultsProps) {
+export function ViewResults({ results, onClose, onViewDetailedAnalytics, loadingAttemptId = null }: ViewResultsProps) {
   const totalAttempts = results.length;
   const averageScore = totalAttempts > 0
     ? results.reduce((sum, result) => sum + result.percentage, 0) / totalAttempts
@@ -109,12 +110,22 @@ export function ViewResults({ results, onClose, onViewDetailedAnalytics }: ViewR
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {(() => {
+                      const isLoading = loadingAttemptId === result.id;
+                      return (
                     <button
                       onClick={() => onViewDetailedAnalytics(result.id)}
-                      className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-medium hover:shadow-lg transition-all"
+                      disabled={isLoading}
+                      className={`px-4 py-2 text-white rounded-lg font-medium transition-all ${
+                        isLoading
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 cursor-wait'
+                          : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 hover:shadow-lg'
+                      }`}
                     >
-                      View Details
+                      {isLoading ? 'Loading Details...' : 'View Details'}
                     </button>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

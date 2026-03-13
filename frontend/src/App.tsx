@@ -124,6 +124,8 @@ export interface PublishedTest {
   hasActiveAttempt?: boolean;
   activeAttemptId?: string | null;
   latestAttemptId?: string | null;
+  latestAttemptSubmittedAt?: string | null;
+  latestAttemptTimeSpent?: number | null;
 }
 
 export const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
@@ -398,6 +400,8 @@ function App() {
     hasActiveAttempt: t.has_active_attempt,
     activeAttemptId: t.active_attempt_id ?? null,
     latestAttemptId: t.latest_attempt_id ?? null,
+    latestAttemptSubmittedAt: t.latest_attempt_submitted_at ?? null,
+    latestAttemptTimeSpent: t.latest_attempt_time_spent ?? null,
     questions: (t.questions || []).map((q, i) => ({
       id: q.id,
       type: q.type,

@@ -182,6 +182,24 @@ export async function getTestsForStudent(studentId) {
                 ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
                 LIMIT 1
             ) AS latest_attempt_id,
+            (
+                SELECT ta.submitted_at
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
+                LIMIT 1
+            ) AS latest_attempt_submitted_at,
+            (
+                SELECT ta.time_spent
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
+                LIMIT 1
+            ) AS latest_attempt_time_spent,
             COALESCE(
                 json_agg(
                     DISTINCT jsonb_build_object('id', b.id, 'name', b.name)

@@ -72,6 +72,8 @@ const apiTestToPublished = (t: ApiTest): PublishedTest => ({
   hasActiveAttempt: t.has_active_attempt,
   activeAttemptId: t.active_attempt_id ?? null,
   latestAttemptId: t.latest_attempt_id ?? null,
+  latestAttemptSubmittedAt: t.latest_attempt_submitted_at ?? null,
+  latestAttemptTimeSpent: t.latest_attempt_time_spent ?? null,
   questions: (t.questions || []).map((q) => ({
     id: q.id,
     type: q.type,
@@ -148,6 +150,7 @@ export function TestSeriesContainer({
   const [studentTests, setStudentTests] = useState<PublishedTest[]>(publishedTests);
   const [attemptResults, setAttemptResults] = useState<ApiStudentAttemptResultListItem[]>([]);
   const [isStartingTest, setIsStartingTest] = useState(false);
+  const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -169,6 +172,8 @@ export function TestSeriesContainer({
             hasActiveAttempt: summary.hasActiveAttempt,
             activeAttemptId: summary.activeAttempt?.id ?? null,
             latestAttemptId: summary.history[0]?.id ?? null,
+            latestAttemptSubmittedAt: summary.history[0]?.submitted_at ?? null,
+            latestAttemptTimeSpent: summary.history[0]?.time_spent ?? null,
           }
         : test
     )));
@@ -176,10 +181,16 @@ export function TestSeriesContainer({
   }, []);
 
   const openAttemptAnalytics = useCallback(async (attemptId: string) => {
-    const result = await fetchAttemptResult(attemptId);
-    localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
-    setTestState({ mode: 'analytics', result });
-    onNavigateSubTab?.(`Analysis-${attemptId}`);
+    try {
+      setLoadingAnalysisAttemptId(attemptId);
+      const result = await fetchAttemptResult(attemptId);
+      localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
+      setTestState({ mode: 'analytics', result });
+      pendingSubTabRef.current = `Analysis-${attemptId}`;
+      onNavigateSubTab?.(pendingSubTabRef.current);
+    } finally {
+      setLoadingAnalysisAttemptId(null);
+    }
   }, [onNavigateSubTab]);
 
   const hydrateActiveAttempt = useCallback(async (mode: 'overview' | 'taking') => {
@@ -431,6 +442,7 @@ export function TestSeriesContainer({
       <ViewResults
         results={attemptResults}
         onClose={handleBackToList}
+        loadingAttemptId={loadingAnalysisAttemptId}
         onViewDetailedAnalytics={(attemptId) => {
           void openAttemptAnalytics(attemptId);
         }}
@@ -449,9 +461,11 @@ export function TestSeriesContainer({
       onViewResults={() => {
         void loadAttemptResults();
         setTestState({ mode: 'viewResults' });
-        onNavigateSubTab?.('Results');
+        pendingSubTabRef.current = 'Results';
+        onNavigateSubTab?.(pendingSubTabRef.current);
       }}
       publishedTests={currentTests}
+      loadingAnalysisAttemptId={loadingAnalysisAttemptId}
     />
   );
 }

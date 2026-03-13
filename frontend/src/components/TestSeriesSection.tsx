@@ -113,13 +113,15 @@ interface TestSeriesProps {
   onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
+  loadingAnalysisAttemptId?: string | null;
 }
 
 export function TestSeriesSection({ 
   onStartTest, 
   onViewAnalytics, 
   onViewResults,
-  publishedTests = []
+  publishedTests = [],
+  loadingAnalysisAttemptId = null
 }: TestSeriesProps) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
@@ -150,6 +152,29 @@ export function TestSeriesSection({
     return 'Pending';
   };
 
+  const getStartTimeStatus = (
+    scheduleDate?: string,
+    scheduleTime?: string,
+    submittedAt?: string | null,
+    timeSpent?: number | null
+  ): TestSeries['startTimeStatus'] | undefined => {
+    if (!scheduleDate || !submittedAt || timeSpent === null || timeSpent === undefined) {
+      return undefined;
+    }
+
+    const scheduledStart = new Date(`${scheduleDate}T${scheduleTime || '00:00'}:00`);
+    const submittedDate = new Date(submittedAt);
+
+    if (Number.isNaN(scheduledStart.getTime()) || Number.isNaN(submittedDate.getTime())) {
+      return undefined;
+    }
+
+    const actualStart = new Date(submittedDate.getTime() - (Number(timeSpent) * 1000));
+    const diffInMinutes = (actualStart.getTime() - scheduledStart.getTime()) / (1000 * 60);
+
+    return diffInMinutes > 30 ? 'late' : 'on-time';
+  };
+
   const mappedPublishedTests: TestSeries[] = (publishedTests || [])
     .map(t => ({
       id: t.id,
@@ -170,6 +195,12 @@ export function TestSeriesSection({
       enrolled: t.enrolledCount ?? 0,
       passingMarks: Math.floor(t.totalMarks * 0.4),
       realQuestions: t.questions,
+      startTimeStatus: getStartTimeStatus(
+        t.scheduleDate,
+        t.scheduleTime,
+        t.latestAttemptSubmittedAt,
+        t.latestAttemptTimeSpent
+      ),
       latestAttemptId: t.latestAttemptId,
       maxAttempts: t.maxAttempts,
       hasActiveAttempt: t.hasActiveAttempt,
@@ -310,6 +341,14 @@ export function TestSeriesSection({
       {/* Test Cards Grid */}
       <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTests.map((test) => (
+          (() => {
+            const isLoadingAnalysis = Boolean(
+              test.status === 'completed' &&
+              test.latestAttemptId &&
+              loadingAnalysisAttemptId === test.latestAttemptId
+            );
+
+            return (
           <div
             key={test.id}
             className="h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all flex flex-col"
@@ -402,10 +441,12 @@ export function TestSeriesSection({
                       onStartTest(getStartableTest(test));
                     }
                   }}
-                  disabled={test.status === 'upcoming'}
+                  disabled={test.status === 'upcoming' || isLoadingAnalysis}
                   className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
                     test.status === 'upcoming'
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : isLoadingAnalysis
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
                       : test.status === 'completed'
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl'
                       : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
@@ -419,7 +460,7 @@ export function TestSeriesSection({
                   ) : test.status === 'completed' ? (
                     <>
                       <BarChart3 className="w-5 h-5" />
-                      View Analysis
+                      {isLoadingAnalysis ? 'Loading Analysis...' : 'View Analysis'}
                     </>
                   ) : (
                     <>
@@ -439,6 +480,8 @@ export function TestSeriesSection({
               </div>
             </div>
           </div>
+            );
+          })()
         ))}
       </div>
 

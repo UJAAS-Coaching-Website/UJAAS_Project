@@ -68,6 +68,8 @@ export interface ApiTest {
     has_active_attempt?: boolean;
     active_attempt_id?: string | null;
     latest_attempt_id?: string | null;
+    latest_attempt_submitted_at?: string | null;
+    latest_attempt_time_spent?: number | null;
     batches: ApiTestBatch[];
     questions?: ApiQuestion[];
 }
