@@ -130,10 +130,21 @@ CREATE TABLE IF NOT EXISTS test_target_batches (
     PRIMARY KEY (test_id, batch_id)
 );
 
--- Migrate existing test targets
-INSERT INTO test_target_batches (test_id, batch_id)
-SELECT id, batch_id FROM tests WHERE batch_id IS NOT NULL
-ON CONFLICT DO NOTHING;
+-- Migrate existing test targets only on legacy schemas that still store tests.batch_id
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tests'
+          AND column_name = 'batch_id'
+    ) THEN
+        INSERT INTO test_target_batches (test_id, batch_id)
+        SELECT id, batch_id FROM tests WHERE batch_id IS NOT NULL
+        ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
 
 -- Now remove batch_id from tests (after migration)
 ALTER TABLE tests DROP COLUMN IF EXISTS batch_id;

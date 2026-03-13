@@ -19,6 +19,7 @@ if (!connectionString) {
 async function run() {
   const pool = new Pool({ connectionString });
   const client = await pool.connect();
+  let currentFile = null;
   try {
     const migrationFiles = (await readdir(migrationsDir))
       .filter((file) => file.endsWith(".sql"))
@@ -27,6 +28,7 @@ async function run() {
 
     await client.query("BEGIN");
     for (const file of migrationFiles) {
+      currentFile = file;
       const sql = await readFile(path.join(migrationsDir, file), "utf8");
       await client.query(sql);
     }
@@ -34,7 +36,7 @@ async function run() {
     console.log(`Migrations applied: ${migrationFiles.join(", ")}`);
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Migration failed:", err.message);
+    console.error(`Migration failed in ${currentFile ?? "unknown file"}:`, err.message);
     process.exit(1);
   } finally {
     client.release();
