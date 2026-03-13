@@ -35,10 +35,11 @@ interface TestSeries {
 }
 
 interface TestSeriesProps {
-  onStartTest: (test: import('../App').PublishedTest) => void;
+  onStartTest: (test: import('../App').PublishedTest) => Promise<void>;
   onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
+  loadingOverviewTestId?: string | null;
   loadingAnalysisAttemptId?: string | null;
   isLoadingResults?: boolean;
   attemptResults?: import('../api/tests').ApiStudentAttemptResultListItem[];
@@ -49,6 +50,7 @@ export function TestSeriesSection({
   onViewAnalytics, 
   onViewResults,
   publishedTests = [],
+  loadingOverviewTestId = null,
   loadingAnalysisAttemptId = null,
   isLoadingResults = false,
   attemptResults = []
@@ -244,6 +246,7 @@ export function TestSeriesSection({
       <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTests.map((test) => (
           (() => {
+            const isLoadingOverview = loadingOverviewTestId === test.id;
             const isLoadingAnalysis = Boolean(
               test.status === 'completed' &&
               test.latestAttemptId &&
@@ -342,14 +345,16 @@ export function TestSeriesSection({
                     } else if (test.status === 'pending') {
                       const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
                       if (publishedMatch) {
-                        onStartTest(publishedMatch);
+                        void onStartTest(publishedMatch);
                       }
                     }
                   }}
-                  disabled={test.status === 'upcoming' || isLoadingAnalysis}
+                  disabled={test.status === 'upcoming' || isLoadingAnalysis || isLoadingOverview}
                   className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
                     test.status === 'upcoming'
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : isLoadingOverview
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white cursor-wait shadow-lg'
                       : isLoadingAnalysis
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
                       : test.status === 'completed'
@@ -370,7 +375,7 @@ export function TestSeriesSection({
                   ) : (
                     <>
                       <Play className="w-5 h-5" />
-                      {test.hasActiveAttempt ? 'Resume Test' : 'Start Test'}
+                      {isLoadingOverview ? 'Loading...' : test.hasActiveAttempt ? 'Resume Test' : 'Start Test'}
                     </>
                   )}
                 </motion.button>
@@ -379,12 +384,17 @@ export function TestSeriesSection({
                     onClick={() => {
                       const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
                       if (publishedMatch) {
-                        onStartTest(publishedMatch);
+                        void onStartTest(publishedMatch);
                       }
                     }}
-                    className="w-full py-3 rounded-xl font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
+                    disabled={isLoadingOverview}
+                    className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                      isLoadingOverview
+                        ? 'border border-blue-200 text-blue-700 bg-blue-100 cursor-wait'
+                        : 'border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100'
+                    }`}
                   >
-                    Attempt Again
+                    {isLoadingOverview ? 'Loading...' : 'Attempt Again'}
                   </motion.button>
                 )}
               </div>

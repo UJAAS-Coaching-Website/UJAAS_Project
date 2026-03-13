@@ -91,6 +91,7 @@ export function StudentTestTaking({
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
     () => new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : [])
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
@@ -146,15 +147,15 @@ export function StudentTestTaking({
     }
   };
 
-  const handleConfirmExit = (save: boolean) => {
+  const handleConfirmExit = async (save: boolean) => {
     if (isAnyPreview) {
       if (save && onSave) {
         onSave(testId, questions, testTitle, selectedBatches);
       }
       onExit();
     } else {
-      // For students, confirm exit means submit
-      void handleSubmit(true);
+      setShowExitConfirm(false);
+      setShowSubmitDialog(true);
     }
   };
 
@@ -203,13 +204,21 @@ export function StudentTestTaking({
   }, [answers, isAnyPreview, onSaveProgress]);
 
   const handleAutoSubmit = async () => {
+    if (isSubmitting) return;
     await onSubmit(answers, { autoSubmitted: true });
   };
 
   const handleSubmit = async (autoSubmitted = false) => {
-    await onSubmit(answers, { autoSubmitted });
-    setShowSubmitDialog(false);
-    setShowExitConfirm(false);
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(answers, { autoSubmitted });
+      setShowSubmitDialog(false);
+      setShowExitConfirm(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -359,10 +368,11 @@ export function StudentTestTaking({
 
               <button
                 onClick={handleExitRequest}
+                disabled={isSubmitting}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <X className="w-5 h-5" />
-                {isAnyPreview ? 'Exit Review' : 'Exit Test'}
+                {isSubmitting ? 'Submitting...' : isAnyPreview ? 'Exit Review' : 'Exit Test'}
               </button>
             </div>
           </div>
@@ -952,15 +962,24 @@ export function StudentTestTaking({
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setShowSubmitDialog(false)}
+                  disabled={isSubmitting}
                   className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                 >
                   Back to Test
                 </button>
                 <motion.button
-                  onClick={handleSubmit}
-                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => void handleSubmit()}
+                  disabled={isSubmitting}
+                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-80 disabled:cursor-wait flex items-center justify-center gap-2"
                 >
-                  Submit Test Now
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Test Now'
+                  )}
                 </motion.button>
               </div>
             </motion.div>
@@ -989,21 +1008,31 @@ export function StudentTestTaking({
 
               <div className="flex flex-col gap-3">
                 <motion.button
-                  onClick={() => isAnyPreview ? handleConfirmExit(true) : handleConfirmExit(false)}
-                  className={`w-full py-4 bg-gradient-to-r ${isAnyPreview ? 'from-teal-600 to-cyan-600' : 'from-orange-500 to-red-600'} text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all`}
+                  onClick={() => void (isAnyPreview ? handleConfirmExit(true) : handleConfirmExit(false))}
+                  disabled={isSubmitting}
+                  className={`w-full py-4 bg-gradient-to-r ${isAnyPreview ? 'from-teal-600 to-cyan-600' : 'from-orange-500 to-red-600'} text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-80 disabled:cursor-wait flex items-center justify-center gap-2`}
                 >
-                  {isAnyPreview ? 'Save & Exit' : 'Exit & Submit Now'}
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      {isAnyPreview ? 'Saving...' : 'Submitting...'}
+                    </>
+                  ) : (
+                    isAnyPreview ? 'Save & Exit' : 'Exit & Submit Now'
+                  )}
                 </motion.button>
                 {isAnyPreview && (
                   <motion.button
-                    onClick={() => handleConfirmExit(false)}
-                    className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all"
+                    onClick={() => void handleConfirmExit(false)}
+                    disabled={isSubmitting}
+                    className="w-full py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-80 disabled:cursor-wait"
                   >
                     Discard Changes
                   </motion.button>
                 )}
                 <button
                   onClick={() => setShowExitConfirm(false)}
+                  disabled={isSubmitting}
                   className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
                 >
                   Cancel

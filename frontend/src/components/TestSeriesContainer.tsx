@@ -8,6 +8,7 @@ import {
   fetchAttemptResult,
   fetchMyAttemptResults,
   fetchMyTestAttemptSummary,
+  fetchTestById,
   startMyTestAttempt,
   saveMyAttemptProgress,
   submitMyAttempt,
@@ -153,6 +154,8 @@ export function TestSeriesContainer({
   const [studentTests, setStudentTests] = useState<PublishedTest[]>(publishedTests);
   const [attemptResults, setAttemptResults] = useState<ApiStudentAttemptResultListItem[]>([]);
   const [isStartingTest, setIsStartingTest] = useState(false);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+  const [loadingOverviewTestId, setLoadingOverviewTestId] = useState<string | null>(null);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
@@ -325,10 +328,33 @@ export function TestSeriesContainer({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [testState]);
 
-  const handleStartTest = (test: PublishedTest) => {
-    setTestState({ mode: 'overview', test });
-    pendingSubTabRef.current = `Overview-${slugify(test.title)}`;
-    onNavigateSubTab?.(pendingSubTabRef.current);
+  const handleStartTest = async (test: PublishedTest) => {
+    if (loadingOverviewTestId) return;
+
+    try {
+      setLoadingOverviewTestId(test.id);
+      setIsLoadingOverview(true);
+      const fullApiTest = await fetchTestById(test.id);
+      const fullTest = apiTestToPublished(fullApiTest);
+
+      setStudentTests((prev) => prev.map((item) => (
+        item.id === fullTest.id
+          ? {
+              ...item,
+              ...fullTest,
+            }
+          : item
+      )));
+
+      setTestState({ mode: 'overview', test: fullTest });
+      pendingSubTabRef.current = `Overview-${slugify(fullTest.title)}`;
+      onNavigateSubTab?.(pendingSubTabRef.current);
+    } catch (error: any) {
+      window.alert(error?.message || 'Unable to load test overview');
+    } finally {
+      setIsLoadingOverview(false);
+      setLoadingOverviewTestId(null);
+    }
   };
 
   const handleConfirmStart = async () => {
@@ -421,6 +447,7 @@ export function TestSeriesContainer({
         onStart={handleConfirmStart}
         onBack={handleBackToList}
         isStarting={isStartingTest}
+        isLoadingOverview={isLoadingOverview}
       />
     );
   }
@@ -485,6 +512,7 @@ export function TestSeriesContainer({
         onNavigateSubTab?.(pendingSubTabRef.current);
       }}
       publishedTests={currentTests}
+      loadingOverviewTestId={loadingOverviewTestId}
       loadingAnalysisAttemptId={loadingAnalysisAttemptId}
       isLoadingResults={isLoadingResults}
       attemptResults={attemptResults}
@@ -496,12 +524,14 @@ function TestOverview({
   test,
   onStart,
   onBack,
-  isStarting = false
+  isStarting = false,
+  isLoadingOverview = false
 }: {
   test: PublishedTest;
   onStart: () => void;
   onBack: () => void;
   isStarting?: boolean;
+  isLoadingOverview?: boolean;
 }) {
   const questions = Array.isArray(test.questions) ? test.questions : [];
 
@@ -561,36 +591,43 @@ function TestOverview({
               <BookOpen className="w-6 h-6 text-teal-600" />
               Question Breakdown & Marking Scheme
             </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
-                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
-                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
-                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
-                    <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {Object.entries(breakdown).map(([subject, sections]) => (
-                    Object.entries(sections).map(([section, data], idx) => (
-                      <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
-                        {idx === 0 ? (
-                          <td className="px-4 py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
-                            {subject}
-                          </td>
-                        ) : null}
-                        <td className="px-4 py-4 text-gray-600 font-medium">{section}</td>
-                        <td className="px-4 py-4 text-center font-bold text-gray-900">{data.count}</td>
-                        <td className="px-4 py-4 text-center font-bold text-green-600">+{data.marks}</td>
-                        <td className="px-4 py-4 text-center font-bold text-red-600">-{data.neg}</td>
-                      </tr>
-                    ))
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {isLoadingOverview ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+                <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-600 font-medium">Loading question breakdown...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
+                      <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
+                      <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
+                      <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
+                      <th className="px-4 py-3 text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {Object.entries(breakdown).map(([subject, sections]) => (
+                      Object.entries(sections).map(([section, data], idx) => (
+                        <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
+                          {idx === 0 ? (
+                            <td className="px-4 py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
+                              {subject}
+                            </td>
+                          ) : null}
+                          <td className="px-4 py-4 text-gray-600 font-medium">{section}</td>
+                          <td className="px-4 py-4 text-center font-bold text-gray-900">{data.count}</td>
+                          <td className="px-4 py-4 text-center font-bold text-green-600">+{data.marks}</td>
+                          <td className="px-4 py-4 text-center font-bold text-red-600">-{data.neg}</td>
+                        </tr>
+                      ))
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
 
           <section className="p-8 bg-amber-50 rounded-3xl border border-amber-100 shadow-sm">
