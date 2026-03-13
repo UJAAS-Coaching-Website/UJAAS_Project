@@ -6,9 +6,16 @@ interface ViewResultsProps {
   onClose: () => void;
   onViewDetailedAnalytics: (attemptId: string) => void;
   loadingAttemptId?: string | null;
+  isLoading?: boolean;
 }
 
-export function ViewResults({ results, onClose, onViewDetailedAnalytics, loadingAttemptId = null }: ViewResultsProps) {
+export function ViewResults({
+  results,
+  onClose,
+  onViewDetailedAnalytics,
+  loadingAttemptId = null,
+  isLoading = false
+}: ViewResultsProps) {
   const totalAttempts = results.length;
   const averageScore = totalAttempts > 0
     ? results.reduce((sum, result) => sum + result.percentage, 0) / totalAttempts
@@ -59,6 +66,12 @@ export function ViewResults({ results, onClose, onViewDetailedAnalytics, loading
           <h2 className="text-2xl font-bold text-gray-900">Submitted Attempts</h2>
         </div>
 
+        {isLoading ? (
+          <div className="p-12 text-center text-gray-500">
+            <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            Loading results...
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gradient-to-r from-indigo-50 to-purple-50">
@@ -132,7 +145,8 @@ export function ViewResults({ results, onClose, onViewDetailedAnalytics, loading
             </tbody>
           </table>
         </div>
-        {results.length === 0 ? (
+        )}
+        {!isLoading && results.length === 0 ? (
           <div className="p-12 text-center text-gray-500">No submitted attempts yet.</div>
         ) : null}
       </div>

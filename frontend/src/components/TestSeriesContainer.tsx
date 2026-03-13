@@ -151,6 +151,7 @@ export function TestSeriesContainer({
   const [studentTests, setStudentTests] = useState<PublishedTest[]>(publishedTests);
   const [attemptResults, setAttemptResults] = useState<ApiStudentAttemptResultListItem[]>([]);
   const [isStartingTest, setIsStartingTest] = useState(false);
+  const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
 
@@ -225,10 +226,19 @@ export function TestSeriesContainer({
   }, [onNavigateSubTab]);
 
   const loadAttemptResults = useCallback(async () => {
-    const results = await fetchMyAttemptResults();
-    setAttemptResults(results);
-    return results;
+    setIsLoadingResults(true);
+    try {
+      const results = await fetchMyAttemptResults();
+      setAttemptResults(results);
+      return results;
+    } finally {
+      setIsLoadingResults(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadAttemptResults().catch(() => undefined);
+  }, [loadAttemptResults]);
 
   useEffect(() => {
     const syncFromRoute = async () => {
@@ -450,6 +460,7 @@ export function TestSeriesContainer({
         results={attemptResults}
         onClose={handleBackToList}
         loadingAttemptId={loadingAnalysisAttemptId}
+        isLoading={isLoadingResults}
         onViewDetailedAnalytics={(attemptId) => {
           void openAttemptAnalytics(attemptId);
         }}
@@ -473,6 +484,8 @@ export function TestSeriesContainer({
       }}
       publishedTests={currentTests}
       loadingAnalysisAttemptId={loadingAnalysisAttemptId}
+      isLoadingResults={isLoadingResults}
+      attemptResults={attemptResults}
     />
   );
 }

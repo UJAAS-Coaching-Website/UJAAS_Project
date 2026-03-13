@@ -52,9 +52,11 @@ export function TestPerformanceInsights({
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadAnalysis = async () => {
+      setIsLoading(true);
       try {
         const analysis = await fetchTestAnalysis(testId);
         setPerformances(analysis.performances.map((perf) => ({
@@ -88,6 +90,8 @@ export function TestPerformanceInsights({
       } catch (error) {
         console.error('Failed to load test analysis', error);
         setPerformances([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -348,107 +352,113 @@ export function TestPerformanceInsights({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-100">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Latest Submission</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredPerformances.map((perf) => {
-                  const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
-                  return (
-                    <tr 
-                      key={perf.studentId}
-                      onClick={() => {
-                        setSelectedStudent(perf);
-                        setSelectedAttemptIndex(0);
-                      }}
-                      className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                    >
-                      <td className="px-6 py-4">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                          perf.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                          perf.rank === 2 ? 'bg-slate-100 text-slate-600' :
-                          perf.rank === 3 ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-50 text-gray-500'
-                        }`}>
-                          #{perf.rank}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900">{perf.studentName}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-700">{perf.attemptCount}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {new Date(perf.latestSubmittedAt).toLocaleDateString()}
-                          <Clock className="w-3.5 h-3.5 ml-1" />
-                          {new Date(perf.latestSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {status && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
-                            status === 'late' 
-                              ? 'bg-red-100 text-red-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {status === 'late' ? 'Late' : 'On Time'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900">{perf.score} / {perf.totalMarks}</span>
-                          <div className="w-24 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                            <div 
-                              className="h-full bg-blue-500 rounded-full"
-                              style={{ width: `${(perf.score / perf.totalMarks) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4 text-green-500" />
-                          <span className="font-bold text-gray-700">{perf.accuracy}%</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700">
-                          View Details
-                          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {isLoading ? (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-16 text-center">
+            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-600 font-medium">Loading student analysis...</p>
           </div>
-          {filteredPerformances.length === 0 && (
-            <div className="py-20 text-center">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-10 h-10 text-gray-300" />
-              </div>
-              <p className="text-gray-500">No students found matching your search.</p>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/50 border-b border-gray-100">
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Latest Submission</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
+                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredPerformances.map((perf) => {
+                    const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
+                    return (
+                      <tr 
+                        key={perf.studentId}
+                        onClick={() => {
+                          setSelectedStudent(perf);
+                          setSelectedAttemptIndex(0);
+                        }}
+                        className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                      >
+                        <td className="px-6 py-4">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                            perf.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                            perf.rank === 2 ? 'bg-slate-100 text-slate-600' :
+                            perf.rank === 3 ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-50 text-gray-500'
+                          }`}>
+                            #{perf.rank}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-gray-900">{perf.studentName}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-gray-700">{perf.attemptCount}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(perf.latestSubmittedAt).toLocaleDateString()}
+                            <Clock className="w-3.5 h-3.5 ml-1" />
+                            {new Date(perf.latestSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {status && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                              status === 'late' 
+                                ? 'bg-red-100 text-red-700' 
+                                : 'bg-green-100 text-green-700'
+                            }`}>
+                              {status === 'late' ? 'Late' : 'On Time'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-gray-900">{perf.score} / {perf.totalMarks}</span>
+                            <div className="w-24 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-500 rounded-full"
+                                style={{ width: `${(perf.score / perf.totalMarks) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Target className="w-4 h-4 text-green-500" />
+                            <span className="font-bold text-gray-700">{perf.accuracy}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700">
+                            View Details
+                            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+            {filteredPerformances.length === 0 && (
+              <div className="py-20 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-10 h-10 text-gray-300" />
+                </div>
+                <p className="text-gray-500">No students found matching your search.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

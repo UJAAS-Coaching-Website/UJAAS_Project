@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useMemo, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   FileText,
   Clock,
@@ -28,85 +28,11 @@ interface TestSeries {
   scheduledTime?: string;
   enrolled: number;
   passingMarks: number;
-  realQuestions?: any[];
   startTimeStatus?: 'on-time' | 'late';
   latestAttemptId?: string | null;
   maxAttempts?: number;
   hasActiveAttempt?: boolean;
 }
-
-const buildJeeMainDemoQuestions = (testKey: string) => {
-  const subjects = ['Physics', 'Chemistry', 'Mathematics'];
-  const questions: any[] = [];
-
-  subjects.forEach((subject) => {
-    for (let i = 1; i <= 20; i++) {
-      questions.push({
-        id: `${testKey}-${subject}-A-${i}`,
-        question: `${subject} Section A - Question ${i}`,
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correctAnswer: (i - 1) % 4,
-        subject,
-        marks: 4,
-        negativeMarks: 1,
-        type: 'MCQ',
-        metadata: { section: 'Section A' },
-      });
-    }
-
-    for (let i = 1; i <= 10; i++) {
-      questions.push({
-        id: `${testKey}-${subject}-B-${i}`,
-        question: `${subject} Section B - Numerical ${i}`,
-        correctAnswer: String((i * 2) + 1),
-        subject,
-        marks: 4,
-        negativeMarks: 0,
-        type: 'Numerical',
-        metadata: { section: 'Section B' },
-      });
-    }
-  });
-
-  return questions;
-};
-
-const MOCK_TEST_SERIES: TestSeries[] = [
-  {
-    id: '1',
-    title: 'JEE Main Demo Test - Attempted (New)',
-    subject: 'All Subjects',
-    duration: 180,
-    totalMarks: 300,
-    questions: 90,
-    difficulty: 'Hard',
-    status: 'completed',
-    score: 212,
-    attempts: 1,
-    scheduledDate: '2026-03-01',
-    scheduledTime: '09:00',
-    enrolled: 1098,
-    passingMarks: 120,
-    startTimeStatus: 'on-time',
-    realQuestions: buildJeeMainDemoQuestions('jee-main-demo-attempted-new')
-  },
-  {
-    id: '2',
-    title: 'JEE Main Demo Test - Fresh Attempt',
-    subject: 'All Subjects',
-    duration: 180,
-    totalMarks: 300,
-    questions: 90,
-    difficulty: 'Hard',
-    status: 'pending',
-    attempts: 0,
-    scheduledDate: '2026-03-04',
-    scheduledTime: '09:00',
-    enrolled: 1098,
-    passingMarks: 120,
-    realQuestions: buildJeeMainDemoQuestions('jee-main-demo-fresh')
-  }
-];
 
 interface TestSeriesProps {
   onStartTest: (test: import('../App').PublishedTest) => void;
@@ -114,6 +40,8 @@ interface TestSeriesProps {
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
   loadingAnalysisAttemptId?: string | null;
+  isLoadingResults?: boolean;
+  attemptResults?: import('../api/tests').ApiStudentAttemptResultListItem[];
 }
 
 export function TestSeriesSection({ 
@@ -121,14 +49,11 @@ export function TestSeriesSection({
   onViewAnalytics, 
   onViewResults,
   publishedTests = [],
-  loadingAnalysisAttemptId = null
+  loadingAnalysisAttemptId = null,
+  isLoadingResults = false,
+  attemptResults = []
 }: TestSeriesProps) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
-
-  const mapApiStatus = (status: import('../App').PublishedTest['status']): TestSeries['status'] => {
-    if (status === 'upcoming') return 'upcoming';
-    return 'pending';
-  };
 
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';
@@ -194,7 +119,6 @@ export function TestSeriesSection({
       scheduledTime: t.scheduleTime,
       enrolled: t.enrolledCount ?? 0,
       passingMarks: Math.floor(t.totalMarks * 0.4),
-      realQuestions: t.questions,
       startTimeStatus: getStartTimeStatus(
         t.scheduleDate,
         t.scheduleTime,
@@ -205,38 +129,7 @@ export function TestSeriesSection({
       maxAttempts: t.maxAttempts,
       hasActiveAttempt: t.hasActiveAttempt,
     }));
-
-  const buildDemoPublishedTest = (test: TestSeries): import('../App').PublishedTest => ({
-    id: test.id,
-    title: test.title,
-    format: test.subject === 'All Subjects' ? 'JEE MAIN' : 'Custom',
-    batches: [],
-    duration: test.duration,
-    totalMarks: test.totalMarks,
-    questionCount: test.questions,
-    enrolledCount: test.enrolled,
-    scheduleDate: test.scheduledDate || '',
-    scheduleTime: test.scheduledTime || '',
-    questions: Array.isArray(test.realQuestions) ? test.realQuestions : [],
-    instructions: undefined,
-    status: test.status === 'upcoming' ? 'upcoming' : 'live',
-    submittedAttemptCount: test.attempts,
-    maxAttempts: test.maxAttempts,
-    hasActiveAttempt: test.hasActiveAttempt,
-    activeAttemptId: null,
-    latestAttemptId: test.latestAttemptId,
-  });
-
-  const getStartableTest = (test: TestSeries): import('../App').PublishedTest => {
-    const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
-    if (publishedMatch) {
-      return publishedMatch;
-    }
-
-    return buildDemoPublishedTest(test);
-  };
-
-  const allTests = [...mappedPublishedTests, ...MOCK_TEST_SERIES];
+  const allTests = mappedPublishedTests;
 
   const filteredTests = allTests.filter(test => {
     const statusFilter = 
@@ -248,12 +141,16 @@ export function TestSeriesSection({
     return statusFilter;
   });
 
-  const stats = {
-    total: allTests.length,
-    completed: allTests.filter(t => t.status === 'completed').length,
-    pending: allTests.filter(t => t.status === 'pending').length,
-    avgScore: 82
-  };
+  const stats = useMemo(() => {
+    const total = allTests.length;
+    const completed = allTests.filter((test) => test.status === 'completed').length;
+    const pending = allTests.filter((test) => test.status === 'pending').length;
+    const avgScore = attemptResults.length > 0
+      ? attemptResults.reduce((sum, result) => sum + result.percentage, 0) / attemptResults.length
+      : 0;
+
+    return { total, completed, pending, avgScore };
+  }, [allTests, attemptResults]);
 
   return (
     <div className="space-y-6">
@@ -270,10 +167,15 @@ export function TestSeriesSection({
           </div>
           <div className="flex items-center gap-4">
             <motion.button
-              className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+              className={`px-6 py-3 rounded-xl font-semibold shadow-lg transition-all ${
+                isLoadingResults
+                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
+                  : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
+              }`}
               onClick={onViewResults}
+              disabled={isLoadingResults}
             >
-              View Results
+              {isLoadingResults ? 'Loading Results...' : 'View Results'}
             </motion.button>
           </div>
         </div>
@@ -285,7 +187,7 @@ export function TestSeriesSection({
           { label: 'Total Tests', value: stats.total, icon: FileText, gradient: 'from-blue-500 to-cyan-500' },
           { label: 'Completed', value: stats.completed, icon: CheckCircle, gradient: 'from-green-500 to-emerald-500' },
           { label: 'Pending', value: stats.pending, icon: Clock, gradient: 'from-orange-500 to-red-500' },
-          { label: 'Avg Score', value: `${stats.avgScore}%`, icon: Award, gradient: 'from-purple-500 to-pink-500' }
+          { label: 'Avg Score', value: `${stats.avgScore.toFixed(1)}%`, icon: Award, gradient: 'from-purple-500 to-pink-500' }
         ].map((stat, index) => (
           <motion.div
             key={index}
@@ -438,7 +340,10 @@ export function TestSeriesSection({
                     if (test.status === 'completed') {
                       onViewAnalytics(test.latestAttemptId);
                     } else if (test.status === 'pending') {
-                      onStartTest(getStartableTest(test));
+                      const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
+                      if (publishedMatch) {
+                        onStartTest(publishedMatch);
+                      }
                     }
                   }}
                   disabled={test.status === 'upcoming' || isLoadingAnalysis}
@@ -471,7 +376,12 @@ export function TestSeriesSection({
                 </motion.button>
                 {test.status === 'completed' && test.attempts < (test.maxAttempts ?? 1) && (
                   <motion.button
-                    onClick={() => onStartTest(getStartableTest(test))}
+                    onClick={() => {
+                      const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
+                      if (publishedMatch) {
+                        onStartTest(publishedMatch);
+                      }
+                    }}
                     className="w-full py-3 rounded-xl font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
                   >
                     Attempt Again
