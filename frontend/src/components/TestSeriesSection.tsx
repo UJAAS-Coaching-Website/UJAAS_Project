@@ -269,11 +269,11 @@ export function TestSeriesSection({
       </motion.div>
 
       {/* Test Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTests.map((test) => (
           <div
             key={test.id}
-            className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all"
+            className="h-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all flex flex-col"
           >
             {/* Card Header */}
             <div className={`p-6 ${
@@ -290,6 +290,15 @@ export function TestSeriesSection({
                 </div>
                 {test.status === 'completed' && (
                   <div className="flex items-center gap-2">
+                    {test.startTimeStatus && (
+                      <span className={`font-bold px-2.5 py-1 rounded-full text-xs ${
+                        test.startTimeStatus === 'on-time'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {test.startTimeStatus === 'on-time' ? 'ON TIME' : 'LATE'}
+                      </span>
+                    )}
                     <CheckCircle className="w-6 h-6 text-green-600" />
                   </div>
                 )}
@@ -318,30 +327,7 @@ export function TestSeriesSection({
             </div>
 
             {/* Card Body */}
-            <div className="p-6">
-              {/* Score Display */}
-              {test.status === 'completed' && test.score !== undefined && (
-                <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-700">Your Score</span>
-                    <span className="text-2xl font-bold text-green-600">
-                      {test.score}/{test.totalMarks}
-                    </span>
-                  </div>
-                  <div className="w-full bg-white rounded-full h-2">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(test.score / test.totalMarks) * 100}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className="h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    {test.score >= test.passingMarks ? '✓ Passed' : '✗ Not Passed'} • Passing: {test.passingMarks} marks
-                  </p>
-                </div>
-              )}
-
+            <div className="p-6 flex flex-1 flex-col">
               {/* Additional Info */}
               <div className="space-y-3 mb-4">
                 <div className="flex items-center justify-between text-sm">
@@ -365,21 +351,6 @@ export function TestSeriesSection({
                   </div>
                   <span className="font-medium text-gray-900">{test.attempts}/1</span>
                 </div>
-                {test.status === 'completed' && test.startTimeStatus && (
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Clock className="w-4 h-4" />
-                      <span>Start Status</span>
-                    </div>
-                    <span className={`font-bold px-2 py-0.5 rounded-full text-xs ${
-                      test.startTimeStatus === 'on-time' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-red-100 text-red-700'
-                    }`}>
-                      {test.startTimeStatus === 'on-time' ? 'ON TIME' : 'LATE'}
-                    </span>
-                  </div>
-                )}
               </div>
 
               {/* Action Button */}
@@ -392,7 +363,7 @@ export function TestSeriesSection({
                   }
                 }}
                 disabled={test.status === 'upcoming'}
-                className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                className={`mt-auto w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
                   test.status === 'upcoming'
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : test.status === 'completed'
