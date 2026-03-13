@@ -109,7 +109,7 @@ const MOCK_TEST_SERIES: TestSeries[] = [
 ];
 
 interface TestSeriesProps {
-  onStartTest: (test: any) => void;
+  onStartTest: (test: import('../App').PublishedTest) => void;
   onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
@@ -124,7 +124,6 @@ export function TestSeriesSection({
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
   const mapApiStatus = (status: import('../App').PublishedTest['status']): TestSeries['status'] => {
-    if (status === 'completed') return 'completed';
     if (status === 'upcoming') return 'upcoming';
     return 'pending';
   };
@@ -175,6 +174,36 @@ export function TestSeriesSection({
       maxAttempts: t.maxAttempts,
       hasActiveAttempt: t.hasActiveAttempt,
     }));
+
+  const buildDemoPublishedTest = (test: TestSeries): import('../App').PublishedTest => ({
+    id: test.id,
+    title: test.title,
+    format: test.subject === 'All Subjects' ? 'JEE MAIN' : 'Custom',
+    batches: [],
+    duration: test.duration,
+    totalMarks: test.totalMarks,
+    questionCount: test.questions,
+    enrolledCount: test.enrolled,
+    scheduleDate: test.scheduledDate || '',
+    scheduleTime: test.scheduledTime || '',
+    questions: Array.isArray(test.realQuestions) ? test.realQuestions : [],
+    instructions: undefined,
+    status: test.status === 'upcoming' ? 'upcoming' : 'live',
+    submittedAttemptCount: test.attempts,
+    maxAttempts: test.maxAttempts,
+    hasActiveAttempt: test.hasActiveAttempt,
+    activeAttemptId: null,
+    latestAttemptId: test.latestAttemptId,
+  });
+
+  const getStartableTest = (test: TestSeries): import('../App').PublishedTest => {
+    const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
+    if (publishedMatch) {
+      return publishedMatch;
+    }
+
+    return buildDemoPublishedTest(test);
+  };
 
   const allTests = [...mappedPublishedTests, ...MOCK_TEST_SERIES];
 
@@ -370,7 +399,7 @@ export function TestSeriesSection({
                     if (test.status === 'completed') {
                       onViewAnalytics(test.latestAttemptId);
                     } else if (test.status === 'pending') {
-                      onStartTest(test);
+                      onStartTest(getStartableTest(test));
                     }
                   }}
                   disabled={test.status === 'upcoming'}
@@ -401,7 +430,7 @@ export function TestSeriesSection({
                 </motion.button>
                 {test.status === 'completed' && test.attempts < (test.maxAttempts ?? 1) && (
                   <motion.button
-                    onClick={() => onStartTest(test)}
+                    onClick={() => onStartTest(getStartableTest(test))}
                     className="w-full py-3 rounded-xl font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
                   >
                     Attempt Again

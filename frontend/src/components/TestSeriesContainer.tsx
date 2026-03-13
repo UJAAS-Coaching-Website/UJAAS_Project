@@ -147,6 +147,7 @@ export function TestSeriesContainer({
   const [testState, setTestState] = useState<TestState>({ mode: 'list' });
   const [studentTests, setStudentTests] = useState<PublishedTest[]>(publishedTests);
   const [attemptResults, setAttemptResults] = useState<ApiStudentAttemptResultListItem[]>([]);
+  const [isStartingTest, setIsStartingTest] = useState(false);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -240,7 +241,10 @@ export function TestSeriesContainer({
 
       if (subTab.startsWith('Overview')) {
         if (testState.mode !== 'overview') {
-          await hydrateActiveAttempt('overview');
+          const stored = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+          if (stored) {
+            await hydrateActiveAttempt('overview');
+          }
         }
         return;
       }
@@ -294,9 +298,10 @@ export function TestSeriesContainer({
   };
 
   const handleConfirmStart = async () => {
-    if (testState.mode !== 'overview') return;
+    if (testState.mode !== 'overview' || isStartingTest) return;
 
     try {
+      setIsStartingTest(true);
       const payload: ApiActiveAttemptPayload = await startMyTestAttempt(testState.test.id);
       const fullTest = apiTestToPublished(payload.test);
 
@@ -332,6 +337,8 @@ export function TestSeriesContainer({
       onNavigateSubTab?.(`Test-${slugify(fullTest.title)}`);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
+    } finally {
+      setIsStartingTest(false);
     }
   };
 
@@ -376,6 +383,7 @@ export function TestSeriesContainer({
         test={testState.test}
         onStart={handleConfirmStart}
         onBack={handleBackToList}
+        isStarting={isStartingTest}
       />
     );
   }
@@ -439,16 +447,20 @@ export function TestSeriesContainer({
 function TestOverview({
   test,
   onStart,
-  onBack
+  onBack,
+  isStarting = false
 }: {
   test: PublishedTest;
   onStart: () => void;
   onBack: () => void;
+  isStarting?: boolean;
 }) {
+  const questions = Array.isArray(test.questions) ? test.questions : [];
+
   const breakdown = useMemo(() => {
     const stats: Record<string, Record<string, { count: number, marks: number, neg: number }>> = {};
 
-    test.questions.forEach(q => {
+    questions.forEach(q => {
       const sub = q.subject || 'Default';
       const sec = q.metadata?.section || 'Section A';
 
@@ -461,7 +473,7 @@ function TestOverview({
     });
 
     return stats;
-  }, [test.questions]);
+  }, [questions]);
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -486,7 +498,7 @@ function TestOverview({
             </div>
             <div className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              <span className="font-medium">{test.questions.length} Questions</span>
+              <span className="font-medium">{questions.length} Questions</span>
             </div>
             <div className="flex items-center gap-2">
               <Award className="w-5 h-5" />
@@ -556,10 +568,11 @@ function TestOverview({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onStart}
-              className="w-full sm:w-64 py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 text-lg"
+              disabled={isStarting}
+              className="w-full sm:w-64 py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-70 disabled:cursor-wait"
             >
               <Play className="w-6 h-6 fill-current" />
-              Confirm & Start Test
+              {isStarting ? 'Loading Test...' : 'Confirm & Start Test'}
             </motion.button>
             <p className="text-sm text-gray-500 font-medium italic">
               By clicking start, the full test will be loaded before the timer begins.

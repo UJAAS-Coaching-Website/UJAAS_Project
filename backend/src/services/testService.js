@@ -1,6 +1,14 @@
 import { pool } from "../db/index.js";
 
 const MAX_TEST_ATTEMPTS = 3;
+const TEST_DURATION_EXPR = "COALESCE(t.duration_mins, t.duration_minutes, 0)";
+const TEST_SCHEDULE_TS_EXPR = `
+    CASE
+        WHEN t.scheduled_at IS NULL THEN NULL
+        WHEN NULLIF(TRIM(COALESCE(t.schedule_time, '')), '') IS NULL THEN t.scheduled_at::timestamp
+        ELSE date_trunc('day', t.scheduled_at::timestamp) + TRIM(t.schedule_time)::time
+    END
+`;
 
 function parseStoredAnswer(value, questionType) {
     if (value === undefined || value === null || value === "") {
@@ -90,7 +98,7 @@ export async function getAllTests() {
             t.id,
             t.title,
             t.format,
-            t.duration_minutes,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
             t.total_marks,
             TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
             t.schedule_time,
@@ -128,7 +136,7 @@ export async function getTestsForStudent(studentId) {
             t.id,
             t.title,
             t.format,
-            t.duration_minutes,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
             t.total_marks,
             TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
             t.schedule_time,
@@ -202,7 +210,7 @@ export async function getTestById(id) {
             t.id,
             t.title,
             t.format,
-            t.duration_minutes,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
             t.total_marks,
             TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
             t.schedule_time,
@@ -325,7 +333,7 @@ async function buildAttemptResult(attemptId) {
             ra.total_students,
             t.title AS test_title,
             t.total_marks,
-            t.duration_minutes,
+            COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
             t.instructions
         FROM ranked_attempts ra
         JOIN tests t ON t.id = ra.test_id
@@ -463,6 +471,12 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
         return null;
     }
 
+    if (test.status !== "live") {
+        const error = new Error("test is not live");
+        error.code = "TEST_NOT_LIVE";
+        throw error;
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -554,7 +568,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
         const attemptResult = await client.query(`
             SELECT
                 ta.*,
-                t.duration_minutes
+                COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes
             FROM test_attempts ta
             JOIN tests t ON t.id = ta.test_id
             WHERE ta.id = $1
@@ -688,7 +702,7 @@ export async function getStudentAttemptResults(studentId) {
             ra.total_students,
             t.title AS test_title,
             t.total_marks,
-            t.duration_minutes,
+            COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
             (
                 SELECT COUNT(*)
                 FROM questions q
@@ -760,7 +774,7 @@ export async function getTestAttemptAnalysis(testId) {
             ra.total_students,
             qc.total_questions,
             t.total_marks,
-            t.duration_minutes,
+            COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
             t.instructions,
             t.title AS test_title
         FROM ranked_attempts ra
@@ -867,6 +881,21 @@ export async function updateTestStatus(id, status) {
     );
     if (result.rowCount === 0) return null;
     return getTestById(id);
+}
+
+export async function syncScheduledTestStatuses() {
+    const liveResult = await pool.query(`
+        UPDATE tests t
+        SET status = 'live'
+        WHERE t.status IN ('upcoming', 'completed')
+          AND ${TEST_SCHEDULE_TS_EXPR} IS NOT NULL
+          AND NOW() >= ${TEST_SCHEDULE_TS_EXPR}
+        RETURNING t.id
+    `);
+
+    return {
+        liveCount: liveResult.rowCount,
+    };
 }
 
 /**

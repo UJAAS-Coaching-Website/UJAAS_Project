@@ -118,7 +118,7 @@ export interface PublishedTest {
   scheduleTime: string;
   questions: any[];
   instructions?: string;
-  status: 'draft' | 'upcoming' | 'live' | 'completed';
+  status: 'draft' | 'upcoming' | 'live';
   submittedAttemptCount?: number;
   maxAttempts?: number;
   hasActiveAttempt?: boolean;

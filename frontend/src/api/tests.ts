@@ -57,7 +57,7 @@ export interface ApiTest {
     schedule_date: string | null;
     schedule_time: string | null;
     instructions: string | null;
-    status: 'draft' | 'upcoming' | 'live' | 'completed';
+    status: 'draft' | 'upcoming' | 'live';
     created_by: string | null;
     question_count: number;
     enrolled_count: number;
@@ -221,7 +221,7 @@ export async function updateTestApi(id: string, data: Partial<CreateTestPayload>
     });
 }
 
-export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' | 'live' | 'completed'): Promise<ApiTest> {
+export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' | 'live'): Promise<ApiTest> {
     return request<ApiTest>(`/api/tests/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),

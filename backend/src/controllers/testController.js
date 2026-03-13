@@ -147,7 +147,7 @@ export async function handleUpdateTest(req, res) {
 export async function handleUpdateTestStatus(req, res) {
     try {
         const { status } = req.body;
-        if (!['draft', 'upcoming', 'live', 'completed'].includes(status)) {
+        if (!['draft', 'upcoming', 'live'].includes(status)) {
             return res.status(400).json({ message: "invalid status" });
         }
         const test = await updateTestStatus(req.params.id, status);
@@ -212,6 +212,9 @@ export async function startMyTestAttempt(req, res) {
     } catch (error) {
         if (error?.code === "ATTEMPT_LIMIT_REACHED") {
             return res.status(409).json({ message: "maximum attempts reached" });
+        }
+        if (error?.code === "TEST_NOT_LIVE") {
+            return res.status(409).json({ message: "test is not live" });
         }
         console.error("startMyTestAttempt error:", error.message);
         return res.status(500).json({ message: "failed to start attempt", error: error.message });
