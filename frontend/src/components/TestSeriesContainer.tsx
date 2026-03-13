@@ -239,7 +239,6 @@ export function TestSeriesContainer({
         onNavigateSubTab?.('Results');
       }}
       publishedTests={publishedTests}
-      userBatch={user.studentDetails?.batch || ''}
     />
   );
 }

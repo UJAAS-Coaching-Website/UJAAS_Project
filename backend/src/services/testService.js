@@ -33,6 +33,42 @@ export async function getAllTests() {
 }
 
 /**
+ * Get all tests visible to a student based on the student's assigned batch.
+ */
+export async function getTestsForStudent(studentId) {
+    const result = await pool.query(`
+        SELECT
+            t.id,
+            t.title,
+            t.format,
+            t.duration_minutes,
+            t.total_marks,
+            TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
+            t.schedule_time,
+            t.instructions,
+            t.status,
+            t.created_by,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            COALESCE(
+                json_agg(
+                    DISTINCT jsonb_build_object('id', b.id, 'name', b.name)
+                ) FILTER (WHERE b.id IS NOT NULL),
+                '[]'
+            ) AS batches
+        FROM student_batches sb
+        JOIN test_target_batches tb_match ON tb_match.batch_id = sb.batch_id
+        JOIN tests t ON t.id = tb_match.test_id
+        LEFT JOIN test_target_batches tb ON tb.test_id = t.id
+        LEFT JOIN batches b ON b.id = tb.batch_id
+        WHERE sb.student_id = $1
+        GROUP BY t.id
+        ORDER BY t.scheduled_at DESC NULLS LAST, t.title
+    `, [studentId]);
+
+    return result.rows;
+}
+
+/**
  * Get a single test with its questions and batch assignments.
  */
 export async function getTestById(id) {
@@ -77,6 +113,25 @@ export async function getTestById(id) {
         ...testResult.rows[0],
         questions: questionsResult.rows,
     };
+}
+
+/**
+ * Get a single test only if it is assigned to the student's batch.
+ */
+export async function getTestByIdForStudent(id, studentId) {
+    const hasAccess = await pool.query(`
+        SELECT 1
+        FROM student_batches sb
+        JOIN test_target_batches tb ON tb.batch_id = sb.batch_id
+        WHERE sb.student_id = $1 AND tb.test_id = $2
+        LIMIT 1
+    `, [studentId, id]);
+
+    if (hasAccess.rowCount === 0) {
+        return null;
+    }
+
+    return getTestById(id);
 }
 
 /**

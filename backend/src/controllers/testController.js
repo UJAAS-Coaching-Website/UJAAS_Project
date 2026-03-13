@@ -1,4 +1,13 @@
-import { getAllTests, getTestById, createTest, updateTestStatus, updateTest, deleteTest } from "../services/testService.js";
+import {
+    getAllTests,
+    getTestsForStudent,
+    getTestById,
+    getTestByIdForStudent,
+    createTest,
+    updateTestStatus,
+    updateTest,
+    deleteTest
+} from "../services/testService.js";
 import { deleteAllImagesForContext } from "../services/storageService.js";
 
 function isPositiveNumber(value) {
@@ -7,8 +16,11 @@ function isPositiveNumber(value) {
 
 export async function listTests(req, res) {
     try {
-        let tests = await getAllTests();
-        // Only admins can see drafts
+        let tests = req.user?.role === 'student'
+            ? await getTestsForStudent(req.user.sub)
+            : await getAllTests();
+
+        // Only admins can see drafts.
         if (req.user?.role !== 'admin') {
             tests = tests.filter(t => t.status !== 'draft');
         }
@@ -21,7 +33,10 @@ export async function listTests(req, res) {
 
 export async function getTest(req, res) {
     try {
-        const test = await getTestById(req.params.id);
+        const test = req.user?.role === 'student'
+            ? await getTestByIdForStudent(req.params.id, req.user.sub)
+            : await getTestById(req.params.id);
+
         if (!test) {
             return res.status(404).json({ message: "test not found" });
         }

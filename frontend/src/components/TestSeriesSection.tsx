@@ -109,20 +109,17 @@ interface TestSeriesProps {
   onViewAnalytics: (testId: string) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
-  userBatch?: string;
 }
 
 export function TestSeriesSection({ 
   onStartTest, 
   onViewAnalytics, 
   onViewResults,
-  publishedTests = [],
-  userBatch
+  publishedTests = []
 }: TestSeriesProps) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
   const mappedPublishedTests: TestSeries[] = (publishedTests || [])
-    .filter(t => !userBatch || t.batches.includes(userBatch))
     .map(t => ({
       id: t.id,
       title: t.title,

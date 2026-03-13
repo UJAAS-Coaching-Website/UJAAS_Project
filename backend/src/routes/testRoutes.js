@@ -11,9 +11,9 @@ import {
 
 const router = Router();
 
-// Allow read access for both admins and faculty
-router.get("/", authenticate, requireAnyRole("admin", "faculty"), listTests);
-router.get("/:id", authenticate, requireAnyRole("admin", "faculty"), getTest);
+// Allow read access for admins, faculty, and students with role-aware filtering
+router.get("/", authenticate, requireAnyRole("admin", "faculty", "student"), listTests);
+router.get("/:id", authenticate, requireAnyRole("admin", "faculty", "student"), getTest);
 
 // Modification routes
 router.post("/", authenticate, requireRole("admin"), handleCreateTest);

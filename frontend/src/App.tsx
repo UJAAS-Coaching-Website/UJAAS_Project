@@ -993,11 +993,14 @@ function App() {
             }
           }
 
+          if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty' || loggedInUser.role === 'student') {
+            setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+          }
+
           if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
             setAdminBatches(apiBatches.map(apiBatchToInfo));
             setAdminFaculties(apiFaculties);
             setAdminStudents(apiStudents);
-            setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
           }
         } else {
           setUser(null);
@@ -1139,7 +1142,7 @@ function App() {
     );
 
     // Fetch batches and queries from API for admin/faculty
-    if (userData.role === 'admin' || userData.role === 'faculty') {
+    if (userData.role === 'admin' || userData.role === 'faculty' || userData.role === 'student') {
       setLoading(true);
       try {
         const [apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
@@ -1149,10 +1152,13 @@ function App() {
           apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
         ]);
 
-        setAdminBatches(apiBatches.map(apiBatchToInfo));
-        setAdminFaculties(apiFaculties);
-        setAdminStudents(apiStudents);
         setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+
+        if (userData.role === 'admin' || userData.role === 'faculty') {
+          setAdminBatches(apiBatches.map(apiBatchToInfo));
+          setAdminFaculties(apiFaculties);
+          setAdminStudents(apiStudents);
+        }
 
         if (userData.role === 'admin') {
           try {
