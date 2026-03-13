@@ -2,11 +2,13 @@ import { pool } from "../db/index.js";
 
 const MAX_TEST_ATTEMPTS = 3;
 const TEST_DURATION_EXPR = "COALESCE(t.duration_mins, t.duration_minutes, 0)";
+const TEST_SCHEDULE_TIMEZONE = "Asia/Kolkata";
 const TEST_SCHEDULE_TS_EXPR = `
     CASE
         WHEN t.scheduled_at IS NULL THEN NULL
-        WHEN NULLIF(TRIM(COALESCE(t.schedule_time, '')), '') IS NULL THEN t.scheduled_at::timestamp
-        ELSE date_trunc('day', t.scheduled_at::timestamp) + TRIM(t.schedule_time)::time
+        WHEN NULLIF(TRIM(COALESCE(t.schedule_time, '')), '') IS NULL
+            THEN (t.scheduled_at::date::timestamp AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}')
+        ELSE (((t.scheduled_at::date)::text || ' ' || TRIM(t.schedule_time))::timestamp AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}')
     END
 `;
 

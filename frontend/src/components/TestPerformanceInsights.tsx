@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
 import { fetchTestAnalysis, fetchTestById } from '../api/tests';
+import logo from '../assets/logo.svg';
+import { printTestPaperPdf } from '../utils/testPaperPrint';
 
 export interface StudentPerformance {
   studentId: string;
@@ -74,7 +76,9 @@ export function TestPerformanceInsights({
                 id: question.id,
                 text: question.question_text,
                 question: question.question_text,
+                questionImage: question.question_img || undefined,
                 options: question.options || undefined,
+                optionImages: question.option_imgs || undefined,
                 correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
                 subject: question.subject,
                 marks: question.marks,
@@ -161,195 +165,18 @@ export function TestPerformanceInsights({
         return;
       }
 
-      const sanitizePdfText = (value: string) =>
-        value
-          .replace(/[^\x20-\x7E\n]/g, ' ')
-          .replace(/\r/g, '')
-          .trim();
-
-      const escapePdfText = (value: string) =>
-        value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-
-      const splitTextToLines = (text: string, maxChars: number) => {
-        const normalized = sanitizePdfText(text);
-        if (!normalized) return [''];
-
-        const paragraphs = normalized.split('\n');
-        const output: string[] = [];
-
-        paragraphs.forEach((paragraph) => {
-          const words = paragraph.split(/\s+/).filter(Boolean);
-          if (words.length === 0) {
-            output.push('');
-            return;
-          }
-
-          let currentLine = '';
-          words.forEach((word) => {
-            const nextLine = currentLine ? `${currentLine} ${word}` : word;
-            if (nextLine.length <= maxChars) {
-              currentLine = nextLine;
-              return;
-            }
-
-            if (currentLine) {
-              output.push(currentLine);
-            }
-
-            if (word.length <= maxChars) {
-              currentLine = word;
-              return;
-            }
-
-            for (let index = 0; index < word.length; index += maxChars) {
-              const chunk = word.slice(index, index + maxChars);
-              if (chunk.length === maxChars || index + maxChars < word.length) {
-                output.push(chunk);
-              } else {
-                currentLine = chunk;
-              }
-            }
-          });
-
-          if (currentLine) {
-            output.push(currentLine);
-          }
-        });
-
-        return output;
-      };
-
-      const groupedQuestions: Record<string, Record<string, any[]>> = {};
-      resolvedQuestions.forEach((question) => {
-        const subject = question.subject || 'General';
-        const section = question.metadata?.section || question.section || 'Section A';
-        if (!groupedQuestions[subject]) groupedQuestions[subject] = {};
-        if (!groupedQuestions[subject][section]) groupedQuestions[subject][section] = [];
-        groupedQuestions[subject][section].push(question);
-      });
-
       const totalMarks = resolvedQuestions.reduce((sum, question) => sum + Number(question.marks || 0), 0);
-      const lines: Array<{ text: string; size?: number; gapAfter?: number }> = [];
 
-      lines.push({ text: 'UJAAS Career Institute', size: 18, gapAfter: 8 });
-      lines.push({ text: sanitizePdfText(testTitle), size: 15, gapAfter: 10 });
-      lines.push({ text: `Duration: ${testDuration || 0} mins`, gapAfter: 4 });
-      lines.push({ text: `Max Marks: ${totalMarks}`, gapAfter: 8 });
-
-      if (testInstructions?.trim()) {
-        lines.push({ text: 'General Instructions', size: 13, gapAfter: 4 });
-        splitTextToLines(testInstructions, 90).forEach((line) => lines.push({ text: line, gapAfter: 2 }));
-        lines.push({ text: '', gapAfter: 6 });
-      }
-
-      let questionNumber = 0;
-      Object.entries(groupedQuestions).forEach(([subject, sections]) => {
-        lines.push({ text: subject.toUpperCase(), size: 14, gapAfter: 6 });
-        Object.entries(sections).forEach(([section, questions]) => {
-          lines.push({ text: section, size: 12, gapAfter: 4 });
-          questions.forEach((question) => {
-            questionNumber += 1;
-            splitTextToLines(
-              `Q${questionNumber}. ${question.question || question.text || ''} [${question.marks || 0} Marks]`,
-              90
-            ).forEach((line) => lines.push({ text: line, gapAfter: 2 }));
-
-            if (question.type !== 'Numerical' && Array.isArray(question.options) && question.options.length > 0) {
-              question.options.forEach((option: string, optionIndex: number) => {
-                splitTextToLines(`(${String.fromCharCode(65 + optionIndex)}) ${option}`, 82).forEach((line) =>
-                  lines.push({ text: `  ${line}`, gapAfter: 2 })
-                );
-              });
-            } else {
-              lines.push({ text: '  Answer: _______________________', gapAfter: 2 });
-            }
-
-            lines.push({ text: '', gapAfter: 4 });
-          });
-        });
+      await printTestPaperPdf({
+        title: testTitle,
+        testId,
+        duration: testDuration || 0,
+        totalMarks,
+        totalQuestions: resolvedQuestions.length,
+        instructions: testInstructions,
+        questions: resolvedQuestions,
+        logoSrc: logo,
       });
-
-      const pageWidth = 595;
-      const pageHeight = 842;
-      const margin = 40;
-      const bottomMargin = 48;
-      const defaultFontSize = 11;
-      const lineHeightFactor = 1.35;
-
-      const pages: string[][] = [[]];
-      let currentPage = pages[0];
-      let cursorY = pageHeight - margin;
-
-      const writeLine = (text: string, fontSize = defaultFontSize) => {
-        currentPage.push(
-          `BT /F1 ${fontSize} Tf 1 0 0 1 ${margin} ${cursorY.toFixed(2)} Tm (${escapePdfText(text || ' ')}) Tj ET`
-        );
-        cursorY -= fontSize * lineHeightFactor;
-      };
-
-      lines.forEach(({ text, size, gapAfter }) => {
-        const fontSize = size || defaultFontSize;
-        const extraGap = gapAfter || 0;
-        const requiredHeight = fontSize * lineHeightFactor + extraGap;
-
-        if (cursorY - requiredHeight < bottomMargin) {
-          currentPage = [];
-          pages.push(currentPage);
-          cursorY = pageHeight - margin;
-        }
-
-        writeLine(text, fontSize);
-        cursorY -= extraGap;
-      });
-
-      const objects: string[] = [];
-      const addObject = (content: string) => {
-        objects.push(content);
-        return objects.length;
-      };
-
-      const fontObjectId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-      const contentObjectIds = pages.map((pageCommands) => {
-        const stream = pageCommands.join('\n');
-        return addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
-      });
-
-      const pagesObjectId = objects.length + pages.length + 1;
-      const pageObjectIds = contentObjectIds.map((contentObjectId) =>
-        addObject(
-          `<< /Type /Page /Parent ${pagesObjectId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjectId} 0 R >> >> /Contents ${contentObjectId} 0 R >>`
-        )
-      );
-
-      addObject(`<< /Type /Pages /Count ${pageObjectIds.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(' ')}] >>`);
-      const catalogObjectId = addObject(`<< /Type /Catalog /Pages ${pagesObjectId} 0 R >>`);
-
-      let pdf = '%PDF-1.4\n';
-      const offsets: number[] = [0];
-
-      objects.forEach((object, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-      });
-
-      const xrefOffset = pdf.length;
-      pdf += `xref\n0 ${objects.length + 1}\n`;
-      pdf += '0000000000 65535 f \n';
-      offsets.slice(1).forEach((offset) => {
-        pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
-      });
-      pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogObjectId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-      const fileName = `${sanitizePdfText(testTitle).replace(/\s+/g, '_') || 'test-paper'}.pdf`;
-      const blob = new Blob([new TextEncoder().encode(pdf)], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
       console.error('Failed to download test paper PDF', error);
       window.alert('Failed to download the test paper. Please try again.');
