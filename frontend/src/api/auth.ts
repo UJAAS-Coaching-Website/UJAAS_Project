@@ -51,7 +51,10 @@ let refreshInFlight: Promise<boolean> | null = null;
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("ujaasToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (!token || token === "null" || token === "undefined") {
+    return {};
+  }
+  return { Authorization: `Bearer ${token}` };
 }
 
 async function runRequest(path: string, options: RequestInit = {}): Promise<Response> {
@@ -119,6 +122,10 @@ export async function login(loginId: string, password: string): Promise<AuthResp
 }
 
 export async function me(): Promise<{ user: AuthUser }> {
+  const token = localStorage.getItem("ujaasToken");
+  if (!token || token === "null" || token === "undefined") {
+    throw new Error("No auth token");
+  }
   return request<{ user: AuthUser }>("/api/auth/me");
 }
 

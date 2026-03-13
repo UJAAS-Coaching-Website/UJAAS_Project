@@ -2,7 +2,10 @@ const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost
 
 function getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    if (!token || token === "null" || token === "undefined") {
+        return {};
+    }
+    return { Authorization: `Bearer ${token}` };
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

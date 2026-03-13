@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { TestSeriesSection } from './TestSeriesSection';
 import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
@@ -148,6 +148,7 @@ export function TestSeriesContainer({
   const [studentTests, setStudentTests] = useState<PublishedTest[]>(publishedTests);
   const [attemptResults, setAttemptResults] = useState<ApiStudentAttemptResultListItem[]>([]);
   const [isStartingTest, setIsStartingTest] = useState(false);
+  const pendingSubTabRef = useRef<string | null>(null);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -218,7 +219,14 @@ export function TestSeriesContainer({
 
   useEffect(() => {
     const syncFromRoute = async () => {
+      if (subTab && pendingSubTabRef.current === subTab) {
+        pendingSubTabRef.current = null;
+      }
+
       if (!subTab || subTab === 'list') {
+        if (!subTab && pendingSubTabRef.current) {
+          return;
+        }
         if (testState.mode !== 'list') {
           setTestState({ mode: 'list' });
         }
@@ -294,7 +302,8 @@ export function TestSeriesContainer({
 
   const handleStartTest = (test: PublishedTest) => {
     setTestState({ mode: 'overview', test });
-    onNavigateSubTab?.(`Overview-${slugify(test.title)}`);
+    pendingSubTabRef.current = `Overview-${slugify(test.title)}`;
+    onNavigateSubTab?.(pendingSubTabRef.current);
   };
 
   const handleConfirmStart = async () => {
@@ -334,7 +343,8 @@ export function TestSeriesContainer({
         deadlineAt: payload.attempt.deadline_at,
         serverNow: payload.serverNow,
       });
-      onNavigateSubTab?.(`Test-${slugify(fullTest.title)}`);
+      pendingSubTabRef.current = `Test-${slugify(fullTest.title)}`;
+      onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
     } finally {
@@ -364,13 +374,15 @@ export function TestSeriesContainer({
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
       setTestState({ mode: 'analytics', result });
-      onNavigateSubTab?.(`Analysis-${result.attempt_id}`);
+      pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
+      onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to submit test');
     }
   };
 
   const handleBackToList = () => {
+    pendingSubTabRef.current = null;
     setTestState({ mode: 'list' });
     onNavigateSubTab?.(undefined);
   };

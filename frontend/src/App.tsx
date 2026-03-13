@@ -984,9 +984,16 @@ function App() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
+        const hasStoredToken = (() => {
+          const token = localStorage.getItem('ujaasToken');
+          return Boolean(token && token !== 'null' && token !== 'undefined');
+        })();
+
         const [apiLanding, profileResponse] = await Promise.all([
           fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
-          me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
+          hasStoredToken
+            ? me().catch(e => { console.warn('Could not fetch user profile:', e); return null; })
+            : Promise.resolve(null),
         ]);
 
         if (profileResponse && profileResponse.user) {
