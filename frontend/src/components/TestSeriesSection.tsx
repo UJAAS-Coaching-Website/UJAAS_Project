@@ -30,6 +30,9 @@ interface TestSeries {
   passingMarks: number;
   realQuestions?: any[];
   startTimeStatus?: 'on-time' | 'late';
+  latestAttemptId?: string | null;
+  maxAttempts?: number;
+  hasActiveAttempt?: boolean;
 }
 
 const buildJeeMainDemoQuestions = (testKey: string) => {
@@ -107,7 +110,7 @@ const MOCK_TEST_SERIES: TestSeries[] = [
 
 interface TestSeriesProps {
   onStartTest: (test: any) => void;
-  onViewAnalytics: (testId: string) => void;
+  onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
 }
@@ -157,13 +160,20 @@ export function TestSeriesSection({
       totalMarks: t.totalMarks,
       questions: t.questionCount ?? t.questions.length,
       difficulty: 'Medium',
-      status: mapApiStatus(t.status),
-      attempts: 0,
+      status: t.hasActiveAttempt
+        ? 'pending'
+        : ((t.submittedAttemptCount || 0) > 0
+            ? 'completed'
+            : (t.status === 'upcoming' ? 'upcoming' : 'pending')),
+      attempts: t.submittedAttemptCount || 0,
       scheduledDate: t.scheduleDate,
       scheduledTime: t.scheduleTime,
       enrolled: t.enrolledCount ?? 0,
       passingMarks: Math.floor(t.totalMarks * 0.4),
-      realQuestions: t.questions
+      realQuestions: t.questions,
+      latestAttemptId: t.latestAttemptId,
+      maxAttempts: t.maxAttempts,
+      hasActiveAttempt: t.hasActiveAttempt,
     }));
 
   const allTests = [...mappedPublishedTests, ...MOCK_TEST_SERIES];
@@ -349,45 +359,55 @@ export function TestSeriesSection({
                     <Target className="w-4 h-4" />
                     <span>Attempts</span>
                   </div>
-                  <span className="font-medium text-gray-900">{test.attempts}/1</span>
+                  <span className="font-medium text-gray-900">{test.attempts}/{test.maxAttempts ?? 1}</span>
                 </div>
               </div>
 
               {/* Action Button */}
-              <motion.button
-                onClick={() => {
-                  if (test.status === 'completed') {
-                    onViewAnalytics(test.id);
-                  } else if (test.status === 'pending') {
-                    onStartTest(test);
-                  }
-                }}
-                disabled={test.status === 'upcoming'}
-                className={`mt-auto w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                  test.status === 'upcoming'
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : test.status === 'completed'
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl'
-                    : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
-                }`}
-              >
-                {test.status === 'upcoming' ? (
-                  <>
-                    <Calendar className="w-5 h-5" />
-                    Upcoming
-                  </>
-                ) : test.status === 'completed' ? (
-                  <>
-                    <BarChart3 className="w-5 h-5" />
-                    View Analysis
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-5 h-5" />
-                    Start Test
-                  </>
+              <div className="mt-auto space-y-3">
+                <motion.button
+                  onClick={() => {
+                    if (test.status === 'completed') {
+                      onViewAnalytics(test.latestAttemptId);
+                    } else if (test.status === 'pending') {
+                      onStartTest(test);
+                    }
+                  }}
+                  disabled={test.status === 'upcoming'}
+                  className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                    test.status === 'upcoming'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : test.status === 'completed'
+                      ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl'
+                      : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {test.status === 'upcoming' ? (
+                    <>
+                      <Calendar className="w-5 h-5" />
+                      Upcoming
+                    </>
+                  ) : test.status === 'completed' ? (
+                    <>
+                      <BarChart3 className="w-5 h-5" />
+                      View Analysis
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" />
+                      {test.hasActiveAttempt ? 'Resume Test' : 'Start Test'}
+                    </>
+                  )}
+                </motion.button>
+                {test.status === 'completed' && test.attempts < (test.maxAttempts ?? 1) && (
+                  <motion.button
+                    onClick={() => onStartTest(test)}
+                    className="w-full py-3 rounded-xl font-semibold border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-all"
+                  >
+                    Attempt Again
+                  </motion.button>
                 )}
-              </motion.button>
+              </div>
             </div>
           </div>
         ))}

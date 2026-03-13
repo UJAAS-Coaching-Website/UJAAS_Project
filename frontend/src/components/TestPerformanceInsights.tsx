@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -14,10 +14,13 @@ import {
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
 import logo from '../assets/logo.svg';
+import { fetchTestAnalysis } from '../api/tests';
 
 export interface StudentPerformance {
+  attemptId: string;
   studentId: string;
   studentName: string;
+  attemptNo: number;
   submittedAt: string;
   score: number;
   totalMarks: number;
@@ -30,7 +33,6 @@ export interface StudentPerformance {
 interface TestPerformanceInsightsProps {
   testTitle: string;
   testId: string;
-  performances: StudentPerformance[];
   onClose: () => void;
   scheduledDateTime?: string; // ISO string of test start time
   testQuestions?: any[];
@@ -41,7 +43,6 @@ interface TestPerformanceInsightsProps {
 export function TestPerformanceInsights({ 
   testTitle, 
   testId, 
-  performances, 
   onClose, 
   scheduledDateTime,
   testQuestions,
@@ -50,6 +51,49 @@ export function TestPerformanceInsights({
 }: TestPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [performances, setPerformances] = useState<StudentPerformance[]>([]);
+
+  useEffect(() => {
+    const loadAnalysis = async () => {
+      try {
+        const analysis = await fetchTestAnalysis(testId);
+        setPerformances(analysis.performances.map((perf) => ({
+          attemptId: perf.attemptId,
+          studentId: perf.studentId,
+          studentName: perf.studentName,
+          attemptNo: perf.attemptNo,
+          submittedAt: perf.submittedAt,
+          score: perf.score,
+          totalMarks: perf.totalMarks,
+          accuracy: perf.accuracy,
+          rank: perf.rank,
+          timeSpent: perf.timeSpent,
+          result: {
+            ...perf.result,
+            questions: perf.result.questions.map((question) => ({
+              id: question.id,
+              text: question.question_text,
+              question: question.question_text,
+              options: question.options || undefined,
+              correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+              subject: question.subject,
+              marks: question.marks,
+              type: question.type,
+              metadata: { section: question.section || undefined },
+              explanation: question.explanation || undefined,
+              explanationImage: question.explanation_img || undefined,
+              userAnswer: question.user_answer,
+            })),
+          },
+        })));
+      } catch (error) {
+        console.error('Failed to load test analysis', error);
+        setPerformances([]);
+      }
+    };
+
+    void loadAnalysis();
+  }, [testId]);
 
   // Sort by score and recalculate rank
   const rankedPerformances = useMemo(() => {
@@ -283,6 +327,7 @@ export function TestPerformanceInsights({
                 <tr className="bg-gray-50/50 border-b border-gray-100">
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempt</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted At</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
@@ -295,7 +340,7 @@ export function TestPerformanceInsights({
                   const status = getSubmissionStatus(perf.submittedAt, perf.timeSpent);
                   return (
                     <tr 
-                      key={perf.studentId}
+                      key={perf.attemptId}
                       onClick={() => setSelectedStudent(perf)}
                       className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                     >
@@ -311,6 +356,9 @@ export function TestPerformanceInsights({
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-gray-900">{perf.studentName}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-700">Attempt {perf.attemptNo}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-600">

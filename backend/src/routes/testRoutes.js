@@ -3,6 +3,13 @@ import { authenticate, requireRole, requireAnyRole } from "../middleware/auth.js
 import {
     listTests,
     getTest,
+    listMyAttemptResults,
+    getMyTestAttemptSummary,
+    startMyTestAttempt,
+    saveMyAttemptProgress,
+    submitMyAttempt,
+    getAttemptResult,
+    getTestAnalysis,
     handleCreateTest,
     handleUpdateTestStatus,
     handleDeleteTest,
@@ -10,6 +17,14 @@ import {
 } from "../controllers/testController.js";
 
 const router = Router();
+
+router.get("/attempts/mine", authenticate, requireRole("student"), listMyAttemptResults);
+router.get("/attempts/:attemptId/result", authenticate, requireAnyRole("admin", "faculty", "student"), getAttemptResult);
+router.patch("/attempts/:attemptId/progress", authenticate, requireRole("student"), saveMyAttemptProgress);
+router.post("/attempts/:attemptId/submit", authenticate, requireRole("student"), submitMyAttempt);
+router.get("/:id/attempts/analysis", authenticate, requireAnyRole("admin", "faculty"), getTestAnalysis);
+router.get("/:id/attempts", authenticate, requireRole("student"), getMyTestAttemptSummary);
+router.post("/:id/attempts/start", authenticate, requireRole("student"), startMyTestAttempt);
 
 // Allow read access for admins, faculty, and students with role-aware filtering
 router.get("/", authenticate, requireAnyRole("admin", "faculty", "student"), listTests);

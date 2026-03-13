@@ -3,6 +3,13 @@ import {
     getTestsForStudent,
     getTestById,
     getTestByIdForStudent,
+    getStudentAttemptSummary,
+    startOrResumeStudentAttempt,
+    saveStudentAttemptProgress,
+    submitStudentAttempt,
+    getAttemptResultForUser,
+    getStudentAttemptResults,
+    getTestAttemptAnalysis,
     createTest,
     updateTestStatus,
     updateTest,
@@ -169,5 +176,108 @@ export async function handleDeleteTest(req, res) {
     } catch (error) {
         console.error("deleteTest error:", error.message);
         return res.status(500).json({ message: "failed to delete test", error: error.message });
+    }
+}
+
+export async function listMyAttemptResults(req, res) {
+    try {
+        const results = await getStudentAttemptResults(req.user.sub);
+        return res.status(200).json(results);
+    } catch (error) {
+        console.error("listMyAttemptResults error:", error.message);
+        return res.status(500).json({ message: "failed to fetch attempt results", error: error.message });
+    }
+}
+
+export async function getMyTestAttemptSummary(req, res) {
+    try {
+        const summary = await getStudentAttemptSummary(req.params.id, req.user.sub);
+        if (!summary) {
+            return res.status(404).json({ message: "test not found" });
+        }
+        return res.status(200).json(summary);
+    } catch (error) {
+        console.error("getMyTestAttemptSummary error:", error.message);
+        return res.status(500).json({ message: "failed to fetch attempt summary", error: error.message });
+    }
+}
+
+export async function startMyTestAttempt(req, res) {
+    try {
+        const payload = await startOrResumeStudentAttempt(req.params.id, req.user.sub);
+        if (!payload) {
+            return res.status(404).json({ message: "test not found" });
+        }
+        return res.status(200).json(payload);
+    } catch (error) {
+        if (error?.code === "ATTEMPT_LIMIT_REACHED") {
+            return res.status(409).json({ message: "maximum attempts reached" });
+        }
+        console.error("startMyTestAttempt error:", error.message);
+        return res.status(500).json({ message: "failed to start attempt", error: error.message });
+    }
+}
+
+export async function saveMyAttemptProgress(req, res) {
+    try {
+        const attempt = await saveStudentAttemptProgress(req.params.attemptId, req.user.sub, req.body?.answers || {});
+        if (!attempt) {
+            return res.status(404).json({ message: "active attempt not found" });
+        }
+        return res.status(200).json(attempt);
+    } catch (error) {
+        console.error("saveMyAttemptProgress error:", error.message);
+        return res.status(500).json({ message: "failed to save attempt progress", error: error.message });
+    }
+}
+
+export async function submitMyAttempt(req, res) {
+    try {
+        const result = await submitStudentAttempt(req.params.attemptId, req.user.sub, {
+            answers: req.body?.answers || {},
+            autoSubmitted: Boolean(req.body?.autoSubmitted),
+        });
+        if (!result) {
+            return res.status(404).json({ message: "active attempt not found" });
+        }
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("submitMyAttempt error:", error.message);
+        return res.status(500).json({ message: "failed to submit attempt", error: error.message });
+    }
+}
+
+export async function getAttemptResult(req, res) {
+    try {
+        const result = await getAttemptResultForUser(req.params.attemptId, req.user);
+        if (!result) {
+            return res.status(404).json({ message: "attempt not found" });
+        }
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("getAttemptResult error:", error.message);
+        return res.status(500).json({ message: "failed to fetch attempt result", error: error.message });
+    }
+}
+
+export async function getTestAnalysis(req, res) {
+    try {
+        const test = await getTestById(req.params.id);
+        if (!test) {
+            return res.status(404).json({ message: "test not found" });
+        }
+
+        if (test.status === "draft" && req.user?.role !== "admin") {
+            return res.status(403).json({ message: "forbidden: draft tests only visible to admin" });
+        }
+
+        const performances = await getTestAttemptAnalysis(req.params.id);
+        return res.status(200).json({
+            testId: req.params.id,
+            performances,
+        });
+    } catch (error) {
+        console.error("getTestAnalysis error:", error.message);
+        return res.status(500).json({ message: "failed to fetch test analysis", error: error.message });
     }
 }

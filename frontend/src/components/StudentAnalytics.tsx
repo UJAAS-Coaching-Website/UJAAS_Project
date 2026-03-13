@@ -65,7 +65,7 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
 
-  const reviewAnswers = result.questions.reduce<Record<string, number | null>>((acc, question) => {
+  const reviewAnswers = result.questions.reduce<Record<string, string | number | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
     return acc;
   }, {});
@@ -494,7 +494,7 @@ export function StudentAnalytics({ result, onClose, onViewResults, hideExplanati
           <TestTaking
             testId={result.testId}
             testTitle={`${result.testTitle} - Review`}
-            duration={Math.max(1, Math.ceil(result.duration / 60))}
+            duration={result.duration}
             questions={reviewQuestions}
             onSubmit={() => {}}
             onExit={onClose}

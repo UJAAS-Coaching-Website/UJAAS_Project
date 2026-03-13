@@ -38,10 +38,10 @@ interface TestTakingProps {
   testTitle: string;
   duration: number; // in minutes
   questions: Question[];
-  onSubmit: (answers: Record<string, number | null>, timeSpent: number) => void;
+  onSubmit: (answers: Record<string, string | number | null>, timeSpent: number) => void;
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => Promise<void> | void;
-  initialAnswers?: Record<string, number | null>;
+  initialAnswers?: Record<string, string | number | null>;
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
@@ -73,7 +73,7 @@ export function TestTaking({
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number | null>>(initialAnswers);
+  const [answers, setAnswers] = useState<Record<string, string | number | null>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -278,8 +278,8 @@ export function TestTaking({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const selectAnswer = (questionId: string, optionIndex: number) => {
-    setAnswers({ ...answers, [questionId]: optionIndex });
+  const selectAnswer = (questionId: string, value: string | number | null) => {
+    setAnswers({ ...answers, [questionId]: value });
   };
 
   const toggleFlag = (questionId: string) => {

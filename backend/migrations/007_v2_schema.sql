@@ -26,11 +26,45 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 -- 3. Modify students table
-ALTER TABLE students RENAME COLUMN date_of_birth TO dob;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'students'
+          AND column_name = 'date_of_birth'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'students'
+          AND column_name = 'dob'
+    ) THEN
+        ALTER TABLE students RENAME COLUMN date_of_birth TO dob;
+    END IF;
+END $$;
 ALTER TABLE students ADD COLUMN IF NOT EXISTS admin_remark TEXT;
 
 -- 4. Modify faculties table
-ALTER TABLE faculties RENAME COLUMN subject_specialty TO subject;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'faculties'
+          AND column_name = 'subject_specialty'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'faculties'
+          AND column_name = 'subject'
+    ) THEN
+        ALTER TABLE faculties RENAME COLUMN subject_specialty TO subject;
+    END IF;
+END $$;
 ALTER TABLE faculties ADD COLUMN IF NOT EXISTS designation TEXT;
 ALTER TABLE faculties ADD COLUMN IF NOT EXISTS experience TEXT;
 ALTER TABLE faculties ADD COLUMN IF NOT EXISTS bio TEXT;
@@ -39,7 +73,24 @@ ALTER TABLE faculties DROP COLUMN IF EXISTS join_date;
 -- 5. Modify batches table
 ALTER TABLE batches ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
 ALTER TABLE batches ADD COLUMN IF NOT EXISTS subjects TEXT[];
-ALTER TABLE batches RENAME COLUMN active TO is_active;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'batches'
+          AND column_name = 'active'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'batches'
+          AND column_name = 'is_active'
+    ) THEN
+        ALTER TABLE batches RENAME COLUMN active TO is_active;
+    END IF;
+END $$;
 ALTER TABLE batches DROP COLUMN IF EXISTS year;
 ALTER TABLE batches DROP COLUMN IF EXISTS start_date;
 ALTER TABLE batches DROP COLUMN IF EXISTS end_date;
@@ -49,7 +100,24 @@ ALTER TABLE student_batches DROP COLUMN IF EXISTS joined_at;
 ALTER TABLE student_batches DROP COLUMN IF EXISTS left_at;
 
 -- 7. Modify tests table
-ALTER TABLE tests RENAME COLUMN duration_minutes TO duration_mins;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tests'
+          AND column_name = 'duration_minutes'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tests'
+          AND column_name = 'duration_mins'
+    ) THEN
+        ALTER TABLE tests RENAME COLUMN duration_minutes TO duration_mins;
+    END IF;
+END $$;
 ALTER TABLE tests ADD COLUMN IF NOT EXISTS format test_format DEFAULT 'Custom';
 ALTER TABLE tests ADD COLUMN IF NOT EXISTS instructions TEXT;
 ALTER TABLE tests ADD COLUMN IF NOT EXISTS status test_status DEFAULT 'upcoming';
@@ -101,11 +169,43 @@ ALTER TABLE notes ADD COLUMN IF NOT EXISTS chapter TEXT;
 
 -- 12. Modify notifications table
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS batch_id UUID REFERENCES batches(id) ON DELETE CASCADE;
-ALTER TABLE notifications RENAME COLUMN read TO is_read;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'notifications'
+          AND column_name = 'read'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'notifications'
+          AND column_name = 'is_read'
+    ) THEN
+        ALTER TABLE notifications RENAME COLUMN read TO is_read;
+    END IF;
+END $$;
 ALTER TABLE notifications DROP COLUMN IF EXISTS icon;
 
 -- 13. Modify ratings table (Rename to student_ratings)
-ALTER TABLE ratings RENAME TO student_ratings;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'ratings'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'student_ratings'
+    ) THEN
+        ALTER TABLE ratings RENAME TO student_ratings;
+    END IF;
+END $$;
 ALTER TABLE student_ratings ADD COLUMN IF NOT EXISTS subject TEXT;
 ALTER TABLE student_ratings DROP COLUMN IF EXISTS tests;
 ALTER TABLE student_ratings DROP COLUMN IF EXISTS engagement;

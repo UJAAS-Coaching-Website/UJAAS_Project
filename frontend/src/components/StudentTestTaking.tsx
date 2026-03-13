@@ -32,20 +32,25 @@ interface Question {
   explanationImage?: string;
 }
 
+type StudentAnswer = string | number | null;
+
 interface StudentTestTakingProps {
   testId: string;
   testTitle: string;
   duration: number; // in minutes
   questions: Question[];
-  onSubmit: (answers: Record<string, number | null>, timeSpent: number) => void;
+  onSubmit: (answers: Record<string, StudentAnswer>, options?: { autoSubmitted?: boolean }) => void | Promise<void>;
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
-  initialAnswers?: Record<string, number | null>;
+  initialAnswers?: Record<string, StudentAnswer>;
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
   availableBatches?: { label: string; slug: string }[];
   initialBatches?: string[];
+  deadlineAt?: string;
+  serverNow?: string;
+  onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
 }
 
 export function StudentTestTaking({
@@ -61,15 +66,24 @@ export function StudentTestTaking({
   isPreview = false,
   isFacultyPreview = false,
   availableBatches = [],
-  initialBatches = []
+  initialBatches = [],
+  deadlineAt,
+  serverNow,
+  onSaveProgress
 }: StudentTestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || []);
   const [testTitle, setTestTitle] = useState(initialTitle);
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number | null>>(initialAnswers);
-  const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
+  const [answers, setAnswers] = useState<Record<string, StudentAnswer>>(initialAnswers);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    if (deadlineAt && serverNow) {
+      const remaining = Math.floor((new Date(deadlineAt).getTime() - new Date(serverNow).getTime()) / 1000);
+      return Math.max(0, remaining);
+    }
+    return Math.max(0, (duration * 60) - initialTimeSpent);
+  });
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -140,7 +154,7 @@ export function StudentTestTaking({
       onExit();
     } else {
       // For students, confirm exit means submit
-      handleSubmit();
+      void handleSubmit(true);
     }
   };
 
@@ -180,14 +194,20 @@ export function StudentTestTaking({
     return () => clearInterval(timer);
   }, [isAnyPreview]);
 
-  const handleAutoSubmit = () => {
-    const timeSpent = (duration * 60) - timeLeft;
-    onSubmit(answers, timeSpent);
+  useEffect(() => {
+    if (isAnyPreview || !onSaveProgress) return;
+    const saveTimer = setTimeout(() => {
+      void onSaveProgress(answers);
+    }, 800);
+    return () => clearTimeout(saveTimer);
+  }, [answers, isAnyPreview, onSaveProgress]);
+
+  const handleAutoSubmit = async () => {
+    await onSubmit(answers, { autoSubmitted: true });
   };
 
-  const handleSubmit = () => {
-    const timeSpent = (duration * 60) - timeLeft;
-    onSubmit(answers, timeSpent);
+  const handleSubmit = async (autoSubmitted = false) => {
+    await onSubmit(answers, { autoSubmitted });
     setShowSubmitDialog(false);
     setShowExitConfirm(false);
   };
@@ -199,8 +219,8 @@ export function StudentTestTaking({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const selectAnswer = (questionId: string, optionIndex: number) => {
-    setAnswers({ ...answers, [questionId]: optionIndex });
+  const selectAnswer = (questionId: string, value: StudentAnswer) => {
+    setAnswers({ ...answers, [questionId]: value });
   };
 
   const toggleFlag = (questionId: string) => {

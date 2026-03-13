@@ -61,8 +61,127 @@ export interface ApiTest {
     created_by: string | null;
     question_count: number;
     enrolled_count: number;
+    submitted_attempt_count?: number;
+    has_active_attempt?: boolean;
+    active_attempt_id?: string | null;
+    latest_attempt_id?: string | null;
     batches: ApiTestBatch[];
     questions?: ApiQuestion[];
+}
+
+export interface ApiAttempt {
+    id: string;
+    test_id: string;
+    student_id: string;
+    attempt_no: number;
+    started_at: string;
+    deadline_at: string;
+    submitted_at: string | null;
+    auto_submitted: boolean;
+    time_spent: number;
+    score: number | null;
+    correct_answers: number;
+    wrong_answers: number;
+    unattempted: number;
+    answers: Record<string, string | number | null>;
+}
+
+export interface ApiAttemptHistoryEntry {
+    id: string;
+    attempt_no: number;
+    submitted_at: string;
+    auto_submitted: boolean;
+    time_spent: number;
+    score: number;
+    correct_answers: number;
+    wrong_answers: number;
+    unattempted: number;
+    rank: number;
+    total_students: number;
+}
+
+export interface ApiAttemptSummary {
+    testId: string;
+    maxAttempts: number;
+    submittedAttemptCount: number;
+    remainingAttempts: number;
+    hasActiveAttempt: boolean;
+    activeAttempt: ApiAttempt | null;
+    history: ApiAttemptHistoryEntry[];
+}
+
+export interface ApiActiveAttemptPayload {
+    test: ApiTest;
+    attempt: ApiAttempt;
+    maxAttempts: number;
+    submittedAttemptCount: number;
+    serverNow: string;
+    resumed: boolean;
+}
+
+export interface ApiAttemptResultQuestion extends ApiQuestion {
+    user_answer: string | number | null;
+}
+
+export interface ApiAttemptResult {
+    attempt_id: string;
+    attempt_no: number;
+    auto_submitted: boolean;
+    testId: string;
+    testTitle: string;
+    totalMarks: number;
+    obtainedMarks: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    wrongAnswers: number;
+    unattempted: number;
+    timeSpent: number;
+    duration: number;
+    rank: number;
+    totalStudents: number;
+    submittedAt: string;
+    instructions?: string;
+    questions: ApiAttemptResultQuestion[];
+}
+
+export interface ApiStudentAttemptResultListItem {
+    id: string;
+    testId: string;
+    attemptNo: number;
+    testTitle: string;
+    submittedAt: string;
+    autoSubmitted: boolean;
+    timeSpent: number;
+    score: number;
+    totalMarks: number;
+    totalQuestions: number;
+    correctAnswers: number;
+    wrongAnswers: number;
+    unattempted: number;
+    rank: number;
+    totalStudents: number;
+    duration: number;
+    percentage: number;
+}
+
+export interface ApiTestAnalysisPerformance {
+    attemptId: string;
+    studentId: string;
+    studentName: string;
+    attemptNo: number;
+    submittedAt: string;
+    autoSubmitted: boolean;
+    score: number;
+    totalMarks: number;
+    accuracy: number;
+    rank: number;
+    timeSpent: number;
+    result: ApiAttemptResult;
+}
+
+export interface ApiTestAnalysis {
+    testId: string;
+    performances: ApiTestAnalysisPerformance[];
 }
 
 export interface CreateTestPayload {
@@ -111,4 +230,47 @@ export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' 
 
 export async function deleteTestApi(id: string): Promise<void> {
     await request(`/api/tests/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchMyAttemptResults(): Promise<ApiStudentAttemptResultListItem[]> {
+    return request<ApiStudentAttemptResultListItem[]>('/api/tests/attempts/mine');
+}
+
+export async function fetchAttemptResult(attemptId: string): Promise<ApiAttemptResult> {
+    return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`);
+}
+
+export async function fetchMyTestAttemptSummary(testId: string): Promise<ApiAttemptSummary> {
+    return request<ApiAttemptSummary>(`/api/tests/${testId}/attempts`);
+}
+
+export async function startMyTestAttempt(testId: string): Promise<ApiActiveAttemptPayload> {
+    return request<ApiActiveAttemptPayload>(`/api/tests/${testId}/attempts/start`, {
+        method: 'POST',
+    });
+}
+
+export async function saveMyAttemptProgress(
+    attemptId: string,
+    answers: Record<string, string | number | null>
+): Promise<ApiAttempt> {
+    return request<ApiAttempt>(`/api/tests/attempts/${attemptId}/progress`, {
+        method: 'PATCH',
+        body: JSON.stringify({ answers }),
+    });
+}
+
+export async function submitMyAttempt(
+    attemptId: string,
+    answers: Record<string, string | number | null>,
+    autoSubmitted = false
+): Promise<ApiAttemptResult> {
+    return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/submit`, {
+        method: 'POST',
+        body: JSON.stringify({ answers, autoSubmitted }),
+    });
+}
+
+export async function fetchTestAnalysis(testId: string): Promise<ApiTestAnalysis> {
+    return request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis`);
 }

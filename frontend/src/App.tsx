@@ -119,6 +119,11 @@ export interface PublishedTest {
   questions: any[];
   instructions?: string;
   status: 'draft' | 'upcoming' | 'live' | 'completed';
+  submittedAttemptCount?: number;
+  maxAttempts?: number;
+  hasActiveAttempt?: boolean;
+  activeAttemptId?: string | null;
+  latestAttemptId?: string | null;
 }
 
 export const studentTabs = ['home', 'test-series', 'profile', 'batch-detail', 'question-bank'] as const;
@@ -388,6 +393,11 @@ function App() {
     scheduleTime: t.schedule_time || '',
     instructions: t.instructions || undefined,
     status: t.status,
+    submittedAttemptCount: t.submitted_attempt_count,
+    maxAttempts: t.submitted_attempt_count !== undefined ? 3 : undefined,
+    hasActiveAttempt: t.has_active_attempt,
+    activeAttemptId: t.active_attempt_id ?? null,
+    latestAttemptId: t.latest_attempt_id ?? null,
     questions: (t.questions || []).map((q, i) => ({
       id: q.id,
       type: q.type,
@@ -974,19 +984,18 @@ function App() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        const [apiLanding, profileResponse, apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
+        const [apiLanding, profileResponse] = await Promise.all([
           fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
           me().catch(e => { console.warn('Could not fetch user profile:', e); return null; }),
-          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
-          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
         ]);
 
         if (profileResponse && profileResponse.user) {
           const loggedInUser = profileResponse.user as User;
           setUser(loggedInUser);
           setShowGetStarted(false);
+
+          const apiTests = await apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; });
+          setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
 
           if (loggedInUser.role === 'admin') {
             try {
@@ -997,11 +1006,12 @@ function App() {
             }
           }
 
-          if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty' || loggedInUser.role === 'student') {
-            setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-          }
-
           if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
+            const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
+              apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+              fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+              apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+            ]);
             setAdminBatches(apiBatches.map(apiBatchToInfo));
             setAdminFaculties(apiFaculties);
             setAdminStudents(apiStudents);
@@ -1149,16 +1159,16 @@ function App() {
     if (userData.role === 'admin' || userData.role === 'faculty' || userData.role === 'student') {
       setLoading(true);
       try {
-        const [apiBatches, apiFaculties, apiStudents, apiTests] = await Promise.all([
-          apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
-          fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-          apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-          apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; }),
-        ]);
-
+        const apiTests = await apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; });
         setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
 
         if (userData.role === 'admin' || userData.role === 'faculty') {
+          const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
+            apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
+            fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+            apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+          ]);
+
           setAdminBatches(apiBatches.map(apiBatchToInfo));
           setAdminFaculties(apiFaculties);
           setAdminStudents(apiStudents);

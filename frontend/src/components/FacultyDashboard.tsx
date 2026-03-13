@@ -819,7 +819,6 @@ export function FacultyDashboard({
                     testQuestions={test?.questions}
                     testDuration={test?.duration}
                     testInstructions={test?.instructions}
-                    performances={generateMockPerformances(performanceInsightsTestId)}
                     onClose={() => setPerformanceInsightsTestId(null)}
                   />
                 );
