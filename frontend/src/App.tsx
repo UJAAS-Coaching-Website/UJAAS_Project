@@ -1018,14 +1018,20 @@ function App() {
           }
 
           if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-            const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
-              apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
-              fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-              apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-            ]);
+            const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
             setAdminBatches(apiBatches.map(apiBatchToInfo));
-            setAdminFaculties(apiFaculties);
-            setAdminStudents(apiStudents);
+
+            if (loggedInUser.role === 'admin') {
+              const [apiFaculties, apiStudents] = await Promise.all([
+                fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+                apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+              ]);
+              setAdminFaculties(apiFaculties);
+              setAdminStudents(apiStudents);
+            } else {
+              setAdminFaculties([]);
+              setAdminStudents([]);
+            }
           }
         } else {
           setUser(null);
@@ -1174,15 +1180,21 @@ function App() {
         setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
 
         if (userData.role === 'admin' || userData.role === 'faculty') {
-          const [apiBatches, apiFaculties, apiStudents] = await Promise.all([
-            apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; }),
-            fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-            apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-          ]);
-
+          const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
           setAdminBatches(apiBatches.map(apiBatchToInfo));
-          setAdminFaculties(apiFaculties);
-          setAdminStudents(apiStudents);
+
+          if (userData.role === 'admin') {
+            const [apiFaculties, apiStudents] = await Promise.all([
+              fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+              apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+            ]);
+
+            setAdminFaculties(apiFaculties);
+            setAdminStudents(apiStudents);
+          } else {
+            setAdminFaculties([]);
+            setAdminStudents([]);
+          }
         }
 
         if (userData.role === 'admin') {

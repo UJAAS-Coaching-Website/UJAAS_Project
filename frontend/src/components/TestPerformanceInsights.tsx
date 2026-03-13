@@ -1,20 +1,17 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Users, 
-  Search, 
+import {
+  Users,
+  Search,
   ArrowLeft,
   Calendar,
   Clock,
   Target,
   ChevronRight,
-  AlertCircle,
-  CheckCircle2,
-  Download
+  Download,
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
-import logo from '../assets/logo.svg';
-import { fetchTestAnalysis } from '../api/tests';
+import { fetchTestAnalysis, fetchTestById } from '../api/tests';
 
 export interface StudentPerformance {
   studentId: string;
@@ -33,60 +30,63 @@ interface TestPerformanceInsightsProps {
   testTitle: string;
   testId: string;
   onClose: () => void;
-  scheduledDateTime?: string; // ISO string of test start time
+  scheduledDateTime?: string;
   testQuestions?: any[];
   testDuration?: number;
   testInstructions?: string;
 }
 
-export function TestPerformanceInsights({ 
-  testTitle, 
-  testId, 
-  onClose, 
+export function TestPerformanceInsights({
+  testTitle,
+  testId,
+  onClose,
   scheduledDateTime,
   testQuestions,
   testDuration,
-  testInstructions
+  testInstructions,
 }: TestPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     const loadAnalysis = async () => {
       setIsLoading(true);
       try {
         const analysis = await fetchTestAnalysis(testId);
-        setPerformances(analysis.performances.map((perf) => ({
-          studentId: perf.studentId,
-          studentName: perf.studentName,
-          attemptCount: perf.attemptCount,
-          latestSubmittedAt: perf.latestSubmittedAt,
-          score: perf.score,
-          totalMarks: perf.totalMarks,
-          accuracy: perf.accuracy,
-          rank: perf.rank,
-          timeSpent: perf.timeSpent,
-          attempts: perf.attempts.map((attempt) => ({
-            ...attempt,
-            questions: attempt.questions.map((question) => ({
-              id: question.id,
-              text: question.question_text,
-              question: question.question_text,
-              options: question.options || undefined,
-              correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
-              subject: question.subject,
-              marks: question.marks,
-              type: question.type,
-              metadata: { section: question.section || undefined },
-              explanation: question.explanation || undefined,
-              explanationImage: question.explanation_img || undefined,
-              userAnswer: question.user_answer,
+        setPerformances(
+          analysis.performances.map((perf) => ({
+            studentId: perf.studentId,
+            studentName: perf.studentName,
+            attemptCount: perf.attemptCount,
+            latestSubmittedAt: perf.latestSubmittedAt,
+            score: perf.score,
+            totalMarks: perf.totalMarks,
+            accuracy: perf.accuracy,
+            rank: perf.rank,
+            timeSpent: perf.timeSpent,
+            attempts: perf.attempts.map((attempt) => ({
+              ...attempt,
+              questions: attempt.questions.map((question) => ({
+                id: question.id,
+                text: question.question_text,
+                question: question.question_text,
+                options: question.options || undefined,
+                correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+                subject: question.subject,
+                marks: question.marks,
+                type: question.type,
+                metadata: { section: question.section || undefined },
+                explanation: question.explanation || undefined,
+                explanationImage: question.explanation_img || undefined,
+                userAnswer: question.user_answer,
+              })),
             })),
-          })),
-        })));
+          }))
+        );
       } catch (error) {
         console.error('Failed to load test analysis', error);
         setPerformances([]);
@@ -98,163 +98,263 @@ export function TestPerformanceInsights({
     void loadAnalysis();
   }, [testId]);
 
-  // Sort by score and recalculate rank
   const rankedPerformances = useMemo(() => {
     return [...performances]
       .sort((a, b) => b.score - a.score)
       .map((p, index) => ({
         ...p,
-        rank: index + 1
+        rank: index + 1,
       }));
   }, [performances]);
 
-  const filteredPerformances = rankedPerformances.filter(p => 
+  const filteredPerformances = rankedPerformances.filter((p) =>
     p.studentName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getSubmissionStatus = (submittedAt: string, timeSpentInSeconds: number) => {
     if (!scheduledDateTime) return null;
-    
-    // Calculate when the student actually started by subtracting time spent from submission time
-    const startOfTestSession = new Date(new Date(submittedAt).getTime() - (timeSpentInSeconds * 1000));
+
+    const startOfTestSession = new Date(new Date(submittedAt).getTime() - timeSpentInSeconds * 1000);
     const scheduledStart = new Date(scheduledDateTime);
-    
     const diffInMinutes = (startOfTestSession.getTime() - scheduledStart.getTime()) / (1000 * 60);
-    
-    // If started after 30 minutes of scheduled start time, it's late
+
     return diffInMinutes > 30 ? 'late' : 'on-time';
   };
 
-  const handleDownloadTestPDF = () => {
-    if (!testQuestions) return;
-
-    const escapeHtml = (unsafe: string) => {
-      return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+  const formatSubmissionTime = (submittedAt: string) => {
+    const submittedDate = new Date(submittedAt);
+    return {
+      date: submittedDate.toLocaleDateString(),
+      time: submittedDate.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }),
     };
+  };
 
-    // Group questions by Subject and then Section
-    const groupedQuestions: Record<string, Record<string, any[]>> = {};
-    testQuestions.forEach(q => {
-      if (!groupedQuestions[q.subject]) groupedQuestions[q.subject] = {};
-      const section = q.metadata?.section || 'Section A';
-      if (!groupedQuestions[q.subject][section]) groupedQuestions[q.subject][section] = [];
-      groupedQuestions[q.subject][section].push(q);
-    });
+  const handleDownloadTestPDF = async () => {
+    setIsDownloadingPdf(true);
 
-    let globalIdx = 0;
-    const contentHtml = Object.entries(groupedQuestions).map(([subject, sections]) => `
-      <div class="subject-block">
-        <h2 class="subject-title">${escapeHtml(subject)}</h2>
-        ${Object.entries(sections).map(([section, questions]) => `
-          <div class="section-block">
-            <h3 class="section-title">${escapeHtml(section)}</h3>
-            ${questions.map((q) => {
-              globalIdx++;
-              return `
-                <div class="question-container">
-                  <div class="question-header">
-                    <span class="question-number">Q${globalIdx}.</span>
-                    <div class="question-text">${escapeHtml(q.question || q.text)}</div>
-                    <span class="question-marks">[${q.marks} Marks]</span>
-                  </div>
-                  ${q.type !== 'Numerical' && q.options ? `
-                    <div class="options-grid">
-                      ${q.options.map((opt: string, optIdx: number) => `
-                        <div class="option">
-                          <span class="option-label">(${String.fromCharCode(65 + optIdx)})</span>
-                          <span class="option-text">${escapeHtml(opt)}</span>
-                        </div>
-                      `).join('')}
-                    </div>
-                  ` : `
-                    <div class="numerical-box">
-                      Answer: _______________________
-                    </div>
-                  `}
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
+    try {
+      const resolvedQuestions = testQuestions?.length
+        ? testQuestions
+        : (await fetchTestById(testId)).questions?.map((question) => ({
+            id: question.id,
+            type: question.type,
+            subject: question.subject,
+            question: question.question_text,
+            questionImage: question.question_img || undefined,
+            options: question.options || undefined,
+            optionImages: question.option_imgs || undefined,
+            correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+            marks: question.marks,
+            negativeMarks: question.neg_marks,
+            explanation: question.explanation || undefined,
+            explanationImage: question.explanation_img || undefined,
+            difficulty: question.difficulty || undefined,
+            metadata: { section: question.section || undefined },
+          })) || [];
 
-    const printableHtml = `
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>${escapeHtml(testTitle)}</title>
-          <style>
-            * { box-sizing: border-box; }
-            @page { size: A4 portrait; margin: 15mm; }
-            body { margin: 0; padding: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.4; }
-            .header { border-bottom: 2px solid #0d9488; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
-            .brand { display: flex; align-items: center; gap: 10px; }
-            .brand-logo { width: 45px; height: 45px; object-fit: contain; }
-            .brand-title { margin: 0; font-size: 18px; color: #0f172a; font-weight: 700; }
-            .test-info { text-align: right; }
-            .test-info h1 { margin: 0; font-size: 16px; color: #0d9488; }
-            .info-banner { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px; margin-bottom: 20px; display: flex; justify-content: space-between; }
-            .instructions-section { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 15px; margin-bottom: 25px; page-break-inside: avoid; }
-            .instructions-title { color: #92400e; font-size: 12px; font-weight: 800; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 1px solid #fde68a; padding-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-            .instructions-content { color: #78350f; font-size: 10.5px; white-space: pre-wrap; line-height: 1.6; }
-            .subject-title { background: #0d9488; color: white; padding: 6px 12px; border-radius: 6px; font-size: 14px; margin: 25px 0 15px; text-transform: uppercase; }
-            .section-title { border-bottom: 1px solid #e2e8f0; color: #0f766e; padding-bottom: 4px; margin: 15px 0 10px; font-size: 12px; }
-            .question-container { margin-bottom: 18px; page-break-inside: avoid; }
-            .question-header { display: flex; gap: 8px; margin-bottom: 8px; font-weight: 600; }
-            .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding-left: 25px; }
-            .option { display: flex; gap: 6px; }
-            .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 9px; color: #94a3b8; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="brand">
-              <img src="${logo}" alt="Logo" class="brand-logo" />
-              <div>
-                <p class="brand-title">UJAAS Career Institute</p>
-              </div>
-            </div>
-            <div class="test-info">
-              <h1>${escapeHtml(testTitle)}</h1>
-            </div>
-          </div>
-          <div class="info-banner">
-            <div><b>Duration:</b> ${testDuration || 0} mins</div>
-            <div><b>Max Marks:</b> ${testQuestions.reduce((acc, q) => acc + (q.marks || 0), 0)}</div>
-          </div>
-          ${testInstructions ? `
-            <div class="instructions-section">
-              <h4 class="instructions-title">General Instructions</h4>
-              <div class="instructions-content">${escapeHtml(testInstructions)}</div>
-            </div>
-          ` : ''}
-          <div class="questions-list">${contentHtml}</div>
-          <div class="footer">© ${new Date().getFullYear()} UJAAS Career Institute. Authorized use only.</div>
-        </body>
-      </html>
-    `;
+      if (!resolvedQuestions.length) {
+        window.alert('No test paper questions were found for this test.');
+        return;
+      }
 
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.visibility = 'hidden';
-    document.body.appendChild(printFrame);
-    const doc = printFrame.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(printableHtml);
-      doc.close();
-      printFrame.onload = () => {
-        printFrame.contentWindow?.focus();
-        printFrame.contentWindow?.print();
-        setTimeout(() => document.body.removeChild(printFrame), 1000);
+      const sanitizePdfText = (value: string) =>
+        value
+          .replace(/[^\x20-\x7E\n]/g, ' ')
+          .replace(/\r/g, '')
+          .trim();
+
+      const escapePdfText = (value: string) =>
+        value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+
+      const splitTextToLines = (text: string, maxChars: number) => {
+        const normalized = sanitizePdfText(text);
+        if (!normalized) return [''];
+
+        const paragraphs = normalized.split('\n');
+        const output: string[] = [];
+
+        paragraphs.forEach((paragraph) => {
+          const words = paragraph.split(/\s+/).filter(Boolean);
+          if (words.length === 0) {
+            output.push('');
+            return;
+          }
+
+          let currentLine = '';
+          words.forEach((word) => {
+            const nextLine = currentLine ? `${currentLine} ${word}` : word;
+            if (nextLine.length <= maxChars) {
+              currentLine = nextLine;
+              return;
+            }
+
+            if (currentLine) {
+              output.push(currentLine);
+            }
+
+            if (word.length <= maxChars) {
+              currentLine = word;
+              return;
+            }
+
+            for (let index = 0; index < word.length; index += maxChars) {
+              const chunk = word.slice(index, index + maxChars);
+              if (chunk.length === maxChars || index + maxChars < word.length) {
+                output.push(chunk);
+              } else {
+                currentLine = chunk;
+              }
+            }
+          });
+
+          if (currentLine) {
+            output.push(currentLine);
+          }
+        });
+
+        return output;
       };
+
+      const groupedQuestions: Record<string, Record<string, any[]>> = {};
+      resolvedQuestions.forEach((question) => {
+        const subject = question.subject || 'General';
+        const section = question.metadata?.section || question.section || 'Section A';
+        if (!groupedQuestions[subject]) groupedQuestions[subject] = {};
+        if (!groupedQuestions[subject][section]) groupedQuestions[subject][section] = [];
+        groupedQuestions[subject][section].push(question);
+      });
+
+      const totalMarks = resolvedQuestions.reduce((sum, question) => sum + Number(question.marks || 0), 0);
+      const lines: Array<{ text: string; size?: number; gapAfter?: number }> = [];
+
+      lines.push({ text: 'UJAAS Career Institute', size: 18, gapAfter: 8 });
+      lines.push({ text: sanitizePdfText(testTitle), size: 15, gapAfter: 10 });
+      lines.push({ text: `Duration: ${testDuration || 0} mins`, gapAfter: 4 });
+      lines.push({ text: `Max Marks: ${totalMarks}`, gapAfter: 8 });
+
+      if (testInstructions?.trim()) {
+        lines.push({ text: 'General Instructions', size: 13, gapAfter: 4 });
+        splitTextToLines(testInstructions, 90).forEach((line) => lines.push({ text: line, gapAfter: 2 }));
+        lines.push({ text: '', gapAfter: 6 });
+      }
+
+      let questionNumber = 0;
+      Object.entries(groupedQuestions).forEach(([subject, sections]) => {
+        lines.push({ text: subject.toUpperCase(), size: 14, gapAfter: 6 });
+        Object.entries(sections).forEach(([section, questions]) => {
+          lines.push({ text: section, size: 12, gapAfter: 4 });
+          questions.forEach((question) => {
+            questionNumber += 1;
+            splitTextToLines(
+              `Q${questionNumber}. ${question.question || question.text || ''} [${question.marks || 0} Marks]`,
+              90
+            ).forEach((line) => lines.push({ text: line, gapAfter: 2 }));
+
+            if (question.type !== 'Numerical' && Array.isArray(question.options) && question.options.length > 0) {
+              question.options.forEach((option: string, optionIndex: number) => {
+                splitTextToLines(`(${String.fromCharCode(65 + optionIndex)}) ${option}`, 82).forEach((line) =>
+                  lines.push({ text: `  ${line}`, gapAfter: 2 })
+                );
+              });
+            } else {
+              lines.push({ text: '  Answer: _______________________', gapAfter: 2 });
+            }
+
+            lines.push({ text: '', gapAfter: 4 });
+          });
+        });
+      });
+
+      const pageWidth = 595;
+      const pageHeight = 842;
+      const margin = 40;
+      const bottomMargin = 48;
+      const defaultFontSize = 11;
+      const lineHeightFactor = 1.35;
+
+      const pages: string[][] = [[]];
+      let currentPage = pages[0];
+      let cursorY = pageHeight - margin;
+
+      const writeLine = (text: string, fontSize = defaultFontSize) => {
+        currentPage.push(
+          `BT /F1 ${fontSize} Tf 1 0 0 1 ${margin} ${cursorY.toFixed(2)} Tm (${escapePdfText(text || ' ')}) Tj ET`
+        );
+        cursorY -= fontSize * lineHeightFactor;
+      };
+
+      lines.forEach(({ text, size, gapAfter }) => {
+        const fontSize = size || defaultFontSize;
+        const extraGap = gapAfter || 0;
+        const requiredHeight = fontSize * lineHeightFactor + extraGap;
+
+        if (cursorY - requiredHeight < bottomMargin) {
+          currentPage = [];
+          pages.push(currentPage);
+          cursorY = pageHeight - margin;
+        }
+
+        writeLine(text, fontSize);
+        cursorY -= extraGap;
+      });
+
+      const objects: string[] = [];
+      const addObject = (content: string) => {
+        objects.push(content);
+        return objects.length;
+      };
+
+      const fontObjectId = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+      const contentObjectIds = pages.map((pageCommands) => {
+        const stream = pageCommands.join('\n');
+        return addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+      });
+
+      const pagesObjectId = objects.length + pages.length + 1;
+      const pageObjectIds = contentObjectIds.map((contentObjectId) =>
+        addObject(
+          `<< /Type /Page /Parent ${pagesObjectId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjectId} 0 R >> >> /Contents ${contentObjectId} 0 R >>`
+        )
+      );
+
+      addObject(`<< /Type /Pages /Count ${pageObjectIds.length} /Kids [${pageObjectIds.map((id) => `${id} 0 R`).join(' ')}] >>`);
+      const catalogObjectId = addObject(`<< /Type /Catalog /Pages ${pagesObjectId} 0 R >>`);
+
+      let pdf = '%PDF-1.4\n';
+      const offsets: number[] = [0];
+
+      objects.forEach((object, index) => {
+        offsets.push(pdf.length);
+        pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+      });
+
+      const xrefOffset = pdf.length;
+      pdf += `xref\n0 ${objects.length + 1}\n`;
+      pdf += '0000000000 65535 f \n';
+      offsets.slice(1).forEach((offset) => {
+        pdf += `${offset.toString().padStart(10, '0')} 00000 n \n`;
+      });
+      pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogObjectId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+      const fileName = `${sanitizePdfText(testTitle).replace(/\s+/g, '_') || 'test-paper'}.pdf`;
+      const blob = new Blob([new TextEncoder().encode(pdf)], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Failed to download test paper PDF', error);
+      window.alert('Failed to download the test paper. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -288,12 +388,12 @@ export function TestPerformanceInsights({
             </div>
           </div>
         </div>
-        <StudentAnalytics 
-          result={currentAttempt} 
+        <StudentAnalytics
+          result={currentAttempt}
           onClose={() => {
             setSelectedStudent(null);
             setSelectedAttemptIndex(0);
-          }} 
+          }}
           hideExplanations={true}
           hideDownload={true}
         />
@@ -302,18 +402,17 @@ export function TestPerformanceInsights({
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
       className="min-h-screen bg-gray-50 py-8"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <button 
+              <button
                 onClick={onClose}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -324,13 +423,14 @@ export function TestPerformanceInsights({
                 <p className="text-gray-500">Performance Insights & Student Attempts</p>
               </div>
             </div>
-            {testQuestions && (
+            {(testQuestions || testId) && (
               <button
                 onClick={handleDownloadTestPDF}
+                disabled={isDownloadingPdf}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
               >
                 <Download className="w-5 h-5" />
-                Download Test Paper
+                {isDownloadingPdf ? 'Preparing PDF...' : 'Download Test Paper'}
               </button>
             )}
           </div>
@@ -376,8 +476,9 @@ export function TestPerformanceInsights({
                 <tbody className="divide-y divide-gray-50">
                   {filteredPerformances.map((perf) => {
                     const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
+                    const submissionDateTime = formatSubmissionTime(perf.latestSubmittedAt);
                     return (
-                      <tr 
+                      <tr
                         key={perf.studentId}
                         onClick={() => {
                           setSelectedStudent(perf);
@@ -386,12 +487,17 @@ export function TestPerformanceInsights({
                         className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                       >
                         <td className="px-6 py-4">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                            perf.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                            perf.rank === 2 ? 'bg-slate-100 text-slate-600' :
-                            perf.rank === 3 ? 'bg-orange-100 text-orange-700' :
-                            'bg-gray-50 text-gray-500'
-                          }`}>
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                              perf.rank === 1
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : perf.rank === 2
+                                  ? 'bg-slate-100 text-slate-600'
+                                  : perf.rank === 3
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-gray-50 text-gray-500'
+                            }`}
+                          >
                             #{perf.rank}
                           </div>
                         </td>
@@ -404,32 +510,26 @@ export function TestPerformanceInsights({
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Calendar className="w-3.5 h-3.5" />
-                            {new Date(perf.latestSubmittedAt).toLocaleDateString()}
+                            {submissionDateTime.date}
                             <Clock className="w-3.5 h-3.5 ml-1" />
-                            {new Date(perf.latestSubmittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {submissionDateTime.time}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           {status && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
-                              status === 'late' 
-                                ? 'bg-red-100 text-red-700' 
-                                : 'bg-green-100 text-green-700'
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                                status === 'late' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                              }`}
+                            >
                               {status === 'late' ? 'Late' : 'On Time'}
                             </span>
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-900">{perf.score} / {perf.totalMarks}</span>
-                            <div className="w-24 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                              <div 
-                                className="h-full bg-blue-500 rounded-full"
-                                style={{ width: `${(perf.score / perf.totalMarks) * 100}%` }}
-                              />
-                            </div>
-                          </div>
+                          <span className="font-bold text-gray-900">
+                            {perf.score} / {perf.totalMarks}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
