@@ -88,18 +88,25 @@ export function TestSeriesContainer({
   }, [testState.mode, onStateChange]);
 
   const handleStartTest = (test: any) => {
+    const normalizedStatus: PublishedTest['status'] =
+      test.status === 'completed' || test.status === 'upcoming' || test.status === 'draft'
+        ? test.status
+        : 'live';
+
     const normalizedTest: PublishedTest = {
       id: test.id,
       title: test.title,
       duration: test.duration,
       totalMarks: test.totalMarks,
+      questionCount: test.questions,
+      enrolledCount: test.enrolled,
       questions: test.realQuestions || test.questions || [],
       format: test.format || 'Custom',
       batches: test.batches || [],
       scheduleDate: test.scheduledDate || test.scheduleDate || '',
       scheduleTime: test.scheduleTime || '',
       instructions: test.instructions || '',
-      status: test.status || 'live'
+      status: normalizedStatus
     };
     
     localStorage.setItem('lastTakingTest', JSON.stringify(normalizedTest));

@@ -60,6 +60,7 @@ export interface ApiTest {
     status: 'draft' | 'upcoming' | 'live' | 'completed';
     created_by: string | null;
     question_count: number;
+    enrolled_count: number;
     batches: ApiTestBatch[];
     questions?: ApiQuestion[];
 }

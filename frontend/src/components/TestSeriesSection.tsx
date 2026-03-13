@@ -5,8 +5,6 @@ import {
   Clock,
   Users,
   Award,
-  TrendingUp,
-  ChevronRight,
   Play,
   Lock,
   CheckCircle,
@@ -23,10 +21,11 @@ interface TestSeries {
   totalMarks: number;
   questions: number;
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  status: 'not-started' | 'completed' | 'upcoming';
+  status: 'pending' | 'completed' | 'upcoming';
   score?: number;
   attempts: number;
   scheduledDate?: string;
+  scheduledTime?: string;
   enrolled: number;
   passingMarks: number;
   realQuestions?: any[];
@@ -82,6 +81,7 @@ const MOCK_TEST_SERIES: TestSeries[] = [
     score: 212,
     attempts: 1,
     scheduledDate: '2026-03-01',
+    scheduledTime: '09:00',
     enrolled: 1098,
     passingMarks: 120,
     startTimeStatus: 'on-time',
@@ -95,9 +95,10 @@ const MOCK_TEST_SERIES: TestSeries[] = [
     totalMarks: 300,
     questions: 90,
     difficulty: 'Hard',
-    status: 'not-started',
+    status: 'pending',
     attempts: 0,
     scheduledDate: '2026-03-04',
+    scheduledTime: '09:00',
     enrolled: 1098,
     passingMarks: 120,
     realQuestions: buildJeeMainDemoQuestions('jee-main-demo-fresh')
@@ -119,6 +120,34 @@ export function TestSeriesSection({
 }: TestSeriesProps) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
+  const mapApiStatus = (status: import('../App').PublishedTest['status']): TestSeries['status'] => {
+    if (status === 'completed') return 'completed';
+    if (status === 'upcoming') return 'upcoming';
+    return 'pending';
+  };
+
+  const formatSchedule = (date?: string, time?: string) => {
+    if (!date && !time) return 'Not scheduled';
+    const formattedTime = time
+      ? new Date(`1970-01-01T${time}`).toLocaleTimeString([], {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : '';
+
+    if (!date) return formattedTime || 'Not scheduled';
+
+    const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString();
+    return formattedTime ? `${formattedDate} at ${formattedTime}` : formattedDate;
+  };
+
+  const getStatusLabel = (status: TestSeries['status']) => {
+    if (status === 'completed') return 'Completed';
+    if (status === 'upcoming') return 'Upcoming';
+    return 'Pending';
+  };
+
   const mappedPublishedTests: TestSeries[] = (publishedTests || [])
     .map(t => ({
       id: t.id,
@@ -126,12 +155,13 @@ export function TestSeriesSection({
       subject: t.format === 'JEE MAIN' ? 'All Subjects' : t.format === 'NEET' ? 'All Subjects' : 'Custom',
       duration: t.duration,
       totalMarks: t.totalMarks,
-      questions: t.questions.length,
+      questions: t.questionCount ?? t.questions.length,
       difficulty: 'Medium',
-      status: 'not-started',
+      status: mapApiStatus(t.status),
       attempts: 0,
       scheduledDate: t.scheduleDate,
-      enrolled: 100,
+      scheduledTime: t.scheduleTime,
+      enrolled: t.enrolledCount ?? 0,
       passingMarks: Math.floor(t.totalMarks * 0.4),
       realQuestions: t.questions
     }));
@@ -142,7 +172,7 @@ export function TestSeriesSection({
     const statusFilter = 
       selectedFilter === 'all' ? true :
       selectedFilter === 'completed' ? test.status === 'completed' :
-      selectedFilter === 'pending' ? test.status === 'not-started' :
+      selectedFilter === 'pending' ? test.status === 'pending' :
       selectedFilter === 'upcoming' ? test.status === 'upcoming' : true;
     
     return statusFilter;
@@ -151,7 +181,7 @@ export function TestSeriesSection({
   const stats = {
     total: allTests.length,
     completed: allTests.filter(t => t.status === 'completed').length,
-    pending: allTests.filter(t => t.status === 'not-started').length,
+    pending: allTests.filter(t => t.status === 'pending').length,
     avgScore: 82
   };
 
@@ -256,6 +286,7 @@ export function TestSeriesSection({
                   <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                     {test.title}
                   </h3>
+                  <p className="mt-2 text-sm font-semibold text-gray-600">{getStatusLabel(test.status)}</p>
                 </div>
                 {test.status === 'completed' && (
                   <div className="flex items-center gap-2">
@@ -318,7 +349,7 @@ export function TestSeriesSection({
                     <Calendar className="w-4 h-4" />
                     <span>Scheduled</span>
                   </div>
-                  <span className="font-medium text-gray-900">{test.scheduledDate}</span>
+                  <span className="font-medium text-gray-900 text-right">{formatSchedule(test.scheduledDate, test.scheduledTime)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
@@ -356,7 +387,7 @@ export function TestSeriesSection({
                 onClick={() => {
                   if (test.status === 'completed') {
                     onViewAnalytics(test.id);
-                  } else if (test.status === 'not-started') {
+                  } else if (test.status === 'pending') {
                     onStartTest(test);
                   }
                 }}

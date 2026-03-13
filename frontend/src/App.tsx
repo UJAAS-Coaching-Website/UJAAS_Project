@@ -112,6 +112,8 @@ export interface PublishedTest {
   batches: string[];
   duration: number;
   totalMarks: number;
+  questionCount?: number;
+  enrolledCount?: number;
   scheduleDate: string;
   scheduleTime: string;
   questions: any[];
@@ -380,6 +382,8 @@ function App() {
     batches: t.batches.map(b => b.name),
     duration: t.duration_minutes,
     totalMarks: t.total_marks,
+    questionCount: t.question_count,
+    enrolledCount: t.enrolled_count,
     scheduleDate: t.schedule_date || '',
     scheduleTime: t.schedule_time || '',
     instructions: t.instructions || undefined,

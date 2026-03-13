@@ -17,6 +17,12 @@ export async function getAllTests() {
             t.status,
             t.created_by,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT sb2.student_id)
+                FROM test_target_batches ttb2
+                JOIN student_batches sb2 ON sb2.batch_id = ttb2.batch_id
+                WHERE ttb2.test_id = t.id
+            ) AS enrolled_count,
             COALESCE(
                 json_agg(
                     json_build_object('id', b.id, 'name', b.name)
@@ -49,6 +55,12 @@ export async function getTestsForStudent(studentId) {
             t.status,
             t.created_by,
             (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT sb2.student_id)
+                FROM test_target_batches ttb2
+                JOIN student_batches sb2 ON sb2.batch_id = ttb2.batch_id
+                WHERE ttb2.test_id = t.id
+            ) AS enrolled_count,
             COALESCE(
                 json_agg(
                     DISTINCT jsonb_build_object('id', b.id, 'name', b.name)
@@ -84,6 +96,13 @@ export async function getTestById(id) {
             t.instructions,
             t.status,
             t.created_by,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT sb.student_id)
+                FROM test_target_batches ttb
+                JOIN student_batches sb ON sb.batch_id = ttb.batch_id
+                WHERE ttb.test_id = t.id
+            ) AS enrolled_count,
             COALESCE(
                 json_agg(
                     json_build_object('id', b.id, 'name', b.name)
