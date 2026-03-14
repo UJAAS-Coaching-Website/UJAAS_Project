@@ -2,16 +2,11 @@ import { useState, useEffect } from 'react';
 import { User } from '../App';
 import { 
   GraduationCap,
-  User as UserIcon,
   Star,
   Clock,
   Target,
   FileText,
-  ChevronRight,
-  ChevronLeft,
-  Folder,
   Download,
-  Play,
   BookOpen,
   ClipboardList
 } from 'lucide-react';
@@ -42,25 +37,6 @@ interface StudentDashboardProps {
 }
 
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
-
-// Helper for mock questions
-const generateQuestions = (count: number) => {
-  const questions = [];
-  for (let i = 1; i <= count; i++) {
-    questions.push({
-      id: i,
-      question: `Sample question ${i} for the practice test. Which of the following is the correct answer?`,
-      options: [
-        'Option A: First answer choice',
-        'Option B: Second answer choice',
-        'Option C: Third answer choice',
-        'Option D: Fourth answer choice'
-      ],
-      correctAnswer: Math.floor(Math.random() * 4)
-    });
-  }
-  return questions;
-};
 
 export function StudentDashboard({ 
   user, 
@@ -235,6 +211,7 @@ export function StudentDashboard({
                 onNavigate('profile');
               }} 
               dppAttempts={dppAttempts}
+              onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
           {activeTab === 'test-series' && (
@@ -254,11 +231,13 @@ export function StudentDashboard({
             />
           )}
           {activeTab === 'batch-detail' && (
-            <BatchDashboard 
+            <HomeTab 
               user={user} 
-              onBack={() => onNavigate('home')} 
-              onNavigate={onNavigate}
-              onStartDPP={handleStartDPP}
+              onNavigate={onNavigate} 
+              onOpenPerformance={() => {
+                setProfileSection('performance');
+                onNavigate('profile');
+              }} 
               dppAttempts={dppAttempts}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
@@ -364,12 +343,14 @@ function HomeTab({
   user, 
   onNavigate, 
   onOpenPerformance,
-  dppAttempts
+  dppAttempts,
+  onViewTimetable
 }: { 
   user: User; 
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
   dppAttempts: Record<string, { attempts: number, score: number }>;
+  onViewTimetable: () => void;
 }) {
   const calculateOverallRating = () => {
     if (!user.studentDetails?.ratings) return 0;
@@ -391,8 +372,8 @@ function HomeTab({
       gradient: 'from-green-500 to-emerald-500',
       bgGradient: 'from-green-50 to-emerald-50',
       percentage: (completedCount / 30) * 100,
-      clickable: true,
-      onClick: () => onNavigate('batch-detail')
+      clickable: false,
+      onClick: undefined
     },
     { 
       label: 'My Performance Rating', 
@@ -516,30 +497,6 @@ function HomeTab({
           <h3 className="text-xl font-semibold text-gray-900">My Batch & Courses</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {user.studentDetails?.batch && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5 }}
-              onClick={() => onNavigate('batch-detail')}
-              className="p-5 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all text-white cursor-pointer group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
-                </div>
-                <ChevronRight className="w-5 h-5 text-teal-100 opacity-0 group-hover:opacity-100 transition-all" />
-              </div>
-              <p className="text-xs font-bold text-teal-100 uppercase tracking-wider mb-1">Primary Batch</p>
-              <h4 className="font-bold mb-1 text-xl">{user.studentDetails.batch}</h4>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2 h-2 bg-green-400 rounded-full" />
-                <p className="text-sm text-teal-50">Current Enrollment</p>
-              </div>
-              <p className="text-xs font-bold text-teal-100 underline decoration-teal-100/30 underline-offset-4">View Batch Dashboard</p>
-            </motion.div>
-          )}
-
           {user.enrolledCourses?.filter(c => c !== user.studentDetails?.batch).map((course, index) => (
             <motion.div
               key={index}
@@ -559,26 +516,32 @@ function HomeTab({
               </div>
             </motion.div>
           ))}
+
+          {(!user.enrolledCourses || user.enrolledCourses.filter(c => c !== user.studentDetails?.batch).length === 0) && (
+            <div className="sm:col-span-3 rounded-2xl border border-dashed border-gray-200 bg-slate-50 px-5 py-6 text-sm text-gray-500">
+              No extra courses are assigned right now.
+            </div>
+          )}
         </div>
       </motion.div>
+
+      <AssignedBatchContent
+        user={user}
+        onNavigate={onNavigate}
+        onViewTimetable={onViewTimetable}
+      />
 
     </div>
   );
 }
 
-function BatchDashboard({ 
+function AssignedBatchContent({ 
   user, 
-  onBack, 
   onNavigate,
-  onStartDPP,
-  dppAttempts,
   onViewTimetable
 }: { 
   user: User; 
-  onBack: () => void; 
   onNavigate: (tab: Tab, subTab?: string) => void;
-  onStartDPP: (dpp: any, subjectName?: string) => void;
-  dppAttempts: Record<string, { attempts: number, score: number }>;
   onViewTimetable: () => void;
 }) {
   const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
@@ -607,26 +570,29 @@ function BatchDashboard({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64 rounded-3xl bg-white/60 border border-white shadow-lg">
         <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user.studentDetails?.batch) {
+    return (
+      <div className="rounded-3xl border border-dashed border-gray-200 bg-white/70 p-8 text-center shadow-lg">
+        <GraduationCap className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+        <h3 className="text-xl font-semibold text-gray-900">No Batch Assigned</h3>
+        <p className="text-sm text-gray-500 mt-2">Your dashboard content will appear here once a batch is assigned.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white mb-8 relative overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-teal-100 hover:text-white mb-4 font-bold transition-colors group"
-          >
-          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            Back to Dashboard
-          </button>
           <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch} Dashboard</h2>
+            <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch}</h2>
             <button 
               onClick={onViewTimetable}
               className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20"

@@ -95,9 +95,30 @@ ALTER TABLE batches DROP COLUMN IF EXISTS year;
 ALTER TABLE batches DROP COLUMN IF EXISTS start_date;
 ALTER TABLE batches DROP COLUMN IF EXISTS end_date;
 
--- 6. Modify student_batches table
-ALTER TABLE student_batches DROP COLUMN IF EXISTS joined_at;
-ALTER TABLE student_batches DROP COLUMN IF EXISTS left_at;
+-- 6. Modify students table for single-batch assignment
+ALTER TABLE students ADD COLUMN IF NOT EXISTS assigned_batch_id UUID REFERENCES batches(id) ON DELETE SET NULL;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'student_batches'
+    ) THEN
+        UPDATE students s
+        SET assigned_batch_id = sb.batch_id
+        FROM (
+            SELECT DISTINCT ON (student_id) student_id, batch_id
+            FROM student_batches
+            ORDER BY student_id, ctid DESC
+        ) sb
+        WHERE s.user_id = sb.student_id
+          AND s.assigned_batch_id IS NULL;
+
+        DROP TABLE student_batches;
+    END IF;
+END $$;
 
 -- 7. Modify tests table
 DO $$

@@ -50,7 +50,7 @@ WITH
     RETURNING id, name
   ),
   student_inserted AS (
-    INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
+    INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
     SELECT
       id,
       'UJAAS-2026-001',
@@ -58,7 +58,8 @@ WITH
       'Mumbai, Maharashtra',
       '2005-05-15',
       '+91 98765 43211',
-      '2025-09-01'
+      '2025-09-01',
+      (SELECT b.id FROM batches_inserted b WHERE b.name = '11th JEE' LIMIT 1)
     FROM student_user
     RETURNING user_id
   ),
@@ -68,11 +69,6 @@ WITH
     FROM faculty_user
     RETURNING user_id
   )
-INSERT INTO student_batches (student_id, batch_id)
-SELECT s.user_id, b.id
-FROM student_inserted s
-JOIN batches_inserted b ON b.name = '11th JEE';
-
 INSERT INTO faculty_batches (faculty_id, batch_id)
 SELECT f.user_id, b.id
 FROM faculties f

@@ -49,7 +49,7 @@ export interface ApiStudent {
     rating_assignments: number;
     rating_participation: number;
     rating_behavior: number;
-    batches: ApiStudentBatch[];
+    assigned_batch: ApiStudentBatch | null;
 }
 
 export interface CreateStudentPayload {

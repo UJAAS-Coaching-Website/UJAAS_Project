@@ -51,23 +51,23 @@ async function testLogin() {
       COALESCE(r.assignments, 0) AS assignments,
       COALESCE(r.participation, 0) AS participation,
       COALESCE(r.behavior, 0) AS behavior,
-      COALESCE(
-        ARRAY_REMOVE(ARRAY_AGG(DISTINCT b.name), NULL),
-        ARRAY[]::text[]
-      ) AS enrolled_courses,
-      MIN(b.name) AS batch_name
+      CASE
+        WHEN b.name IS NULL THEN ARRAY[]::text[]
+        ELSE ARRAY[b.name]
+      END AS enrolled_courses,
+      b.name AS batch_name
     FROM users u
     LEFT JOIN students s ON s.user_id = u.id
     LEFT JOIN faculties f ON f.user_id = u.id
     LEFT JOIN student_ratings r ON r.student_id = s.user_id
-    LEFT JOIN student_batches sb ON sb.student_id = s.user_id
-    LEFT JOIN batches b ON b.id = sb.batch_id
+    LEFT JOIN batches b ON b.id = s.assigned_batch_id
     WHERE u.id = $1
     GROUP BY
       u.id, u.name, u.login_id, u.role,
       s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
       f.phone, f.subject, f.designation, f."joining-date",
-      r.attendance, r.assignments, r.participation, r.behavior
+      r.attendance, r.assignments, r.participation, r.behavior,
+      b.id, b.name
   `;
 
         console.log("Fetching profile...");

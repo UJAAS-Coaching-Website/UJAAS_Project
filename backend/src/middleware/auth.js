@@ -5,18 +5,19 @@ import { isTokenBlacklisted } from "../services/authService.js";
 import { accessCookieName } from "../config/index.js";
 
 /**
- * Extract access token from cookie or Authorization header.
+ * Extract access token from Authorization header or cookie.
+ * Prefer the explicit bearer token so a stale cookie cannot override it.
  */
 export function getTokenFromRequest(req) {
+    const authHeader = req.headers.authorization || "";
+    if (authHeader.startsWith("Bearer ")) {
+        return authHeader.slice("Bearer ".length).trim();
+    }
+
     const cookies = parseCookies(req.headers.cookie);
     const cookieToken = cookies[accessCookieName];
     if (cookieToken) {
-        return cookieToken;
-    }
-
-    const authHeader = req.headers.authorization || "";
-    if (authHeader.startsWith("Bearer ")) {
-        return authHeader.slice("Bearer ".length);
+        return cookieToken.trim();
     }
 
     return null;

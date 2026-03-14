@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { getStudentBatchModel } from "./studentBatchModel.js";
 
 export function toApiUser(row) {
     return {
@@ -40,7 +41,47 @@ export function toApiUser(row) {
 }
 
 export async function fetchUserProfileById(userId) {
-    const query = `
+    const batchModel = await getStudentBatchModel();
+    const query = batchModel === "single"
+        ? `
+    SELECT
+      u.id AS user_id,
+      u.name,
+      u.login_id,
+      u.role,
+      s.roll_number,
+      s.phone,
+      s.address,
+      TO_CHAR(s.dob, 'YYYY-MM-DD') AS dob,
+      s.parent_contact,
+      TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+      f.phone AS faculty_phone,
+      f.subject AS faculty_subject,
+      f.designation AS faculty_designation,
+      TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS faculty_join_date,
+      COALESCE(r.attendance, 0) AS attendance,
+      COALESCE(r.assignments, 0) AS assignments,
+      COALESCE(r.participation, 0) AS participation,
+      COALESCE(r.behavior, 0) AS behavior,
+      CASE
+        WHEN b.name IS NULL THEN ARRAY[]::text[]
+        ELSE ARRAY[b.name]
+      END AS enrolled_courses,
+      b.name AS batch_name
+    FROM users u
+    LEFT JOIN students s ON s.user_id = u.id
+    LEFT JOIN faculties f ON f.user_id = u.id
+    LEFT JOIN student_ratings r ON r.student_id = s.user_id
+    LEFT JOIN batches b ON b.id = s.assigned_batch_id
+    WHERE u.id = $1
+    GROUP BY
+      u.id, u.name, u.login_id, u.role,
+      s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
+      f.phone, f.subject, f.designation, f."joining-date",
+      r.attendance, r.assignments, r.participation, r.behavior,
+      b.id, b.name
+  `
+        : `
     SELECT
       u.id AS user_id,
       u.name,

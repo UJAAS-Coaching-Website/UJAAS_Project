@@ -1505,7 +1505,7 @@ function App() {
                 showBatchToast('saving', 'Saving changes to database...');
                 try {
                   await apiRemoveStudentFromBatch(studentId, batchId);
-                  setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, batches: s.batches.filter(b => b.id !== batchId) } : s));
+                  setAdminStudents(prev => prev.map(s => s.id === studentId ? { ...s, assigned_batch: null } : s));
                   apiFetchBatches().then(b => setAdminBatches(b.map(apiBatchToInfo))).catch(() => { });
                   showBatchToast('saved', 'Student removed from batch');
                 } catch (err: any) {

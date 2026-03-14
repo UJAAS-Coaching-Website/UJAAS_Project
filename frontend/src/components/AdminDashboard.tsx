@@ -296,11 +296,11 @@ export function AdminDashboard({
     id: s.id,
     name: s.name,
     rollNumber: s.roll_number,
-    enrolledCourses: s.batches.map(b => b.name),
+    enrolledCourses: s.assigned_batch ? [s.assigned_batch.name] : [],
     joinDate: s.join_date || '',
     performance: 0,
     rating: (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
-    batch: s.batches.length > 0 ? s.batches[0].name : 'Unassigned',
+    batch: s.assigned_batch?.name || 'Unassigned',
     phoneNumber: s.phone || '',
     dateOfBirth: s.date_of_birth || '',
     address: s.address || '',
@@ -501,16 +501,17 @@ export function AdminDashboard({
           parentContact: data.parentContact,
         });
 
-        // Handle batch change: if batch changed, remove from old and assign to new
-        if (apiStudent && batchInfo?.id) {
-          const currentBatchIds = apiStudent.batches.map(b => b.id);
-          if (!currentBatchIds.includes(batchInfo.id)) {
-            // Remove from all current batches
-            for (const b of apiStudent.batches) {
-              await onRemoveStudentFromBatch(data.id, b.id);
-            }
-            // Assign to new batch
-            await onAssignStudentToBatch(data.id, batchInfo.id);
+        // Handle batch change for the single-batch model
+        if (apiStudent) {
+          const currentBatchId = apiStudent.assigned_batch?.id;
+          const nextBatchId = batchInfo?.id;
+
+          if (currentBatchId && currentBatchId !== nextBatchId) {
+            await onRemoveStudentFromBatch(data.id, currentBatchId);
+          }
+
+          if (nextBatchId && currentBatchId !== nextBatchId) {
+            await onAssignStudentToBatch(data.id, nextBatchId);
           }
         }
       } else {

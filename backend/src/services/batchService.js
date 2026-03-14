@@ -1,11 +1,34 @@
 import { pool } from "../db/index.js";
+import { getStudentBatchModel } from "./studentBatchModel.js";
 
 /**
  * Get all batches with assigned faculty names.
  * Actual DB columns: id, name, slug, subjects, is_active
  */
 export async function getAllBatches() {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
+        SELECT
+            b.id,
+            b.name,
+            b.slug,
+            b.subjects,
+            b.is_active,
+            b.timetable_url,
+            COALESCE(
+                json_agg(
+                    json_build_object('id', u.id, 'name', u.name)
+                ) FILTER (WHERE u.id IS NOT NULL),
+                '[]'
+            ) AS faculty,
+            (SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)::int AS student_count
+        FROM batches b
+        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
+        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
+        LEFT JOIN users u ON u.id = f.user_id
+        GROUP BY b.id
+        ORDER BY b.name
+    ` : `
         SELECT
             b.id,
             b.name,
@@ -34,7 +57,29 @@ export async function getAllBatches() {
  * Get a single batch by ID with faculty and student counts.
  */
 export async function getBatchById(id) {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
+        SELECT
+            b.id,
+            b.name,
+            b.slug,
+            b.subjects,
+            b.is_active,
+            b.timetable_url,
+            COALESCE(
+                json_agg(
+                    json_build_object('id', u.id, 'name', u.name)
+                ) FILTER (WHERE u.id IS NOT NULL),
+                '[]'
+            ) AS faculty,
+            (SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)::int AS student_count
+        FROM batches b
+        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
+        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
+        LEFT JOIN users u ON u.id = f.user_id
+        WHERE b.id = $1
+        GROUP BY b.id
+    ` : `
         SELECT
             b.id,
             b.name,
@@ -187,20 +232,39 @@ export async function deleteBatch(id) {
  * Assign a student to a batch.
  */
 export async function assignStudentToBatch(studentId, batchId) {
-    await pool.query(
-        `INSERT INTO student_batches (student_id, batch_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
-        [studentId, batchId]
-    );
+    const batchModel = await getStudentBatchModel();
+    if (batchModel === "single") {
+        await pool.query(
+            `UPDATE students
+             SET assigned_batch_id = $2
+             WHERE user_id = $1`,
+            [studentId, batchId]
+        );
+    } else {
+        await pool.query(`DELETE FROM student_batches WHERE student_id = $1`, [studentId]);
+        await pool.query(
+            `INSERT INTO student_batches (student_id, batch_id)
+             VALUES ($1, $2)
+             ON CONFLICT DO NOTHING`,
+            [studentId, batchId]
+        );
+    }
 }
 
 /**
  * Remove a student from a batch.
  */
 export async function removeStudentFromBatch(studentId, batchId) {
+    const batchModel = await getStudentBatchModel();
     const result = await pool.query(
-        "DELETE FROM student_batches WHERE student_id = $1 AND batch_id = $2",
+        batchModel === "single"
+            ? `UPDATE students
+               SET assigned_batch_id = NULL
+               WHERE user_id = $1
+                 AND assigned_batch_id = $2`
+            : `DELETE FROM student_batches
+               WHERE student_id = $1
+                 AND batch_id = $2`,
         [studentId, batchId]
     );
     return result.rowCount > 0;
@@ -233,7 +297,14 @@ export async function removeFacultyFromBatch(facultyId, batchId) {
  * Get all students in a batch.
  */
 export async function getBatchStudents(batchId) {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
+        SELECT u.id, u.name, s.roll_number, s.phone
+        FROM students s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.assigned_batch_id = $1
+        ORDER BY u.name
+    ` : `
         SELECT u.id, u.name, s.roll_number, s.phone
         FROM student_batches sb
         JOIN students s ON s.user_id = sb.student_id
@@ -266,10 +337,19 @@ export async function createBatchNotification(batchId, { title, message, type = 
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const batchModel = await getStudentBatchModel();
 
         // Insert notifications for all students and faculty in the batch
         // We use an INSERT INTO ... SELECT to do this efficiently in one go
-        await client.query(`
+        await client.query(batchModel === "single" ? `
+            INSERT INTO notifications (user_id, title, message, type)
+            SELECT p.user_id, $2, $3, $4
+            FROM (
+                SELECT user_id FROM students WHERE assigned_batch_id = $1
+                UNION
+                SELECT faculty_id AS user_id FROM faculty_batches WHERE batch_id = $1
+            ) p
+        ` : `
             INSERT INTO notifications (user_id, title, message, type)
             SELECT p.user_id, $2, $3, $4
             FROM (

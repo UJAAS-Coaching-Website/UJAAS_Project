@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { getStudentBatchModel } from "./studentBatchModel.js";
 
 const MAX_TEST_ATTEMPTS = 3;
 const TEST_DURATION_EXPR = "COALESCE(t.duration_mins, t.duration_minutes, 0)";
@@ -95,7 +96,38 @@ function mapAttemptRow(row) {
  * Get all tests with batch assignments and question counts.
  */
 export async function getAllTests() {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
+        SELECT
+            t.id,
+            t.title,
+            t.format,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
+            t.total_marks,
+            TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
+            t.schedule_time,
+            t.instructions,
+            t.status,
+            t.created_by,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT s2.user_id)
+                FROM test_target_batches ttb2
+                JOIN students s2 ON s2.assigned_batch_id = ttb2.batch_id
+                WHERE ttb2.test_id = t.id
+            ) AS enrolled_count,
+            COALESCE(
+                json_agg(
+                    json_build_object('id', b.id, 'name', b.name)
+                ) FILTER (WHERE b.id IS NOT NULL),
+                '[]'
+            ) AS batches
+        FROM tests t
+        LEFT JOIN test_target_batches tb ON tb.test_id = t.id
+        LEFT JOIN batches b ON b.id = tb.batch_id
+        GROUP BY t.id
+        ORDER BY t.scheduled_at DESC NULLS LAST, t.title
+    ` : `
         SELECT
             t.id,
             t.title,
@@ -133,7 +165,91 @@ export async function getAllTests() {
  * Get all tests visible to a student based on the student's assigned batch.
  */
 export async function getTestsForStudent(studentId) {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
+        SELECT
+            t.id,
+            t.title,
+            t.format,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
+            t.total_marks,
+            TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
+            t.schedule_time,
+            t.instructions,
+            t.status,
+            t.created_by,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT s2.user_id)
+                FROM test_target_batches ttb2
+                JOIN students s2 ON s2.assigned_batch_id = ttb2.batch_id
+                WHERE ttb2.test_id = t.id
+            ) AS enrolled_count,
+            (
+                SELECT COUNT(*)
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+            ) AS submitted_attempt_count,
+            EXISTS(
+                SELECT 1
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NULL
+            ) AS has_active_attempt,
+            (
+                SELECT ta.id
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NULL
+                ORDER BY ta.started_at DESC
+                LIMIT 1
+            ) AS active_attempt_id,
+            (
+                SELECT ta.id
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
+                LIMIT 1
+            ) AS latest_attempt_id,
+            (
+                SELECT ta.submitted_at
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
+                LIMIT 1
+            ) AS latest_attempt_submitted_at,
+            (
+                SELECT ta.time_spent
+                FROM test_attempts ta
+                WHERE ta.test_id = t.id
+                  AND ta.student_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
+                LIMIT 1
+            ) AS latest_attempt_time_spent,
+            COALESCE(
+                json_agg(
+                    DISTINCT jsonb_build_object('id', b.id, 'name', b.name)
+                ) FILTER (WHERE b.id IS NOT NULL),
+                '[]'
+            ) AS batches
+        FROM students s
+        JOIN test_target_batches tb_match ON tb_match.batch_id = s.assigned_batch_id
+        JOIN tests t ON t.id = tb_match.test_id
+        LEFT JOIN test_target_batches tb ON tb.test_id = t.id
+        LEFT JOIN batches b ON b.id = tb.batch_id
+        WHERE s.user_id = $1
+        GROUP BY t.id
+        ORDER BY t.scheduled_at DESC NULLS LAST, t.title
+    ` : `
         SELECT
             t.id,
             t.title,
@@ -225,7 +341,38 @@ export async function getTestsForStudent(studentId) {
  * Get a single test with its questions and batch assignments.
  */
 export async function getTestById(id) {
-    const testResult = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const testResult = await pool.query(batchModel === "single" ? `
+        SELECT
+            t.id,
+            t.title,
+            t.format,
+            ${TEST_DURATION_EXPR} AS duration_minutes,
+            t.total_marks,
+            TO_CHAR(t.scheduled_at, 'YYYY-MM-DD') AS schedule_date,
+            t.schedule_time,
+            t.instructions,
+            t.status,
+            t.created_by,
+            (SELECT COUNT(*) FROM questions q WHERE q.test_id = t.id) AS question_count,
+            (
+                SELECT COUNT(DISTINCT s.user_id)
+                FROM test_target_batches ttb
+                JOIN students s ON s.assigned_batch_id = ttb.batch_id
+                WHERE ttb.test_id = t.id
+            ) AS enrolled_count,
+            COALESCE(
+                json_agg(
+                    json_build_object('id', b.id, 'name', b.name)
+                ) FILTER (WHERE b.id IS NOT NULL),
+                '[]'
+            ) AS batches
+        FROM tests t
+        LEFT JOIN test_target_batches tb ON tb.test_id = t.id
+        LEFT JOIN batches b ON b.id = tb.batch_id
+        WHERE t.id = $1
+        GROUP BY t.id
+    ` : `
         SELECT
             t.id,
             t.title,
@@ -279,7 +426,14 @@ export async function getTestById(id) {
  * Get a single test only if it is assigned to the student's batch.
  */
 export async function getTestByIdForStudent(id, studentId) {
-    const hasAccess = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const hasAccess = await pool.query(batchModel === "single" ? `
+        SELECT 1
+        FROM students s
+        JOIN test_target_batches tb ON tb.batch_id = s.assigned_batch_id
+        WHERE s.user_id = $1 AND tb.test_id = $2
+        LIMIT 1
+    ` : `
         SELECT 1
         FROM student_batches sb
         JOIN test_target_batches tb ON tb.batch_id = sb.batch_id

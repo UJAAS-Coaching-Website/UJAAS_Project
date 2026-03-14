@@ -12,13 +12,12 @@ const requiredTables = [
   "students",
   "faculties",
   "batches",
-  "student_batches",
   "faculty_batches",
   "notes",
   "tests",
   "test_attempts",
   "notifications",
-  "ratings"
+  "student_ratings"
 ];
 
 async function run() {

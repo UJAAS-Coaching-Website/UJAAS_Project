@@ -125,9 +125,9 @@ async function seed() {
                 if (batchRes.rowCount > 0) {
                     const batchId = batchRes.rows[0].id;
                     await pool.query(
-                        `INSERT INTO student_batches (student_id, batch_id)
-                         VALUES ($1, $2)
-                         ON CONFLICT (student_id, batch_id) DO NOTHING`,
+                        `UPDATE students
+                         SET assigned_batch_id = $2
+                         WHERE user_id = $1`,
                         [userId, batchId]
                     );
                 } else {

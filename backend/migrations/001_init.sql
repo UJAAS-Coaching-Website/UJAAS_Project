@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name text NOT NULL,
-  email text NOT NULL UNIQUE,
+  login_id text NOT NULL UNIQUE,
   role text NOT NULL CHECK (role IN ('student','faculty','admin')),
   password_hash text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
@@ -17,33 +17,26 @@ CREATE TABLE IF NOT EXISTS students (
   roll_number text UNIQUE,
   phone text,
   address text,
-  date_of_birth date,
+  dob date,
   parent_contact text,
-  join_date date
+  join_date date,
+  assigned_batch_id uuid REFERENCES batches(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS faculties (
   user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   phone text,
-  subject_specialty text,
+  subject text,
   join_date date
 );
 
 CREATE TABLE IF NOT EXISTS batches (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name text NOT NULL,
-  year text,
-  start_date date,
-  end_date date,
-  active boolean NOT NULL DEFAULT true
-);
-
-CREATE TABLE IF NOT EXISTS student_batches (
-  student_id uuid REFERENCES students(user_id) ON DELETE CASCADE,
-  batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
-  joined_at date NOT NULL DEFAULT current_date,
-  left_at date,
-  PRIMARY KEY (student_id, batch_id)
+  slug text UNIQUE,
+  subjects text[],
+  is_active boolean NOT NULL DEFAULT true,
+  timetable_url text
 );
 
 CREATE TABLE IF NOT EXISTS faculty_batches (
@@ -57,17 +50,29 @@ CREATE TABLE IF NOT EXISTS notes (
   batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
   title text NOT NULL,
   file_url text NOT NULL,
+  subject text,
+  chapter text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS tests (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
   title text NOT NULL,
-  type text NOT NULL CHECK (type IN ('test_series','dpp')),
+  format text,
   scheduled_at timestamptz,
+  schedule_time text,
+  duration_mins int,
   duration_minutes int,
-  total_marks int
+  total_marks int,
+  instructions text,
+  status text NOT NULL DEFAULT 'upcoming',
+  created_by uuid REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS test_target_batches (
+  test_id uuid REFERENCES tests(id) ON DELETE CASCADE,
+  batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
+  PRIMARY KEY (test_id, batch_id)
 );
 
 CREATE TABLE IF NOT EXISTS test_attempts (
@@ -75,6 +80,7 @@ CREATE TABLE IF NOT EXISTS test_attempts (
   test_id uuid REFERENCES tests(id) ON DELETE CASCADE,
   student_id uuid REFERENCES students(user_id) ON DELETE CASCADE,
   score int,
+  time_spent int,
   submitted_at timestamptz,
   status text NOT NULL CHECK (status IN ('started','submitted'))
 );
@@ -86,18 +92,17 @@ CREATE TABLE IF NOT EXISTS notifications (
   title text NOT NULL,
   message text NOT NULL,
   icon text,
-  read boolean NOT NULL DEFAULT false,
+  is_read boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS ratings (
+CREATE TABLE IF NOT EXISTS student_ratings (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   student_id uuid REFERENCES students(user_id) ON DELETE CASCADE,
-  attendance int NOT NULL DEFAULT 0,
-  assignments int NOT NULL DEFAULT 0,
-  tests int NOT NULL DEFAULT 0,
-  participation int NOT NULL DEFAULT 0,
-  behavior int NOT NULL DEFAULT 0,
-  engagement int NOT NULL DEFAULT 0,
+  subject text,
+  attendance numeric NOT NULL DEFAULT 0,
+  assignments numeric NOT NULL DEFAULT 0,
+  participation numeric NOT NULL DEFAULT 0,
+  behavior numeric NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now()
 );

@@ -28,6 +28,7 @@ Based on the full feature set implemented in the frontend, the following databas
 | `dob` | DATE | | Date of birth |
 | `parent_contact` | TEXT | | Parent's phone/email |
 | `join_date` | DATE | DEFAULT CURRENT_DATE | |
+| `assigned_batch_id` | UUID | REFERENCES batches(id) | Single assigned batch for the student |
 | `admin_remark` | TEXT | | Private remark by admin |
 
 ### `faculties`
@@ -52,13 +53,6 @@ Based on the full feature set implemented in the frontend, the following databas
 | `slug` | TEXT | UNIQUE, NOT NULL | URL-friendly name |
 | `subjects` | TEXT[] | | Array of subjects (Physics, etc.) |
 | `is_active` | BOOLEAN | DEFAULT TRUE | |
-
-### `student_batches`
-| Column | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `student_id` | UUID | REFERENCES students(user_id) | |
-| `batch_id` | UUID | REFERENCES batches(id) | |
-| PRIMARY KEY | | (student_id, batch_id) | |
 
 ### `faculty_batches`
 | Column | Type | Constraints | Description |
@@ -219,7 +213,7 @@ Based on the full feature set implemented in the frontend, the following databas
 
 ## Summary of Relationships
 1. **User Role Specialization:** `users` table linked 1:1 with `students` and `faculties`.
-2. **Multi-Batch Assignment:** Both students and faculty can belong to multiple batches through join tables.
+2. **Batch Assignment Model:** Each student belongs to at most one batch through `students.assigned_batch_id`, while faculty can belong to multiple batches through `faculty_batches`.
 3. **Complex Tests:** A `test` has many `questions`. A `test` can target multiple `batches`.
 4. **Rich Metadata:** `questions` store JSONB for options and image URLs, mirroring the frontend state.
 5. **Analytics:** `test_attempts` stores detailed student answers for per-question analysis.

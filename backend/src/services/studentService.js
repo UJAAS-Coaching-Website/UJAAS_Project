@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
+import { getStudentBatchModel } from "./studentBatchModel.js";
 
 /**
  * Generate initial password from student name: firstname@123
@@ -10,10 +11,11 @@ function generateInitialPassword(name) {
 }
 
 /**
- * Get all students with user info, batch assignments, and ratings.
+ * Get all students with user info, single batch assignment, and ratings.
  */
 export async function getAllStudents() {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
         SELECT
             u.id,
             u.name,
@@ -28,12 +30,35 @@ export async function getAllStudents() {
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', b.id, 'name', b.name)
-                ) FILTER (WHERE b.id IS NOT NULL),
-                '[]'
-            ) AS batches
+            CASE
+                WHEN b.id IS NULL THEN NULL
+                ELSE json_build_object('id', b.id, 'name', b.name)
+            END AS assigned_batch
+        FROM users u
+        JOIN students s ON s.user_id = u.id
+        LEFT JOIN student_ratings r ON r.student_id = s.user_id
+        LEFT JOIN batches b ON b.id = s.assigned_batch_id AND b.is_active = true
+        WHERE u.role = 'student'
+        ORDER BY u.name
+    ` : `
+        SELECT
+            u.id,
+            u.name,
+            u.login_id,
+            s.roll_number,
+            s.phone,
+            s.address,
+            TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
+            s.parent_contact,
+            TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+            COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.assignments, 0) AS rating_assignments,
+            COALESCE(r.participation, 0) AS rating_participation,
+            COALESCE(r.behavior, 0) AS rating_behavior,
+            CASE
+                WHEN MIN(b.id) IS NULL THEN NULL
+                ELSE json_build_object('id', MIN(b.id), 'name', MIN(b.name))
+            END AS assigned_batch
         FROM users u
         JOIN students s ON s.user_id = u.id
         LEFT JOIN student_ratings r ON r.student_id = s.user_id
@@ -53,7 +78,8 @@ export async function getAllStudents() {
  * Get a single student by user ID.
  */
 export async function getStudentById(id) {
-    const result = await pool.query(`
+    const batchModel = await getStudentBatchModel();
+    const result = await pool.query(batchModel === "single" ? `
         SELECT
             u.id,
             u.name,
@@ -68,12 +94,34 @@ export async function getStudentById(id) {
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', b.id, 'name', b.name)
-                ) FILTER (WHERE b.id IS NOT NULL),
-                '[]'
-            ) AS batches
+            CASE
+                WHEN b.id IS NULL THEN NULL
+                ELSE json_build_object('id', b.id, 'name', b.name)
+            END AS assigned_batch
+        FROM users u
+        JOIN students s ON s.user_id = u.id
+        LEFT JOIN student_ratings r ON r.student_id = s.user_id
+        LEFT JOIN batches b ON b.id = s.assigned_batch_id AND b.is_active = true
+        WHERE u.id = $1 AND u.role = 'student'
+    ` : `
+        SELECT
+            u.id,
+            u.name,
+            u.login_id,
+            s.roll_number,
+            s.phone,
+            s.address,
+            TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
+            s.parent_contact,
+            TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+            COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.assignments, 0) AS rating_assignments,
+            COALESCE(r.participation, 0) AS rating_participation,
+            COALESCE(r.behavior, 0) AS rating_behavior,
+            CASE
+                WHEN MIN(b.id) IS NULL THEN NULL
+                ELSE json_build_object('id', MIN(b.id), 'name', MIN(b.name))
+            END AS assigned_batch
         FROM users u
         JOIN students s ON s.user_id = u.id
         LEFT JOIN student_ratings r ON r.student_id = s.user_id
@@ -96,6 +144,7 @@ export async function createStudent({ name, rollNumber, phone, address, dateOfBi
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const batchModel = await getStudentBatchModel();
 
         const password = hashPassword(generateInitialPassword(name));
 
@@ -109,20 +158,26 @@ export async function createStudent({ name, rollNumber, phone, address, dateOfBi
         const userId = userResult.rows[0].id;
 
         // Insert student row
-        await client.query(
-            `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
-             VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
-            [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
-        );
-
-        // Assign to batch if provided
-        if (batchId) {
+        if (batchModel === "single") {
             await client.query(
-                `INSERT INTO student_batches (student_id, batch_id)
-                 VALUES ($1, $2)
-                 ON CONFLICT DO NOTHING`,
-                [userId, batchId]
+                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
+                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE, $7)`,
+                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
             );
+        } else {
+            await client.query(
+                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
+                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
+                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
+            );
+            if (batchId) {
+                await client.query(
+                    `INSERT INTO student_batches (student_id, batch_id)
+                     VALUES ($1, $2)
+                     ON CONFLICT DO NOTHING`,
+                    [userId, batchId]
+                );
+            }
         }
 
         await client.query("COMMIT");
@@ -174,7 +229,7 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
 }
 
 /**
- * Delete a student (cascades from users to students, student_batches).
+ * Delete a student (cascades from users to students).
  */
 export async function deleteStudent(id) {
     const result = await pool.query(
@@ -188,12 +243,26 @@ export async function deleteStudent(id) {
  * Assign a student to a batch.
  */
 export async function assignStudentToBatch(studentId, batchId) {
-    await pool.query(
-        `INSERT INTO student_batches (student_id, batch_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
-        [studentId, batchId]
-    );
+    const batchModel = await getStudentBatchModel();
+    if (batchModel === "single") {
+        await pool.query(
+            `UPDATE students
+             SET assigned_batch_id = $2
+             WHERE user_id = $1`,
+            [studentId, batchId]
+        );
+    } else {
+        await pool.query(
+            `DELETE FROM student_batches WHERE student_id = $1`,
+            [studentId]
+        );
+        await pool.query(
+            `INSERT INTO student_batches (student_id, batch_id)
+             VALUES ($1, $2)
+             ON CONFLICT DO NOTHING`,
+            [studentId, batchId]
+        );
+    }
     return getStudentById(studentId);
 }
 
@@ -201,8 +270,16 @@ export async function assignStudentToBatch(studentId, batchId) {
  * Remove a student from a batch.
  */
 export async function removeStudentFromBatch(studentId, batchId) {
+    const batchModel = await getStudentBatchModel();
     const result = await pool.query(
-        "DELETE FROM student_batches WHERE student_id = $1 AND batch_id = $2",
+        batchModel === "single"
+            ? `UPDATE students
+               SET assigned_batch_id = NULL
+               WHERE user_id = $1
+                 AND assigned_batch_id = $2`
+            : `DELETE FROM student_batches
+               WHERE student_id = $1
+                 AND batch_id = $2`,
         [studentId, batchId]
     );
     return result.rowCount > 0;
