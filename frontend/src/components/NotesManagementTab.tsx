@@ -46,6 +46,7 @@ interface NotesManagementTabProps {
   readOnly?: boolean;
   variant?: 'admin' | 'faculty' | 'student';
   onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
+  showHeader?: boolean;
 }
 
 export function NotesManagementTab({
@@ -57,7 +58,8 @@ export function NotesManagementTab({
   batches,
   readOnly = false,
   variant = 'student',
-  onUpdateBatch
+  onUpdateBatch,
+  showHeader = true
 }: NotesManagementTabProps) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -270,6 +272,7 @@ export function NotesManagementTab({
   return (
     <div className="space-y-6">
       {/* Header Area */}
+      {showHeader && (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`${variant === 'admin' ? 'bg-white rounded-2xl p-4 border border-gray-100' : 'bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -326,6 +329,7 @@ export function NotesManagementTab({
           </div>
         </div>
       </motion.div>
+      )}
 
       {currentView === 'root' && (
         <div className={`grid gap-6 ${variant === 'admin' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>

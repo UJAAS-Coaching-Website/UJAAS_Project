@@ -4,7 +4,6 @@ import {
   GraduationCap,
   Star,
   Clock,
-  Target,
   FileText,
   Download,
   BookOpen,
@@ -485,46 +484,6 @@ function HomeTab({
         ))}
       </div>
 
-      {/* My Batch & Courses */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="w-6 h-6 text-teal-600" />
-          <h3 className="text-xl font-semibold text-gray-900">My Batch & Courses</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {user.enrolledCourses?.filter(c => c !== user.studentDetails?.batch).map((course, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6 + index * 0.1 }}
-              className="p-5 bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 border-2 border-white rounded-2xl shadow-md hover:shadow-xl transition-all"
-            >
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-xl flex items-center justify-center mb-3 shadow-lg">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Course</p>
-              <h4 className="font-semibold text-gray-900 mb-1 text-lg">{course}</h4>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full" />
-                <p className="text-sm text-gray-600">Active</p>
-              </div>
-            </motion.div>
-          ))}
-
-          {(!user.enrolledCourses || user.enrolledCourses.filter(c => c !== user.studentDetails?.batch).length === 0) && (
-            <div className="sm:col-span-3 rounded-2xl border border-dashed border-gray-200 bg-slate-50 px-5 py-6 text-sm text-gray-500">
-              No extra courses are assigned right now.
-            </div>
-          )}
-        </div>
-      </motion.div>
-
       <AssignedBatchContent
         user={user}
         onNavigate={onNavigate}
@@ -591,18 +550,17 @@ function AssignedBatchContent({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-1">
             <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch}</h2>
-            <button 
-              onClick={onViewTimetable}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20"
-            >
-              <Calendar className="w-5 h-5" />
-              Time Table
-            </button>
           </div>
-          <p className="text-teal-50/90 font-medium mt-1">Batch Academic Overview & Content</p>
         </div>
+        <button 
+          onClick={onViewTimetable}
+          className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20 self-start md:self-auto md:ml-auto"
+        >
+          <Calendar className="w-5 h-5" />
+          Time Table
+        </button>
       </div>
 
       <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100 shadow-xl">
@@ -621,6 +579,7 @@ function AssignedBatchContent({
             batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}
             readOnly={true}
             variant="student"
+            showHeader={false}
           />
         </div>
       </div>
