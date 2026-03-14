@@ -916,6 +916,141 @@ export async function createTest({
     }
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function normalizeQuestionPayload(question, orderIndex) {
+    return {
+        id: (question.id && UUID_REGEX.test(question.id)) ? question.id : null,
+        subject: question.subject || "General",
+        section: question.section || question.metadata?.section || null,
+        type: question.type || "MCQ",
+        questionText: question.question || question.question_text || "",
+        questionImage: question.questionImage || question.question_img || null,
+        options: Array.isArray(question.options) ? question.options : null,
+        optionImages: Array.isArray(question.optionImages)
+            ? question.optionImages
+            : Array.isArray(question.option_imgs)
+                ? question.option_imgs
+                : null,
+        correctAnswer: String(question.correctAnswer ?? question.correct_answer ?? ""),
+        marks: question.marks ?? 4,
+        negativeMarks: question.negativeMarks ?? question.neg_marks ?? 0,
+        explanation: question.explanation || null,
+        explanationImage: question.explanationImage || question.explanation_img || null,
+        orderIndex,
+        difficulty: question.difficulty || null,
+    };
+}
+
+function normalizeStoredQuestion(question) {
+    return {
+        id: question.id,
+        subject: question.subject || "General",
+        section: question.section || null,
+        type: question.type || "MCQ",
+        questionText: question.question_text || "",
+        questionImage: question.question_img || null,
+        options: Array.isArray(question.options) ? question.options : null,
+        optionImages: Array.isArray(question.option_imgs) ? question.option_imgs : null,
+        correctAnswer: String(question.correct_answer ?? question.correct_ans ?? ""),
+        marks: Number(question.marks ?? 4),
+        negativeMarks: Number(question.neg_marks ?? 0),
+        explanation: question.explanation || null,
+        explanationImage: question.explanation_img || null,
+        orderIndex: Number(question.order_index ?? 0),
+        difficulty: question.difficulty || null,
+    };
+}
+
+function questionsDiffer(existingQuestion, nextQuestion) {
+    return (
+        existingQuestion.subject !== nextQuestion.subject ||
+        existingQuestion.section !== nextQuestion.section ||
+        existingQuestion.type !== nextQuestion.type ||
+        existingQuestion.questionText !== nextQuestion.questionText ||
+        existingQuestion.questionImage !== nextQuestion.questionImage ||
+        JSON.stringify(existingQuestion.options) !== JSON.stringify(nextQuestion.options) ||
+        JSON.stringify(existingQuestion.optionImages) !== JSON.stringify(nextQuestion.optionImages) ||
+        existingQuestion.correctAnswer !== nextQuestion.correctAnswer ||
+        existingQuestion.marks !== Number(nextQuestion.marks) ||
+        existingQuestion.negativeMarks !== Number(nextQuestion.negativeMarks) ||
+        existingQuestion.explanation !== nextQuestion.explanation ||
+        existingQuestion.explanationImage !== nextQuestion.explanationImage ||
+        existingQuestion.orderIndex !== Number(nextQuestion.orderIndex) ||
+        existingQuestion.difficulty !== nextQuestion.difficulty
+    );
+}
+
+async function insertQuestion(client, testId, question) {
+    await client.query(
+        `INSERT INTO questions (
+            id, test_id, subject, section, type, question_text, question_img,
+            options, option_imgs, correct_ans, correct_answer, marks, neg_marks,
+            explanation, explanation_img, order_index, difficulty
+         ) VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        [
+            question.id,
+            testId,
+            question.subject,
+            question.section,
+            question.type,
+            question.questionText,
+            question.questionImage,
+            question.options ? JSON.stringify(question.options) : null,
+            question.optionImages ? JSON.stringify(question.optionImages) : null,
+            question.correctAnswer,
+            question.correctAnswer,
+            question.marks,
+            question.negativeMarks,
+            question.explanation,
+            question.explanationImage,
+            question.orderIndex,
+            question.difficulty,
+        ]
+    );
+}
+
+async function updateQuestion(client, question) {
+    await client.query(
+        `UPDATE questions
+         SET
+            subject = $1,
+            section = $2,
+            type = $3,
+            question_text = $4,
+            question_img = $5,
+            options = $6,
+            option_imgs = $7,
+            correct_ans = $8,
+            correct_answer = $9,
+            marks = $10,
+            neg_marks = $11,
+            explanation = $12,
+            explanation_img = $13,
+            order_index = $14,
+            difficulty = $15
+         WHERE id = $16`,
+        [
+            question.subject,
+            question.section,
+            question.type,
+            question.questionText,
+            question.questionImage,
+            question.options ? JSON.stringify(question.options) : null,
+            question.optionImages ? JSON.stringify(question.optionImages) : null,
+            question.correctAnswer,
+            question.correctAnswer,
+            question.marks,
+            question.negativeMarks,
+            question.explanation,
+            question.explanationImage,
+            question.orderIndex,
+            question.difficulty,
+            question.id,
+        ]
+    );
+}
+
 /**
  * Update test status.
  */
@@ -999,61 +1134,111 @@ export async function updateTest(id, {
     try {
         await client.query("BEGIN");
 
-        // Update test details
-        await client.query(
-            `UPDATE tests 
-             SET title = $1, format = $2, duration_minutes = $3, duration_mins = $4, total_marks = $5, 
-                 scheduled_at = NULLIF($6, '')::date, schedule_time = $7, instructions = $8
-             WHERE id = $9`,
-            [title, format, durationMinutes, durationMinutes, totalMarks, scheduleDate || "", scheduleTime || null, instructions || null, id]
+        const existingTestResult = await client.query(
+            `SELECT title, format, duration_minutes, total_marks, scheduled_at, schedule_time, instructions
+             FROM tests
+             WHERE id = $1`,
+            [id]
         );
 
-        // Update batch assignments (delete and recreate)
-        await client.query(`DELETE FROM test_target_batches WHERE test_id = $1`, [id]);
-        if (batchIds && batchIds.length > 0) {
-            const batchValues = batchIds.map((_, i) => `($1, $${i + 2})`).join(", ");
-            const batchParams = [id, ...batchIds];
+        if (existingTestResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        const existingTest = existingTestResult.rows[0];
+        const normalizedScheduleDate = scheduleDate || "";
+        const existingScheduleDate = existingTest.scheduled_at
+            ? new Date(existingTest.scheduled_at).toISOString().slice(0, 10)
+            : "";
+
+        const metadataChanged = (
+            existingTest.title !== title ||
+            (existingTest.format || null) !== (format || null) ||
+            Number(existingTest.duration_minutes || 0) !== Number(durationMinutes) ||
+            Number(existingTest.total_marks || 0) !== Number(totalMarks) ||
+            existingScheduleDate !== normalizedScheduleDate ||
+            (existingTest.schedule_time || null) !== (scheduleTime || null) ||
+            (existingTest.instructions || null) !== (instructions || null)
+        );
+
+        if (metadataChanged) {
             await client.query(
-                `INSERT INTO test_target_batches (test_id, batch_id) VALUES ${batchValues}`,
-                batchParams
+                `UPDATE tests
+                 SET title = $1, format = $2, duration_minutes = $3, duration_mins = $4, total_marks = $5,
+                     scheduled_at = NULLIF($6, '')::date, schedule_time = $7, instructions = $8
+                 WHERE id = $9`,
+                [title, format, durationMinutes, durationMinutes, totalMarks, normalizedScheduleDate, scheduleTime || null, instructions || null, id]
             );
         }
 
-        // Update questions (simplest way is to clear and recreate to handle deletions/additions easily)
-        await client.query(`DELETE FROM questions WHERE test_id = $1`, [id]);
-        if (questions && questions.length > 0) {
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            for (let i = 0; i < questions.length; i++) {
-                const q = questions[i];
-                const qId = (q.id && uuidRegex.test(q.id)) ? q.id : null;
-                
-                await client.query(
-                    `INSERT INTO questions (
-                        id, test_id, subject, section, type, question_text, question_img, 
-                        options, option_imgs, correct_ans, correct_answer, marks, neg_marks, 
-                        explanation, explanation_img, order_index, difficulty
-                     ) VALUES (COALESCE($1, uuid_generate_v4()), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-                    [
-                        qId,
-                        id,
-                        q.subject || "General",
-                        q.section || q.metadata?.section || null,
-                        q.type || 'MCQ',
-                        q.question || q.question_text || '',
-                        q.questionImage || q.question_img || null,
-                        q.options ? JSON.stringify(q.options) : null,
-                        q.optionImages ? JSON.stringify(q.optionImages) : null,
-                        String(q.correctAnswer ?? q.correct_answer ?? ''),
-                        String(q.correctAnswer ?? q.correct_answer ?? ''),
-                        q.marks ?? 4,
-                        q.negativeMarks ?? q.neg_marks ?? 0,
-                        q.explanation || null,
-                        q.explanationImage || q.explanation_img || null,
-                        i,
-                        q.difficulty || null,
-                    ]
-                );
+        // Diff batch assignments instead of recreating the whole set.
+        const existingBatchResult = await client.query(
+            `SELECT batch_id FROM test_target_batches WHERE test_id = $1`,
+            [id]
+        );
+        const existingBatchIds = new Set(existingBatchResult.rows.map((row) => row.batch_id));
+        const nextBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
+
+        const batchIdsToDelete = Array.from(existingBatchIds).filter((batchId) => !nextBatchIds.includes(batchId));
+        if (batchIdsToDelete.length > 0) {
+            await client.query(
+                `DELETE FROM test_target_batches
+                 WHERE test_id = $1
+                   AND batch_id = ANY($2::uuid[])`,
+                [id, batchIdsToDelete]
+            );
+        }
+
+        const batchIdsToInsert = nextBatchIds.filter((batchId) => !existingBatchIds.has(batchId));
+        if (batchIdsToInsert.length > 0) {
+            const batchValues = batchIdsToInsert.map((_, i) => `($1, $${i + 2})`).join(", ");
+            await client.query(
+                `INSERT INTO test_target_batches (test_id, batch_id) VALUES ${batchValues} ON CONFLICT DO NOTHING`,
+                [id, ...batchIdsToInsert]
+            );
+        }
+
+        // Diff questions by ID so draft saves only touch changed rows.
+        const existingQuestionResult = await client.query(
+            `SELECT
+                id, subject, section, type, question_text, question_img,
+                options, option_imgs, correct_ans, correct_answer, marks, neg_marks,
+                explanation, explanation_img, order_index, difficulty
+             FROM questions
+             WHERE test_id = $1`,
+            [id]
+        );
+
+        const existingQuestionMap = new Map(
+            existingQuestionResult.rows.map((row) => [row.id, normalizeStoredQuestion(row)])
+        );
+        const nextQuestions = (questions || []).map((question, index) => normalizeQuestionPayload(question, index));
+        const nextQuestionIds = new Set(nextQuestions.map((question) => question.id).filter(Boolean));
+
+        const questionIdsToDelete = existingQuestionResult.rows
+            .map((row) => row.id)
+            .filter((questionId) => !nextQuestionIds.has(questionId));
+
+        if (questionIdsToDelete.length > 0) {
+            await client.query(
+                `DELETE FROM questions
+                 WHERE test_id = $1
+                   AND id = ANY($2::uuid[])`,
+                [id, questionIdsToDelete]
+            );
+        }
+
+        for (const question of nextQuestions) {
+            if (question.id && existingQuestionMap.has(question.id)) {
+                const existingQuestion = existingQuestionMap.get(question.id);
+                if (existingQuestion && questionsDiffer(existingQuestion, question)) {
+                    await updateQuestion(client, question);
+                }
+                continue;
             }
+
+            await insertQuestion(client, id, question);
         }
 
         await client.query("COMMIT");
