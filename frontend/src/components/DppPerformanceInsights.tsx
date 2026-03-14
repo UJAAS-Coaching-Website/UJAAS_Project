@@ -8,7 +8,7 @@ import {
   Target,
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
-import { fetchDppAnalysis } from '../api/dpps';
+import { fetchDppAnalysis, type ApiDppAnalysis } from '../api/dpps';
 
 function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
   if (type === 'MCQ') {
@@ -31,12 +31,14 @@ interface DppPerformanceInsightsProps {
   dppTitle: string;
   dppId: string;
   onClose: () => void;
+  initialAnalysis?: ApiDppAnalysis | null;
 }
 
 export function DppPerformanceInsights({
   dppTitle,
   dppId,
   onClose,
+  initialAnalysis = null,
 }: DppPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
@@ -45,34 +47,42 @@ export function DppPerformanceInsights({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const mapAnalysisToPerformances = (analysis: ApiDppAnalysis) => (
+      analysis.performances.map((perf) => ({
+        ...perf,
+        attempts: perf.attempts.map((attempt) => ({
+          ...attempt,
+          questions: attempt.questions.map((question) => ({
+            id: question.id,
+            text: question.question_text,
+            question: question.question_text,
+            questionImage: question.question_img || undefined,
+            options: question.options || undefined,
+            optionImages: question.option_imgs || undefined,
+            correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
+            subject: question.subject,
+            marks: question.marks,
+            type: question.type,
+            metadata: { section: question.section || undefined },
+            explanation: question.explanation || undefined,
+            explanationImage: question.explanation_img || undefined,
+            userAnswer: question.user_answer,
+          })),
+        })),
+      }))
+    );
+
     const loadAnalysis = async () => {
+      if (initialAnalysis && initialAnalysis.dppId === dppId) {
+        setPerformances(mapAnalysisToPerformances(initialAnalysis));
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const analysis = await fetchDppAnalysis(dppId);
-        setPerformances(
-          analysis.performances.map((perf) => ({
-            ...perf,
-            attempts: perf.attempts.map((attempt) => ({
-              ...attempt,
-              questions: attempt.questions.map((question) => ({
-                id: question.id,
-                text: question.question_text,
-                question: question.question_text,
-                questionImage: question.question_img || undefined,
-                options: question.options || undefined,
-                optionImages: question.option_imgs || undefined,
-                correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-                subject: question.subject,
-                marks: question.marks,
-                type: question.type,
-                metadata: { section: question.section || undefined },
-                explanation: question.explanation || undefined,
-                explanationImage: question.explanation_img || undefined,
-                userAnswer: question.user_answer,
-              })),
-            })),
-          }))
-        );
+        setPerformances(mapAnalysisToPerformances(analysis));
       } catch (error) {
         console.error('Failed to load DPP analysis', error);
         setPerformances([]);
@@ -82,7 +92,7 @@ export function DppPerformanceInsights({
     };
 
     void loadAnalysis();
-  }, [dppId]);
+  }, [dppId, initialAnalysis]);
 
   const filteredPerformances = useMemo(() => {
     return performances.filter((p) =>

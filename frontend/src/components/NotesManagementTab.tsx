@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
-import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp } from '../api/dpps';
+import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDppById, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp, type ApiDppAnalysis } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
 import { DppPerformanceInsights } from './DppPerformanceInsights';
+import { TestTaking } from './TestTaking';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -53,6 +54,23 @@ interface NotesManagementTabProps {
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
+
+function parseDppCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
 
 async function preloadDppAssets(questions: ApiDpp['questions']) {
   const imageSources = (questions || []).flatMap((question) => [
@@ -97,7 +115,9 @@ export function NotesManagementTab({
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
   const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
   const [previewingDppId, setPreviewingDppId] = useState<string | null>(null);
-  const [analyticsDpp, setAnalyticsDpp] = useState<{ id: string; title: string } | null>(null);
+  const [analyticsLoadingDppId, setAnalyticsLoadingDppId] = useState<string | null>(null);
+  const [analyticsDpp, setAnalyticsDpp] = useState<{ id: string; title: string; analysis: ApiDppAnalysis } | null>(null);
+  const [previewDpp, setPreviewDpp] = useState<ApiDpp | null>(null);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -401,12 +421,69 @@ export function NotesManagementTab({
     }
   };
 
+  const handleOpenAdminFacultyPreview = async (dppId: string) => {
+    try {
+      setPreviewingDppId(dppId);
+      const dpp = await fetchDppById(dppId);
+      setPreviewDpp(dpp);
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP preview');
+    } finally {
+      setPreviewingDppId(null);
+    }
+  };
+
+  const handleOpenDppAnalytics = async (dppId: string, title: string) => {
+    try {
+      setAnalyticsLoadingDppId(dppId);
+      const analysis = await fetchDppAnalysis(dppId);
+      setAnalyticsDpp({ id: dppId, title, analysis });
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP analytics');
+    } finally {
+      setAnalyticsLoadingDppId(null);
+    }
+  };
+
   if (analyticsDpp) {
     return (
       <DppPerformanceInsights
         dppId={analyticsDpp.id}
         dppTitle={analyticsDpp.title}
+        initialAnalysis={analyticsDpp.analysis}
         onClose={() => setAnalyticsDpp(null)}
+      />
+    );
+  }
+
+  if (previewDpp) {
+    return (
+      <TestTaking
+        testId={previewDpp.id}
+        testTitle={previewDpp.title}
+        duration={0}
+        questions={(previewDpp.questions || []).map((question) => ({
+          id: question.id,
+          question: question.question_text,
+          options: question.options || undefined,
+          optionImages: question.option_imgs || undefined,
+          questionImage: question.question_img || undefined,
+          correctAnswer: parseDppCorrectAnswer(question.type, question.correct_answer),
+          subject: question.subject,
+          marks: question.marks,
+          type: question.type,
+          explanation: question.explanation || undefined,
+          explanationImage: question.explanation_img || undefined,
+          metadata: { section: question.section || undefined },
+        })) as any}
+        onSubmit={() => {}}
+        onExit={() => setPreviewDpp(null)}
+        initialAnswers={{}}
+        initialTimeSpent={0}
+        isPreview={variant === 'admin'}
+        isFacultyPreview={variant === 'faculty'}
+        disableEditing={true}
+        hideExplanations={false}
       />
     );
   }
@@ -762,7 +839,10 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className="rounded-2xl border border-white bg-white/80 p-5 shadow-lg"
+                  className={`rounded-2xl border border-white bg-white/80 p-5 shadow-lg transition-opacity ${
+                    previewingDppId === item.id ? 'cursor-wait opacity-70' : variant !== 'student' ? 'cursor-pointer' : ''
+                  }`}
+                  onClick={variant !== 'student' ? () => { void handleOpenAdminFacultyPreview(item.id); } : undefined}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
@@ -781,6 +861,11 @@ export function NotesManagementTab({
                       {variant === 'student' && (
                         <p className="mt-3 text-sm text-gray-600">
                           Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
+                        </p>
+                      )}
+                      {variant !== 'student' && previewingDppId === item.id && (
+                        <p className="mt-3 text-sm font-semibold text-blue-600">
+                          Opening preview...
                         </p>
                       )}
                     </div>
@@ -806,15 +891,22 @@ export function NotesManagementTab({
                         </div>
                       ) : (
                         <button
-                          onClick={() => setAnalyticsDpp({ id: item.id, title: item.title })}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleOpenDppAnalytics(item.id, item.title);
+                          }}
+                          disabled={analyticsLoadingDppId === item.id}
                           className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 font-bold text-blue-700 transition hover:bg-blue-100"
                         >
-                          Analytics
+                          {analyticsLoadingDppId === item.id ? 'Loading...' : 'Analytics'}
                         </button>
                       )}
                       {canManageContent && (
                         <button
-                          onClick={() => handleDeleteDPP(item.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDeleteDPP(item.id);
+                          }}
                           className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
                           title="Delete DPP"
                         >
