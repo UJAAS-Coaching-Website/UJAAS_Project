@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../App';
-import { 
+import {
   GraduationCap,
   Star,
   Clock,
@@ -10,6 +10,8 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { fetchBatches, ApiBatch } from '../api/batches';
+import { apiFetchChapters } from '../api/chapters';
+import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { QuestionBank } from './QuestionBank';
@@ -87,8 +89,6 @@ export function StudentDashboard({
       setActiveDppSession(null);
     }
   }, [activeTab, subTab]);
-
-  const dppAttempts: Record<string, { attempts: number, score: number }> = {};
 
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
@@ -212,7 +212,6 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
-              dppAttempts={dppAttempts}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -240,7 +239,6 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
-              dppAttempts={dppAttempts}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -345,15 +343,74 @@ function HomeTab({
   user, 
   onNavigate, 
   onOpenPerformance,
-  dppAttempts,
   onViewTimetable
 }: { 
   user: User; 
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
-  dppAttempts: Record<string, { attempts: number, score: number }>;
   onViewTimetable: () => void;
 }) {
+  const [dppProgress, setDppProgress] = useState({ completed: 0, total: 0, loading: true });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDppProgress = async () => {
+      if (!user.studentDetails?.batch) {
+        if (!cancelled) {
+          setDppProgress({ completed: 0, total: 0, loading: false });
+        }
+        return;
+      }
+
+      try {
+        if (!cancelled) {
+          setDppProgress((prev) => ({ ...prev, loading: true }));
+        }
+
+        const batches = await fetchBatches();
+        const studentBatch = batches.find((batch) => batch.name === user.studentDetails?.batch);
+
+        if (!studentBatch) {
+          if (!cancelled) {
+            setDppProgress({ completed: 0, total: 0, loading: false });
+          }
+          return;
+        }
+
+        const chapters = await apiFetchChapters(studentBatch.id);
+        const dppGroups = await Promise.all(
+          chapters.map((chapter) => fetchDpps(chapter.id).catch(() => []))
+        );
+
+        const dppMap = new Map<string, { submitted_attempt_count?: number }>();
+        dppGroups.flat().forEach((dpp) => {
+          if (!dppMap.has(dpp.id)) {
+            dppMap.set(dpp.id, { submitted_attempt_count: dpp.submitted_attempt_count });
+          }
+        });
+
+        const total = dppMap.size;
+        const completed = Array.from(dppMap.values()).filter((dpp) => Number(dpp.submitted_attempt_count || 0) > 0).length;
+
+        if (!cancelled) {
+          setDppProgress({ completed, total, loading: false });
+        }
+      } catch (error) {
+        console.error('Failed to load DPP progress', error);
+        if (!cancelled) {
+          setDppProgress({ completed: 0, total: 0, loading: false });
+        }
+      }
+    };
+
+    void loadDppProgress();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.studentDetails?.batch]);
+
   const calculateOverallRating = () => {
     if (!user.studentDetails?.ratings) return 0;
     const r = user.studentDetails.ratings;
@@ -364,16 +421,18 @@ function HomeTab({
   };
 
   const currentRating = calculateOverallRating();
-  const completedCount = dppAttempts ? Object.keys(dppAttempts).length : 0;
+  const completedCount = dppProgress.completed;
+  const totalDpps = dppProgress.total;
+  const dppPercentage = totalDpps > 0 ? (completedCount / totalDpps) * 100 : 0;
 
   const stats = [
     { 
       label: 'DPP Completed', 
-      value: `${completedCount}/30`, 
+      value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`,
       icon: ClipboardList, 
       gradient: 'from-green-500 to-emerald-500',
       bgGradient: 'from-green-50 to-emerald-50',
-      percentage: (completedCount / 30) * 100,
+      percentage: dppPercentage,
       clickable: false,
       onClick: undefined
     },

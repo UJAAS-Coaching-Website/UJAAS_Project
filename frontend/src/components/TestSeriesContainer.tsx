@@ -176,6 +176,7 @@ export function TestSeriesContainer({
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
+  const analyticsRequestRef = useRef(0);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -205,16 +206,28 @@ export function TestSeriesContainer({
   }, []);
 
   const openAttemptAnalytics = useCallback(async (attemptId: string) => {
+    const requestId = analyticsRequestRef.current + 1;
+    analyticsRequestRef.current = requestId;
+
     try {
       setLoadingAnalysisAttemptId(attemptId);
       const result = await fetchAttemptResult(attemptId);
+      if (analyticsRequestRef.current !== requestId) {
+        return;
+      }
       const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
+      if (analyticsRequestRef.current !== requestId) {
+        return;
+      }
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
       setTestState({ mode: 'analytics', result, history: summary?.history || [] });
+      window.scrollTo({ top: 0, behavior: 'auto' });
       pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } finally {
-      setLoadingAnalysisAttemptId(null);
+      if (analyticsRequestRef.current === requestId) {
+        setLoadingAnalysisAttemptId(null);
+      }
     }
   }, [onNavigateSubTab]);
 
@@ -450,8 +463,11 @@ export function TestSeriesContainer({
   };
 
   const handleBackToList = () => {
+    analyticsRequestRef.current += 1;
+    setLoadingAnalysisAttemptId(null);
     pendingSubTabRef.current = null;
     setTestState({ mode: 'list' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
     onNavigateSubTab?.(undefined);
   };
 
