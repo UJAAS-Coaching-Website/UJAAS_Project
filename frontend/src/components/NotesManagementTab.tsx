@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
-import { fetchDpps, deleteDpp, startMyDppAttempt, type ApiDpp } from '../api/dpps';
+import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
 
 // Type stubs that reflect the app
@@ -95,6 +95,7 @@ export function NotesManagementTab({
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
   const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
+  const [previewingDppId, setPreviewingDppId] = useState<string | null>(null);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -362,7 +363,10 @@ export function NotesManagementTab({
       }));
 
       if (variant === 'student') {
-        sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(payload));
+        sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify({
+          mode: 'attempt',
+          payload,
+        }));
         onNavigate('home', 'dpp');
         return;
       }
@@ -370,6 +374,28 @@ export function NotesManagementTab({
       alert(error?.message || 'Unable to start DPP');
     } finally {
       setLoadingDppId(null);
+    }
+  };
+
+  const handlePreviewDpp = async (dppId: string) => {
+    try {
+      setPreviewingDppId(dppId);
+      const summary = await fetchMyDppAttemptSummary(dppId);
+      const latestAttempt = summary.history[0];
+      if (!latestAttempt) return;
+
+      const result = await fetchDppAttemptResult(latestAttempt.id);
+      sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify({
+        mode: 'result',
+        result,
+        history: summary.history,
+        reviewOpen: false,
+      }));
+      onNavigate('home', 'dpp');
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP preview');
+    } finally {
+      setPreviewingDppId(null);
     }
   };
 
@@ -748,13 +774,24 @@ export function NotesManagementTab({
                     </div>
                     <div className="flex items-center gap-2">
                       {variant === 'student' ? (
-                        <button
-                          onClick={() => handleAttemptDpp(item.id)}
-                          disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
-                          className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
-                        </button>
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleAttemptDpp(item.id)}
+                            disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                            className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                          </button>
+                          {(item.submitted_attempt_count || 0) > 0 && (
+                            <button
+                              onClick={() => handlePreviewDpp(item.id)}
+                              disabled={previewingDppId === item.id}
+                              className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                            </button>
+                          )}
+                        </div>
                       ) : null}
                       {canManageContent && (
                         <button

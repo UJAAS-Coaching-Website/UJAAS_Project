@@ -20,7 +20,7 @@ import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { X, Calendar } from 'lucide-react';
 import { NotesManagementTab } from './NotesManagementTab';
-import { DPPPractice } from './DPPPractice';
+import { DPPPractice, type DppPracticeSession } from './DPPPractice';
 import type { ApiStartDppAttemptPayload } from '../api/dpps';
 
 interface StudentDashboardProps {
@@ -54,7 +54,7 @@ export function StudentDashboard({
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
-  const [activeDppPayload, setActiveDppPayload] = useState<ApiStartDppAttemptPayload | null>(null);
+  const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -67,22 +67,22 @@ export function StudentDashboard({
 
   useEffect(() => {
     if (activeTab !== 'home' || subTab !== 'dpp') {
-      setActiveDppPayload(null);
+      setActiveDppSession(null);
       return;
     }
 
     try {
       const raw = sessionStorage.getItem(ACTIVE_DPP_SESSION_KEY);
       if (!raw) {
-        setActiveDppPayload(null);
+        setActiveDppSession(null);
         return;
       }
 
-      setActiveDppPayload(JSON.parse(raw) as ApiStartDppAttemptPayload);
+      setActiveDppSession(JSON.parse(raw) as DppPracticeSession);
     } catch (error) {
       console.error('Failed to restore active DPP session', error);
       sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
-      setActiveDppPayload(null);
+      setActiveDppSession(null);
     }
   }, [activeTab, subTab]);
 
@@ -177,16 +177,20 @@ export function StudentDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && subTab === 'dpp' && activeDppPayload && (
+          {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
             <DPPPractice
-              payload={activeDppPayload}
+              session={activeDppSession}
               onExit={() => {
                 sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
                 onNavigate('home');
               }}
+              onSessionChange={(nextSession) => {
+                setActiveDppSession(nextSession);
+                sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+              }}
             />
           )}
-          {activeTab === 'home' && subTab === 'dpp' && !activeDppPayload && (
+          {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
             <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
               <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
               <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>

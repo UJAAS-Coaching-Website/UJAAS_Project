@@ -785,9 +785,9 @@ export function TestTaking({
               {currentQuestion === questions.length - 1 ? (
                 <motion.button
                   onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
-                  className={`px-8 py-3 bg-gradient-to-r ${isAnyPreview ? 'from-gray-600 to-gray-700' : 'from-green-600 to-emerald-600'} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2`}
+                  className={`px-8 py-3 ${isAnyPreview ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-xl'} rounded-xl font-semibold shadow-lg transition-all flex items-center gap-2`}
                 >
-                  {isAnyPreview ? <X className="w-5 h-5" /> : null}
+                  {isAnyPreview ? <X className="w-5 h-5 text-slate-700" /> : null}
                   {isAnyPreview ? 'Exit Review' : 'Submit Test'}
                 </motion.button>
               ) : (
