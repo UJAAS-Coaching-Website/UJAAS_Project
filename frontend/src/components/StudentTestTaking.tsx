@@ -51,6 +51,8 @@ interface StudentTestTakingProps {
   deadlineAt?: string;
   serverNow?: string;
   onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
+  enableTimer?: boolean;
+  showMarksMeta?: boolean;
 }
 
 export function StudentTestTaking({
@@ -69,7 +71,9 @@ export function StudentTestTaking({
   initialBatches = [],
   deadlineAt,
   serverNow,
-  onSaveProgress
+  onSaveProgress,
+  enableTimer = true,
+  showMarksMeta = true
 }: StudentTestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || []);
   const [testTitle, setTestTitle] = useState(initialTitle);
@@ -180,7 +184,7 @@ export function StudentTestTaking({
   };
 
   useEffect(() => {
-    if (isAnyPreview) return;
+    if (isAnyPreview || !enableTimer) return;
     
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -320,10 +324,12 @@ export function StudentTestTaking({
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
                   {questionCount} Questions
                 </span>
-                <span className="flex items-center gap-1">
-                  <Award className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {totalMarks} Marks
-                </span>
+                {showMarksMeta && (
+                  <span className="flex items-center gap-1">
+                    <Award className="w-3 h-3 sm:w-4 sm:h-4" />
+                    {totalMarks} Marks
+                  </span>
+                )}
                 {isAnyPreview && (
                   <>
                     <span className="flex items-center gap-1">
@@ -342,7 +348,7 @@ export function StudentTestTaking({
 
             <div className="flex items-center gap-3">
               {/* Timer - only for students */}
-              {!isAnyPreview && (
+              {!isAnyPreview && enableTimer && (
                 <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
                   timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
                   timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
@@ -451,9 +457,11 @@ export function StudentTestTaking({
                             {currentSection}
                           </span>
                         )}
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                          {question.marks} marks
-                        </span>
+                        {showMarksMeta && (
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                            {question.marks} marks
+                          </span>
+                        )}
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
                           {question.type}
                         </span>

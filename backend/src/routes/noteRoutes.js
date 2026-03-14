@@ -25,9 +25,9 @@ router.use(authenticate);
 router.get("/", handleGetNotes);
 router.get("/:id", handleGetNoteById);
 
-// Admin and Faculty can manage notes
+// Only faculty can manage notes, subject to chapter batch/subject authorization.
 const canManageContent = (req, res, next) => {
-    if (req.user?.role === "admin" || req.user?.role === "faculty") {
+    if (req.user?.role === "faculty") {
         return next();
     }
     return res.status(403).json({ message: "forbidden" });

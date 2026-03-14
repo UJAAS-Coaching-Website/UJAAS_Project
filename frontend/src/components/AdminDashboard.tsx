@@ -41,8 +41,6 @@ import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
 import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { CreateDPP } from './CreateDPP';
-import { UploadNotes } from './UploadNotes';
 import { TestTaking } from './TestTaking';
 import { forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
@@ -800,10 +798,6 @@ export function AdminDashboard({
                 initialBatches={selectedPreviewTest.batches}
               />
             </div>
-          ) : activeTab === 'create-dpp' ? (
-            <CreateDPP onBack={() => onNavigate('content')} />
-          ) : activeTab === 'upload-notes' ? (
-            <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
             <AdminProfile user={user} onLogout={onLogout} />
           ) : !selectedBatch ? (

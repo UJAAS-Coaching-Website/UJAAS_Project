@@ -12,7 +12,6 @@ import {
 import { fetchBatches, ApiBatch } from '../api/batches';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
-import { DPPPractice } from './DPPPractice';
 import { QuestionBank } from './QuestionBank';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
@@ -50,7 +49,6 @@ export function StudentDashboard({
   publishedTests
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
-  const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
 
@@ -63,37 +61,9 @@ export function StudentDashboard({
     return () => { document.body.style.overflow = 'unset'; };
   }, [showFullTimetable]);
 
-  const [dppAttempts, setDppAttempts] = useState<Record<string, { attempts: number, score: number }>>(() => {
-    const saved = localStorage.getItem('dppAttempts');
-    return saved ? JSON.parse(saved) : {};
-  });
+  const dppAttempts: Record<string, { attempts: number, score: number }> = {};
 
-  // Compute if navbar should be hidden (either by TestSeries state or DPP Practice)
-  const isNavbarHidden = isNavbarInternalHidden || !!selectedDPP;
-
-  const handleStartDPP = (dpp: any, subjectName?: string) => {
-    setSelectedDPP({
-      ...dpp,
-      subject: subjectName || dpp.subject || 'General'
-    });
-  };
-
-  const handleCompleteDPP = (score: number) => {
-    if (!selectedDPP) return;
-    
-    setDppAttempts(prev => {
-      const current = prev[selectedDPP.id] || { attempts: 0, score: 0 };
-      const updated = {
-        ...prev,
-        [selectedDPP.id]: {
-          attempts: current.attempts + 1,
-          score: score
-        }
-      };
-      localStorage.setItem('dppAttempts', JSON.stringify(updated));
-      return updated;
-    });
-  };
+  const isNavbarHidden = isNavbarInternalHidden;
 
   const handleSubTabNavigate = (newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -101,26 +71,6 @@ export function StudentDashboard({
 
   return (
     <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
-      {/* DPP Practice Overlay */}
-      <AnimatePresence>
-        {selectedDPP && (
-          <DPPPractice 
-            dpp={{
-              id: selectedDPP.id,
-              title: selectedDPP.title,
-              subject: selectedDPP.subject,
-              totalQuestions: selectedDPP.questions || selectedDPP.totalQuestions || 20,
-              duration: selectedDPP.duration || 45,
-              difficulty: selectedDPP.difficulty || 'Medium',
-              completed: !!dppAttempts[selectedDPP.id],
-              score: dppAttempts[selectedDPP.id]?.score
-            }}
-            onExit={() => setSelectedDPP(null)}
-            onComplete={handleCompleteDPP}
-          />
-        )}
-      </AnimatePresence>
-
       {/* Navigation */}
       {!isNavbarHidden && (
         <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar">
@@ -552,7 +502,6 @@ function AssignedBatchContent({
         <div className="relative z-10">
           <div className="flex flex-col gap-1">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
-            <p className="text-slate-600 font-medium">Batch Academic Overview & Content</p>
           </div>
         </div>
         <button 

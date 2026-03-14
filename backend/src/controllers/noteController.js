@@ -1,6 +1,6 @@
 import * as noteService from "../services/noteService.js";
-import * as chapterService from "../services/chapterService.js";
 import { deleteNoteFromStorage, uploadNoteToStorage } from "../services/storageService.js";
+import { getFacultyManagedChapter, getFacultyManagedNote } from "../services/contentAccessService.js";
 import crypto from "crypto";
 
 export const handleGetNotes = async (req, res) => {
@@ -34,6 +34,10 @@ export const handleCreateNote = async (req, res) => {
         if (!chapter_id || !title || !file_url) {
             return res.status(400).json({ message: "Missing required fields (chapter_id, title, file_url)." });
         }
+        const chapter = await getFacultyManagedChapter(chapter_id, req.user.sub);
+        if (!chapter) {
+            return res.status(403).json({ message: "forbidden" });
+        }
         const note = await noteService.createNote(req.body);
         res.status(201).json(note);
     } catch (error) {
@@ -54,9 +58,9 @@ export const handleUploadNote = async (req, res) => {
             return res.status(400).json({ message: "A single file is required." });
         }
 
-        const chapter = await chapterService.getChapterById(chapter_id);
+        const chapter = await getFacultyManagedChapter(chapter_id, req.user.sub);
         if (!chapter) {
-            return res.status(404).json({ message: "Chapter not found." });
+            return res.status(403).json({ message: "forbidden" });
         }
 
         const noteId = crypto.randomUUID();
@@ -84,6 +88,10 @@ export const handleUploadNote = async (req, res) => {
 
 export const handleUpdateNote = async (req, res) => {
     try {
+        const existingNote = await getFacultyManagedNote(req.params.id, req.user.sub);
+        if (!existingNote) {
+            return res.status(403).json({ message: "forbidden" });
+        }
         const note = await noteService.updateNote(req.params.id, req.body);
         if (!note) return res.status(404).json({ message: "Note not found." });
         res.json(note);
@@ -95,8 +103,8 @@ export const handleUpdateNote = async (req, res) => {
 
 export const handleDeleteNote = async (req, res) => {
     try {
-        const existingNote = await noteService.getNoteById(req.params.id);
-        if (!existingNote) return res.status(404).json({ message: "Note not found." });
+        const existingNote = await getFacultyManagedNote(req.params.id, req.user.sub);
+        if (!existingNote) return res.status(403).json({ message: "forbidden" });
 
         await deleteNoteFromStorage(existingNote.file_url);
         await noteService.deleteNote(req.params.id);

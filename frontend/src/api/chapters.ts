@@ -66,6 +66,10 @@ export async function apiCreateChapter(payload: CreateChapterPayload): Promise<A
     });
 }
 
+export async function apiFetchChapterById(id: string): Promise<ApiChapter> {
+    return request<ApiChapter>(`/api/chapters/${id}`);
+}
+
 export async function apiUpdateChapter(id: string, updates: Partial<CreateChapterPayload>): Promise<ApiChapter> {
     return request<ApiChapter>(`/api/chapters/${id}`, {
         method: "PUT",

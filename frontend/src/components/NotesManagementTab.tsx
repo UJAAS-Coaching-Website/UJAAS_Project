@@ -8,7 +8,9 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
+import { fetchDpps, deleteDpp, startMyDppAttempt, type ApiDpp, type ApiStartDppAttemptPayload } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
+import { DPPPractice } from './DPPPractice';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -51,6 +53,24 @@ interface NotesManagementTabProps {
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
 
+async function preloadDppAssets(questions: ApiDpp['questions']) {
+  const imageSources = (questions || []).flatMap((question) => [
+    question.question_img,
+    question.explanation_img,
+    ...(question.option_imgs || []),
+  ]).filter((value): value is string => Boolean(value));
+
+  await Promise.all(imageSources.map((src) => {
+    if (src.startsWith('data:')) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+      image.src = src;
+    });
+  }));
+}
+
 export function NotesManagementTab({
   onNavigate,
   selectedBatch,
@@ -69,10 +89,13 @@ export function NotesManagementTab({
   // API Models
   const [apiChapters, setApiChapters] = useState<ApiChapter[]>([]);
   const [apiNotes, setApiNotes] = useState<ApiNote[]>([]);
+  const [apiDpps, setApiDpps] = useState<ApiDpp[]>([]);
 
   // Chapter State Reference
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
+  const [activeDppPayload, setActiveDppPayload] = useState<ApiStartDppAttemptPayload | null>(null);
+  const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -105,13 +128,9 @@ export function NotesManagementTab({
 
   useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen || isUploadNoticeModalOpen);
 
-  // canEdit is true if NOT readOnly AND (admin OR matching faculty subject)
-  const canEdit = !readOnly && (variant === 'admin' || !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase()));
-
-  // Wait, dpps are not API-backed yet. Let's keep a mock stub for now.
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22', chapterId: 'dummy' }
-  ]);
+  const facultyMatchesSubject = !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase());
+  const canManageStructure = !readOnly && variant === 'admin';
+  const canManageContent = !readOnly && variant === 'faculty' && facultyMatchesSubject;
 
   useEffect(() => {
     if (!selectedBatch) return;
@@ -175,9 +194,17 @@ export function NotesManagementTab({
     }
   }, [selectedChapterObj?.id, activeContentType]);
 
+  useEffect(() => {
+    if (selectedChapterObj?.id && activeContentType === 'dpps') {
+      fetchDpps(selectedChapterObj.id)
+        .then(setApiDpps)
+        .catch(console.error);
+    }
+  }, [selectedChapterObj?.id, activeContentType]);
+
   const handleAddChapter = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedSubject || !canEdit || !currentBatch?.id) return;
+    if (!selectedSubject || !canManageContent || !currentBatch?.id) return;
     if (newChapterName.trim()) {
       try {
         const newChapter = await apiCreateChapter({
@@ -197,7 +224,7 @@ export function NotesManagementTab({
   };
 
   const handleDeleteChapter = async (chapter: ApiChapter) => {
-    if (!canEdit) return;
+    if (!canManageContent) return;
     if (confirm(`Are you sure you want to delete the chapter "${chapter.name}"?`)) {
       try {
         await apiDeleteChapter(chapter.id);
@@ -210,7 +237,7 @@ export function NotesManagementTab({
   };
 
   const handleDeleteNote = async (id: string) => {
-    if (!canEdit) return;
+    if (!canManageContent) return;
     if (confirm('Are you sure you want to delete this note?')) {
       try {
         await apiDeleteNote(id);
@@ -222,15 +249,21 @@ export function NotesManagementTab({
     }
   };
 
-  const handleDeleteDPP = (id: string) => {
-    if (!canEdit) return;
+  const handleDeleteDPP = async (id: string) => {
+    if (!canManageContent) return;
     if (confirm('Are you sure you want to delete this DPP?')) {
-      setDpps(dpps.filter(d => d.id !== id));
+      try {
+        await deleteDpp(id);
+        setApiDpps((prev) => prev.filter((dpp) => dpp.id !== id));
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete DPP');
+      }
     }
   };
 
   const handleDeleteSubject = async (subjectName: string) => {
-    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !onUpdateBatch || !currentBatch) return;
 
     if (window.confirm(`Are you sure you want to delete the subject "${subjectName}" from this batch? This will NOT delete any content (notes/DPPs) but will remove the subject association for this batch.`)) {
       try {
@@ -256,7 +289,7 @@ export function NotesManagementTab({
 
   const handleAddSubject = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !onUpdateBatch || !currentBatch) return;
 
     const name = newSubjectName.trim();
     if (!name) return;
@@ -287,7 +320,7 @@ export function NotesManagementTab({
 
   const handleUploadNotice = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canEdit || !selectedBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !currentBatch) return;
 
     const title = noticeTitle.trim();
     const message = noticeMessage.trim();
@@ -314,6 +347,19 @@ export function NotesManagementTab({
   const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
   const navigateToChapter = (chapter: ApiChapter) => { setSelectedChapterObj(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
   const goBack = () => { if (currentView === 'chapter') { setCurrentView('subject'); setSelectedChapterObj(null); } else if (currentView === 'subject') { setCurrentView('root'); setSelectedSubject(null); } };
+
+  const handleAttemptDpp = async (dppId: string) => {
+    try {
+      setLoadingDppId(dppId);
+      const payload = await startMyDppAttempt(dppId);
+      await preloadDppAssets(payload.dpp.questions);
+      setActiveDppPayload(payload);
+    } catch (error: any) {
+      alert(error?.message || 'Unable to start DPP');
+    } finally {
+      setLoadingDppId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -379,8 +425,8 @@ export function NotesManagementTab({
                 )}
               </>
             )}
-            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
-            {currentView === 'chapter' && canEdit && (
+            {currentView === 'subject' && canManageContent && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
+            {currentView === 'chapter' && canManageContent && (
               <div className="flex items-center gap-3">
                 <button onClick={() => {
                   localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
@@ -395,7 +441,19 @@ export function NotesManagementTab({
                   }));
                   onNavigate('upload-notes');
                 }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
-                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
+                <button onClick={() => {
+                  localStorage.setItem('createDppTargetChapterId', selectedChapterObj!.id);
+                  localStorage.setItem('createDppTargetChapterName', selectedChapterObj!.name);
+                  localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+                    batchLabel: selectedBatch,
+                    selectedSubject,
+                    chapterId: selectedChapterObj!.id,
+                    chapterName: selectedChapterObj!.name,
+                    currentView,
+                    activeContentType,
+                  }));
+                  onNavigate('create-dpp');
+                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
               </div>
             )}
           </div>
@@ -478,7 +536,7 @@ export function NotesManagementTab({
                       <td className="py-4 px-6 text-sm text-gray-500">{formatRelativeTime(chapter.created_at)}</td>
                       <td className="py-4 pl-6 pr-4 text-right align-middle">
                         <div className="flex items-center justify-end gap-1">
-                          {canEdit && (
+                          {canManageContent && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteChapter(chapter); }}
                               className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50"
@@ -515,7 +573,7 @@ export function NotesManagementTab({
                 <span className="font-bold text-gray-900 block">{chapter.name || `Chapter ${index + 1}`}</span>
               </div>
               <div className="flex items-center gap-2">
-                {canEdit && (
+                {canManageContent && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -534,7 +592,7 @@ export function NotesManagementTab({
           {apiChapters.length === 0 && (
             <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
               <Folder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No chapters exist for this subject. {canEdit ? 'Create the first one!' : ''}</p>
+              <p className="text-gray-500 font-medium">No chapters exist for this subject. {canManageContent ? 'Create the first one!' : ''}</p>
             </div>
           )}
         </div>
@@ -592,7 +650,7 @@ export function NotesManagementTab({
                               >
                                 <Download className="w-4 h-4" />
                               </button>
-                              {canEdit && (
+                              {canManageContent && (
                                 <button
                                   onClick={() => handleDeleteNote(item.id)}
                                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -631,7 +689,7 @@ export function NotesManagementTab({
                             >
                               <Download className="w-4 h-4" />
                             </button>
-                            {canEdit && (
+                            {canManageContent && (
                               <button
                                 onClick={() => handleDeleteNote(item.id)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -648,11 +706,57 @@ export function NotesManagementTab({
                 ))
               )
             ) : (
-              // DPP Placeholder
-              <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">Digital Practice Papers (DPP) are coming soon to the backend.</p>
-              </div>
+              apiDpps.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                  className="rounded-2xl border border-white bg-white/80 p-5 shadow-lg"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                          {item.subject_name}
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                          {item.question_count} Questions
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-gray-900">{item.title}</h4>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {item.chapter_name} • {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                      {variant === 'student' && (
+                        <p className="mt-3 text-sm text-gray-600">
+                          Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {variant === 'student' ? (
+                        <button
+                          onClick={() => handleAttemptDpp(item.id)}
+                          disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                          className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                        </button>
+                      ) : null}
+                      {canManageContent && (
+                        <button
+                          onClick={() => handleDeleteDPP(item.id)}
+                          className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                          title="Delete DPP"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))
             )}
 
             {activeContentType === 'notes' && apiNotes.length === 0 && (
@@ -661,9 +765,28 @@ export function NotesManagementTab({
                 <p className="text-gray-500 font-medium">No files found for this category.</p>
               </div>
             )}
+            {activeContentType === 'dpps' && apiDpps.length === 0 && (
+              <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No DPPs found for this chapter.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {activeDppPayload && (
+          <DPPPractice
+            payload={activeDppPayload}
+            onExit={() => setActiveDppPayload(null)}
+            onSubmitted={async () => {
+              const nextDpps = await fetchDpps(selectedChapterObj?.id);
+              setApiDpps(nextDpps);
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Add Chapter Modal */}
       <AnimatePresence>

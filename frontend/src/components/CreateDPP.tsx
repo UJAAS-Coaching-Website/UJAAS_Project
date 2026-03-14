@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { 
-  ArrowLeft, 
-  Trash2, 
-  Clock,
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
   CheckCircle,
   ClipboardList,
+  Loader2,
   Target,
-  Zap
+  Trash2,
+  Zap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { apiFetchChapterById, type ApiChapter } from '../api/chapters';
+import { createDpp } from '../api/dpps';
 
 interface CreateDPPProps {
   onBack: () => void;
@@ -18,107 +20,149 @@ interface CreateDPPProps {
 
 export function CreateDPP({ onBack }: CreateDPPProps) {
   const [step, setStep] = useState(1);
+  const [chapter, setChapter] = useState<ApiChapter | null>(null);
+  const [loadingChapter, setLoadingChapter] = useState(true);
+  const [publishing, setPublishing] = useState(false);
   const [dppData, setDppData] = useState({
     title: '',
-    duration: 60,
-    difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard',
     instructions: ''
   });
-
   const [questions, setQuestions] = useState<Question[]>([]);
-
   const [showSuccess, setShowSuccess] = useState(false);
+
   useBodyScrollLock(showSuccess);
 
+  useEffect(() => {
+    const chapterId = localStorage.getItem('createDppTargetChapterId');
+    if (!chapterId) {
+      setLoadingChapter(false);
+      return;
+    }
+
+    void apiFetchChapterById(chapterId)
+      .then(setChapter)
+      .finally(() => setLoadingChapter(false));
+  }, []);
+
+  const subjectLabel = useMemo(() => chapter?.subject_name || '', [chapter?.subject_name]);
+
   const handleAddQuestion = (question: Question) => {
-    setQuestions([...questions, question]);
+    setQuestions((prev) => [...prev, question]);
   };
 
   const handleRemoveQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
+    setQuestions((prev) => prev.filter((question) => question.id !== id));
   };
 
-  const handleSubmit = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      onBack();
-    }, 2000);
-  };
+  const handleSubmit = async () => {
+    if (!chapter) return;
 
-  const isStep1Valid = dppData.title;
-  const isStep2Valid = questions.length >= 1;
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy': return 'text-green-700 bg-green-100';
-      case 'Medium': return 'text-yellow-700 bg-yellow-100';
-      case 'Hard': return 'text-red-700 bg-red-100';
-      default: return 'text-gray-700 bg-gray-100';
+    try {
+      setPublishing(true);
+      await createDpp({
+        title: dppData.title.trim(),
+        instructions: dppData.instructions.trim() || undefined,
+        chapter_id: chapter.id,
+        questions,
+      });
+      setShowSuccess(true);
+      localStorage.removeItem('createDppTargetChapterId');
+      localStorage.removeItem('createDppTargetChapterName');
+      setTimeout(() => {
+        onBack();
+      }, 1600);
+    } catch (error: any) {
+      alert(error?.message || 'Failed to create DPP');
+    } finally {
+      setPublishing(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
+  const isStep1Valid = dppData.title.trim().length > 0 && !!chapter;
+  const isStep2Valid = questions.length >= 1;
+
+  if (loadingChapter) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 py-8">
+        <div className="mx-auto flex max-w-4xl items-center justify-center rounded-3xl bg-white p-10 shadow-xl">
+          <div className="flex items-center gap-3 text-gray-700">
+            <Loader2 className="w-5 h-5 animate-spin text-cyan-600" />
+            Loading chapter details...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!chapter) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 py-8">
+        <div className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-cyan-600 transition mb-4 font-semibold"
+            className="mb-6 flex items-center gap-2 font-semibold text-gray-600 hover:text-cyan-600"
           >
             <ArrowLeft className="w-5 h-5" />
             Back
           </button>
-          
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl flex items-center justify-center">
+          <h1 className="text-2xl font-bold text-gray-900">Select a chapter first</h1>
+          <p className="mt-2 text-gray-600">
+            Open a chapter in the faculty content screen and start DPP creation from there so the chapter context is locked.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <button
+            onClick={onBack}
+            className="mb-4 flex items-center gap-2 font-semibold text-gray-600 hover:text-cyan-600 transition"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+
+          <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-600 to-blue-600">
                 <ClipboardList className="w-7 h-7 text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Create Daily Practice Paper</h1>
-                <p className="text-gray-600">Build targeted practice problems for students</p>
+                <p className="text-gray-600">
+                  {chapter.subject_name} • {chapter.name}
+                </p>
               </div>
             </div>
 
-            {/* Progress Steps */}
             <div className="flex items-center gap-4 mt-6">
               {[
                 { num: 1, label: 'DPP Details', icon: ClipboardList },
                 { num: 2, label: 'Add Questions', icon: Target },
                 { num: 3, label: 'Review & Publish', icon: CheckCircle }
-              ].map((s, idx) => (
-                <div key={s.num} className="flex items-center flex-1">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                      step >= s.num 
-                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg' 
-                        : 'bg-gray-200 text-gray-500'
+              ].map((item, index) => (
+                <div key={item.num} className="flex flex-1 items-center">
+                  <div className="flex flex-1 items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold ${
+                      step >= item.num ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white' : 'bg-gray-200 text-gray-500'
                     }`}>
-                      {step > s.num ? <CheckCircle className="w-5 h-5" /> : s.num}
+                      {step > item.num ? <CheckCircle className="w-5 h-5" /> : item.num}
                     </div>
-                    <span className={`text-sm font-medium hidden sm:inline ${
-                      step >= s.num ? 'text-cyan-600' : 'text-gray-500'
-                    }`}>
-                      {s.label}
+                    <span className={`hidden text-sm font-medium sm:inline ${step >= item.num ? 'text-cyan-600' : 'text-gray-500'}`}>
+                      {item.label}
                     </span>
                   </div>
-                  {idx < 2 && (
-                    <div className={`h-1 flex-1 mx-2 rounded-full transition-all ${
-                      step > s.num ? 'bg-gradient-to-r from-cyan-600 to-blue-600' : 'bg-gray-200'
-                    }`} />
-                  )}
+                  {index < 2 && <div className={`mx-2 h-1 flex-1 rounded-full ${step > item.num ? 'bg-gradient-to-r from-cyan-600 to-blue-600' : 'bg-gray-200'}`} />}
                 </div>
               ))}
             </div>
           </div>
         </motion.div>
 
-        {/* Step 1: DPP Details */}
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div
@@ -128,66 +172,60 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+                <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-900">
                   <Zap className="w-6 h-6 text-cyan-600" />
                   DPP Configuration
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      DPP Title *
-                    </label>
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
+                      <p className="text-sm text-gray-600">Subject</p>
+                      <p className="font-semibold text-gray-900">{chapter.subject_name}</p>
+                    </div>
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                      <p className="text-sm text-gray-600">Chapter</p>
+                      <p className="font-semibold text-gray-900">{chapter.name}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-gray-700">DPP Title *</label>
                     <input
                       type="text"
                       value={dppData.title}
                       onChange={(e) => setDppData({ ...dppData, title: e.target.value })}
-                      placeholder="e.g., Physics - Kinematics DPP #15"
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                      placeholder={`e.g., ${chapter.subject_name} - ${chapter.name} DPP 01`}
+                      className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      value={dppData.duration}
-                      onChange={(e) => setDppData({ ...dppData, duration: parseInt(e.target.value) })}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Instructions for Students
-                    </label>
+                    <label className="mb-2 block text-sm font-semibold text-gray-700">Instructions for Students</label>
                     <textarea
                       value={dppData.instructions}
                       onChange={(e) => setDppData({ ...dppData, instructions: e.target.value })}
-                      rows={4}
-                      placeholder="Add any specific instructions or tips for students..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+                      rows={5}
+                      placeholder="Add instructions that should appear before the student starts the DPP..."
+                      className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-6">
-                  <motion.button
+                <div className="mt-6 flex justify-end">
+                  <button
                     onClick={() => isStep1Valid && setStep(2)}
                     disabled={!isStep1Valid}
-                    className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Continue to Questions
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Step 2: Add Questions */}
           {step === 2 && (
             <motion.div
               key="step2"
@@ -196,52 +234,38 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              {/* Question Form */}
-              <QuestionUploadForm onAddQuestion={handleAddQuestion} buttonLabel="Add Question to DPP" />
+              <QuestionUploadForm
+                onAddQuestion={handleAddQuestion}
+                buttonLabel="Add Question to DPP"
+                fixedSubject={subjectLabel}
+                showMarks={false}
+              />
 
-              {/* Questions List */}
               {questions.length > 0 && (
-                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Added Questions ({questions.length})
-                  </h3>
+                <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+                  <h3 className="mb-4 text-lg font-bold text-gray-900">Added Questions ({questions.length})</h3>
                   <div className="space-y-3">
-                    {questions.map((q, index) => (
+                    {questions.map((question, index) => (
                       <motion.div
-                        key={q.id}
+                        key={question.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-4 p-4 bg-cyan-50 rounded-xl border border-cyan-100"
+                        className="flex items-start gap-4 rounded-xl border border-cyan-100 bg-cyan-50 p-4"
                       >
-                        <div className="flex-shrink-0 w-8 h-8 bg-cyan-600 text-white rounded-lg flex items-center justify-center font-semibold">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-600 font-semibold text-white">
                           {index + 1}
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-gray-900 font-medium">{q.question}</p>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-                              {q.type}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-xs">
-                            <span className="px-2 py-1 bg-white rounded font-medium border border-cyan-100 text-cyan-700">
-                              Correct: {
-                                q.type === 'MCQ' 
-                                  ? String.fromCharCode(65 + (q.correctAnswer as number))
-                                  : q.type === 'MSQ'
-                                    ? (q.correctAnswer as number[]).map(idx => String.fromCharCode(65 + idx)).join(', ')
-                                    : q.correctAnswer
-                              }
+                          <div className="mb-1 flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{question.question || 'Image-based question'}</p>
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                              {question.type}
                             </span>
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to remove this question?')) {
-                              handleRemoveQuestion(q.id);
-                            }
-                          }}
-                          className="text-red-600 hover:bg-red-100 p-2 rounded-lg transition"
+                          onClick={() => handleRemoveQuestion(question.id)}
+                          className="rounded-lg p-2 text-red-600 transition hover:bg-red-100"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -251,26 +275,24 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                 </div>
               )}
 
-              {/* Navigation */}
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setStep(1)}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                  className="rounded-xl bg-gray-100 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-200"
                 >
                   Previous
                 </button>
-                <motion.button
+                <button
                   onClick={() => isStep2Valid && setStep(3)}
                   disabled={!isStep2Valid}
-                  className="px-8 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-3 font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Review & Publish
-                </motion.button>
+                </button>
               </div>
             </motion.div>
           )}
 
-          {/* Step 3: Review */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -279,72 +301,75 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Review DPP Details</h2>
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
+                <h2 className="mb-6 text-xl font-bold text-gray-900">Review DPP Details</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-100">
-                    <p className="text-sm text-gray-600 mb-1">Title</p>
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-blue-50 p-4">
+                    <p className="mb-1 text-sm text-gray-600">Title</p>
                     <p className="font-semibold text-gray-900">{dppData.title}</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-cyan-600" />
-                      <p className="text-sm text-gray-600">Duration</p>
-                    </div>
-                    <p className="font-semibold text-gray-900">{dppData.duration} minutes</p>
-                  </div>
-                  <div className="p-4 bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl border border-blue-100">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Target className="w-4 h-4 text-blue-600" />
-                      <p className="text-sm text-gray-600">Questions</p>
-                    </div>
+                  <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-teal-50 p-4">
+                    <p className="mb-1 text-sm text-gray-600">Questions</p>
                     <p className="font-semibold text-gray-900">{questions.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
+                    <p className="mb-1 text-sm text-gray-600">Subject</p>
+                    <p className="font-semibold text-gray-900">{chapter.subject_name}</p>
+                  </div>
+                  <div className="rounded-xl border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+                    <p className="mb-1 text-sm text-gray-600">Chapter</p>
+                    <p className="font-semibold text-gray-900">{chapter.name}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                {!!dppData.instructions.trim() && (
+                  <div className="mb-6 rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                    <p className="mb-2 text-sm font-semibold text-gray-700">Instructions Preview</p>
+                    <p className="whitespace-pre-wrap text-gray-700">{dppData.instructions}</p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between border-t border-gray-200 pt-6">
                   <button
                     onClick={() => setStep(2)}
-                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                    className="rounded-xl bg-gray-100 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-200"
                   >
                     Previous
                   </button>
-                  <motion.button
+                  <button
                     onClick={handleSubmit}
-                    className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                    disabled={publishing}
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-8 py-3 font-semibold text-white shadow-lg disabled:opacity-50"
                   >
-                    <CheckCircle className="w-5 h-5" />
-                    Publish DPP
-                  </motion.button>
+                    {publishing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                    {publishing ? 'Publishing...' : 'Publish DPP'}
+                  </button>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Success Modal */}
         <AnimatePresence>
           {showSuccess && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] p-4"
+              className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4"
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto text-center shadow-2xl"
+                className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl"
               >
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500">
                   <CheckCircle className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">DPP Created Successfully!</h3>
-                <p className="text-gray-600">
-                  Your Daily Practice Paper is now available to students for practice.
-                </p>
+                <h3 className="mb-2 text-2xl font-bold text-gray-900">DPP Created Successfully!</h3>
+                <p className="text-gray-600">Your DPP is now available to students in this chapter.</p>
               </motion.div>
             </motion.div>
           )}
@@ -353,4 +378,3 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
     </div>
   );
 }
-

@@ -1,294 +1,244 @@
-import { useState } from 'react';
-import { X, CheckCircle, ArrowRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BookOpen, CheckCircle, ChevronRight, Trophy, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { StudentTestTaking } from './StudentTestTaking';
+import type { ApiDppAttemptHistoryEntry, ApiDppAttemptResult, ApiStartDppAttemptPayload } from '../api/dpps';
+import { submitMyDppAttempt } from '../api/dpps';
 
-interface DPP {
-  id: string;
-  title: string;
-  subject: string;
-  totalQuestions: number;
-  duration: number;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  completed: boolean;
-  score?: number;
-}
-
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-}
+type StudentAnswer = string | number | number[] | null;
 
 interface DPPPracticeProps {
-  dpp: DPP;
+  payload: ApiStartDppAttemptPayload;
   onExit: () => void;
-  onComplete?: (score: number) => void;
+  onSubmitted?: (result: ApiDppAttemptResult) => void | Promise<void>;
 }
 
-// Mock questions
-const generateQuestions = (count: number): Question[] => {
-  const questions: Question[] = [];
-  for (let i = 1; i <= count; i++) {
-    questions.push({
-      id: i,
-      question: `Sample question ${i} for the practice test. Which of the following is the correct answer?`,
-      options: [
-        'Option A: First answer choice',
-        'Option B: Second answer choice',
-        'Option C: Third answer choice',
-        'Option D: Fourth answer choice'
-      ],
-      correctAnswer: Math.floor(Math.random() * 4)
-    });
-  }
-  return questions;
-};
+function mapQuestions(payload: ApiStartDppAttemptPayload) {
+  return (payload.dpp.questions || []).map((question) => ({
+    id: question.id,
+    question: question.question_text,
+    options: question.options || undefined,
+    optionImages: question.option_imgs || undefined,
+    questionImage: question.question_img || undefined,
+    correctAnswer:
+      question.type === 'MCQ'
+        ? Number(question.correct_answer)
+        : question.type === 'MSQ'
+          ? (() => {
+              try {
+                const parsed = JSON.parse(question.correct_answer);
+                return Array.isArray(parsed) ? parsed.map((value) => Number(value)) : [];
+              } catch {
+                return [];
+              }
+            })()
+          : question.correct_answer,
+    subject: question.subject,
+    marks: question.marks,
+    type: question.type,
+    explanation: question.explanation || undefined,
+    explanationImage: question.explanation_img || undefined,
+    metadata: { section: question.section || undefined },
+  }));
+}
 
-export function DPPPractice({ dpp, onExit, onComplete }: DPPPracticeProps) {
-  const [questions] = useState<Question[]>(() => generateQuestions(dpp.totalQuestions));
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(new Array(dpp.totalQuestions).fill(null));
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
-
-  const handleAnswerSelect = (optionIndex: number) => {
-    if (isSubmitted) return;
-    const newAnswers = [...answers];
-    newAnswers[currentQuestion] = optionIndex;
-    setAnswers(newAnswers);
-  };
-
-  const calculateScore = () => {
-    let correct = 0;
-    questions.forEach((q, index) => {
-      if (answers[index] === q.correctAnswer) {
-        correct++;
-      }
-    });
-    return Math.round((correct / questions.length) * 100);
-  };
-
-  const handleSubmit = () => {
-    const finalScore = calculateScore();
-    setIsSubmitted(true);
-    setShowConfirmSubmit(false);
-    onComplete?.(finalScore);
-  };
-
-  const answeredCount = answers.filter(a => a !== null).length;
-  const score = isSubmitted ? calculateScore() : 0;
+function ResultCard({
+  result,
+  history,
+  onExit,
+}: {
+  result: ApiDppAttemptResult;
+  history: ApiDppAttemptHistoryEntry[];
+  onExit: () => void;
+}) {
+  const percentage = result.totalMarks > 0 ? Math.round((result.obtainedMarks / result.totalMarks) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 bg-white z-layer-modal overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">{dpp.title}</h2>
-              <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-700 uppercase tracking-wider">{dpp.subject}</span>
-                <p className="text-sm text-gray-500 font-medium border-l border-gray-200 pl-3">
-                  Question {currentQuestion + 1} of {questions.length}
-                </p>
-              </div>
-            </div>
+    <div className="fixed inset-0 bg-white z-layer-modal overflow-y-auto">
+      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={onExit}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-gray-600 hover:bg-gray-50"
+          >
+            <X className="w-4 h-4" />
+            Close
+          </button>
+        </div>
 
-            <div className="flex items-center gap-4">
-              {/* Exit Button */}
-              <button
-                onClick={onExit}
-                className="p-2.5 hover:bg-gray-100 rounded-xl transition-all text-gray-400 hover:text-gray-600 border border-gray-100"
-                title="Exit Practice"
-              >
-                <X className="w-6 h-6" />
-              </button>
+        <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-xl">
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+              <Trophy className="w-8 h-8" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900">{result.dppTitle}</h2>
+            <p className="mt-2 text-gray-600">
+              Attempt {result.attempt_no} submitted on {new Date(result.submittedAt).toLocaleString()}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-8">
+            <div className="rounded-2xl bg-blue-50 p-5">
+              <p className="text-sm text-blue-700">Score</p>
+              <p className="text-3xl font-bold text-blue-900">{result.obtainedMarks}</p>
+              <p className="text-xs text-blue-700">out of {result.totalMarks}</p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50 p-5">
+              <p className="text-sm text-emerald-700">Correct</p>
+              <p className="text-3xl font-bold text-emerald-900">{result.correctAnswers}</p>
+            </div>
+            <div className="rounded-2xl bg-rose-50 p-5">
+              <p className="text-sm text-rose-700">Wrong</p>
+              <p className="text-3xl font-bold text-rose-900">{result.wrongAnswers}</p>
+            </div>
+            <div className="rounded-2xl bg-amber-50 p-5">
+              <p className="text-sm text-amber-700">Unattempted</p>
+              <p className="text-3xl font-bold text-amber-900">{result.unattempted}</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-teal-50 to-cyan-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {!isSubmitted ? (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-              {/* Question */}
-              <div className="lg:col-span-3 bg-white rounded-2xl p-6 sm:p-8 lg:p-10 shadow-lg border border-gray-100">
-                <div className="flex items-start gap-3 mb-6">
-                  <span className="flex-shrink-0 w-9 h-9 bg-teal-600 text-white rounded-full flex items-center justify-center font-semibold">
-                    {currentQuestion + 1}
-                  </span>
-                  <div className="flex-1">
-                    <h3 className="text-xl sm:text-2xl text-gray-900 leading-relaxed">
-                      {questions[currentQuestion].question}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Options */}
-                <div className="space-y-3">
-                  {questions[currentQuestion].options.map((option, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleAnswerSelect(index)}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition ${
-                        answers[currentQuestion] === index
-                          ? 'border-teal-600 bg-teal-50'
-                          : 'border-gray-200 hover:border-teal-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          answers[currentQuestion] === index
-                            ? 'border-teal-600 bg-teal-600'
-                            : 'border-gray-300'
-                        }`}>
-                          {answers[currentQuestion] === index && (
-                            <div className="w-2 h-2 bg-white rounded-full" />
-                          )}
-                        </div>
-                        <span className="text-gray-900 text-base sm:text-lg">{option}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Navigation */}
-                <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-                  <button
-                    onClick={() => setCurrentQuestion(prev => Math.max(0, prev - 1))}
-                    disabled={currentQuestion === 0}
-                    className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  
-                  {currentQuestion < questions.length - 1 ? (
-                    <button
-                      onClick={() => setCurrentQuestion(prev => Math.min(questions.length - 1, prev + 1))}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-lg"
-                    >
-                      Next
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSubmit}
-                      disabled={answers.some(a => a === null)}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Submit
-                    </button>
-                  )}
-                </div>
+          <div className="mb-8 rounded-2xl border border-gray-100 bg-gray-50 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Percentage</p>
+                <p className="text-2xl font-bold text-gray-900">{percentage}%</p>
               </div>
-
-              {/* Question Grid */}
-              <div className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100">
-                <h4 className="text-sm font-semibold text-gray-700 mb-4">Questions</h4>
-                <div
-                  className="grid gap-2"
-                  style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
-                >
-                  {questions.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentQuestion(index)}
-                      className={`aspect-square rounded-lg font-medium text-sm transition ${
-                        currentQuestion === index
-                          ? 'bg-teal-600 text-white ring-2 ring-teal-600 ring-offset-2'
-                          : answers[index] !== null
-                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Results */
-            <div className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  DPP Completed! 🎉
-                </h2>
-                <p className="text-gray-600">
-                  Great job! Here's your performance summary
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Rank</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {result.rank}/{result.totalStudents}
                 </p>
               </div>
+            </div>
+          </div>
 
-              <div className="max-w-md mx-auto mb-8">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-8 border border-teal-200">
-                  <p className="text-sm text-gray-600 mb-2">Your Score</p>
-                  <p className="text-6xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-                    {score}%
-                  </p>
-                  <p className="text-gray-700">
-                    {answers.filter((a, i) => a === questions[i].correctAnswer).length} out of {questions.length} correct
-                  </p>
-                </div>
+          {history.length > 0 && (
+            <div>
+              <h3 className="mb-4 text-lg font-bold text-gray-900">Attempt History</h3>
+              <div className="space-y-3">
+                {history.map((attempt) => (
+                  <div key={attempt.id} className="flex items-center justify-between rounded-2xl border border-gray-100 px-4 py-3">
+                    <div>
+                      <p className="font-semibold text-gray-900">Attempt {attempt.attempt_no}</p>
+                      <p className="text-sm text-gray-500">{new Date(attempt.submitted_at).toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{attempt.score} marks</p>
+                      <p className="text-sm text-gray-500">Rank {attempt.rank}/{attempt.total_students}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Questions</p>
-                  <p className="text-2xl font-bold text-gray-900">{questions.length}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Correct</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {answers.filter((a, i) => a === questions[i].correctAnswer).length}
-                  </p>
-                </div>
-                <div className="bg-red-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Incorrect</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {questions.length - answers.filter((a, i) => a === questions[i].correctAnswer).length}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={onExit}
-                className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition shadow-lg"
-              >
-                Back to DPP List
-              </button>
             </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Confirm Submit Modal */}
-      {showConfirmSubmit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-layer-10001 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Submit Test?</h3>
-            <p className="text-gray-600 mb-6">
-              You have answered {answeredCount} out of {questions.length} questions. Are you sure you want to submit?
-            </p>
-            <div className="flex gap-3">
+export function DPPPractice({ payload, onExit, onSubmitted }: DPPPracticeProps) {
+  const [hasStarted, setHasStarted] = useState(!(payload.dpp.instructions || '').trim());
+  const [result, setResult] = useState<ApiDppAttemptResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const questions = useMemo(() => mapQuestions(payload), [payload]);
+
+  const handleSubmit = async (answers: Record<string, StudentAnswer>) => {
+    try {
+      setSubmitting(true);
+      const submitted = await submitMyDppAttempt(payload.dpp.id, answers);
+      setResult(submitted);
+      await onSubmitted?.(submitted);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (result) {
+    return <ResultCard result={result} history={payload.history || []} onExit={onExit} />;
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      {!hasStarted ? (
+        <motion.div
+          key="instructions"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-layer-modal overflow-y-auto bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
+        >
+          <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+            <div className="mb-4 flex justify-end">
               <button
-                onClick={() => setShowConfirmSubmit(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={onExit}
+                className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-gray-600 hover:bg-amber-50"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition"
-              >
-                Submit
+                <X className="w-4 h-4" />
+                Back
               </button>
             </div>
+
+            <div className="rounded-3xl border border-amber-100 bg-white p-8 shadow-xl">
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                  <BookOpen className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">{payload.dpp.title}</h2>
+                  <p className="text-gray-600">
+                    {payload.dpp.subject_name} • {payload.dpp.chapter_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-amber-50 p-6 text-gray-800 whitespace-pre-wrap leading-7">
+                {payload.dpp.instructions}
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                <span>{payload.dpp.question_count} questions</span>
+                <span>Attempts used: {payload.submittedAttemptCount}/{payload.maxAttempts}</span>
+                <span>Attempts left: {payload.remainingAttempts}</span>
+              </div>
+
+              <div className="mt-8 flex justify-end">
+                <button
+                  onClick={() => setHasStarted(true)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-6 py-3 font-bold text-white shadow-lg hover:shadow-xl"
+                >
+                  Continue to DPP
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </motion.div>
+      ) : (
+        <motion.div key="attempt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <StudentTestTaking
+            testId={payload.dpp.id}
+            testTitle={payload.dpp.title}
+            duration={0}
+            questions={questions as any}
+            onSubmit={handleSubmit as any}
+            onExit={onExit}
+            initialAnswers={{}}
+            enableTimer={false}
+            showMarksMeta={false}
+          />
+          {submitting && (
+            <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="rounded-2xl bg-white px-6 py-5 shadow-xl">
+                <div className="flex items-center gap-3 text-gray-700">
+                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                  Submitting your DPP...
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.div>
       )}
-    </div>
+    </AnimatePresence>
   );
 }
