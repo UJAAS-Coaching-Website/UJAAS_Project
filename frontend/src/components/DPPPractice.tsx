@@ -186,12 +186,6 @@ function ResultCard({
                 <p className="text-sm text-gray-600">Percentage</p>
                 <p className="text-2xl font-bold text-gray-900">{percentage}%</p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Rank</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {result.rank}/{result.totalStudents}
-                </p>
-              </div>
             </div>
           </div>
 

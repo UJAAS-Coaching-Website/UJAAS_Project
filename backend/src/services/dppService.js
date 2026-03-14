@@ -379,17 +379,6 @@ export async function getStudentDppAttemptSummary(dppId, studentId) {
     if (!dpp) return null;
 
     const historyResult = await pool.query(`
-        WITH ranked_attempts AS (
-            SELECT
-                da.*,
-                RANK() OVER (
-                    PARTITION BY da.dpp_id
-                    ORDER BY da.score DESC NULLS LAST, da.submitted_at ASC, da.attempt_no ASC
-                ) AS rank,
-                COUNT(*) OVER (PARTITION BY da.dpp_id) AS total_students
-            FROM dpp_attempts da
-            WHERE da.dpp_id = $1
-        )
         SELECT
             id,
             attempt_no,
@@ -397,11 +386,10 @@ export async function getStudentDppAttemptSummary(dppId, studentId) {
             score,
             correct_answers,
             wrong_answers,
-            unattempted,
-            rank,
-            total_students
-        FROM ranked_attempts
-        WHERE student_id = $2
+            unattempted
+        FROM dpp_attempts
+        WHERE dpp_id = $1
+          AND student_id = $2
         ORDER BY attempt_no DESC
     `, [dppId, studentId]);
 
@@ -418,8 +406,6 @@ export async function getStudentDppAttemptSummary(dppId, studentId) {
             correct_answers: Number(row.correct_answers || 0),
             wrong_answers: Number(row.wrong_answers || 0),
             unattempted: Number(row.unattempted || 0),
-            rank: Number(row.rank || 0),
-            total_students: Number(row.total_students || 0),
         })),
     };
 }
@@ -449,40 +435,28 @@ export async function startStudentDppAttempt(dppId, studentId) {
 
 async function buildDppAttemptResult(attemptId) {
     const attemptResult = await pool.query(`
-        WITH ranked_attempts AS (
-            SELECT
-                da.*,
-                RANK() OVER (
-                    PARTITION BY da.dpp_id
-                    ORDER BY da.score DESC NULLS LAST, da.submitted_at ASC, da.attempt_no ASC
-                ) AS rank,
-                COUNT(*) OVER (PARTITION BY da.dpp_id) AS total_students
-            FROM dpp_attempts da
-        )
         SELECT
-            ra.id,
-            ra.dpp_id,
-            ra.student_id,
-            ra.attempt_no,
-            ra.score,
-            ra.answers,
-            ra.submitted_at,
-            ra.correct_answers,
-            ra.wrong_answers,
-            ra.unattempted,
-            ra.rank,
-            ra.total_students,
+            da.id,
+            da.dpp_id,
+            da.student_id,
+            da.attempt_no,
+            da.score,
+            da.answers,
+            da.submitted_at,
+            da.correct_answers,
+            da.wrong_answers,
+            da.unattempted,
             d.title AS dpp_title,
             d.instructions,
             d.chapter_id,
             c.name AS chapter_name,
             c.subject_name,
             b.name AS batch_name
-        FROM ranked_attempts ra
-        JOIN dpps d ON d.id = ra.dpp_id
+        FROM dpp_attempts da
+        JOIN dpps d ON d.id = da.dpp_id
         JOIN chapters c ON c.id = d.chapter_id
         JOIN batches b ON b.id = c.batch_id
-        WHERE ra.id = $1
+        WHERE da.id = $1
     `, [attemptId]);
 
     if (attemptResult.rowCount === 0) {
@@ -510,8 +484,6 @@ async function buildDppAttemptResult(attemptId) {
         correctAnswers: Number(attempt.correct_answers || 0),
         wrongAnswers: Number(attempt.wrong_answers || 0),
         unattempted: Number(attempt.unattempted || 0),
-        rank: Number(attempt.rank || 0),
-        totalStudents: Number(attempt.total_students || 0),
         submittedAt: attempt.submitted_at,
         questions: questions.map((question) => ({
             ...question,

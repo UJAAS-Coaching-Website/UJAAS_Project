@@ -108,8 +108,6 @@ export interface ApiDppAttemptHistoryEntry {
     correct_answers: number;
     wrong_answers: number;
     unattempted: number;
-    rank: number;
-    total_students: number;
 }
 
 export interface ApiDppAttemptSummary {
@@ -148,8 +146,6 @@ export interface ApiDppAttemptResult {
     correctAnswers: number;
     wrongAnswers: number;
     unattempted: number;
-    rank: number;
-    totalStudents: number;
     submittedAt: string;
     questions: ApiDppAttemptResultQuestion[];
 }
