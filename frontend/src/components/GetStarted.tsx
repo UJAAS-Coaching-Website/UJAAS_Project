@@ -58,7 +58,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const shouldPaginateAchievers = achievers.length > 3;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+    <div className="footer-reveal-page min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {isNewUser && userName && (
         <div className="sticky top-0 z-[1000] bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white py-4 px-4 shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -79,6 +79,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       )}
 
+      <div className="footer-reveal-main">
       <section className="py-16 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="absolute top-6 right-6">
@@ -449,6 +450,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
+      </div>
       <Footer />
     </div>
   );

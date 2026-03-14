@@ -92,3 +92,32 @@ table {
   outline: 2px solid #8BC4C4;
   outline-offset: 2px;
 }
+
+/* Footer reveal behavior for short pages on laptop/desktop screens */
+:root {
+  --app-top-chrome: 0px;
+  --footer-reveal-offset: 0px;
+}
+
+.footer-reveal-page {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+.footer-reveal-page--nav {
+  --app-top-chrome: 64px;
+}
+
+.footer-reveal-main {
+  min-height: auto;
+}
+
+@media (min-width: 1024px) and (min-height: 700px) {
+  .footer-reveal-page {
+    --footer-reveal-offset: clamp(72px, 10vh, 120px);
+  }
+
+  .footer-reveal-main {
+    min-height: calc(100svh - var(--app-top-chrome) + var(--footer-reveal-offset));
+  }
+}

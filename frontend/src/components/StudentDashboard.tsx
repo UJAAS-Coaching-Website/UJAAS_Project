@@ -100,7 +100,7 @@ export function StudentDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
+    <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
       {/* DPP Practice Overlay */}
       <AnimatePresence>
         {selectedDPP && (
@@ -193,7 +193,7 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
