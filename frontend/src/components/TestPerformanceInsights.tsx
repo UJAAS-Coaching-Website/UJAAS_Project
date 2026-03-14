@@ -15,6 +15,23 @@ import { fetchTestAnalysis, fetchTestById } from '../api/tests';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
 
+function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
+
 export interface StudentPerformance {
   studentId: string;
   studentName: string;
@@ -79,7 +96,7 @@ export function TestPerformanceInsights({
                 questionImage: question.question_img || undefined,
                 options: question.options || undefined,
                 optionImages: question.option_imgs || undefined,
-                correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+                correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
                 subject: question.subject,
                 marks: question.marks,
                 type: question.type,
@@ -151,7 +168,7 @@ export function TestPerformanceInsights({
             questionImage: question.question_img || undefined,
             options: question.options || undefined,
             optionImages: question.option_imgs || undefined,
-            correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+            correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
             marks: question.marks,
             negativeMarks: question.neg_marks,
             explanation: question.explanation || undefined,

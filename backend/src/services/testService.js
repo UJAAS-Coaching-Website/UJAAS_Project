@@ -13,6 +13,22 @@ const TEST_SCHEDULE_TS_EXPR = `
     END
 `;
 
+function normalizeNumericValue(value) {
+    const parsed = Number(String(value).trim());
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw) {
+    const submittedNumeric = normalizeNumericValue(submittedAnswer);
+    const correctNumeric = normalizeNumericValue(correctAnswerRaw);
+
+    if (submittedNumeric !== null && correctNumeric !== null) {
+        return submittedNumeric === correctNumeric;
+    }
+
+    return String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+}
+
 function parseStoredAnswer(value, questionType) {
     if (value === undefined || value === null || value === "") {
         return null;
@@ -22,12 +38,16 @@ function parseStoredAnswer(value, questionType) {
         return String(value).trim();
     }
 
+    if (Array.isArray(value)) {
+        return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+    }
+
     if (typeof value === "number") {
         return value;
     }
 
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) ? parsed : String(value).trim();
 }
 
 function scoreAttempt(questions, answers) {
@@ -49,7 +69,19 @@ function scoreAttempt(questions, answers) {
 
         let isCorrect = false;
         if (question.type === "Numerical") {
-            isCorrect = String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+            isCorrect = isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw);
+        } else if (question.type === "MSQ") {
+            let normalizedCorrect;
+            try {
+                normalizedCorrect = Array.isArray(correctAnswerRaw)
+                    ? correctAnswerRaw
+                    : JSON.parse(correctAnswerRaw);
+            } catch {
+                normalizedCorrect = [];
+            }
+            const sortedCorrect = (normalizedCorrect || []).map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+            const sortedSubmitted = Array.isArray(submittedAnswer) ? submittedAnswer : [];
+            isCorrect = JSON.stringify(sortedCorrect) === JSON.stringify(sortedSubmitted);
         } else {
             const parsedCorrect = Number(correctAnswerRaw);
             isCorrect = Number.isFinite(parsedCorrect) && Number(submittedAnswer) === parsedCorrect;

@@ -3,6 +3,22 @@ import { getStudentBatchModel } from "./studentBatchModel.js";
 
 const MAX_DPP_ATTEMPTS = 3;
 
+function normalizeNumericValue(value) {
+    const parsed = Number(String(value).trim());
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw) {
+    const submittedNumeric = normalizeNumericValue(submittedAnswer);
+    const correctNumeric = normalizeNumericValue(correctAnswerRaw);
+
+    if (submittedNumeric !== null && correctNumeric !== null) {
+        return submittedNumeric === correctNumeric;
+    }
+
+    return String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+}
+
 function parseStoredAnswer(value, questionType) {
     if (value === undefined || value === null || value === "") {
         return null;
@@ -43,7 +59,7 @@ function scoreAttempt(questions, answers) {
 
         let isCorrect = false;
         if (question.type === "Numerical") {
-            isCorrect = String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+            isCorrect = isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw);
         } else if (question.type === "MSQ") {
             let normalizedCorrect;
             try {

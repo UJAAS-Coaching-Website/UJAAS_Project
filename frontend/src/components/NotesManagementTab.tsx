@@ -8,9 +8,8 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
-import { fetchDpps, deleteDpp, startMyDppAttempt, type ApiDpp, type ApiStartDppAttemptPayload } from '../api/dpps';
+import { fetchDpps, deleteDpp, startMyDppAttempt, type ApiDpp } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
-import { DPPPractice } from './DPPPractice';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -52,6 +51,7 @@ interface NotesManagementTabProps {
 }
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 
 async function preloadDppAssets(questions: ApiDpp['questions']) {
   const imageSources = (questions || []).flatMap((question) => [
@@ -94,7 +94,6 @@ export function NotesManagementTab({
   // Chapter State Reference
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
-  const [activeDppPayload, setActiveDppPayload] = useState<ApiStartDppAttemptPayload | null>(null);
   const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
 
   const defaultSubjects = [
@@ -353,7 +352,20 @@ export function NotesManagementTab({
       setLoadingDppId(dppId);
       const payload = await startMyDppAttempt(dppId);
       await preloadDppAssets(payload.dpp.questions);
-      setActiveDppPayload(payload);
+      localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+        batchLabel: selectedBatch,
+        selectedSubject,
+        chapterId: selectedChapterObj?.id,
+        chapterName: selectedChapterObj?.name,
+        currentView,
+        activeContentType,
+      }));
+
+      if (variant === 'student') {
+        sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(payload));
+        onNavigate('home', 'dpp');
+        return;
+      }
     } catch (error: any) {
       alert(error?.message || 'Unable to start DPP');
     } finally {
@@ -774,19 +786,6 @@ export function NotesManagementTab({
           </div>
         </div>
       )}
-
-      <AnimatePresence>
-        {activeDppPayload && (
-          <DPPPractice
-            payload={activeDppPayload}
-            onExit={() => setActiveDppPayload(null)}
-            onSubmitted={async () => {
-              const nextDpps = await fetchDpps(selectedChapterObj?.id);
-              setApiDpps(nextDpps);
-            }}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Add Chapter Modal */}
       <AnimatePresence>

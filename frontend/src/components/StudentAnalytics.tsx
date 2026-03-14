@@ -81,7 +81,7 @@ export function StudentAnalytics({
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
 
-  const reviewAnswers = result.questions.reduce<Record<string, string | number | null>>((acc, question) => {
+  const reviewAnswers = result.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
     return acc;
   }, {});

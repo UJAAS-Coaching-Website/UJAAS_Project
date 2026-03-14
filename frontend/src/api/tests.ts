@@ -76,7 +76,7 @@ export interface ApiQuestion {
     id: string;
     subject: string;
     section: string | null;
-    type: 'MCQ' | 'Numerical';
+    type: 'MCQ' | 'MSQ' | 'Numerical';
     question_text: string;
     question_img: string | null;
     options: string[] | null;
@@ -127,7 +127,7 @@ export interface ApiAttempt {
     correct_answers: number;
     wrong_answers: number;
     unattempted: number;
-    answers: Record<string, string | number | null>;
+    answers: Record<string, string | number | number[] | null>;
 }
 
 export interface ApiAttemptHistoryEntry {
@@ -164,7 +164,7 @@ export interface ApiActiveAttemptPayload {
 }
 
 export interface ApiAttemptResultQuestion extends ApiQuestion {
-    user_answer: string | number | null;
+    user_answer: string | number | number[] | null;
 }
 
 export interface ApiAttemptResult {
@@ -301,7 +301,7 @@ export async function startMyTestAttempt(testId: string): Promise<ApiActiveAttem
 
 export async function saveMyAttemptProgress(
     attemptId: string,
-    answers: Record<string, string | number | null>
+    answers: Record<string, string | number | number[] | null>
 ): Promise<ApiAttempt> {
     return request<ApiAttempt>(`/api/tests/attempts/${attemptId}/progress`, {
         method: 'PATCH',
@@ -311,7 +311,7 @@ export async function saveMyAttemptProgress(
 
 export async function submitMyAttempt(
     attemptId: string,
-    answers: Record<string, string | number | null>,
+    answers: Record<string, string | number | number[] | null>,
     autoSubmitted = false
 ): Promise<ApiAttemptResult> {
     return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/submit`, {

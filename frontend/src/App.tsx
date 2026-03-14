@@ -49,6 +49,23 @@ import {
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
 
+function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -202,6 +219,7 @@ function App() {
   };
 
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
   const [queries, setQueries] = useState<LandingQuery[]>([]);
 
   const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
@@ -411,7 +429,7 @@ function App() {
       questionImage: q.question_img || undefined,
       options: q.options || undefined,
       optionImages: q.option_imgs || undefined,
-      correctAnswer: q.type === 'MCQ' ? Number(q.correct_answer) : q.correct_answer,
+      correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
       marks: q.marks,
       negativeMarks: q.neg_marks,
       explanation: q.explanation || undefined,
@@ -914,6 +932,7 @@ function App() {
       setAdminLandingSection('batches');
       const tab = isStudentTab(route.tab) ? route.tab : 'home';
       setActiveTab(tab);
+      setStudentSubTab(route.view === 'student' ? route.subTab : undefined);
       if (route.view !== 'student' || route.tab !== tab || (route.view === 'student' && route.subTab)) {
         window.history.replaceState({ tab, subTab: route.subTab }, '', tabToPath('student', tab, null, route.subTab));
       }
@@ -931,6 +950,7 @@ function App() {
     setAdminBatch(parsedBatch);
     setAdminLandingSection(parsedSection);
     setActiveTab(adminTab);
+    setStudentSubTab(undefined);
     const canonicalPath = parsedBatch
       ? tabToPath(isFacultyRole ? 'faculty' : 'admin', adminTab, parsedBatch)
       : adminTab === 'profile'
@@ -951,8 +971,10 @@ function App() {
 
     let path = '';
     if (user.role === 'student') {
+      setStudentSubTab(subTab);
       path = tabToPath('student', tab as StudentTab, null, subTab);
     } else {
+      setStudentSubTab(undefined);
       const role = user.role === 'faculty' ? 'faculty' : 'admin';
       if (adminBatch) {
         path = tabToPath(role, tab, adminBatch);
@@ -977,6 +999,7 @@ function App() {
     setAdminBatch(batch);
     setAdminLandingSection('batches');
     setActiveTab('home');
+    setStudentSubTab(undefined);
     const path = tabToPath(user?.role === 'faculty' ? 'faculty' : 'admin', 'home', batch);
     window.history.pushState({ tab: 'home', batch, section: 'batches' }, '', path);
   };
@@ -986,6 +1009,7 @@ function App() {
     setAdminBatch(null);
     setAdminLandingSection('batches');
     setActiveTab('home');
+    setStudentSubTab(undefined);
     window.history.pushState(
       { tab: 'home', batch: null, section: 'batches' },
       '',
@@ -999,6 +1023,7 @@ function App() {
     setAdminBatch(null);
     const targetTab = section === 'test-series' ? 'test-series' : 'home';
     setActiveTab(targetTab);
+    setStudentSubTab(undefined);
     const path = user?.role === 'faculty' ? facultySectionToPath(section) : adminSectionToPath(section);
     window.history.pushState({ tab: targetTab, batch: null, section }, '', path);
   };
@@ -1143,6 +1168,7 @@ function App() {
       (route.view === 'student' || route.view === 'generic')
     ) {
       setActiveTab(route.tab);
+      setStudentSubTab(route.view === 'student' ? route.subTab : undefined);
       setAdminBatch(null);
       setAdminLandingSection('batches');
       return;
@@ -1154,6 +1180,7 @@ function App() {
       setAdminBatch(parsedBatch);
       setAdminLandingSection(parsedSection);
       setActiveTab(parsedTab);
+      setStudentSubTab(undefined);
       const isFacultyRole = userData.role === 'faculty';
       const isRoleMismatch =
         (userData.role === 'faculty' && route.view === 'admin') ||
@@ -1178,12 +1205,14 @@ function App() {
     if (userData.role === 'student') {
       setAdminBatch(null);
       setAdminLandingSection('batches');
+      setStudentSubTab(undefined);
       window.history.pushState({ tab: defaultTab }, '', tabToPath('student', defaultTab));
       return;
     }
 
     setAdminBatch(null);
     setAdminLandingSection('batches');
+    setStudentSubTab(undefined);
     window.history.pushState(
       { tab: defaultTab, batch: null, section: 'batches' },
       '',
@@ -1354,7 +1383,7 @@ function App() {
             <StudentDashboard
               user={user}
               activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
-              subTab={parsePath().view === 'student' ? parsePath().subTab : undefined}
+              subTab={studentSubTab}
               onNavigate={navigateTab}
               onLogout={handleLogout}
               notifications={notifications}

@@ -54,7 +54,7 @@ function ResultCard({
   const percentage = result.totalMarks > 0 ? Math.round((result.obtainedMarks / result.totalMarks) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 bg-white z-layer-modal overflow-y-auto">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6">
         <div className="flex justify-end mb-4">
           <button
@@ -166,7 +166,7 @@ export function DPPPractice({ payload, onExit, onSubmitted }: DPPPracticeProps) 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-layer-modal overflow-y-auto bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
+          className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
         >
           <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
             <div className="mb-4 flex justify-end">

@@ -38,10 +38,10 @@ interface TestTakingProps {
   testTitle: string;
   duration: number; // in minutes
   questions: Question[];
-  onSubmit: (answers: Record<string, string | number | null>, timeSpent: number) => void;
+  onSubmit: (answers: Record<string, string | number | number[] | null>, timeSpent: number) => void;
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => Promise<void> | void;
-  initialAnswers?: Record<string, string | number | null>;
+  initialAnswers?: Record<string, string | number | number[] | null>;
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
@@ -73,7 +73,7 @@ export function TestTaking({
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | number | null>>(initialAnswers);
+  const [answers, setAnswers] = useState<Record<string, string | number | number[] | null>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -278,8 +278,25 @@ export function TestTaking({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const selectAnswer = (questionId: string, value: string | number | null) => {
+  const isAnsweredValue = (value: string | number | number[] | null | undefined) =>
+    Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '';
+
+  const isOptionSelected = (questionId: string, optionIndex: number) => {
+    const answer = answers[questionId];
+    return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
+  };
+
+  const selectAnswer = (questionId: string, value: string | number | number[] | null) => {
     setAnswers({ ...answers, [questionId]: value });
+  };
+
+  const toggleMsqAnswer = (questionId: string, optionIndex: number) => {
+    const currentAnswer = answers[questionId];
+    const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
+    const nextValues = currentValues.includes(optionIndex)
+      ? currentValues.filter((value) => value !== optionIndex)
+      : [...currentValues, optionIndex].sort((a, b) => a - b);
+    selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
   };
 
   const toggleFlag = (questionId: string) => {
@@ -294,13 +311,13 @@ export function TestTaking({
 
   const getQuestionStatus = (index: number) => {
     const question = questions[index];
-    if (answers[question.id] !== undefined && answers[question.id] !== null) {
+    if (isAnsweredValue(answers[question.id])) {
       return 'answered';
     }
     return 'not-answered';
   };
 
-  const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null).length;
+  const answeredCount = questions.filter(q => isAnsweredValue(answers[q.id])).length;
   const notAnsweredCount = questions.length - answeredCount;
 
   return (
@@ -490,29 +507,39 @@ export function TestTaking({
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
                         const isCorrect = isAnyPreview && (
-                          question.type === 'MCQ' ? question.correctAnswer === index :
-                            Array.isArray(question.correctAnswer) && (question.correctAnswer as number[]).includes(index)
+                          question.type === 'MCQ'
+                            ? question.correctAnswer === index
+                            : Array.isArray(question.correctAnswer) && question.correctAnswer.includes(index)
                         );
+                        const isSelected = isOptionSelected(question.id, index);
+                        const isMsq = question.type === 'MSQ';
 
                         return (
                           <div key={index} className="space-y-2">
                             <button
-                              onClick={() => !isAnyPreview && selectAnswer(question.id, index)}
+                              onClick={() => {
+                                if (isAnyPreview) return;
+                                if (isMsq) {
+                                  toggleMsqAnswer(question.id, index);
+                                  return;
+                                }
+                                selectAnswer(question.id, index);
+                              }}
                               disabled={isAnyPreview}
                               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
-                                answers[question.id] === index
+                                isSelected
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
                                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
                                 }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isCorrect ? 'border-green-500 bg-green-500' :
-                                  answers[question.id] === index
+                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isCorrect ? 'border-green-500 bg-green-500' :
+                                  isSelected
                                     ? 'border-blue-500 bg-blue-500'
                                     : 'border-gray-300'
                                   }`}>
-                                  {(answers[question.id] === index || isCorrect) && (
-                                    <div className="w-2 h-2 bg-white rounded-full" />
+                                  {(isSelected || isCorrect) && (
+                                    isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
                                 </div>
                                 <div className="flex-1">
@@ -544,7 +571,7 @@ export function TestTaking({
                         ) : (
                           <input
                             type="text"
-                            value={answers[question.id] || ''}
+                            value={Array.isArray(answers[question.id]) ? '' : (answers[question.id] || '')}
                             onChange={(e) => selectAnswer(question.id, e.target.value as any)}
                             className="w-full max-w-xs px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                             placeholder="Enter numerical value"

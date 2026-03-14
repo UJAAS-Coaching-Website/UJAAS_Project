@@ -847,7 +847,7 @@ export function FacultyDashboard({
               />
             </div>
           ) : activeTab === 'create-dpp' ? (
-            <CreateDPP onBack={() => onNavigate('content')} />
+            <CreateDPP onBack={() => onNavigate('home')} />
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (

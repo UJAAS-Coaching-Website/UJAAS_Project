@@ -29,7 +29,24 @@ import {
   Play
 } from 'lucide-react';
 
-type StudentAnswer = string | number | null;
+type StudentAnswer = string | number | number[] | null;
+
+function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
 
 type TestState =
   | { mode: 'list' }
@@ -84,7 +101,7 @@ const apiTestToPublished = (t: ApiTest): PublishedTest => ({
     questionImage: q.question_img || undefined,
     options: q.options || undefined,
     optionImages: q.option_imgs || undefined,
-    correctAnswer: q.type === 'MCQ' ? Number(q.correct_answer) : q.correct_answer,
+    correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
     marks: q.marks,
     negativeMarks: q.neg_marks,
     explanation: q.explanation || undefined,
@@ -104,7 +121,7 @@ function mapAttemptResultToAnalytics(result: ApiAttemptResult) {
       questionImage: question.question_img || undefined,
       options: question.options || undefined,
       optionImages: question.option_imgs || undefined,
-      correctAnswer: question.type === 'MCQ' ? Number(question.correct_answer) : question.correct_answer,
+      correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
       subject: question.subject,
       marks: question.marks,
       type: question.type,

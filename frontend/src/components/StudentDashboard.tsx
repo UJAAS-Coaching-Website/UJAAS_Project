@@ -20,6 +20,8 @@ import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { X, Calendar } from 'lucide-react';
 import { NotesManagementTab } from './NotesManagementTab';
+import { DPPPractice } from './DPPPractice';
+import type { ApiStartDppAttemptPayload } from '../api/dpps';
 
 interface StudentDashboardProps {
   user: User;
@@ -35,6 +37,7 @@ interface StudentDashboardProps {
 }
 
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
+const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 
 export function StudentDashboard({ 
   user, 
@@ -51,6 +54,7 @@ export function StudentDashboard({
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const [activeDppPayload, setActiveDppPayload] = useState<ApiStartDppAttemptPayload | null>(null);
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -61,9 +65,31 @@ export function StudentDashboard({
     return () => { document.body.style.overflow = 'unset'; };
   }, [showFullTimetable]);
 
+  useEffect(() => {
+    if (activeTab !== 'home' || subTab !== 'dpp') {
+      setActiveDppPayload(null);
+      return;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_DPP_SESSION_KEY);
+      if (!raw) {
+        setActiveDppPayload(null);
+        return;
+      }
+
+      setActiveDppPayload(JSON.parse(raw) as ApiStartDppAttemptPayload);
+    } catch (error) {
+      console.error('Failed to restore active DPP session', error);
+      sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
+      setActiveDppPayload(null);
+    }
+  }, [activeTab, subTab]);
+
   const dppAttempts: Record<string, { attempts: number, score: number }> = {};
 
-  const isNavbarHidden = isNavbarInternalHidden;
+  const isDppRoute = activeTab === 'home' && subTab === 'dpp';
+  const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
 
   const handleSubTabNavigate = (newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -146,12 +172,33 @@ export function StudentDashboard({
       <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
         <motion.div
-          key={activeTab}
+          key={`${activeTab}-${subTab || 'root'}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && (
+          {activeTab === 'home' && subTab === 'dpp' && activeDppPayload && (
+            <DPPPractice
+              payload={activeDppPayload}
+              onExit={() => {
+                sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
+                onNavigate('home');
+              }}
+            />
+          )}
+          {activeTab === 'home' && subTab === 'dpp' && !activeDppPayload && (
+            <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
+              <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
+              <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>
+              <button
+                onClick={() => onNavigate('home')}
+                className="mt-6 rounded-2xl bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+          {activeTab === 'home' && subTab !== 'dpp' && (
             <HomeTab 
               user={user} 
               onNavigate={onNavigate} 
