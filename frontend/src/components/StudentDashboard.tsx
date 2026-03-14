@@ -174,7 +174,7 @@ export function StudentDashboard({
       <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
         <motion.div
-          key={`${activeTab}-${subTab || 'root'}`}
+          key={activeTab}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
