@@ -193,26 +193,6 @@ export interface ApiAttemptResult {
     questions: ApiAttemptResultQuestion[];
 }
 
-export interface ApiAttemptSummaryResult {
-    attempt_id: string;
-    attempt_no: number;
-    auto_submitted: boolean;
-    testId: string;
-    testTitle: string;
-    totalMarks: number;
-    obtainedMarks: number;
-    totalQuestions: number;
-    correctAnswers: number;
-    wrongAnswers: number;
-    unattempted: number;
-    timeSpent: number;
-    duration: number;
-    rank: number;
-    totalStudents: number;
-    submittedAt: string;
-    instructions?: string;
-}
-
 export interface ApiStudentAttemptResultListItem {
     id: string;
     testId: string;
@@ -312,10 +292,6 @@ export async function fetchMyAttemptResults(): Promise<ApiStudentAttemptResultLi
 
 export async function fetchAttemptResult(attemptId: string): Promise<ApiAttemptResult> {
     return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`);
-}
-
-export async function fetchAttemptSummaryResult(attemptId: string): Promise<ApiAttemptSummaryResult> {
-    return request<ApiAttemptSummaryResult>(`/api/tests/attempts/${attemptId}/summary`);
 }
 
 export async function fetchAttemptQuestionExplanation(

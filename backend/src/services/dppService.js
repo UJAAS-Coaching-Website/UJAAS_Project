@@ -502,65 +502,6 @@ async function buildDppAttemptResult(attemptId) {
     };
 }
 
-async function buildDppAttemptSummaryResult(attemptId) {
-    const attemptResult = await pool.query(`
-        SELECT
-            da.id,
-            da.dpp_id,
-            da.attempt_no,
-            da.score,
-            da.submitted_at,
-            da.correct_answers,
-            da.wrong_answers,
-            da.unattempted,
-            d.title AS dpp_title,
-            d.instructions,
-            d.chapter_id,
-            c.name AS chapter_name,
-            c.subject_name,
-            b.name AS batch_name,
-            (
-                SELECT COUNT(*)
-                FROM questions q
-                WHERE q.dpp_id = da.dpp_id
-            ) AS total_questions,
-            (
-                SELECT COALESCE(SUM(q.marks), 0)
-                FROM questions q
-                WHERE q.dpp_id = da.dpp_id
-            ) AS total_marks
-        FROM dpp_attempts da
-        JOIN dpps d ON d.id = da.dpp_id
-        JOIN chapters c ON c.id = d.chapter_id
-        JOIN batches b ON b.id = c.batch_id
-        WHERE da.id = $1
-    `, [attemptId]);
-
-    if (attemptResult.rowCount === 0) {
-        return null;
-    }
-
-    const attempt = attemptResult.rows[0];
-    return {
-        attempt_id: attempt.id,
-        attempt_no: Number(attempt.attempt_no),
-        dppId: attempt.dpp_id,
-        dppTitle: attempt.dpp_title,
-        chapter_id: attempt.chapter_id,
-        chapter_name: attempt.chapter_name,
-        subject_name: attempt.subject_name,
-        batch_name: attempt.batch_name,
-        instructions: attempt.instructions || undefined,
-        totalMarks: Number(attempt.total_marks || 0),
-        obtainedMarks: Number(attempt.score || 0),
-        totalQuestions: Number(attempt.total_questions || 0),
-        correctAnswers: Number(attempt.correct_answers || 0),
-        wrongAnswers: Number(attempt.wrong_answers || 0),
-        unattempted: Number(attempt.unattempted || 0),
-        submittedAt: attempt.submitted_at,
-    };
-}
-
 async function getDppAttemptAccessForUser(attemptId, user) {
     const lookup = await pool.query(`
         SELECT id, dpp_id, student_id
@@ -650,13 +591,6 @@ export async function getDppAttemptResultForUser(attemptId, user) {
     if (!attempt) return null;
 
     return buildDppAttemptResult(attemptId);
-}
-
-export async function getDppAttemptSummaryResultForUser(attemptId, user) {
-    const attempt = await getDppAttemptAccessForUser(attemptId, user);
-    if (!attempt) return null;
-
-    return buildDppAttemptSummaryResult(attemptId);
 }
 
 export async function getDppAttemptQuestionExplanationForUser(attemptId, questionId, user) {

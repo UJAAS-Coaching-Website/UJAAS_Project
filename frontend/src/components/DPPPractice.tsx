@@ -2,16 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, CheckCircle, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StudentTestTaking } from './StudentTestTaking';
-import { StudentAnalytics, type AnalyticsDetailedResult, type AnalyticsResult } from './StudentAnalytics';
+import { TestTaking } from './TestTaking';
+import { StudentAnalytics } from './StudentAnalytics';
 import {
   fetchDppAttemptResult,
   fetchDppAttemptQuestionExplanation,
-  fetchDppAttemptSummaryResult,
   fetchMyDppAttemptSummary,
   submitMyDppAttempt,
   type ApiDppAttemptHistoryEntry,
   type ApiDppAttemptResult,
-  type ApiDppAttemptSummaryResult,
   type ApiStartDppAttemptPayload,
 } from '../api/dpps';
 
@@ -19,7 +18,7 @@ type StudentAnswer = string | number | number[] | null;
 
 export type DppPracticeSession =
   | { mode: 'attempt'; payload: ApiStartDppAttemptPayload }
-  | { mode: 'result'; result: ApiDppAttemptSummaryResult; history: ApiDppAttemptHistoryEntry[] };
+  | { mode: 'result'; result: ApiDppAttemptResult; history: ApiDppAttemptHistoryEntry[]; reviewOpen?: boolean };
 
 interface DPPPracticeProps {
   session: DppPracticeSession;
@@ -56,61 +55,48 @@ function mapQuestions(payload: ApiStartDppAttemptPayload) {
   }));
 }
 
-function mapDppAttemptSummaryToAnalytics(result: ApiDppAttemptSummaryResult): AnalyticsResult {
-  return {
-    attempt_id: result.attempt_id,
-    testId: result.dppId,
-    testTitle: result.dppTitle,
-    totalMarks: result.totalMarks,
-    obtainedMarks: result.obtainedMarks,
-    totalQuestions: result.totalQuestions,
-    correctAnswers: result.correctAnswers,
-    wrongAnswers: result.wrongAnswers,
-    unattempted: result.unattempted,
-    timeSpent: 0,
-    duration: 0,
-    submittedAt: result.submittedAt,
-    instructions: result.instructions,
-  };
+function mapReviewQuestions(result: ApiDppAttemptResult) {
+  return result.questions.map((question) => ({
+    id: question.id,
+    question: question.question_text,
+    questionImage: question.question_img || undefined,
+    options: question.options || undefined,
+    optionImages: question.option_imgs || undefined,
+    correctAnswer:
+      question.type === 'MCQ'
+        ? Number(question.correct_answer)
+        : question.type === 'MSQ'
+          ? (() => {
+              try {
+                const parsed = JSON.parse(question.correct_answer);
+                return Array.isArray(parsed) ? parsed.map((value) => Number(value)) : [];
+              } catch {
+                return [];
+              }
+            })()
+          : question.correct_answer,
+    subject: question.subject,
+    marks: question.marks,
+    type: question.type,
+    metadata: { section: question.section || undefined },
+    explanation: question.explanation || undefined,
+    explanationImage: question.explanation_img || undefined,
+  }));
 }
 
-function mapDppAttemptResultToAnalytics(result: ApiDppAttemptResult): AnalyticsDetailedResult {
-  return {
-    ...mapDppAttemptSummaryToAnalytics(result),
-    questions: result.questions.map((question) => ({
-      id: question.id,
-      text: question.question_text,
-      question: question.question_text,
-      questionImage: question.question_img || undefined,
-      options: question.options || undefined,
-      optionImages: question.option_imgs || undefined,
-      correctAnswer:
-        question.type === 'MCQ'
-          ? Number(question.correct_answer)
-          : question.type === 'MSQ'
-            ? (() => {
-                try {
-                  const parsed = JSON.parse(question.correct_answer);
-                  return Array.isArray(parsed) ? parsed.map((value) => Number(value)) : [];
-                } catch {
-                  return [];
-                }
-              })()
-            : question.correct_answer,
-      subject: question.subject,
-      marks: question.marks,
-      type: question.type,
-      metadata: { section: question.section || undefined },
-      userAnswer: question.user_answer,
-    })),
-  };
+function mapReviewAnswers(result: ApiDppAttemptResult) {
+  return result.questions.reduce<Record<string, StudentAnswer>>((acc, question) => {
+    acc[question.id] = question.user_answer;
+    return acc;
+  }, {});
 }
 
 export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticeProps) {
   const [payload, setPayload] = useState<ApiStartDppAttemptPayload | null>(session.mode === 'attempt' ? session.payload : null);
   const [hasStarted, setHasStarted] = useState(session.mode === 'attempt' ? !(session.payload.dpp.instructions || '').trim() : false);
-  const [result, setResult] = useState<ApiDppAttemptSummaryResult | null>(session.mode === 'result' ? session.result : null);
+  const [result, setResult] = useState<ApiDppAttemptResult | null>(session.mode === 'result' ? session.result : null);
   const [history, setHistory] = useState<ApiDppAttemptHistoryEntry[]>(session.mode === 'result' ? session.history : session.mode === 'attempt' ? session.payload.history || [] : []);
+  const [reviewOpen, setReviewOpen] = useState(session.mode === 'result' ? Boolean(session.reviewOpen) : false);
   const [submitting, setSubmitting] = useState(false);
   const [loadingAttemptId, setLoadingAttemptId] = useState<string | null>(null);
   const questions = useMemo(() => (payload ? mapQuestions(payload) : []), [payload]);
@@ -121,19 +107,22 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
       setHasStarted(!(session.payload.dpp.instructions || '').trim());
       setResult(null);
       setHistory(session.payload.history || []);
+      setReviewOpen(false);
       return;
     }
 
     setPayload(null);
     setResult(session.result);
     setHistory(session.history || []);
+    setReviewOpen(Boolean(session.reviewOpen));
   }, [session]);
 
-  const syncResultSession = (nextResult: ApiDppAttemptSummaryResult, nextHistory: ApiDppAttemptHistoryEntry[]) => {
+  const syncResultSession = (nextResult: ApiDppAttemptResult, nextHistory: ApiDppAttemptHistoryEntry[], nextReviewOpen = false) => {
     onSessionChange?.({
       mode: 'result',
       result: nextResult,
       history: nextHistory,
+      reviewOpen: nextReviewOpen,
     });
   };
 
@@ -143,16 +132,12 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
     try {
       setSubmitting(true);
       const submitted = await submitMyDppAttempt(payload.dpp.id, answers);
+      const summary = await fetchMyDppAttemptSummary(payload.dpp.id).catch(() => null);
+      const nextHistory = summary?.history || history;
       setResult(submitted);
-      syncResultSession(submitted, history);
-
-      void fetchMyDppAttemptSummary(payload.dpp.id)
-        .then((summary) => {
-          const nextHistory = summary?.history || [];
-          setHistory(nextHistory);
-          syncResultSession(submitted, nextHistory);
-        })
-        .catch(() => undefined);
+      setHistory(nextHistory);
+      setReviewOpen(false);
+      syncResultSession(submitted, nextHistory);
     } finally {
       setSubmitting(false);
     }
@@ -161,18 +146,82 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
   const handleSelectAttempt = async (attemptId: string) => {
     try {
       setLoadingAttemptId(attemptId);
-      const selected = await fetchDppAttemptSummaryResult(attemptId);
+      const selected = await fetchDppAttemptResult(attemptId);
       setResult(selected);
-      syncResultSession(selected, history);
+      setReviewOpen(false);
+      syncResultSession(selected, history, false);
     } finally {
       setLoadingAttemptId(null);
     }
   };
 
+  if (result && reviewOpen) {
+    return (
+      <TestTaking
+        testId={result.dppId}
+        testTitle={`${result.dppTitle} - Review`}
+        duration={0}
+        questions={mapReviewQuestions(result) as any}
+        onSubmit={() => {}}
+        onExit={() => {
+          setReviewOpen(false);
+          syncResultSession(result, history, false);
+        }}
+        initialAnswers={mapReviewAnswers(result)}
+        initialTimeSpent={0}
+        isPreview={true}
+        disableEditing={true}
+        hideExplanations={false}
+        reviewAttemptId={result.attempt_id}
+        loadQuestionExplanation={fetchDppAttemptQuestionExplanation}
+      />
+    );
+  }
+
   if (result) {
     return (
       <StudentAnalytics
-        result={mapDppAttemptSummaryToAnalytics(result)}
+        result={{
+          testId: result.dppId,
+          testTitle: result.dppTitle,
+          totalMarks: result.totalMarks,
+          obtainedMarks: result.obtainedMarks,
+          totalQuestions: result.totalQuestions,
+          correctAnswers: result.correctAnswers,
+          wrongAnswers: result.wrongAnswers,
+          unattempted: result.unattempted,
+          timeSpent: 0,
+          duration: 0,
+          submittedAt: result.submittedAt,
+          instructions: result.instructions,
+          questions: result.questions.map((question) => ({
+            id: question.id,
+            text: question.question_text,
+            question: question.question_text,
+            questionImage: question.question_img || undefined,
+            options: question.options || undefined,
+            optionImages: question.option_imgs || undefined,
+            correctAnswer:
+              question.type === 'MCQ'
+                ? Number(question.correct_answer)
+                : question.type === 'MSQ'
+                  ? (() => {
+                      try {
+                        const parsed = JSON.parse(question.correct_answer);
+                        return Array.isArray(parsed) ? parsed.map((value) => Number(value)) : [];
+                      } catch {
+                        return [];
+                      }
+                    })()
+                  : question.correct_answer,
+            subject: question.subject,
+            marks: question.marks,
+            type: question.type,
+            metadata: { section: question.section || undefined },
+            userAnswer: question.user_answer,
+          })),
+          attempt_id: result.attempt_id,
+        } as any}
         onClose={onExit}
         hideRank={true}
         hideTimeSpent={true}
@@ -180,8 +229,6 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
         subtitle="DPP Performance Summary"
         loadingAttemptId={loadingAttemptId}
         attemptHistory={history as any}
-        loadQuestionExplanation={fetchDppAttemptQuestionExplanation as any}
-        loadDetailedReview={(attemptId) => fetchDppAttemptResult(attemptId).then(mapDppAttemptResultToAnalytics)}
         onSelectAttempt={(attemptId) => {
           void handleSelectAttempt(attemptId);
         }}
