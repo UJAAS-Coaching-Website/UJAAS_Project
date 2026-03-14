@@ -6,6 +6,7 @@ import {
     handleGetMyDppAttemptSummary,
     handleStartMyDppAttempt,
     handleSubmitMyDppAttempt,
+    handleGetDppAttemptSummaryResult,
     handleGetDppAttemptResult,
     handleGetDppAttemptQuestionExplanation,
     handleGetDppAnalysis,
@@ -18,6 +19,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get("/attempts/:attemptId/summary", requireAnyRole("admin", "faculty", "student"), handleGetDppAttemptSummaryResult);
 router.get("/attempts/:attemptId/result", requireAnyRole("admin", "faculty", "student"), handleGetDppAttemptResult);
 router.get("/attempts/:attemptId/questions/:questionId/explanation", requireAnyRole("admin", "faculty", "student"), handleGetDppAttemptQuestionExplanation);
 router.get("/:id/attempts/analysis", requireAnyRole("admin", "faculty"), handleGetDppAnalysis);

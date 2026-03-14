@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { TestSeriesSection } from './TestSeriesSection';
 import { StudentTestTaking } from './StudentTestTaking';
-import { StudentAnalytics } from './StudentAnalytics';
+import { StudentAnalytics, type AnalyticsDetailedResult, type AnalyticsResult } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
 import { User, PublishedTest } from '../App';
 import {
   fetchAttemptResult,
+  fetchAttemptSummaryResult,
   fetchMyAttemptResults,
   fetchMyTestAttemptSummary,
   fetchTestById,
@@ -14,6 +15,7 @@ import {
   submitMyAttempt,
   type ApiActiveAttemptPayload,
   type ApiAttemptResult,
+  type ApiAttemptSummaryResult,
   type ApiAttemptHistoryEntry,
   type ApiStudentAttemptResultListItem,
   type ApiTest,
@@ -59,7 +61,7 @@ type TestState =
       deadlineAt: string;
       serverNow: string;
     }
-  | { mode: 'analytics'; result?: ApiAttemptResult; history?: ApiAttemptHistoryEntry[] }
+  | { mode: 'analytics'; result?: AnalyticsResult; history?: ApiAttemptHistoryEntry[] }
   | { mode: 'viewResults' };
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
@@ -111,9 +113,29 @@ const apiTestToPublished = (t: ApiTest): PublishedTest => ({
   })),
 });
 
-function mapAttemptResultToAnalytics(result: ApiAttemptResult) {
+function mapAttemptSummaryToAnalytics(result: ApiAttemptSummaryResult): AnalyticsResult {
   return {
-    ...result,
+    attempt_id: result.attempt_id,
+    testId: result.testId,
+    testTitle: result.testTitle,
+    totalMarks: result.totalMarks,
+    obtainedMarks: result.obtainedMarks,
+    totalQuestions: result.totalQuestions,
+    correctAnswers: result.correctAnswers,
+    wrongAnswers: result.wrongAnswers,
+    unattempted: result.unattempted,
+    timeSpent: result.timeSpent,
+    duration: result.duration,
+    rank: result.rank,
+    totalStudents: result.totalStudents,
+    submittedAt: result.submittedAt,
+    instructions: result.instructions,
+  };
+}
+
+function mapAttemptResultToAnalytics(result: ApiAttemptResult): AnalyticsDetailedResult {
+  return {
+    ...mapAttemptSummaryToAnalytics(result),
     questions: result.questions.map((question) => ({
       id: question.id,
       text: question.question_text,
@@ -176,6 +198,7 @@ export function TestSeriesContainer({
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
+  const activeAnalyticsAttemptRef = useRef<string | null>(null);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -204,19 +227,45 @@ export function TestSeriesContainer({
     return summary;
   }, []);
 
+  const patchAnalyticsHistory = useCallback((attemptId: string, history: ApiAttemptHistoryEntry[]) => {
+    if (activeAnalyticsAttemptRef.current !== attemptId) {
+      return;
+    }
+
+    setTestState((prev) => {
+      if (prev.mode !== 'analytics' || !prev.result || prev.result.attempt_id !== attemptId) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        history,
+      };
+    });
+  }, []);
+
   const openAttemptAnalytics = useCallback(async (attemptId: string) => {
     try {
+      activeAnalyticsAttemptRef.current = attemptId;
       setLoadingAnalysisAttemptId(attemptId);
-      const result = await fetchAttemptResult(attemptId);
-      const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
+      const result = await fetchAttemptSummaryResult(attemptId);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
-      setTestState({ mode: 'analytics', result, history: summary?.history || [] });
+      setTestState({ mode: 'analytics', result: mapAttemptSummaryToAnalytics(result), history: [] });
       pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
-    } finally {
       setLoadingAnalysisAttemptId(null);
+
+      void fetchMyTestAttemptSummary(result.testId)
+        .then((summary) => {
+          patchAnalyticsHistory(attemptId, summary.history || []);
+        })
+        .catch(() => undefined);
+    } finally {
+      if (activeAnalyticsAttemptRef.current === attemptId) {
+        setLoadingAnalysisAttemptId(null);
+      }
     }
-  }, [onNavigateSubTab]);
+  }, [onNavigateSubTab, patchAnalyticsHistory]);
 
   const hydrateActiveAttempt = useCallback(async (mode: 'overview' | 'taking') => {
     const stored = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
@@ -439,17 +488,25 @@ export function TestSeriesContainer({
       const result = await submitMyAttempt(testState.attemptId, answers, Boolean(options?.autoSubmitted));
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
-      await patchAttemptSummary(testState.test.id);
-      await loadAttemptResults();
-      setTestState({ mode: 'analytics', result });
+      setTestState({ mode: 'analytics', result: mapAttemptSummaryToAnalytics(result), history: [] });
       pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
+      activeAnalyticsAttemptRef.current = result.attempt_id;
+
+      void patchAttemptSummary(testState.test.id)
+        .then((summary) => {
+          patchAnalyticsHistory(result.attempt_id, summary.history || []);
+        })
+        .catch(() => undefined);
+
+      void loadAttemptResults().catch(() => undefined);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to submit test');
     }
   };
 
   const handleBackToList = () => {
+    activeAnalyticsAttemptRef.current = null;
     pendingSubTabRef.current = null;
     setTestState({ mode: 'list' });
     onNavigateSubTab?.(undefined);
@@ -489,12 +546,13 @@ export function TestSeriesContainer({
   if (testState.mode === 'analytics' && testState.result) {
     return (
       <StudentAnalytics
-        result={mapAttemptResultToAnalytics(testState.result)}
+        result={testState.result}
         attemptHistory={testState.history || []}
         onSelectAttempt={(attemptId) => {
           void openAttemptAnalytics(attemptId);
         }}
         loadingAttemptId={loadingAnalysisAttemptId}
+        loadDetailedReview={(attemptId) => fetchAttemptResult(attemptId).then(mapAttemptResultToAnalytics)}
         onClose={handleBackToList}
       />
     );

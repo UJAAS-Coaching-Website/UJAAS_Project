@@ -1,6 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { TestTaking } from './TestTaking';
-import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
+import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry, type ApiQuestionExplanation } from '../api/tests';
 import {
   Trophy,
   Target,
@@ -8,18 +9,14 @@ import {
   CheckCircle,
   XCircle,
   Award,
-  BarChart3,
   Percent,
-  Users,
-  Calendar,
-  BookOpen,
-  ChevronRight,
   Download
 } from 'lucide-react';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
+import { Skeleton } from './ui/skeleton';
 
-interface Question {
+export interface AnalyticsQuestion {
   id: string;
   text: string;
   question?: string;
@@ -36,7 +33,8 @@ interface Question {
   userAnswer?: number | string | number[] | null;
 }
 
-interface TestResult {
+export interface AnalyticsResult {
+  attempt_id: string;
   testId: string;
   testTitle: string;
   totalMarks: number;
@@ -50,12 +48,16 @@ interface TestResult {
   rank?: number;
   totalStudents?: number;
   submittedAt: string;
-  questions: Question[];
+  questions?: AnalyticsQuestion[];
   instructions?: string;
 }
 
+export interface AnalyticsDetailedResult extends AnalyticsResult {
+  questions: AnalyticsQuestion[];
+}
+
 interface StudentAnalyticsProps {
-  result: TestResult;
+  result: AnalyticsResult;
   onClose: () => void;
   onViewResults?: (testId: string) => void;
   hideExplanations?: boolean;
@@ -66,6 +68,8 @@ interface StudentAnalyticsProps {
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
   loadingAttemptId?: string | null;
+  loadQuestionExplanation?: (attemptId: string, questionId: string) => Promise<ApiQuestionExplanation>;
+  loadDetailedReview?: (attemptId: string) => Promise<AnalyticsDetailedResult>;
 }
 
 export function StudentAnalytics({
@@ -79,32 +83,64 @@ export function StudentAnalytics({
   subtitle = 'Detailed Performance Analysis',
   attemptHistory = [],
   onSelectAttempt,
-  loadingAttemptId = null
+  loadingAttemptId = null,
+  loadQuestionExplanation = fetchAttemptQuestionExplanation,
+  loadDetailedReview,
 }: StudentAnalyticsProps) {
-  const accuracy = result.totalQuestions > 0 
+  const [isDetailedReviewOpen, setIsDetailedReviewOpen] = useState(false);
+  const [isPreparingDetailedReview, setIsPreparingDetailedReview] = useState(false);
+  const [detailedReviewError, setDetailedReviewError] = useState<string | null>(null);
+  const [detailedReviewCache, setDetailedReviewCache] = useState<Record<string, AnalyticsDetailedResult>>(() =>
+    result.questions ? { [result.attempt_id]: result as AnalyticsDetailedResult } : {}
+  );
+
+  const accuracy = result.totalQuestions > 0
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
-  
+
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
 
-  const reviewAnswers = result.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
-    acc[question.id] = (question.userAnswer as any) ?? null;
-    return acc;
-  }, {});
+  useEffect(() => {
+    setIsDetailedReviewOpen(false);
+    setIsPreparingDetailedReview(false);
+    setDetailedReviewError(null);
+    if (result.questions) {
+      setDetailedReviewCache((prev) => ({ ...prev, [result.attempt_id]: result as AnalyticsDetailedResult }));
+    }
+  }, [result]);
 
-  const reviewQuestions = result.questions.map((question) => ({
-    id: question.id,
-    question: question.question ?? question.text,
-    questionImage: question.questionImage,
-    options: question.options,
-    optionImages: question.optionImages,
-    correctAnswer: question.correctAnswer,
-    subject: question.subject,
-    marks: question.marks,
-    type: question.type ?? ('MCQ' as const),
-    metadata: question.metadata,
-    explanation: '',
-  }));
+  const detailedResult = detailedReviewCache[result.attempt_id];
+
+  const reviewAnswers = useMemo(() => {
+    if (!detailedResult?.questions) {
+      return null;
+    }
+
+    return detailedResult.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
+      acc[question.id] = (question.userAnswer as any) ?? null;
+      return acc;
+    }, {});
+  }, [detailedResult]);
+
+  const reviewQuestions = useMemo(() => {
+    if (!detailedResult?.questions) {
+      return null;
+    }
+
+    return detailedResult.questions.map((question) => ({
+      id: question.id,
+      question: question.question ?? question.text,
+      questionImage: question.questionImage,
+      options: question.options,
+      optionImages: question.optionImages,
+      correctAnswer: question.correctAnswer,
+      subject: question.subject,
+      marks: question.marks,
+      type: question.type ?? ('MCQ' as const),
+      metadata: question.metadata,
+      explanation: '',
+    }));
+  }, [detailedResult]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -114,6 +150,10 @@ export function StudentAnalytics({
   };
 
   const handleDownloadTestPDF = () => {
+    if (!detailedResult?.questions) {
+      return;
+    }
+
     void printTestPaperPdf({
       title: result.testTitle,
       testId: result.testId,
@@ -121,15 +161,42 @@ export function StudentAnalytics({
       totalMarks: result.totalMarks,
       totalQuestions: result.totalQuestions,
       instructions: result.instructions,
-      questions: result.questions,
+      questions: detailedResult.questions,
       logoSrc: logo,
     });
+  };
+
+  const handleToggleDetailedReview = async () => {
+    if (isDetailedReviewOpen) {
+      setIsDetailedReviewOpen(false);
+      setDetailedReviewError(null);
+      return;
+    }
+
+    setIsDetailedReviewOpen(true);
+    setDetailedReviewError(null);
+
+    if (detailedReviewCache[result.attempt_id] || !loadDetailedReview) {
+      return;
+    }
+
+    try {
+      setIsPreparingDetailedReview(true);
+      const detailed = await loadDetailedReview(result.attempt_id);
+      setDetailedReviewCache((prev) => ({
+        ...prev,
+        [result.attempt_id]: detailed,
+      }));
+    } catch (error: any) {
+      setDetailedReviewError(error?.message || 'Unable to load detailed review right now.');
+    } finally {
+      setIsPreparingDetailedReview(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
@@ -137,7 +204,7 @@ export function StudentAnalytics({
               <p className="text-gray-600">{subtitle}</p>
             </div>
             <div className="flex gap-3">
-              {!hideDownload && (
+              {!hideDownload && detailedResult?.questions && (
                 <button
                   onClick={handleDownloadTestPDF}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-medium hover:bg-blue-200 transition-all"
@@ -165,7 +232,7 @@ export function StudentAnalytics({
               </div>
               <div className="flex flex-wrap gap-2">
                 {attemptHistory.map((attempt) => {
-                  const isActive = attempt.id === (result as any).attempt_id;
+                  const isActive = attempt.id === result.attempt_id;
                   const isLoading = loadingAttemptId === attempt.id;
                   return (
                     <button
@@ -176,8 +243,8 @@ export function StudentAnalytics({
                         isActive
                           ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white'
                           : isLoading
-                          ? 'bg-blue-100 text-blue-700 cursor-wait'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-blue-100 text-blue-700 cursor-wait'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
                       {isLoading ? `Loading Attempt ${attempt.attempt_no}...` : `Attempt ${attempt.attempt_no}`}
@@ -189,11 +256,10 @@ export function StudentAnalytics({
           </div>
         ) : null}
 
-        {/* Score Card */}
         <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-8 mb-6 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
-          
+
           <div className={`relative grid grid-cols-1 gap-6 ${hideRank ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
             <div className="text-center">
               <div className="mb-2">
@@ -239,7 +305,6 @@ export function StudentAnalytics({
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className={`grid gap-4 mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
           {[
             { icon: CheckCircle, label: 'Correct', value: result.correctAnswers, color: 'green' },
@@ -248,43 +313,89 @@ export function StudentAnalytics({
           ]
             .concat(hideTimeSpent ? [] : [{ icon: Clock, label: 'Time Spent', value: formatTime(result.timeSpent), color: 'blue' as const }])
             .map((stat, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + index * 0.05 }}
-              className="bg-white rounded-xl p-6 shadow-lg border border-gray-100"
-            >
-              <div className={`w-12 h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-3`}>
-                <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
-            </motion.div>
-          ))}
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + index * 0.05 }}
+                className="bg-white rounded-xl p-6 shadow-lg border border-gray-100"
+              >
+                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-3`}>
+                  <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
+              </motion.div>
+            ))}
         </div>
 
-        {/* Review Mode (Read Only) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
+          className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg"
         >
-          <TestTaking
-            testId={result.testId}
-            testTitle={`${result.testTitle} - Review`}
-            duration={result.duration}
-            questions={reviewQuestions}
-            onSubmit={() => {}}
-            onExit={onClose}
-            initialAnswers={reviewAnswers}
-            initialTimeSpent={result.timeSpent}
-            isFacultyPreview={true}
-            disableEditing={true}
-            hideExplanations={hideExplanations}
-            reviewAttemptId={(result as any).attempt_id}
-            loadQuestionExplanation={fetchAttemptQuestionExplanation}
-          />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Detailed Review</h2>
+              <p className="text-sm text-gray-600">Load question-wise review only when you need it.</p>
+            </div>
+            <button
+              onClick={() => void handleToggleDetailedReview()}
+              disabled={isPreparingDetailedReview}
+              className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition-all ${
+                isDetailedReviewOpen
+                  ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg hover:shadow-xl'
+              } ${isPreparingDetailedReview ? 'cursor-wait opacity-80' : ''}`}
+            >
+              {isPreparingDetailedReview
+                ? 'Loading Detailed Review...'
+                : isDetailedReviewOpen
+                  ? 'Hide Detailed Review'
+                  : 'Show Detailed Review'}
+            </button>
+          </div>
+
+          {detailedReviewError && (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {detailedReviewError}
+            </div>
+          )}
+
+          {isPreparingDetailedReview && (
+            <div className="mt-6 space-y-4 rounded-2xl border border-gray-100 bg-slate-50 p-6">
+              <div className="flex items-center justify-between gap-4">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-10 w-32 rounded-xl" />
+              </div>
+              <Skeleton className="h-56 w-full rounded-2xl" />
+              <div className="grid gap-4 lg:grid-cols-4">
+                <Skeleton className="h-64 w-full rounded-2xl lg:col-span-3" />
+                <Skeleton className="h-64 w-full rounded-2xl" />
+              </div>
+            </div>
+          )}
+
+          {isDetailedReviewOpen && !isPreparingDetailedReview && reviewQuestions && reviewAnswers && (
+            <div className="mt-6">
+              <TestTaking
+                testId={result.testId}
+                testTitle={`${result.testTitle} - Review`}
+                duration={result.duration}
+                questions={reviewQuestions}
+                onSubmit={() => {}}
+                onExit={onClose}
+                initialAnswers={reviewAnswers}
+                initialTimeSpent={result.timeSpent}
+                isFacultyPreview={true}
+                disableEditing={true}
+                hideExplanations={hideExplanations}
+                reviewAttemptId={result.attempt_id}
+                loadQuestionExplanation={loadQuestionExplanation}
+              />
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
