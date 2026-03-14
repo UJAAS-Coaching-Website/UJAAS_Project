@@ -849,7 +849,7 @@ export function FacultyDashboard({
           ) : activeTab === 'create-dpp' ? (
             <CreateDPP onBack={() => onNavigate('content')} />
           ) : activeTab === 'upload-notes' ? (
-            <UploadNotes onBack={() => onNavigate('content')} />
+            <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
             <FacultyProfile user={user as any} onLogout={onLogout} />
           ) : !selectedBatch ? (

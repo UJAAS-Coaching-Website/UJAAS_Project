@@ -17,12 +17,12 @@ export const getNoteById = async (id) => {
 
 // Create a new note
 export const createNote = async (data) => {
-    const { chapter_id, title, file_url } = data;
+    const { id, chapter_id, title, file_url } = data;
     const result = await pool.query(
-        `INSERT INTO notes (chapter_id, title, file_url)
-         VALUES ($1, $2, $3)
+        `INSERT INTO notes (id, chapter_id, title, file_url)
+         VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4)
          RETURNING *`,
-        [chapter_id, title, file_url]
+        [id || null, chapter_id, title, file_url]
     );
     return result.rows[0];
 };

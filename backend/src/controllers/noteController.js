@@ -1,4 +1,7 @@
 import * as noteService from "../services/noteService.js";
+import * as chapterService from "../services/chapterService.js";
+import { deleteNoteFromStorage, uploadNoteToStorage } from "../services/storageService.js";
+import crypto from "crypto";
 
 export const handleGetNotes = async (req, res) => {
     try {
@@ -39,6 +42,46 @@ export const handleCreateNote = async (req, res) => {
     }
 };
 
+export const handleUploadNote = async (req, res) => {
+    try {
+        const { chapter_id, title } = req.body;
+
+        if (!chapter_id || !title?.trim()) {
+            return res.status(400).json({ message: "Missing required fields (chapter_id, title)." });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: "A single file is required." });
+        }
+
+        const chapter = await chapterService.getChapterById(chapter_id);
+        if (!chapter) {
+            return res.status(404).json({ message: "Chapter not found." });
+        }
+
+        const noteId = crypto.randomUUID();
+        const fileUrl = await uploadNoteToStorage(
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype,
+            chapter,
+            noteId
+        );
+
+        const note = await noteService.createNote({
+            id: noteId,
+            chapter_id,
+            title: title.trim(),
+            file_url: fileUrl,
+        });
+
+        res.status(201).json(note);
+    } catch (error) {
+        console.error("Error uploading note:", error);
+        res.status(500).json({ message: error.message || "Failed to upload note." });
+    }
+};
+
 export const handleUpdateNote = async (req, res) => {
     try {
         const note = await noteService.updateNote(req.params.id, req.body);
@@ -52,8 +95,11 @@ export const handleUpdateNote = async (req, res) => {
 
 export const handleDeleteNote = async (req, res) => {
     try {
-        const note = await noteService.deleteNote(req.params.id);
-        if (!note) return res.status(404).json({ message: "Note not found." });
+        const existingNote = await noteService.getNoteById(req.params.id);
+        if (!existingNote) return res.status(404).json({ message: "Note not found." });
+
+        await deleteNoteFromStorage(existingNote.file_url);
+        await noteService.deleteNote(req.params.id);
         res.json({ message: "Note deleted successfully." });
     } catch (error) {
         console.error("Error deleting note:", error);

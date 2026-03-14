@@ -49,6 +49,8 @@ interface NotesManagementTabProps {
   headerMode?: 'full' | 'tracker-only' | 'hidden';
 }
 
+const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+
 export function NotesManagementTab({
   onNavigate,
   selectedBatch,
@@ -110,6 +112,50 @@ export function NotesManagementTab({
   const [dpps, setDpps] = useState([
     { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22', chapterId: 'dummy' }
   ]);
+
+  useEffect(() => {
+    if (!selectedBatch) return;
+
+    try {
+      const raw = localStorage.getItem(NOTES_RETURN_CONTEXT_KEY);
+      if (!raw) return;
+
+      const saved = JSON.parse(raw) as {
+        batchLabel?: string;
+        selectedSubject?: string;
+        chapterId?: string;
+        chapterName?: string;
+        currentView?: 'root' | 'subject' | 'chapter';
+        activeContentType?: 'notes' | 'dpps';
+      };
+
+      if (saved.batchLabel !== selectedBatch) return;
+
+      if (saved.selectedSubject) {
+        setSelectedSubject(saved.selectedSubject);
+      }
+
+      if (saved.chapterId && saved.chapterName && saved.currentView === 'chapter' && currentBatch?.id) {
+        setSelectedChapterObj({
+          id: saved.chapterId,
+          batch_id: currentBatch.id,
+          subject_name: saved.selectedSubject || '',
+          name: saved.chapterName,
+          order_index: 0,
+          created_at: new Date().toISOString(),
+        });
+      } else {
+        setSelectedChapterObj(null);
+      }
+
+      setCurrentView(saved.currentView || 'root');
+      setActiveContentType(saved.activeContentType || 'notes');
+      localStorage.removeItem(NOTES_RETURN_CONTEXT_KEY);
+    } catch (error) {
+      console.error('Failed to restore notes context', error);
+      localStorage.removeItem(NOTES_RETURN_CONTEXT_KEY);
+    }
+  }, [selectedBatch, currentBatch?.id]);
 
   // Load backend chapters whenever we view a subject
   useEffect(() => {
@@ -339,6 +385,14 @@ export function NotesManagementTab({
                 <button onClick={() => {
                   localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
                   localStorage.setItem('uploadTargetChapterName', selectedChapterObj!.name);
+                  localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+                    batchLabel: selectedBatch,
+                    selectedSubject,
+                    chapterId: selectedChapterObj!.id,
+                    chapterName: selectedChapterObj!.name,
+                    currentView,
+                    activeContentType,
+                  }));
                   onNavigate('upload-notes');
                 }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
                 <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
@@ -531,7 +585,13 @@ export function NotesManagementTab({
                           <td className="py-4 px-6 text-sm text-gray-500">{new Date(item.created_at).toLocaleDateString()}</td>
                           <td className="py-4 px-6 text-right">
                             <div className="flex justify-end gap-1">
-                              <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
+                              <button
+                                onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                                className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
                               {canEdit && (
                                 <button
                                   onClick={() => handleDeleteNote(item.id)}
@@ -564,7 +624,13 @@ export function NotesManagementTab({
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-400 font-medium">{new Date(item.created_at).toLocaleDateString()}</span>
                           <div className="flex gap-1">
-                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors" title="Download"><Download className="w-4 h-4" /></button>
+                            <button
+                              onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                              className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
                             {canEdit && (
                               <button
                                 onClick={() => handleDeleteNote(item.id)}

@@ -9,26 +9,27 @@ import {
   X,
   File,
   Image as ImageIcon,
-  Paperclip
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { apiCreateNote } from '../api/notes';
+import { apiUploadNote } from '../api/notes';
 import { useEffect } from 'react';
 
 interface UploadNotesProps {
   onBack: () => void;
 }
 
+const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+
 export function UploadNotes({ onBack }: UploadNotesProps) {
   const [notesData, setNotesData] = useState({
     title: ''
   });
 
-  const [files, setFiles] = useState<File[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const [chapterInfo, setChapterInfo] = useState<{id: string, name: string} | null>(null);
 
@@ -40,6 +41,14 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
     }
   }, []);
   useBodyScrollLock(showSuccess);
+
+  const handleBackNavigation = () => {
+    if (!localStorage.getItem(NOTES_RETURN_CONTEXT_KEY)) {
+      localStorage.removeItem('uploadTargetChapterId');
+      localStorage.removeItem('uploadTargetChapterName');
+    }
+    onBack();
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -57,23 +66,28 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
+      handleFile(e.dataTransfer.files);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      handleFiles(e.target.files);
+      handleFile(e.target.files);
     }
   };
 
-  const handleFiles = (fileList: FileList) => {
-    const newFiles = Array.from(fileList);
-    setFiles(prev => [...prev, ...newFiles]);
+  const handleFile = (fileList: FileList) => {
+    if (fileList.length > 1) {
+      alert('Please upload only one file at a time.');
+    }
+    const nextFile = fileList[0];
+    if (nextFile) {
+      setSelectedFile(nextFile);
+    }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
+  const removeFile = () => {
+    setSelectedFile(null);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -95,26 +109,21 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   };
 
   const handleSubmit = async () => {
-    if (!chapterInfo || !notesData.title || files.length === 0) return;
+    if (!chapterInfo || !notesData.title || !selectedFile) return;
     setUploading(true);
-    setUploadProgress(0);
 
     try {
-        // Since we don't have a real S3 upload service in this context yet,
-        // we will create note entries with placeholder URLs.
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            await apiCreateNote({
-                chapter_id: chapterInfo.id,
-                title: i === 0 ? notesData.title : `${notesData.title} (Part ${i+1})`,
-                file_url: `https://dummy-bucket.s3.amazonaws.com/notes/${Date.now()}_${file.name}`
-            });
-            setUploadProgress(Math.round(((i + 1) / files.length) * 100));
-        }
+        const formData = new FormData();
+        formData.append('chapter_id', chapterInfo.id);
+        formData.append('title', notesData.title.trim());
+        formData.append('file', selectedFile);
 
+        await apiUploadNote(formData);
         setUploading(false);
         setShowSuccess(true);
+        setSelectedFile(null);
+        localStorage.removeItem('uploadTargetChapterId');
+        localStorage.removeItem('uploadTargetChapterName');
         setTimeout(() => {
           onBack();
         }, 2000);
@@ -125,7 +134,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
     }
   };
 
-  const isFormValid = notesData.title && files.length > 0;
+  const isFormValid = notesData.title.trim().length > 0 && !!selectedFile;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-cyan-50 py-8">
@@ -137,7 +146,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
           className="mb-8"
         >
           <button
-            onClick={onBack}
+            onClick={handleBackNavigation}
             className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition mb-4 font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -190,90 +199,88 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <Upload className="w-6 h-6 text-blue-600" />
-              Upload Files
+              Upload File
             </h2>
 
             {/* Drag & Drop Area */}
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-12 transition-all ${
-                dragActive 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/50'
-              }`}
-            >
-              <input
-                type="file"
-                multiple
-                onChange={handleFileInput}
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              
-              <div className="text-center">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="w-20 h-20 bg-gradient-to-br from-blue-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4"
-                >
-                  <Upload className="w-10 h-10 text-blue-600" />
-                </motion.div>
+            {!selectedFile && (
+              <div
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-2xl p-12 transition-all ${
+                  dragActive 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/50'
+                }`}
+              >
+                <input
+                  type="file"
+                  onChange={handleFileInput}
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
                 
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Drop your files here or click to browse
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Support for PDF, DOC, DOCX, PPT, PPTX, JPG, PNG
-                </p>
-                <p className="text-xs text-gray-500">
-                  Maximum file size: 50MB per file
-                </p>
+                <div className="text-center">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="w-20 h-20 bg-gradient-to-br from-blue-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                  >
+                    <Upload className="w-10 h-10 text-blue-600" />
+                  </motion.div>
+                  
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Drop your file here or click to browse
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Support for PDF, DOC, DOCX, PPT, PPTX, JPG, PNG
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Upload exactly one file up to 50MB
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Uploaded Files List */}
-            {files.length > 0 && (
+            {selectedFile && (
               <div className="mt-6 space-y-3">
                 <h3 className="text-sm font-semibold text-gray-700">
-                  Uploaded Files ({files.length})
+                  Selected File
                 </h3>
                 <AnimatePresence>
-                  {files.map((file, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-teal-50 rounded-xl border border-blue-100"
+                  <motion.div
+                    key={selectedFile.name}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-teal-50 rounded-xl border border-blue-100"
+                  >
+                    <div className="flex-shrink-0">
+                      {getFileIcon(selectedFile.name)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {formatFileSize(selectedFile.size)}
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to remove the file "${selectedFile.name}"?`)) {
+                          removeFile();
+                        }
+                      }}
+                      className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
                     >
-                      <div className="flex-shrink-0">
-                        {getFileIcon(file.name)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {formatFileSize(file.size)}
-                        </p>
-                      </div>
-                      
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to remove the file "${file.name}"?`)) {
-                            removeFile(index);
-                          }
-                        }}
-                        className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </motion.div>
-                  ))}
+                      <X className="w-5 h-5" />
+                    </button>
+                  </motion.div>
                 </AnimatePresence>
               </div>
             )}
@@ -286,19 +293,17 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Uploading Notes...
-              </h3>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  className="h-full bg-gradient-to-r from-blue-600 to-teal-600 rounded-full transition-all duration-300"
-                />
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Uploading...
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Please wait while your note is stored in the bucket and saved to the database.
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-gray-600 mt-2 text-center">
-                {uploadProgress}% complete
-              </p>
             </motion.div>
           )}
 
@@ -313,7 +318,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                   </p>
                   <ul className="text-xs text-yellow-700 space-y-1 list-disc list-inside">
                     {!notesData.title && <li>Add a title for the notes</li>}
-                    {files.length === 0 && <li>Upload at least one file</li>}
+                    {!selectedFile && <li>Upload one file</li>}
                   </ul>
                 </div>
               </div>
@@ -323,7 +328,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
           {/* Submit Button */}
           <div className="flex justify-end gap-4">
             <button
-              onClick={onBack}
+              onClick={handleBackNavigation}
               className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
             >
               Cancel
@@ -333,8 +338,8 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
               disabled={!isFormValid || uploading}
               className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Upload className="w-5 h-5" />
-              Upload Content
+              {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+              {uploading ? 'Uploading...' : 'Upload Content'}
             </motion.button>
           </div>
         </motion.div>

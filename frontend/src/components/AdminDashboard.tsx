@@ -802,6 +802,8 @@ export function AdminDashboard({
             </div>
           ) : activeTab === 'create-dpp' ? (
             <CreateDPP onBack={() => onNavigate('content')} />
+          ) : activeTab === 'upload-notes' ? (
+            <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
             <AdminProfile user={user} onLogout={onLogout} />
           ) : !selectedBatch ? (

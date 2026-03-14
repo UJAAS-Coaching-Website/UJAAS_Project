@@ -12,7 +12,56 @@ const s3Client = new S3Client({
   }
 });
 
-const BUCKET_NAME = 'questions';
+const STORAGE_PUBLIC_BASE_URL = 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public';
+const QUESTIONS_BUCKET_NAME = 'questions';
+const NOTES_BUCKET_NAME = 'notes';
+
+const buildPublicUrl = (bucketName, objectKey) =>
+  `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
+
+const sanitizeFileName = (originalName) => {
+  const extMatch = originalName.match(/\.([^.]+)$/);
+  const ext = extMatch ? extMatch[1].toLowerCase() : 'bin';
+  const baseName = originalName.replace(/\.[^.]+$/, '');
+  const sanitizedBase = baseName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'file';
+
+  return `${sanitizedBase}.${ext}`;
+};
+
+async function uploadBufferToBucket(bucketName, objectKey, fileBuffer, mimeType) {
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: objectKey,
+    Body: fileBuffer,
+    ContentType: mimeType,
+    CacheControl: 'public, max-age=31536000'
+  });
+
+  await s3Client.send(command);
+  return buildPublicUrl(bucketName, objectKey);
+}
+
+async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
+  const urlPrefix = `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/`;
+
+  if (!fileUrl?.startsWith(urlPrefix)) {
+    console.warn('Storage URL does not match expected pattern, skipping delete:', fileUrl);
+    return;
+  }
+
+  const objectKey = fileUrl.slice(urlPrefix.length);
+
+  const command = new DeleteObjectCommand({
+    Bucket: bucketName,
+    Key: objectKey
+  });
+
+  await s3Client.send(command);
+}
 
 /**
  * Uploads a file buffer to the Supabase S3 bucket.
@@ -36,23 +85,31 @@ export async function uploadImageToStorage(fileBuffer, originalName, mimeType, c
   // Construct the secure, flat-folder path (e.g., tests/123/question-abc.jpg)
   const objectKey = `${context}/${contextId}/${itemRole}-${randomId}.${ext}`;
 
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: objectKey,
-    Body: fileBuffer,
-    ContentType: mimeType,
-    CacheControl: 'public, max-age=31536000'
-  });
-
   try {
-    await s3Client.send(command);
-    
-    // Construct the public URL manually since PutObject doesn't return it
-    const publicUrl = `https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public/${BUCKET_NAME}/${objectKey}`;
-    return publicUrl;
+    return await uploadBufferToBucket(QUESTIONS_BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Storage upload error:', error);
     throw new Error('Failed to upload image to storage.');
+  }
+}
+
+export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, chapterContext, noteId) {
+  const sanitizedFileName = sanitizeFileName(originalName);
+  const objectKey = [
+    'batches',
+    chapterContext.batch_id,
+    'chapters',
+    chapterContext.id,
+    'notes',
+    noteId,
+    sanitizedFileName,
+  ].join('/');
+
+  try {
+    return await uploadBufferToBucket(NOTES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+  } catch (error) {
+    console.error('Notes storage upload error:', error);
+    throw new Error('Failed to upload note to storage.');
   }
 }
 
@@ -63,27 +120,19 @@ export async function uploadImageToStorage(fileBuffer, originalName, mimeType, c
  */
 export async function deleteImageFromStorage(imageUrl) {
   try {
-    // Extract the object key from the public URL
-    // URL format: https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public/questions/tests/123/question-abc.jpg
-    const urlPrefix = `https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public/${BUCKET_NAME}/`;
-    
-    if (!imageUrl.startsWith(urlPrefix)) {
-      console.warn('Image URL does not match expected S3 pattern, skipping delete:', imageUrl);
-      return; // Not an S3 image (could be legacy base64 or external), skip silently
-    }
-
-    const objectKey = imageUrl.slice(urlPrefix.length);
-
-    const command = new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: objectKey
-    });
-
-    await s3Client.send(command);
-    console.log('Deleted from S3:', objectKey);
+    await deleteFileFromStorageByUrl(imageUrl, QUESTIONS_BUCKET_NAME);
   } catch (error) {
     console.error('Storage delete error:', error);
     throw new Error('Failed to delete image from storage.');
+  }
+}
+
+export async function deleteNoteFromStorage(fileUrl) {
+  try {
+    await deleteFileFromStorageByUrl(fileUrl, NOTES_BUCKET_NAME);
+  } catch (error) {
+    console.error('Notes storage delete error:', error);
+    throw new Error('Failed to delete note from storage.');
   }
 }
 
@@ -100,7 +149,7 @@ export async function deleteAllImagesForContext(context, contextId) {
 
     // List all objects under this prefix
     const listCommand = new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
+      Bucket: QUESTIONS_BUCKET_NAME,
       Prefix: prefix
     });
 
@@ -113,7 +162,7 @@ export async function deleteAllImagesForContext(context, contextId) {
 
     // Batch delete all objects
     const deleteCommand = new DeleteObjectsCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: QUESTIONS_BUCKET_NAME,
       Delete: {
         Objects: listResult.Contents.map(obj => ({ Key: obj.Key })),
         Quiet: true

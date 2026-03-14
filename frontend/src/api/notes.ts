@@ -26,6 +26,18 @@ async function runRequest(
     });
 }
 
+async function runFormRequest(path: string, options: RequestInit = {}): Promise<Response> {
+    return fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+            ...getAuthHeaders(),
+            ...(options.headers || {}),
+        },
+    });
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const response = await runRequest(path, options);
     const data = await response.json().catch(() => ({}));
@@ -58,6 +70,18 @@ export async function apiCreateNote(payload: CreateNotePayload): Promise<ApiNote
         method: "POST",
         body: JSON.stringify(payload),
     });
+}
+
+export async function apiUploadNote(formData: FormData): Promise<ApiNote> {
+    const response = await runFormRequest("/api/notes/upload", {
+        method: "POST",
+        body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error((data as any)?.message || "Upload failed");
+    }
+    return data as ApiNote;
 }
 
 export async function apiUpdateNote(id: string, updates: Partial<CreateNotePayload>): Promise<ApiNote> {
