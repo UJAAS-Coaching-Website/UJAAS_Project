@@ -279,9 +279,20 @@ export function NotesManagementTab({
             {currentView !== 'root' && (<button onClick={goBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>)}
             <div>
               {headerMode === 'full' ? (
-                <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
-                  {currentView === 'root' ? 'Academic Content' : selectedSubject}
-                </h2>
+                currentView === 'root' ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
+                      Academic Content
+                    </h2>
+                  </div>
+                ) : (
+                  <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
+                    {selectedSubject}
+                  </h2>
+                )
               ) : (
                 <h2 className="font-bold text-gray-900 text-lg">
                   {currentView === 'subject' ? selectedSubject : selectedChapterObj?.name}
@@ -371,7 +382,6 @@ export function NotesManagementTab({
               <div className="text-center">
                 <h4 className="font-bold text-gray-900">{sub.name}</h4>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600 transition-colors" />
             </motion.div>
           ))}
           {subjects.length === 0 && (

@@ -1095,9 +1095,18 @@ function OverviewTab({
     <div className="space-y-6">
       {/* Dashboard Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 p-8 rounded-3xl shadow-xl text-white mb-8">
-        <div>
+        <div className="flex items-start gap-3">
+          <button
+            onClick={onClearBatch}
+            className="p-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 transition-colors mt-1"
+            title="Back to batches"
+          >
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
           <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
           <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
+          </div>
         </div>
         <button
           onClick={onOpenAttendance}
@@ -1110,21 +1119,16 @@ function OverviewTab({
 
       {/* Batch Content Section */}
       <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100">
-        <div className="p-5 flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900">Academic Content</h3>
-        </div>
         <div className="p-1">
           <NotesManagementTab
-            onNavigate={onNavigate}
-            selectedBatch={selectedBatch}
-            onChangeBatch={onClearBatch}
-            onViewTimetable={onViewTimetable}
-            facultySubject={facultySubject}
-            batches={batches}
-            variant="faculty"
+              onNavigate={onNavigate}
+              selectedBatch={selectedBatch}
+              onChangeBatch={onClearBatch}
+              onViewTimetable={onViewTimetable}
+              facultySubject={facultySubject}
+              batches={batches}
+              headerMode="full"
+              variant="faculty"
           />
         </div>
       </div>
