@@ -6,6 +6,7 @@ import { TestTaking } from './TestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import {
   fetchDppAttemptResult,
+  fetchDppAttemptQuestionExplanation,
   fetchMyDppAttemptSummary,
   submitMyDppAttempt,
   type ApiDppAttemptHistoryEntry,
@@ -171,6 +172,8 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
         isPreview={true}
         disableEditing={true}
         hideExplanations={false}
+        reviewAttemptId={result.attempt_id}
+        loadQuestionExplanation={fetchDppAttemptQuestionExplanation}
       />
     );
   }

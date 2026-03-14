@@ -5,6 +5,7 @@ import {
     startStudentDppAttempt,
     submitStudentDppAttempt,
     getDppAttemptResultForUser,
+    getDppAttemptQuestionExplanationForUser,
     getDppAttemptAnalysis,
     createDpp,
     updateDpp,
@@ -92,6 +93,19 @@ export async function handleGetDppAttemptResult(req, res) {
     } catch (error) {
         console.error("handleGetDppAttemptResult error:", error.message);
         return res.status(500).json({ message: "failed to fetch dpp attempt result", error: error.message });
+    }
+}
+
+export async function handleGetDppAttemptQuestionExplanation(req, res) {
+    try {
+        const result = await getDppAttemptQuestionExplanationForUser(req.params.attemptId, req.params.questionId, req.user);
+        if (!result) {
+            return res.status(404).json({ message: "question explanation not found" });
+        }
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("handleGetDppAttemptQuestionExplanation error:", error.message);
+        return res.status(500).json({ message: "failed to fetch dpp question explanation", error: error.message });
     }
 }
 

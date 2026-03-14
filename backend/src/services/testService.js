@@ -124,6 +124,14 @@ function mapAttemptRow(row) {
     };
 }
 
+function stripExplanationFields(question) {
+    return {
+        ...question,
+        explanation: null,
+        explanation_img: null,
+    };
+}
+
 /**
  * Get all tests with batch assignments and question counts.
  */
@@ -598,7 +606,7 @@ async function buildAttemptResult(attemptId) {
 
     const answers = attempt.answers && typeof attempt.answers === "object" ? attempt.answers : {};
     const questions = questionsResult.rows.map((question) => ({
-        ...question,
+        ...stripExplanationFields(question),
         user_answer: Object.prototype.hasOwnProperty.call(answers, question.id)
             ? answers[question.id]
             : null,
@@ -624,6 +632,35 @@ async function buildAttemptResult(attemptId) {
         instructions: attempt.instructions || undefined,
         questions,
     };
+}
+
+async function getAttemptAccessForUser(attemptId, user) {
+    const lookup = await pool.query(`
+        SELECT
+            ta.id,
+            ta.student_id,
+            ta.test_id
+        FROM test_attempts ta
+        WHERE ta.id = $1
+    `, [attemptId]);
+
+    if (lookup.rowCount === 0) {
+        return null;
+    }
+
+    const attempt = lookup.rows[0];
+    if (user?.role === "student" && attempt.student_id !== user.sub) {
+        return null;
+    }
+
+    if (user?.role === "student") {
+        const allowedTest = await getTestByIdForStudent(attempt.test_id, user.sub);
+        if (!allowedTest) {
+            return null;
+        }
+    }
+
+    return attempt;
 }
 
 export async function getStudentAttemptSummary(testId, studentId) {
@@ -869,32 +906,36 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
 }
 
 export async function getAttemptResultForUser(attemptId, user) {
-    const lookup = await pool.query(`
-        SELECT
-            ta.id,
-            ta.student_id,
-            ta.test_id
-        FROM test_attempts ta
-        WHERE ta.id = $1
-    `, [attemptId]);
-
-    if (lookup.rowCount === 0) {
+    const attempt = await getAttemptAccessForUser(attemptId, user);
+    if (!attempt) {
         return null;
-    }
-
-    const attempt = lookup.rows[0];
-    if (user?.role === "student" && attempt.student_id !== user.sub) {
-        return null;
-    }
-
-    if (user?.role === "student") {
-        const allowedTest = await getTestByIdForStudent(attempt.test_id, user.sub);
-        if (!allowedTest) {
-            return null;
-        }
     }
 
     return buildAttemptResult(attemptId);
+}
+
+export async function getAttemptQuestionExplanationForUser(attemptId, questionId, user) {
+    const attempt = await getAttemptAccessForUser(attemptId, user);
+    if (!attempt) {
+        return null;
+    }
+
+    const explanationResult = await pool.query(`
+        SELECT explanation, explanation_img
+        FROM questions
+        WHERE id = $1
+          AND test_id = $2
+        LIMIT 1
+    `, [questionId, attempt.test_id]);
+
+    if (explanationResult.rowCount === 0) {
+        return null;
+    }
+
+    return {
+        explanation: explanationResult.rows[0].explanation || null,
+        explanation_img: explanationResult.rows[0].explanation_img || null,
+    };
 }
 
 export async function getStudentAttemptResults(studentId) {

@@ -8,6 +8,7 @@ import {
     saveStudentAttemptProgress,
     submitStudentAttempt,
     getAttemptResultForUser,
+    getAttemptQuestionExplanationForUser,
     getStudentAttemptResults,
     getTestAttemptAnalysis,
     createTest,
@@ -271,6 +272,19 @@ export async function getAttemptResult(req, res) {
     } catch (error) {
         console.error("getAttemptResult error:", error.message);
         return res.status(500).json({ message: "failed to fetch attempt result", error: error.message });
+    }
+}
+
+export async function getAttemptQuestionExplanation(req, res) {
+    try {
+        const result = await getAttemptQuestionExplanationForUser(req.params.attemptId, req.params.questionId, req.user);
+        if (!result) {
+            return res.status(404).json({ message: "question explanation not found" });
+        }
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("getAttemptQuestionExplanation error:", error.message);
+        return res.status(500).json({ message: "failed to fetch question explanation", error: error.message });
     }
 }
 

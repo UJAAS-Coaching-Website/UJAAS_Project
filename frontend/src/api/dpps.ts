@@ -130,6 +130,11 @@ export interface ApiDppAttemptResultQuestion extends ApiDppQuestion {
     user_answer: string | number | number[] | null;
 }
 
+export interface ApiDppQuestionExplanation {
+    explanation: string | null;
+    explanation_img: string | null;
+}
+
 export interface ApiDppAttemptResult {
     attempt_id: string;
     attempt_no: number;
@@ -204,6 +209,13 @@ export async function submitMyDppAttempt(id: string, answers: Record<string, str
 
 export async function fetchDppAttemptResult(attemptId: string): Promise<ApiDppAttemptResult> {
     return request<ApiDppAttemptResult>(`/api/dpps/attempts/${attemptId}/result`);
+}
+
+export async function fetchDppAttemptQuestionExplanation(
+    attemptId: string,
+    questionId: string
+): Promise<ApiDppQuestionExplanation> {
+    return request<ApiDppQuestionExplanation>(`/api/dpps/attempts/${attemptId}/questions/${questionId}/explanation`);
 }
 
 export async function fetchDppAnalysis(dppId: string): Promise<ApiDppAnalysis> {

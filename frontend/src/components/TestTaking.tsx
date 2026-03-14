@@ -31,6 +31,23 @@ interface Question {
   type: 'MCQ' | 'MSQ' | 'Numerical';
   explanation?: string;
   explanationImage?: string;
+  metadata?: {
+    section?: string;
+  };
+}
+
+interface QuestionExplanationPayload {
+  explanation: string | null;
+  explanation_img: string | null;
+}
+
+type ExplanationStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
+interface QuestionExplanationState {
+  status: ExplanationStatus;
+  visible: boolean;
+  explanation?: string;
+  explanationImage?: string;
 }
 
 interface TestTakingProps {
@@ -49,7 +66,73 @@ interface TestTakingProps {
   hideExplanations?: boolean;
   availableBatches?: { label: string; slug: string }[];
   initialBatches?: string[];
+  reviewAttemptId?: string;
+  loadQuestionExplanation?: (attemptId: string, questionId: string) => Promise<QuestionExplanationPayload>;
 }
+
+const DEFAULT_EXPLANATION_STATE: QuestionExplanationState = {
+  status: 'idle',
+  visible: false,
+};
+
+const isUnattemptedValue = (value: string | number | number[] | null | undefined) =>
+  Array.isArray(value) ? value.length === 0 : value === undefined || value === null || value === '';
+
+const normalizeReviewAnswer = (value: string | number | number[] | null | undefined, questionType: Question['type']) => {
+  if (isUnattemptedValue(value)) {
+    return null;
+  }
+
+  if (questionType === 'Numerical') {
+    return String(value).trim();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : String(value).trim();
+};
+
+const normalizeNumericReviewValue = (value: string | number | null | undefined) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const raw = String(value).trim();
+  if (!raw) {
+    return null;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : raw;
+};
+
+const isNumericalReviewCorrect = (submittedAnswer: string | number | null, correctAnswer: string | number) => {
+  const normalizedSubmitted = normalizeNumericReviewValue(submittedAnswer);
+  const normalizedCorrect = normalizeNumericReviewValue(correctAnswer);
+
+  if (normalizedSubmitted === null || normalizedCorrect === null) {
+    return false;
+  }
+
+  return normalizedSubmitted === normalizedCorrect;
+};
+
+const getCorrectOptionIndices = (question: Question) => {
+  if (question.type === 'MCQ') {
+    return typeof question.correctAnswer === 'number' ? [question.correctAnswer] : [];
+  }
+
+  if (question.type === 'MSQ') {
+    return Array.isArray(question.correctAnswer) ? [...question.correctAnswer].sort((a, b) => a - b) : [];
+  }
+
+  return [];
+};
 
 export function TestTaking({
   testId,
@@ -66,7 +149,9 @@ export function TestTaking({
   disableEditing = false,
   hideExplanations = false,
   availableBatches = [],
-  initialBatches = []
+  initialBatches = [],
+  reviewAttemptId,
+  loadQuestionExplanation
 }: TestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [testTitle, setTestTitle] = useState(initialTitle);
@@ -83,9 +168,11 @@ export function TestTaking({
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
+  const [questionExplanations, setQuestionExplanations] = useState<Record<string, QuestionExplanationState>>({});
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const isStudentReviewMode = disableEditing && Boolean(reviewAttemptId) && Boolean(loadQuestionExplanation);
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
 
@@ -104,6 +191,10 @@ export function TestTaking({
       setEditForm(questions[currentQuestion]);
     }
   }, [isEditing, currentQuestion, questions]);
+
+  useEffect(() => {
+    setQuestionExplanations({});
+  }, [reviewAttemptId]);
 
   const handleSaveEdit = () => {
     if (editForm.id) {
@@ -317,6 +408,56 @@ export function TestTaking({
     return 'not-answered';
   };
 
+  const getExplanationState = (questionId: string) => questionExplanations[questionId] || DEFAULT_EXPLANATION_STATE;
+
+  const toggleQuestionExplanation = async (questionId: string) => {
+    if (hideExplanations) return;
+
+    const existingState = getExplanationState(questionId);
+    if (!existingState.visible && existingState.status === 'idle' && isStudentReviewMode && reviewAttemptId && loadQuestionExplanation) {
+      setQuestionExplanations((prev) => ({
+        ...prev,
+        [questionId]: {
+          ...existingState,
+          visible: true,
+          status: 'loading',
+        },
+      }));
+
+      try {
+        const payload = await loadQuestionExplanation(reviewAttemptId, questionId);
+        setQuestionExplanations((prev) => ({
+          ...prev,
+          [questionId]: {
+            visible: true,
+            status: 'loaded',
+            explanation: payload.explanation || '',
+            explanationImage: payload.explanation_img || undefined,
+          },
+        }));
+      } catch (error) {
+        console.error('Failed to load question explanation', error);
+        setQuestionExplanations((prev) => ({
+          ...prev,
+          [questionId]: {
+            ...existingState,
+            visible: true,
+            status: 'error',
+          },
+        }));
+      }
+      return;
+    }
+
+    setQuestionExplanations((prev) => ({
+      ...prev,
+      [questionId]: {
+        ...existingState,
+        visible: !existingState.visible,
+      },
+    }));
+  };
+
   const answeredCount = questions.filter(q => isAnsweredValue(answers[q.id])).length;
   const notAnsweredCount = questions.length - answeredCount;
 
@@ -506,13 +647,58 @@ export function TestTaking({
                   <div className="space-y-3">
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
-                        const isCorrect = isAnyPreview && (
-                          question.type === 'MCQ'
-                            ? question.correctAnswer === index
-                            : Array.isArray(question.correctAnswer) && question.correctAnswer.includes(index)
-                        );
                         const isSelected = isOptionSelected(question.id, index);
                         const isMsq = question.type === 'MSQ';
+                        const normalizedAnswer = normalizeReviewAnswer(answers[question.id], question.type);
+                        const isUnattempted = normalizedAnswer === null;
+                        const correctOptionIndices = getCorrectOptionIndices(question);
+                        const isCorrectOption = correctOptionIndices.includes(index);
+                        const selectedMsqValues = Array.isArray(normalizedAnswer) ? normalizedAnswer : [];
+                        const hasWrongMsqSelection = question.type === 'MSQ'
+                          ? selectedMsqValues.some((value) => !correctOptionIndices.includes(value))
+                          : false;
+                        const isAllCorrectMsq = question.type === 'MSQ'
+                          ? !hasWrongMsqSelection
+                            && selectedMsqValues.length === correctOptionIndices.length
+                            && correctOptionIndices.every((value, valueIndex) => selectedMsqValues[valueIndex] === value)
+                          : false;
+
+                        let optionToneClasses = 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50';
+                        let controlToneClasses = isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300';
+                        let badgeLabel: string | null = null;
+                        let badgeClasses = '';
+
+                        if (isStudentReviewMode) {
+                          const isWrongSelectedOption = isSelected && !isCorrectOption;
+
+                          if (isWrongSelectedOption) {
+                            optionToneClasses = 'border-red-500 bg-red-50 shadow-md ring-1 ring-red-200';
+                            controlToneClasses = 'border-red-500 bg-red-500';
+                            badgeLabel = question.type === 'MSQ' ? 'Wrong Answer' : 'Wrong';
+                            badgeClasses = 'text-red-700 bg-red-100';
+                          } else if (isCorrectOption) {
+                            optionToneClasses = 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200';
+                            controlToneClasses = 'border-green-500 bg-green-500';
+
+                            if (question.type === 'MCQ') {
+                              if (isUnattempted) {
+                                badgeLabel = 'Unattempted';
+                                badgeClasses = 'text-green-700 bg-green-100';
+                              } else if (isSelected) {
+                                badgeLabel = 'Right Answer';
+                                badgeClasses = 'text-green-700 bg-green-100';
+                              }
+                            } else if (isAllCorrectMsq) {
+                              badgeLabel = 'Right Answer';
+                              badgeClasses = 'text-green-700 bg-green-100';
+                            }
+                          }
+                        } else if (isAnyPreview && isCorrectOption) {
+                          optionToneClasses = 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200';
+                          controlToneClasses = 'border-green-500 bg-green-500';
+                          badgeLabel = 'CORRECT';
+                          badgeClasses = 'text-green-600 bg-green-100';
+                        }
 
                         return (
                           <div key={index} className="space-y-2">
@@ -526,19 +712,27 @@ export function TestTaking({
                                 selectAnswer(question.id, index);
                               }}
                               disabled={isAnyPreview}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
-                                isSelected
-                                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-                                }`}
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                                isStudentReviewMode
+                                  ? optionToneClasses
+                                  : correctOptionIndices.includes(index)
+                                    ? optionToneClasses
+                                    : isSelected
+                                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                                      : optionToneClasses
+                              }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isCorrect ? 'border-green-500 bg-green-500' :
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-500'
-                                    : 'border-gray-300'
-                                  }`}>
-                                  {(isSelected || isCorrect) && (
+                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${
+                                  isStudentReviewMode
+                                    ? controlToneClasses
+                                    : correctOptionIndices.includes(index)
+                                      ? controlToneClasses
+                                      : isSelected
+                                        ? 'border-blue-500 bg-blue-500'
+                                        : controlToneClasses
+                                }`}>
+                                  {(isSelected || correctOptionIndices.includes(index)) && (
                                     isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
                                 </div>
@@ -550,8 +744,8 @@ export function TestTaking({
                                     </div>
                                   )}
                                 </div>
-                                {isCorrect && (
-                                  <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">CORRECT</span>
+                                {badgeLabel && (
+                                  <span className={`text-xs font-bold px-2 py-1 rounded ${badgeClasses}`}>{badgeLabel}</span>
                                 )}
                               </div>
                             </button>
@@ -561,7 +755,50 @@ export function TestTaking({
                     ) : (
                       <div className="bg-amber-50 p-6 rounded-2xl border-2 border-dashed border-amber-200">
                         <p className="text-sm font-bold text-amber-800 mb-2">Numerical Answer</p>
-                        {isAnyPreview ? (
+                        {isStudentReviewMode ? (
+                          (() => {
+                            const normalizedAnswer = normalizeReviewAnswer(answers[question.id], question.type);
+                            const isUnattempted = normalizedAnswer === null;
+                            const isCorrect = !isUnattempted && isNumericalReviewCorrect(normalizedAnswer as string | number, question.correctAnswer);
+
+                            return (
+                              <div className="space-y-3">
+                                {!isUnattempted && (
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-semibold text-slate-700">Your Answer</span>
+                                    <div className={`px-6 py-3 bg-white rounded-xl border-2 font-bold text-xl ${
+                                      isCorrect ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'
+                                    }`}>
+                                      {String(normalizedAnswer)}
+                                    </div>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                      isCorrect ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                                    }`}>
+                                      {isCorrect ? 'Your Answer Is Right' : 'Your Answer Is Wrong'}
+                                    </span>
+                                  </div>
+                                )}
+                                {isUnattempted ? (
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-semibold text-slate-700">Right Answer</span>
+                                    <div className="px-6 py-3 bg-white rounded-xl border-2 border-green-500 font-bold text-green-700 text-xl">
+                                      {String(question.correctAnswer)}
+                                    </div>
+                                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">Unattempted</span>
+                                  </div>
+                                ) : isCorrect ? null : (
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-semibold text-slate-700">Right Answer</span>
+                                    <div className="px-6 py-3 bg-white rounded-xl border-2 border-green-500 font-bold text-green-700 text-xl">
+                                      {String(question.correctAnswer)}
+                                    </div>
+                                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">Right Answer</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()
+                        ) : isAnyPreview ? (
                           <div className="flex items-center gap-3">
                             <div className="px-6 py-3 bg-white rounded-xl border-2 border-green-500 font-bold text-green-700 text-xl">
                               {question.correctAnswer}
@@ -582,22 +819,57 @@ export function TestTaking({
                   </div>
 
                   {/* Explanation Section */}
-                  {isAnyPreview && !hideExplanations && (
-                    <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2 text-blue-700">
-                          <AlertCircle className="w-5 h-5" />
-                          <h3 className="font-bold">Explanation</h3>
+                  {isAnyPreview && !hideExplanations && isStudentReviewMode && (
+                    <div className="mt-8">
+                      <button
+                        onClick={() => void toggleQuestionExplanation(question.id)}
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+                      >
+                        {getExplanationState(question.id).visible ? 'Hide Explanation' : 'Show Explanation'}
+                      </button>
+                      {getExplanationState(question.id).visible && (
+                        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-6">
+                          <div className="mb-3 flex items-center gap-2 text-blue-700">
+                            <AlertCircle className="w-5 h-5" />
+                            <h3 className="font-bold">Explanation</h3>
+                          </div>
+                          <div className="space-y-4">
+                            {getExplanationState(question.id).status === 'loading' && (
+                              <p className="text-sm font-medium text-blue-700">Loading explanation...</p>
+                            )}
+                            {getExplanationState(question.id).status === 'error' && (
+                              <p className="text-sm font-medium text-red-600">Unable to load explanation right now.</p>
+                            )}
+                            {getExplanationState(question.id).status === 'loaded' && (
+                              <>
+                                {(getExplanationState(question.id).explanation || !getExplanationState(question.id).explanationImage) && (
+                                  <p className="text-gray-700 leading-relaxed italic">
+                                    {getExplanationState(question.id).explanation || 'No explanation provided for this question.'}
+                                  </p>
+                                )}
+                                {getExplanationState(question.id).explanationImage && (
+                                  <div className="rounded-xl overflow-hidden border border-blue-100 inline-block bg-white p-2">
+                                    <img src={getExplanationState(question.id).explanationImage} alt="Solution" className="max-h-64 w-auto object-contain" />
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                        {isFacultyPreview && !hasExplanationContent(question) && (
-                          <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">
-                            Needs Explanation
-                          </span>
-                        )}
+                      )}
+                    </div>
+                  )}
+                  {isAnyPreview && !hideExplanations && !isStudentReviewMode && (
+                    <div className="mt-8 p-6 bg-blue-50/50 rounded-2xl border border-blue-100">
+                      <div className="flex items-center gap-2 text-blue-700 mb-3">
+                        <AlertCircle className="w-5 h-5" />
+                        <h3 className="font-bold">Explanation</h3>
                       </div>
-                      <p className="text-gray-700 leading-relaxed italic mb-4">
-                        {question.explanation || "No explanation provided for this question."}
-                      </p>
+                      {(question.explanation || !question.explanationImage) && (
+                        <p className="text-gray-700 leading-relaxed italic mb-4">
+                          {question.explanation || "No explanation provided for this question."}
+                        </p>
+                      )}
                       {question.explanationImage && (
                         <div className="rounded-xl overflow-hidden border border-blue-100 inline-block bg-white p-2">
                           <img src={question.explanationImage} alt="Solution" className="max-h-64 w-auto object-contain" />

@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { TestTaking } from './TestTaking';
-import type { ApiAttemptHistoryEntry } from '../api/tests';
+import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
 import {
   Trophy,
   Target,
@@ -33,7 +33,7 @@ interface Question {
   metadata?: {
     section?: string;
   };
-  userAnswer?: number | string | null;
+  userAnswer?: number | string | number[] | null;
 }
 
 interface TestResult {
@@ -282,6 +282,8 @@ export function StudentAnalytics({
             isFacultyPreview={true}
             disableEditing={true}
             hideExplanations={hideExplanations}
+            reviewAttemptId={(result as any).attempt_id}
+            loadQuestionExplanation={fetchAttemptQuestionExplanation}
           />
         </motion.div>
       </div>

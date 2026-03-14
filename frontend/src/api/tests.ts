@@ -167,6 +167,11 @@ export interface ApiAttemptResultQuestion extends ApiQuestion {
     user_answer: string | number | number[] | null;
 }
 
+export interface ApiQuestionExplanation {
+    explanation: string | null;
+    explanation_img: string | null;
+}
+
 export interface ApiAttemptResult {
     attempt_id: string;
     attempt_no: number;
@@ -287,6 +292,13 @@ export async function fetchMyAttemptResults(): Promise<ApiStudentAttemptResultLi
 
 export async function fetchAttemptResult(attemptId: string): Promise<ApiAttemptResult> {
     return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`);
+}
+
+export async function fetchAttemptQuestionExplanation(
+    attemptId: string,
+    questionId: string
+): Promise<ApiQuestionExplanation> {
+    return request<ApiQuestionExplanation>(`/api/tests/attempts/${attemptId}/questions/${questionId}/explanation`);
 }
 
 export async function fetchMyTestAttemptSummary(testId: string): Promise<ApiAttemptSummary> {

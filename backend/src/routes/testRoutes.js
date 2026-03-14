@@ -9,6 +9,7 @@ import {
     saveMyAttemptProgress,
     submitMyAttempt,
     getAttemptResult,
+    getAttemptQuestionExplanation,
     getTestAnalysis,
     handleCreateTest,
     handleUpdateTestStatus,
@@ -20,6 +21,7 @@ const router = Router();
 
 router.get("/attempts/mine", authenticate, requireRole("student"), listMyAttemptResults);
 router.get("/attempts/:attemptId/result", authenticate, requireAnyRole("admin", "faculty", "student"), getAttemptResult);
+router.get("/attempts/:attemptId/questions/:questionId/explanation", authenticate, requireAnyRole("admin", "faculty", "student"), getAttemptQuestionExplanation);
 router.patch("/attempts/:attemptId/progress", authenticate, requireRole("student"), saveMyAttemptProgress);
 router.post("/attempts/:attemptId/submit", authenticate, requireRole("student"), submitMyAttempt);
 router.get("/:id/attempts/analysis", authenticate, requireAnyRole("admin", "faculty"), getTestAnalysis);

@@ -114,6 +114,14 @@ function mapQuestionRow(question) {
     };
 }
 
+function stripExplanationFields(question) {
+    return {
+        ...question,
+        explanation: null,
+        explanation_img: null,
+    };
+}
+
 async function getQuestionsForDpp(dppId, client = pool) {
     const result = await client.query(`
         SELECT
@@ -486,12 +494,35 @@ async function buildDppAttemptResult(attemptId) {
         unattempted: Number(attempt.unattempted || 0),
         submittedAt: attempt.submitted_at,
         questions: questions.map((question) => ({
-            ...question,
+            ...stripExplanationFields(question),
             user_answer: Object.prototype.hasOwnProperty.call(answers, question.id)
                 ? answers[question.id]
                 : null,
         })),
     };
+}
+
+async function getDppAttemptAccessForUser(attemptId, user) {
+    const lookup = await pool.query(`
+        SELECT id, dpp_id, student_id
+        FROM dpp_attempts
+        WHERE id = $1
+    `, [attemptId]);
+
+    if (lookup.rowCount === 0) return null;
+
+    const attempt = lookup.rows[0];
+    if (user?.role === "student") {
+        if (attempt.student_id !== user.sub) {
+            return null;
+        }
+        const allowed = await getStudentVisibleDppRow(attempt.dpp_id, user.sub);
+        if (!allowed) {
+            return null;
+        }
+    }
+
+    return attempt;
 }
 
 export async function submitStudentDppAttempt(dppId, studentId, { answers } = {}) {
@@ -556,26 +587,32 @@ export async function submitStudentDppAttempt(dppId, studentId, { answers } = {}
 }
 
 export async function getDppAttemptResultForUser(attemptId, user) {
-    const lookup = await pool.query(`
-        SELECT id, dpp_id, student_id
-        FROM dpp_attempts
-        WHERE id = $1
-    `, [attemptId]);
-
-    if (lookup.rowCount === 0) return null;
-
-    const attempt = lookup.rows[0];
-    if (user?.role === "student") {
-        if (attempt.student_id !== user.sub) {
-            return null;
-        }
-        const allowed = await getStudentVisibleDppRow(attempt.dpp_id, user.sub);
-        if (!allowed) {
-            return null;
-        }
-    }
+    const attempt = await getDppAttemptAccessForUser(attemptId, user);
+    if (!attempt) return null;
 
     return buildDppAttemptResult(attemptId);
+}
+
+export async function getDppAttemptQuestionExplanationForUser(attemptId, questionId, user) {
+    const attempt = await getDppAttemptAccessForUser(attemptId, user);
+    if (!attempt) return null;
+
+    const result = await pool.query(`
+        SELECT explanation, explanation_img
+        FROM questions
+        WHERE id = $1
+          AND dpp_id = $2
+        LIMIT 1
+    `, [questionId, attempt.dpp_id]);
+
+    if (result.rowCount === 0) {
+        return null;
+    }
+
+    return {
+        explanation: result.rows[0].explanation || null,
+        explanation_img: result.rows[0].explanation_img || null,
+    };
 }
 
 export async function getDppAttemptAnalysis(dppId) {
