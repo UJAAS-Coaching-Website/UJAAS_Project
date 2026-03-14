@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
 import { fetchDppAnalysis, type ApiDppAnalysis } from '../api/dpps';
+import { TableRowsSkeleton } from './ui/content-skeletons';
 
 function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
   if (type === 'MCQ') {
@@ -201,9 +202,8 @@ export function DppPerformanceInsights({
         </div>
 
         {isLoading ? (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-16 text-center">
-            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Loading student analysis...</p>
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            <TableRowsSkeleton rows={7} columns={5} />
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">

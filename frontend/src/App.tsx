@@ -48,6 +48,8 @@ import {
 } from './api/tests';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
+import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
+import { Skeleton } from './components/ui/skeleton';
 
 function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
   if (type === 'MCQ') {
@@ -171,6 +173,60 @@ export type StudentTab = (typeof studentTabs)[number];
 export type Tab = StudentTab | AdminTab | FacultyTab | 'add-student';
 
 export type AdminLandingSection = AdminSection | FacultySection;
+
+function DashboardLoadingShell({ role }: { role: User['role'] }) {
+  const showManagementRows = role === 'admin' || role === 'faculty';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      <div className="border-b border-white bg-white/70 backdrop-blur-lg shadow-lg">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="UJAAS Logo" className="h-10 w-10 object-contain opacity-80" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          <DashboardHeroSkeleton />
+
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
+            ))}
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: role === 'student' ? 4 : 6 }).map((_, index) => (
+              <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
+            ))}
+          </div>
+
+          {showManagementRows ? (
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+              <TableRowsSkeleton rows={6} columns={role === 'admin' ? 5 : 4} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <TestCardSkeleton key={`dashboard-test-skeleton-${index}`} />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   type AdminBatch = string;
@@ -1294,6 +1350,10 @@ function App() {
   };
 
   if (loading) {
+    if (user) {
+      return <DashboardLoadingShell role={user.role} />;
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0 }}

@@ -12,6 +12,7 @@ import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDpp
 import { createBatchNotification } from '../api/batches';
 import { DppPerformanceInsights } from './DppPerformanceInsights';
 import { TestTaking } from './TestTaking';
+import { ChapterCardSkeleton, DppCardSkeleton, NoteCardSkeleton, TableRowsSkeleton } from './ui/content-skeletons';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -109,6 +110,9 @@ export function NotesManagementTab({
   const [apiChapters, setApiChapters] = useState<ApiChapter[]>([]);
   const [apiNotes, setApiNotes] = useState<ApiNote[]>([]);
   const [apiDpps, setApiDpps] = useState<ApiDpp[]>([]);
+  const [loadingChapters, setLoadingChapters] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingDpps, setLoadingDpps] = useState(false);
 
   // Chapter State Reference
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
@@ -201,26 +205,35 @@ export function NotesManagementTab({
   // Load backend chapters whenever we view a subject
   useEffect(() => {
     if (selectedSubject && currentBatch?.id) {
+      setLoadingChapters(true);
+      setApiChapters([]);
       apiFetchChapters(currentBatch.id, selectedSubject)
         .then(setApiChapters)
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setLoadingChapters(false));
     }
   }, [selectedSubject, currentBatch?.id]);
 
   // Load backend notes whenever we view a chapter
   useEffect(() => {
     if (selectedChapterObj?.id && activeContentType === 'notes') {
+      setLoadingNotes(true);
+      setApiNotes([]);
       apiFetchNotes(selectedChapterObj.id)
         .then(setApiNotes)
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setLoadingNotes(false));
     }
   }, [selectedChapterObj?.id, activeContentType]);
 
   useEffect(() => {
     if (selectedChapterObj?.id && activeContentType === 'dpps') {
+      setLoadingDpps(true);
+      setApiDpps([]);
       fetchDpps(selectedChapterObj.id)
         .then(setApiDpps)
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setLoadingDpps(false));
     }
   }, [selectedChapterObj?.id, activeContentType]);
 
@@ -635,6 +648,14 @@ export function NotesManagementTab({
       {/* Subject View: Chapter List */}
       {currentView === 'subject' && selectedSubject && (
         <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
+          {loadingChapters && (variant === 'admin' || variant === 'faculty') && <TableRowsSkeleton rows={5} columns={3} />}
+          {loadingChapters && variant === 'student' && (
+            <>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ChapterCardSkeleton key={`chapter-card-skeleton-${index}`} />
+              ))}
+            </>
+          )}
           {(variant === 'admin' || variant === 'faculty') && apiChapters.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -684,7 +705,7 @@ export function NotesManagementTab({
             </div>
           )}
 
-          {variant === 'student' && apiChapters.map((chapter, index) => (
+          {variant === 'student' && !loadingChapters && apiChapters.map((chapter, index) => (
             <motion.div
               key={chapter.id}
               initial={{ opacity: 0, x: -10 }}
@@ -716,7 +737,7 @@ export function NotesManagementTab({
             </motion.div>
           ))}
 
-          {apiChapters.length === 0 && (
+          {!loadingChapters && apiChapters.length === 0 && (
             <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
               <Folder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">No chapters exist for this subject. {canManageContent ? 'Create the first one!' : ''}</p>
@@ -746,7 +767,15 @@ export function NotesManagementTab({
 
           <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
             {activeContentType === 'notes' ? (
-              (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
+              loadingNotes ? (
+                (variant === 'admin' || variant === 'faculty') ? (
+                  <TableRowsSkeleton rows={5} columns={3} />
+                ) : (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <NoteCardSkeleton key={`note-skeleton-${index}`} />
+                  ))
+                )
+              ) : (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -833,7 +862,11 @@ export function NotesManagementTab({
                 ))
               )
             ) : (
-              apiDpps.map((item, index) => (
+              loadingDpps ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <DppCardSkeleton key={`dpp-skeleton-${index}`} />
+                ))
+              ) : apiDpps.map((item, index) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 10 }}
@@ -919,13 +952,13 @@ export function NotesManagementTab({
               ))
             )}
 
-            {activeContentType === 'notes' && apiNotes.length === 0 && (
+            {!loadingNotes && activeContentType === 'notes' && apiNotes.length === 0 && (
               <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                 <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No files found for this category.</p>
               </div>
             )}
-            {activeContentType === 'dpps' && apiDpps.length === 0 && (
+            {!loadingDpps && activeContentType === 'dpps' && apiDpps.length === 0 && (
               <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                 <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No DPPs found for this chapter.</p>

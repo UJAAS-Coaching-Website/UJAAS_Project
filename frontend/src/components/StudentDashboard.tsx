@@ -22,6 +22,8 @@ import { X, Calendar } from 'lucide-react';
 import { NotesManagementTab } from './NotesManagementTab';
 import { DPPPractice, type DppPracticeSession } from './DPPPractice';
 import type { ApiStartDppAttemptPayload } from '../api/dpps';
+import { DashboardHeroSkeleton, SubjectCardSkeleton } from './ui/content-skeletons';
+import { Skeleton } from './ui/skeleton';
 
 interface StudentDashboardProps {
   user: User;
@@ -530,8 +532,24 @@ function AssignedBatchContent({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 rounded-3xl bg-white/60 border border-white shadow-lg">
-        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6">
+        <DashboardHeroSkeleton />
+        <div className="rounded-3xl border border-gray-100 bg-white/40 p-1 shadow-xl">
+          <div className="p-5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6 p-5 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SubjectCardSkeleton key={index} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
