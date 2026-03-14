@@ -48,6 +48,25 @@ import {
 } from './api/tests';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
+import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
+import { Skeleton } from './components/ui/skeleton';
+
+function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
 
 export interface User {
   id: string;
@@ -155,6 +174,60 @@ export type Tab = StudentTab | AdminTab | FacultyTab | 'add-student';
 
 export type AdminLandingSection = AdminSection | FacultySection;
 
+function DashboardLoadingShell({ role }: { role: User['role'] }) {
+  const showManagementRows = role === 'admin' || role === 'faculty';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      <div className="border-b border-white bg-white/70 backdrop-blur-lg shadow-lg">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="UJAAS Logo" className="h-10 w-10 object-contain opacity-80" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          <DashboardHeroSkeleton />
+
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
+            ))}
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: role === 'student' ? 4 : 6 }).map((_, index) => (
+              <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
+            ))}
+          </div>
+
+          {showManagementRows ? (
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+              <TableRowsSkeleton rows={6} columns={role === 'admin' ? 5 : 4} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <TestCardSkeleton key={`dashboard-test-skeleton-${index}`} />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function App() {
   type AdminBatch = string;
   type AdminBatchInfo = {
@@ -202,6 +275,7 @@ function App() {
   };
 
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
   const [queries, setQueries] = useState<LandingQuery[]>([]);
 
   const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
@@ -411,7 +485,7 @@ function App() {
       questionImage: q.question_img || undefined,
       options: q.options || undefined,
       optionImages: q.option_imgs || undefined,
-      correctAnswer: q.type === 'MCQ' ? Number(q.correct_answer) : q.correct_answer,
+      correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
       marks: q.marks,
       negativeMarks: q.neg_marks,
       explanation: q.explanation || undefined,
@@ -914,6 +988,7 @@ function App() {
       setAdminLandingSection('batches');
       const tab = isStudentTab(route.tab) ? route.tab : 'home';
       setActiveTab(tab);
+      setStudentSubTab(route.view === 'student' ? route.subTab : undefined);
       if (route.view !== 'student' || route.tab !== tab || (route.view === 'student' && route.subTab)) {
         window.history.replaceState({ tab, subTab: route.subTab }, '', tabToPath('student', tab, null, route.subTab));
       }
@@ -931,6 +1006,7 @@ function App() {
     setAdminBatch(parsedBatch);
     setAdminLandingSection(parsedSection);
     setActiveTab(adminTab);
+    setStudentSubTab(undefined);
     const canonicalPath = parsedBatch
       ? tabToPath(isFacultyRole ? 'faculty' : 'admin', adminTab, parsedBatch)
       : adminTab === 'profile'
@@ -951,8 +1027,10 @@ function App() {
 
     let path = '';
     if (user.role === 'student') {
+      setStudentSubTab(subTab);
       path = tabToPath('student', tab as StudentTab, null, subTab);
     } else {
+      setStudentSubTab(undefined);
       const role = user.role === 'faculty' ? 'faculty' : 'admin';
       if (adminBatch) {
         path = tabToPath(role, tab, adminBatch);
@@ -977,6 +1055,7 @@ function App() {
     setAdminBatch(batch);
     setAdminLandingSection('batches');
     setActiveTab('home');
+    setStudentSubTab(undefined);
     const path = tabToPath(user?.role === 'faculty' ? 'faculty' : 'admin', 'home', batch);
     window.history.pushState({ tab: 'home', batch, section: 'batches' }, '', path);
   };
@@ -986,6 +1065,7 @@ function App() {
     setAdminBatch(null);
     setAdminLandingSection('batches');
     setActiveTab('home');
+    setStudentSubTab(undefined);
     window.history.pushState(
       { tab: 'home', batch: null, section: 'batches' },
       '',
@@ -999,6 +1079,7 @@ function App() {
     setAdminBatch(null);
     const targetTab = section === 'test-series' ? 'test-series' : 'home';
     setActiveTab(targetTab);
+    setStudentSubTab(undefined);
     const path = user?.role === 'faculty' ? facultySectionToPath(section) : adminSectionToPath(section);
     window.history.pushState({ tab: targetTab, batch: null, section }, '', path);
   };
@@ -1143,6 +1224,7 @@ function App() {
       (route.view === 'student' || route.view === 'generic')
     ) {
       setActiveTab(route.tab);
+      setStudentSubTab(route.view === 'student' ? route.subTab : undefined);
       setAdminBatch(null);
       setAdminLandingSection('batches');
       return;
@@ -1154,6 +1236,7 @@ function App() {
       setAdminBatch(parsedBatch);
       setAdminLandingSection(parsedSection);
       setActiveTab(parsedTab);
+      setStudentSubTab(undefined);
       const isFacultyRole = userData.role === 'faculty';
       const isRoleMismatch =
         (userData.role === 'faculty' && route.view === 'admin') ||
@@ -1178,12 +1261,14 @@ function App() {
     if (userData.role === 'student') {
       setAdminBatch(null);
       setAdminLandingSection('batches');
+      setStudentSubTab(undefined);
       window.history.pushState({ tab: defaultTab }, '', tabToPath('student', defaultTab));
       return;
     }
 
     setAdminBatch(null);
     setAdminLandingSection('batches');
+    setStudentSubTab(undefined);
     window.history.pushState(
       { tab: defaultTab, batch: null, section: 'batches' },
       '',
@@ -1265,6 +1350,10 @@ function App() {
   };
 
   if (loading) {
+    if (user) {
+      return <DashboardLoadingShell role={user.role} />;
+    }
+
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -1354,7 +1443,7 @@ function App() {
             <StudentDashboard
               user={user}
               activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
-              subTab={parsePath().view === 'student' ? parsePath().subTab : undefined}
+              subTab={studentSubTab}
               onNavigate={navigateTab}
               onLogout={handleLogout}
               notifications={notifications}

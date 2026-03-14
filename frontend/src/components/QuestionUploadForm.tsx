@@ -98,7 +98,8 @@ export function QuestionUploadForm({
       const formData = new FormData();
       formData.append('image', file);
       
-      const context = window.location.pathname.includes('dpps') ? 'dpps' : 'tests';
+      const currentPath = window.location.pathname.toLowerCase();
+      const context = currentPath.includes('dpps') || currentPath.includes('create-dpp') ? 'dpps' : 'tests';
       formData.append('context', context);
       
       // QuestionUploadForm is often used during creation.

@@ -32,7 +32,7 @@ interface Question {
   explanationImage?: string;
 }
 
-type StudentAnswer = string | number | null;
+type StudentAnswer = string | number | number[] | null;
 
 interface StudentTestTakingProps {
   testId: string;
@@ -51,6 +51,8 @@ interface StudentTestTakingProps {
   deadlineAt?: string;
   serverNow?: string;
   onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
+  enableTimer?: boolean;
+  showMarksMeta?: boolean;
 }
 
 export function StudentTestTaking({
@@ -69,7 +71,9 @@ export function StudentTestTaking({
   initialBatches = [],
   deadlineAt,
   serverNow,
-  onSaveProgress
+  onSaveProgress,
+  enableTimer = true,
+  showMarksMeta = true
 }: StudentTestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || []);
   const [testTitle, setTestTitle] = useState(initialTitle);
@@ -180,7 +184,7 @@ export function StudentTestTaking({
   };
 
   useEffect(() => {
-    if (isAnyPreview) return;
+    if (isAnyPreview || !enableTimer) return;
     
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -228,8 +232,25 @@ export function StudentTestTaking({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isAnsweredValue = (value: StudentAnswer | undefined) =>
+    Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '';
+
+  const isOptionSelected = (questionId: string, optionIndex: number) => {
+    const answer = answers[questionId];
+    return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
+  };
+
   const selectAnswer = (questionId: string, value: StudentAnswer) => {
     setAnswers({ ...answers, [questionId]: value });
+  };
+
+  const toggleMsqAnswer = (questionId: string, optionIndex: number) => {
+    const currentAnswer = answers[questionId];
+    const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
+    const nextValues = currentValues.includes(optionIndex)
+      ? currentValues.filter((value) => value !== optionIndex)
+      : [...currentValues, optionIndex].sort((a, b) => a - b);
+    selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
   };
 
   const toggleFlag = (questionId: string) => {
@@ -244,13 +265,13 @@ export function StudentTestTaking({
 
   const getQuestionStatus = (index: number) => {
     const question = questions[index];
-    if (answers[question.id] !== undefined && answers[question.id] !== null) {
+    if (isAnsweredValue(answers[question.id])) {
       return 'answered';
     }
     return 'not-answered';
   };
 
-  const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null).length;
+  const answeredCount = questions.filter(q => isAnsweredValue(answers[q.id])).length;
   const notAnsweredCount = questions.length - answeredCount;
 
   // Grouped stats for summary table
@@ -272,9 +293,9 @@ export function StudentTestTaking({
       subjectSections.forEach(section => {
         const sectionQuestions = subjectQuestions.filter(q => ((q as any).metadata?.section || 'Default') === section);
         
-        const answered = sectionQuestions.filter(q => answers[q.id] !== undefined && answers[q.id] !== null && !flaggedQuestions.has(q.id)).length;
-        const marked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && (answers[q.id] === undefined || answers[q.id] === null)).length;
-        const answeredAndMarked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && answers[q.id] !== undefined && answers[q.id] !== null).length;
+        const answered = sectionQuestions.filter(q => isAnsweredValue(answers[q.id]) && !flaggedQuestions.has(q.id)).length;
+        const marked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && !isAnsweredValue(answers[q.id])).length;
+        const answeredAndMarked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && isAnsweredValue(answers[q.id])).length;
         const visited = sectionQuestions.filter(q => visitedQuestions.has(q.id)).length;
         const total = sectionQuestions.length;
         const notAnswered = visited - (answered + marked + answeredAndMarked);
@@ -320,10 +341,12 @@ export function StudentTestTaking({
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
                   {questionCount} Questions
                 </span>
-                <span className="flex items-center gap-1">
-                  <Award className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {totalMarks} Marks
-                </span>
+                {showMarksMeta && (
+                  <span className="flex items-center gap-1">
+                    <Award className="w-3 h-3 sm:w-4 sm:h-4" />
+                    {totalMarks} Marks
+                  </span>
+                )}
                 {isAnyPreview && (
                   <>
                     <span className="flex items-center gap-1">
@@ -342,7 +365,7 @@ export function StudentTestTaking({
 
             <div className="flex items-center gap-3">
               {/* Timer - only for students */}
-              {!isAnyPreview && (
+              {!isAnyPreview && enableTimer && (
                 <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
                   timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
                   timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
@@ -451,9 +474,11 @@ export function StudentTestTaking({
                             {currentSection}
                           </span>
                         )}
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                          {question.marks} marks
-                        </span>
+                        {showMarksMeta && (
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                            {question.marks} marks
+                          </span>
+                        )}
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
                           {question.type}
                         </span>
@@ -482,31 +507,43 @@ export function StudentTestTaking({
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
                         const isCorrect = isAnyPreview && (
-                          question.type === 'MCQ' ? question.correctAnswer === index :
-                          Array.isArray(question.correctAnswer) && (question.correctAnswer as number[]).includes(index)
+                          question.type === 'MCQ'
+                            ? question.correctAnswer === index
+                            : Array.isArray(question.correctAnswer) && question.correctAnswer.includes(index)
                         );
+                        const isSelected = isOptionSelected(question.id, index);
+                        const isMsq = question.type === 'MSQ';
                         
                         return (
                           <div key={index} className="space-y-2">
                             <button
-                              onClick={() => !isAnyPreview && selectAnswer(question.id, index)}
+                              onClick={() => {
+                                if (isAnyPreview) return;
+                                if (isMsq) {
+                                  toggleMsqAnswer(question.id, index);
+                                  return;
+                                }
+                                selectAnswer(question.id, index);
+                              }}
                               disabled={isAnyPreview}
                               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                                 isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
-                                answers[question.id] === index
+                                isSelected
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
                                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
                               }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isMsq ? 'rounded-md' : 'rounded-full'
+                                } ${
                                   isCorrect ? 'border-green-500 bg-green-500' :
-                                  answers[question.id] === index
+                                  isSelected
                                     ? 'border-blue-500 bg-blue-500'
                                     : 'border-gray-300'
                                 }`}>
-                                  {(answers[question.id] === index || isCorrect) && (
-                                    <div className="w-2 h-2 bg-white rounded-full" />
+                                  {(isSelected || isCorrect) && (
+                                    isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
                                 </div>
                                 <div className="flex-1">
@@ -538,7 +575,7 @@ export function StudentTestTaking({
                         ) : (
                           <input
                             type="text"
-                            value={answers[question.id] || ''}
+                            value={Array.isArray(answers[question.id]) ? '' : (answers[question.id] || '')}
                             onChange={(e) => selectAnswer(question.id, e.target.value as any)}
                             className="w-full max-w-xs px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                             placeholder="Enter numerical value"

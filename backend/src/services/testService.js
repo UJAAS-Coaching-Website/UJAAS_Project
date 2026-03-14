@@ -13,6 +13,22 @@ const TEST_SCHEDULE_TS_EXPR = `
     END
 `;
 
+function normalizeNumericValue(value) {
+    const parsed = Number(String(value).trim());
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw) {
+    const submittedNumeric = normalizeNumericValue(submittedAnswer);
+    const correctNumeric = normalizeNumericValue(correctAnswerRaw);
+
+    if (submittedNumeric !== null && correctNumeric !== null) {
+        return submittedNumeric === correctNumeric;
+    }
+
+    return String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+}
+
 function parseStoredAnswer(value, questionType) {
     if (value === undefined || value === null || value === "") {
         return null;
@@ -22,12 +38,16 @@ function parseStoredAnswer(value, questionType) {
         return String(value).trim();
     }
 
+    if (Array.isArray(value)) {
+        return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+    }
+
     if (typeof value === "number") {
         return value;
     }
 
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    return Number.isFinite(parsed) ? parsed : String(value).trim();
 }
 
 function scoreAttempt(questions, answers) {
@@ -49,7 +69,19 @@ function scoreAttempt(questions, answers) {
 
         let isCorrect = false;
         if (question.type === "Numerical") {
-            isCorrect = String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
+            isCorrect = isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw);
+        } else if (question.type === "MSQ") {
+            let normalizedCorrect;
+            try {
+                normalizedCorrect = Array.isArray(correctAnswerRaw)
+                    ? correctAnswerRaw
+                    : JSON.parse(correctAnswerRaw);
+            } catch {
+                normalizedCorrect = [];
+            }
+            const sortedCorrect = (normalizedCorrect || []).map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+            const sortedSubmitted = Array.isArray(submittedAnswer) ? submittedAnswer : [];
+            isCorrect = JSON.stringify(sortedCorrect) === JSON.stringify(sortedSubmitted);
         } else {
             const parsedCorrect = Number(correctAnswerRaw);
             isCorrect = Number.isFinite(parsedCorrect) && Number(submittedAnswer) === parsedCorrect;
@@ -89,6 +121,14 @@ function mapAttemptRow(row) {
         wrong_answers: Number(row.wrong_answers || 0),
         unattempted: Number(row.unattempted || 0),
         answers: row.answers || {},
+    };
+}
+
+function stripExplanationFields(question) {
+    return {
+        ...question,
+        explanation: null,
+        explanation_img: null,
     };
 }
 
@@ -475,43 +515,66 @@ async function getActiveAttempt(client, testId, studentId, forUpdate = false) {
     return mapAttemptRow(result.rows[0]);
 }
 
-async function buildAttemptResult(attemptId) {
-    const attemptResult = await pool.query(`
-        WITH ranked_attempts AS (
+const TEST_FIRST_ATTEMPT_RANKING_CTE = `
+    first_submitted_attempts AS (
+        SELECT *
+        FROM (
             SELECT
                 ta.*,
-                RANK() OVER (
-                    PARTITION BY ta.test_id
-                    ORDER BY ta.score DESC NULLS LAST, ta.submitted_at ASC, ta.attempt_no ASC
-                ) AS rank,
-                COUNT(*) OVER (PARTITION BY ta.test_id) AS total_students
+                ROW_NUMBER() OVER (
+                    PARTITION BY ta.test_id, ta.student_id
+                    ORDER BY ta.submitted_at ASC, ta.attempt_no ASC
+                ) AS first_attempt_row_num
             FROM test_attempts ta
             WHERE ta.submitted_at IS NOT NULL
-        )
+        ) ranked_first
+        WHERE ranked_first.first_attempt_row_num = 1
+    ),
+    ranked_first_attempts AS (
         SELECT
-            ra.id,
-            ra.test_id,
-            ra.student_id,
-            ra.attempt_no,
-            ra.started_at,
-            ra.deadline_at,
-            ra.submitted_at,
-            ra.auto_submitted,
-            ra.time_spent,
-            ra.answers,
-            ra.score,
-            ra.correct_answers,
-            ra.wrong_answers,
-            ra.unattempted,
-            ra.rank,
-            ra.total_students,
+            fsa.test_id,
+            fsa.student_id,
+            fsa.id AS ranked_attempt_id,
+            RANK() OVER (
+                PARTITION BY fsa.test_id
+                ORDER BY fsa.score DESC NULLS LAST, fsa.submitted_at ASC, fsa.attempt_no ASC
+            ) AS rank,
+            COUNT(*) OVER (PARTITION BY fsa.test_id) AS total_students
+        FROM first_submitted_attempts fsa
+    )
+`;
+
+async function buildAttemptResult(attemptId) {
+    const attemptResult = await pool.query(`
+        WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
+        SELECT
+            ta.id,
+            ta.test_id,
+            ta.student_id,
+            ta.attempt_no,
+            ta.started_at,
+            ta.deadline_at,
+            ta.submitted_at,
+            ta.auto_submitted,
+            ta.time_spent,
+            ta.answers,
+            ta.score,
+            ta.correct_answers,
+            ta.wrong_answers,
+            ta.unattempted,
+            rfa.rank,
+            rfa.total_students,
             t.title AS test_title,
             t.total_marks,
             COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
             t.instructions
-        FROM ranked_attempts ra
-        JOIN tests t ON t.id = ra.test_id
-        WHERE ra.id = $1
+        FROM test_attempts ta
+        JOIN tests t ON t.id = ta.test_id
+        LEFT JOIN ranked_first_attempts rfa
+            ON rfa.test_id = ta.test_id
+           AND rfa.student_id = ta.student_id
+        WHERE ta.id = $1
+          AND ta.submitted_at IS NOT NULL
     `, [attemptId]);
 
     if (attemptResult.rowCount === 0) {
@@ -543,7 +606,7 @@ async function buildAttemptResult(attemptId) {
 
     const answers = attempt.answers && typeof attempt.answers === "object" ? attempt.answers : {};
     const questions = questionsResult.rows.map((question) => ({
-        ...question,
+        ...stripExplanationFields(question),
         user_answer: Object.prototype.hasOwnProperty.call(answers, question.id)
             ? answers[question.id]
             : null,
@@ -571,39 +634,62 @@ async function buildAttemptResult(attemptId) {
     };
 }
 
+async function getAttemptAccessForUser(attemptId, user) {
+    const lookup = await pool.query(`
+        SELECT
+            ta.id,
+            ta.student_id,
+            ta.test_id
+        FROM test_attempts ta
+        WHERE ta.id = $1
+    `, [attemptId]);
+
+    if (lookup.rowCount === 0) {
+        return null;
+    }
+
+    const attempt = lookup.rows[0];
+    if (user?.role === "student" && attempt.student_id !== user.sub) {
+        return null;
+    }
+
+    if (user?.role === "student") {
+        const allowedTest = await getTestByIdForStudent(attempt.test_id, user.sub);
+        if (!allowedTest) {
+            return null;
+        }
+    }
+
+    return attempt;
+}
+
 export async function getStudentAttemptSummary(testId, studentId) {
     const access = await getTestByIdForStudent(testId, studentId);
     if (!access) return null;
 
     const [historyResult, activeResult] = await Promise.all([
         pool.query(`
-            WITH ranked_attempts AS (
-                SELECT
-                    ta.*,
-                    RANK() OVER (
-                        PARTITION BY ta.test_id
-                        ORDER BY ta.score DESC NULLS LAST, ta.submitted_at ASC, ta.attempt_no ASC
-                    ) AS rank,
-                    COUNT(*) OVER (PARTITION BY ta.test_id) AS total_students
-                FROM test_attempts ta
-                WHERE ta.test_id = $1
-                  AND ta.submitted_at IS NOT NULL
-            )
+            WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
             SELECT
-                ra.id,
-                ra.attempt_no,
-                ra.submitted_at,
-                ra.auto_submitted,
-                ra.time_spent,
-                ra.score,
-                ra.correct_answers,
-                ra.wrong_answers,
-                ra.unattempted,
-                ra.rank,
-                ra.total_students
-            FROM ranked_attempts ra
-            WHERE ra.student_id = $2
-            ORDER BY ra.attempt_no DESC
+                ta.id,
+                ta.attempt_no,
+                ta.submitted_at,
+                ta.auto_submitted,
+                ta.time_spent,
+                ta.score,
+                ta.correct_answers,
+                ta.wrong_answers,
+                ta.unattempted,
+                rfa.rank,
+                rfa.total_students
+            FROM test_attempts ta
+            LEFT JOIN ranked_first_attempts rfa
+                ON rfa.test_id = ta.test_id
+               AND rfa.student_id = ta.student_id
+            WHERE ta.test_id = $1
+              AND ta.student_id = $2
+              AND ta.submitted_at IS NOT NULL
+            ORDER BY ta.attempt_no DESC
         `, [testId, studentId]),
         pool.query(`
             SELECT *
@@ -820,60 +906,54 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
 }
 
 export async function getAttemptResultForUser(attemptId, user) {
-    const lookup = await pool.query(`
-        SELECT
-            ta.id,
-            ta.student_id,
-            ta.test_id
-        FROM test_attempts ta
-        WHERE ta.id = $1
-    `, [attemptId]);
-
-    if (lookup.rowCount === 0) {
+    const attempt = await getAttemptAccessForUser(attemptId, user);
+    if (!attempt) {
         return null;
-    }
-
-    const attempt = lookup.rows[0];
-    if (user?.role === "student" && attempt.student_id !== user.sub) {
-        return null;
-    }
-
-    if (user?.role === "student") {
-        const allowedTest = await getTestByIdForStudent(attempt.test_id, user.sub);
-        if (!allowedTest) {
-            return null;
-        }
     }
 
     return buildAttemptResult(attemptId);
 }
 
+export async function getAttemptQuestionExplanationForUser(attemptId, questionId, user) {
+    const attempt = await getAttemptAccessForUser(attemptId, user);
+    if (!attempt) {
+        return null;
+    }
+
+    const explanationResult = await pool.query(`
+        SELECT explanation, explanation_img
+        FROM questions
+        WHERE id = $1
+          AND test_id = $2
+        LIMIT 1
+    `, [questionId, attempt.test_id]);
+
+    if (explanationResult.rowCount === 0) {
+        return null;
+    }
+
+    return {
+        explanation: explanationResult.rows[0].explanation || null,
+        explanation_img: explanationResult.rows[0].explanation_img || null,
+    };
+}
+
 export async function getStudentAttemptResults(studentId) {
     const result = await pool.query(`
-        WITH ranked_attempts AS (
-            SELECT
-                ta.*,
-                RANK() OVER (
-                    PARTITION BY ta.test_id
-                    ORDER BY ta.score DESC NULLS LAST, ta.submitted_at ASC, ta.attempt_no ASC
-                ) AS rank,
-                COUNT(*) OVER (PARTITION BY ta.test_id) AS total_students
-            FROM test_attempts ta
-            WHERE ta.submitted_at IS NOT NULL
-        )
+        WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
         SELECT
-            ra.id,
-            ra.test_id,
-            ra.attempt_no,
-            ra.submitted_at,
-            ra.auto_submitted,
-            ra.time_spent,
-            ra.score,
-            ra.correct_answers,
-            ra.wrong_answers,
-            ra.unattempted,
-            ra.rank,
-            ra.total_students,
+            ta.id,
+            ta.test_id,
+            ta.attempt_no,
+            ta.submitted_at,
+            ta.auto_submitted,
+            ta.time_spent,
+            ta.score,
+            ta.correct_answers,
+            ta.wrong_answers,
+            ta.unattempted,
+            rfa.rank,
+            rfa.total_students,
             t.title AS test_title,
             t.total_marks,
             COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
@@ -882,10 +962,14 @@ export async function getStudentAttemptResults(studentId) {
                 FROM questions q
                 WHERE q.test_id = t.id
             ) AS total_questions
-        FROM ranked_attempts ra
-        JOIN tests t ON t.id = ra.test_id
-        WHERE ra.student_id = $1
-        ORDER BY ra.submitted_at DESC, ra.attempt_no DESC
+        FROM test_attempts ta
+        JOIN tests t ON t.id = ta.test_id
+        LEFT JOIN ranked_first_attempts rfa
+            ON rfa.test_id = ta.test_id
+           AND rfa.student_id = ta.student_id
+        WHERE ta.student_id = $1
+          AND ta.submitted_at IS NOT NULL
+        ORDER BY ta.submitted_at DESC, ta.attempt_no DESC
     `, [studentId]);
 
     return result.rows.map((row) => ({
@@ -913,15 +997,11 @@ export async function getStudentAttemptResults(studentId) {
 
 export async function getTestAttemptAnalysis(testId) {
     const result = await pool.query(`
-        WITH ranked_attempts AS (
+        WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE},
+        submitted_attempts AS (
             SELECT
                 ta.*,
-                u.name AS student_name,
-                RANK() OVER (
-                    PARTITION BY ta.test_id
-                    ORDER BY ta.score DESC NULLS LAST, ta.submitted_at ASC, ta.attempt_no ASC
-                ) AS rank,
-                COUNT(*) OVER (PARTITION BY ta.test_id) AS total_students
+                u.name AS student_name
             FROM test_attempts ta
             JOIN users u ON u.id = ta.student_id
             WHERE ta.test_id = $1
@@ -933,28 +1013,31 @@ export async function getTestAttemptAnalysis(testId) {
             WHERE test_id = $1
         )
         SELECT
-            ra.id,
-            ra.student_id,
-            ra.student_name,
-            ra.attempt_no,
-            ra.submitted_at,
-            ra.auto_submitted,
-            ra.time_spent,
-            ra.score,
-            ra.correct_answers,
-            ra.wrong_answers,
-            ra.unattempted,
-            ra.rank,
-            ra.total_students,
+            sa.id,
+            sa.student_id,
+            sa.student_name,
+            sa.attempt_no,
+            sa.submitted_at,
+            sa.auto_submitted,
+            sa.time_spent,
+            sa.score,
+            sa.correct_answers,
+            sa.wrong_answers,
+            sa.unattempted,
+            rfa.rank,
+            rfa.total_students,
             qc.total_questions,
             t.total_marks,
             COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
             t.instructions,
             t.title AS test_title
-        FROM ranked_attempts ra
+        FROM submitted_attempts sa
+        LEFT JOIN ranked_first_attempts rfa
+            ON rfa.test_id = sa.test_id
+           AND rfa.student_id = sa.student_id
         CROSS JOIN question_counts qc
-        JOIN tests t ON t.id = ra.test_id
-        ORDER BY ra.submitted_at DESC, ra.attempt_no DESC
+        JOIN tests t ON t.id = sa.test_id
+        ORDER BY sa.submitted_at DESC, sa.attempt_no DESC
     `, [testId]);
 
     const mappedAttempts = await Promise.all(result.rows.map(async (row) => ({

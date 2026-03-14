@@ -1,5 +1,6 @@
 import { Calendar, CheckCircle, Trophy, X, XCircle, BookOpen, Target, Award } from 'lucide-react';
 import type { ApiStudentAttemptResultListItem } from '../api/tests';
+import { StatCardSkeleton, TableRowsSkeleton } from './ui/content-skeletons';
 
 interface ViewResultsProps {
   results: ApiStudentAttemptResultListItem[];
@@ -45,7 +46,9 @@ export function ViewResults({
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
+        {isLoading ? Array.from({ length: 4 }).map((_, index) => (
+          <StatCardSkeleton key={`result-stat-skeleton-${index}`} />
+        )) : [
           { label: 'Attempts', value: totalAttempts.toString(), icon: BookOpen, gradient: 'from-blue-500 to-cyan-500' },
           { label: 'Average Score', value: `${averageScore.toFixed(1)}%`, icon: Target, gradient: 'from-green-500 to-emerald-500' },
           { label: 'Average Rank', value: totalAttempts > 0 ? `#${averageRank}` : '-', icon: Trophy, gradient: 'from-yellow-500 to-orange-500' },
@@ -67,10 +70,7 @@ export function ViewResults({
         </div>
 
         {isLoading ? (
-          <div className="p-12 text-center text-gray-500">
-            <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            Loading results...
-          </div>
+          <TableRowsSkeleton rows={6} columns={7} />
         ) : (
         <div className="overflow-x-auto">
           <table className="w-full">

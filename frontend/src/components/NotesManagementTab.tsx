@@ -8,7 +8,11 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
+import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDppById, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp, type ApiDppAnalysis } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
+import { DppPerformanceInsights } from './DppPerformanceInsights';
+import { TestTaking } from './TestTaking';
+import { ChapterCardSkeleton, DppCardSkeleton, NoteCardSkeleton, TableRowsSkeleton } from './ui/content-skeletons';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -50,6 +54,42 @@ interface NotesManagementTabProps {
 }
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
+
+function parseDppCorrectAnswer(type: string, correctAnswer: string) {
+  if (type === 'MCQ') {
+    return Number(correctAnswer);
+  }
+
+  if (type === 'MSQ') {
+    try {
+      const parsed = JSON.parse(correctAnswer);
+      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return correctAnswer;
+}
+
+async function preloadDppAssets(questions: ApiDpp['questions']) {
+  const imageSources = (questions || []).flatMap((question) => [
+    question.question_img,
+    question.explanation_img,
+    ...(question.option_imgs || []),
+  ]).filter((value): value is string => Boolean(value));
+
+  await Promise.all(imageSources.map((src) => {
+    if (src.startsWith('data:')) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+      image.src = src;
+    });
+  }));
+}
 
 export function NotesManagementTab({
   onNavigate,
@@ -69,10 +109,19 @@ export function NotesManagementTab({
   // API Models
   const [apiChapters, setApiChapters] = useState<ApiChapter[]>([]);
   const [apiNotes, setApiNotes] = useState<ApiNote[]>([]);
+  const [apiDpps, setApiDpps] = useState<ApiDpp[]>([]);
+  const [loadingChapters, setLoadingChapters] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingDpps, setLoadingDpps] = useState(false);
 
   // Chapter State Reference
   const [selectedChapterObj, setSelectedChapterObj] = useState<ApiChapter | null>(null);
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
+  const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
+  const [previewingDppId, setPreviewingDppId] = useState<string | null>(null);
+  const [analyticsLoadingDppId, setAnalyticsLoadingDppId] = useState<string | null>(null);
+  const [analyticsDpp, setAnalyticsDpp] = useState<{ id: string; title: string; analysis: ApiDppAnalysis } | null>(null);
+  const [previewDpp, setPreviewDpp] = useState<ApiDpp | null>(null);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -105,13 +154,9 @@ export function NotesManagementTab({
 
   useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen || isUploadNoticeModalOpen);
 
-  // canEdit is true if NOT readOnly AND (admin OR matching faculty subject)
-  const canEdit = !readOnly && (variant === 'admin' || !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase()));
-
-  // Wait, dpps are not API-backed yet. Let's keep a mock stub for now.
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22', chapterId: 'dummy' }
-  ]);
+  const facultyMatchesSubject = !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase());
+  const canManageStructure = !readOnly && variant === 'admin';
+  const canManageContent = !readOnly && variant === 'faculty' && facultyMatchesSubject;
 
   useEffect(() => {
     if (!selectedBatch) return;
@@ -160,24 +205,41 @@ export function NotesManagementTab({
   // Load backend chapters whenever we view a subject
   useEffect(() => {
     if (selectedSubject && currentBatch?.id) {
+      setLoadingChapters(true);
+      setApiChapters([]);
       apiFetchChapters(currentBatch.id, selectedSubject)
         .then(setApiChapters)
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setLoadingChapters(false));
     }
   }, [selectedSubject, currentBatch?.id]);
 
   // Load backend notes whenever we view a chapter
   useEffect(() => {
     if (selectedChapterObj?.id && activeContentType === 'notes') {
+      setLoadingNotes(true);
+      setApiNotes([]);
       apiFetchNotes(selectedChapterObj.id)
         .then(setApiNotes)
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setLoadingNotes(false));
+    }
+  }, [selectedChapterObj?.id, activeContentType]);
+
+  useEffect(() => {
+    if (selectedChapterObj?.id && activeContentType === 'dpps') {
+      setLoadingDpps(true);
+      setApiDpps([]);
+      fetchDpps(selectedChapterObj.id)
+        .then(setApiDpps)
+        .catch(console.error)
+        .finally(() => setLoadingDpps(false));
     }
   }, [selectedChapterObj?.id, activeContentType]);
 
   const handleAddChapter = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedSubject || !canEdit || !currentBatch?.id) return;
+    if (!selectedSubject || !canManageContent || !currentBatch?.id) return;
     if (newChapterName.trim()) {
       try {
         const newChapter = await apiCreateChapter({
@@ -197,7 +259,7 @@ export function NotesManagementTab({
   };
 
   const handleDeleteChapter = async (chapter: ApiChapter) => {
-    if (!canEdit) return;
+    if (!canManageContent) return;
     if (confirm(`Are you sure you want to delete the chapter "${chapter.name}"?`)) {
       try {
         await apiDeleteChapter(chapter.id);
@@ -210,7 +272,7 @@ export function NotesManagementTab({
   };
 
   const handleDeleteNote = async (id: string) => {
-    if (!canEdit) return;
+    if (!canManageContent) return;
     if (confirm('Are you sure you want to delete this note?')) {
       try {
         await apiDeleteNote(id);
@@ -222,15 +284,21 @@ export function NotesManagementTab({
     }
   };
 
-  const handleDeleteDPP = (id: string) => {
-    if (!canEdit) return;
+  const handleDeleteDPP = async (id: string) => {
+    if (!canManageContent) return;
     if (confirm('Are you sure you want to delete this DPP?')) {
-      setDpps(dpps.filter(d => d.id !== id));
+      try {
+        await deleteDpp(id);
+        setApiDpps((prev) => prev.filter((dpp) => dpp.id !== id));
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete DPP');
+      }
     }
   };
 
   const handleDeleteSubject = async (subjectName: string) => {
-    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !onUpdateBatch || !currentBatch) return;
 
     if (window.confirm(`Are you sure you want to delete the subject "${subjectName}" from this batch? This will NOT delete any content (notes/DPPs) but will remove the subject association for this batch.`)) {
       try {
@@ -256,7 +324,7 @@ export function NotesManagementTab({
 
   const handleAddSubject = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canEdit || !selectedBatch || !onUpdateBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !onUpdateBatch || !currentBatch) return;
 
     const name = newSubjectName.trim();
     if (!name) return;
@@ -287,7 +355,7 @@ export function NotesManagementTab({
 
   const handleUploadNotice = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canEdit || !selectedBatch || !currentBatch) return;
+    if (!canManageStructure || !selectedBatch || !currentBatch) return;
 
     const title = noticeTitle.trim();
     const message = noticeMessage.trim();
@@ -314,6 +382,124 @@ export function NotesManagementTab({
   const navigateToSubject = (subject: string) => { setSelectedSubject(subject); setCurrentView('subject'); };
   const navigateToChapter = (chapter: ApiChapter) => { setSelectedChapterObj(chapter); setCurrentView('chapter'); setActiveContentType('notes'); };
   const goBack = () => { if (currentView === 'chapter') { setCurrentView('subject'); setSelectedChapterObj(null); } else if (currentView === 'subject') { setCurrentView('root'); setSelectedSubject(null); } };
+
+  const handleAttemptDpp = async (dppId: string) => {
+    try {
+      setLoadingDppId(dppId);
+      const payload = await startMyDppAttempt(dppId);
+      await preloadDppAssets(payload.dpp.questions);
+      localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+        batchLabel: selectedBatch,
+        selectedSubject,
+        chapterId: selectedChapterObj?.id,
+        chapterName: selectedChapterObj?.name,
+        currentView,
+        activeContentType,
+      }));
+
+      if (variant === 'student') {
+        sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify({
+          mode: 'attempt',
+          payload,
+        }));
+        onNavigate('home', 'dpp');
+        return;
+      }
+    } catch (error: any) {
+      alert(error?.message || 'Unable to start DPP');
+    } finally {
+      setLoadingDppId(null);
+    }
+  };
+
+  const handlePreviewDpp = async (dppId: string) => {
+    try {
+      setPreviewingDppId(dppId);
+      const summary = await fetchMyDppAttemptSummary(dppId);
+      const latestAttempt = summary.history[0];
+      if (!latestAttempt) return;
+
+      const result = await fetchDppAttemptResult(latestAttempt.id);
+      sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify({
+        mode: 'result',
+        result,
+        history: summary.history,
+        reviewOpen: false,
+      }));
+      onNavigate('home', 'dpp');
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP preview');
+    } finally {
+      setPreviewingDppId(null);
+    }
+  };
+
+  const handleOpenAdminFacultyPreview = async (dppId: string) => {
+    try {
+      setPreviewingDppId(dppId);
+      const dpp = await fetchDppById(dppId);
+      setPreviewDpp(dpp);
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP preview');
+    } finally {
+      setPreviewingDppId(null);
+    }
+  };
+
+  const handleOpenDppAnalytics = async (dppId: string, title: string) => {
+    try {
+      setAnalyticsLoadingDppId(dppId);
+      const analysis = await fetchDppAnalysis(dppId);
+      setAnalyticsDpp({ id: dppId, title, analysis });
+    } catch (error: any) {
+      alert(error?.message || 'Unable to open DPP analytics');
+    } finally {
+      setAnalyticsLoadingDppId(null);
+    }
+  };
+
+  if (analyticsDpp) {
+    return (
+      <DppPerformanceInsights
+        dppId={analyticsDpp.id}
+        dppTitle={analyticsDpp.title}
+        initialAnalysis={analyticsDpp.analysis}
+        onClose={() => setAnalyticsDpp(null)}
+      />
+    );
+  }
+
+  if (previewDpp) {
+    return (
+      <TestTaking
+        testId={previewDpp.id}
+        testTitle={previewDpp.title}
+        duration={0}
+        questions={(previewDpp.questions || []).map((question) => ({
+          id: question.id,
+          question: question.question_text,
+          options: question.options || undefined,
+          optionImages: question.option_imgs || undefined,
+          questionImage: question.question_img || undefined,
+          correctAnswer: parseDppCorrectAnswer(question.type, question.correct_answer),
+          subject: question.subject,
+          marks: question.marks,
+          type: question.type,
+          explanation: question.explanation || undefined,
+          explanationImage: question.explanation_img || undefined,
+          metadata: { section: question.section || undefined },
+        })) as any}
+        onSubmit={() => {}}
+        onExit={() => setPreviewDpp(null)}
+        initialAnswers={{}}
+        initialTimeSpent={0}
+        isPreview={variant === 'admin'}
+        isFacultyPreview={variant === 'faculty'}
+        disableEditing={true}
+        hideExplanations={false}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -379,8 +565,8 @@ export function NotesManagementTab({
                 )}
               </>
             )}
-            {currentView === 'subject' && canEdit && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
-            {currentView === 'chapter' && canEdit && (
+            {currentView === 'subject' && canManageContent && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
+            {currentView === 'chapter' && canManageContent && (
               <div className="flex items-center gap-3">
                 <button onClick={() => {
                   localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
@@ -395,7 +581,19 @@ export function NotesManagementTab({
                   }));
                   onNavigate('upload-notes');
                 }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
-                <button onClick={() => onNavigate('create-dpp')} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
+                <button onClick={() => {
+                  localStorage.setItem('createDppTargetChapterId', selectedChapterObj!.id);
+                  localStorage.setItem('createDppTargetChapterName', selectedChapterObj!.name);
+                  localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+                    batchLabel: selectedBatch,
+                    selectedSubject,
+                    chapterId: selectedChapterObj!.id,
+                    chapterName: selectedChapterObj!.name,
+                    currentView,
+                    activeContentType,
+                  }));
+                  onNavigate('create-dpp');
+                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
               </div>
             )}
           </div>
@@ -450,6 +648,14 @@ export function NotesManagementTab({
       {/* Subject View: Chapter List */}
       {currentView === 'subject' && selectedSubject && (
         <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'}>
+          {loadingChapters && (variant === 'admin' || variant === 'faculty') && <TableRowsSkeleton rows={5} columns={3} />}
+          {loadingChapters && variant === 'student' && (
+            <>
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ChapterCardSkeleton key={`chapter-card-skeleton-${index}`} />
+              ))}
+            </>
+          )}
           {(variant === 'admin' || variant === 'faculty') && apiChapters.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -478,7 +684,7 @@ export function NotesManagementTab({
                       <td className="py-4 px-6 text-sm text-gray-500">{formatRelativeTime(chapter.created_at)}</td>
                       <td className="py-4 pl-6 pr-4 text-right align-middle">
                         <div className="flex items-center justify-end gap-1">
-                          {canEdit && (
+                          {canManageContent && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteChapter(chapter); }}
                               className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50"
@@ -499,7 +705,7 @@ export function NotesManagementTab({
             </div>
           )}
 
-          {variant === 'student' && apiChapters.map((chapter, index) => (
+          {variant === 'student' && !loadingChapters && apiChapters.map((chapter, index) => (
             <motion.div
               key={chapter.id}
               initial={{ opacity: 0, x: -10 }}
@@ -515,7 +721,7 @@ export function NotesManagementTab({
                 <span className="font-bold text-gray-900 block">{chapter.name || `Chapter ${index + 1}`}</span>
               </div>
               <div className="flex items-center gap-2">
-                {canEdit && (
+                {canManageContent && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -531,10 +737,10 @@ export function NotesManagementTab({
             </motion.div>
           ))}
 
-          {apiChapters.length === 0 && (
+          {!loadingChapters && apiChapters.length === 0 && (
             <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
               <Folder className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No chapters exist for this subject. {canEdit ? 'Create the first one!' : ''}</p>
+              <p className="text-gray-500 font-medium">No chapters exist for this subject. {canManageContent ? 'Create the first one!' : ''}</p>
             </div>
           )}
         </div>
@@ -561,7 +767,15 @@ export function NotesManagementTab({
 
           <div className={(variant === 'admin' || variant === 'faculty') ? 'bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm' : 'grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}>
             {activeContentType === 'notes' ? (
-              (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
+              loadingNotes ? (
+                (variant === 'admin' || variant === 'faculty') ? (
+                  <TableRowsSkeleton rows={5} columns={3} />
+                ) : (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <NoteCardSkeleton key={`note-skeleton-${index}`} />
+                  ))
+                )
+              ) : (variant === 'admin' || variant === 'faculty') && apiNotes.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -592,7 +806,7 @@ export function NotesManagementTab({
                               >
                                 <Download className="w-4 h-4" />
                               </button>
-                              {canEdit && (
+                              {canManageContent && (
                                 <button
                                   onClick={() => handleDeleteNote(item.id)}
                                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -631,7 +845,7 @@ export function NotesManagementTab({
                             >
                               <Download className="w-4 h-4" />
                             </button>
-                            {canEdit && (
+                            {canManageContent && (
                               <button
                                 onClick={() => handleDeleteNote(item.id)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -648,17 +862,106 @@ export function NotesManagementTab({
                 ))
               )
             ) : (
-              // DPP Placeholder
-              <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">Digital Practice Papers (DPP) are coming soon to the backend.</p>
-              </div>
+              loadingDpps ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <DppCardSkeleton key={`dpp-skeleton-${index}`} />
+                ))
+              ) : apiDpps.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                  className={`rounded-2xl border border-white bg-white/80 p-5 shadow-lg transition-opacity ${
+                    previewingDppId === item.id ? 'cursor-wait opacity-70' : variant !== 'student' ? 'cursor-pointer' : ''
+                  }`}
+                  onClick={variant !== 'student' ? () => { void handleOpenAdminFacultyPreview(item.id); } : undefined}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                          {item.subject_name}
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                          {item.question_count} Questions
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-gray-900">{item.title}</h4>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {item.chapter_name} • {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                      {variant === 'student' && (
+                        <p className="mt-3 text-sm text-gray-600">
+                          Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
+                        </p>
+                      )}
+                      {variant !== 'student' && previewingDppId === item.id && (
+                        <p className="mt-3 text-sm font-semibold text-blue-600">
+                          Opening preview...
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center self-center gap-2">
+                      {variant === 'student' ? (
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleAttemptDpp(item.id)}
+                            disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                            className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                          </button>
+                          {(item.submitted_attempt_count || 0) > 0 && (
+                            <button
+                              onClick={() => handlePreviewDpp(item.id)}
+                              disabled={previewingDppId === item.id}
+                              className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleOpenDppAnalytics(item.id, item.title);
+                          }}
+                          disabled={analyticsLoadingDppId === item.id}
+                          className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 font-bold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          {analyticsLoadingDppId === item.id ? 'Loading...' : 'Analytics'}
+                        </button>
+                      )}
+                      {canManageContent && (
+                        <button
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDeleteDPP(item.id);
+                          }}
+                          className="rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                          title="Delete DPP"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))
             )}
 
-            {activeContentType === 'notes' && apiNotes.length === 0 && (
+            {!loadingNotes && activeContentType === 'notes' && apiNotes.length === 0 && (
               <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                 <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No files found for this category.</p>
+              </div>
+            )}
+            {!loadingDpps && activeContentType === 'dpps' && apiDpps.length === 0 && (
+              <div className="col-span-full py-16 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No DPPs found for this chapter.</p>
               </div>
             )}
           </div>

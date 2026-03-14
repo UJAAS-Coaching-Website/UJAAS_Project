@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from '../App';
-import { 
+import {
   GraduationCap,
   Star,
   Clock,
@@ -10,9 +10,10 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { fetchBatches, ApiBatch } from '../api/batches';
+import { apiFetchChapters } from '../api/chapters';
+import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
-import { DPPPractice } from './DPPPractice';
 import { QuestionBank } from './QuestionBank';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
@@ -21,6 +22,10 @@ import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { X, Calendar } from 'lucide-react';
 import { NotesManagementTab } from './NotesManagementTab';
+import { DPPPractice, type DppPracticeSession } from './DPPPractice';
+import type { ApiStartDppAttemptPayload } from '../api/dpps';
+import { DashboardHeroSkeleton, SubjectCardSkeleton } from './ui/content-skeletons';
+import { Skeleton } from './ui/skeleton';
 
 interface StudentDashboardProps {
   user: User;
@@ -36,6 +41,7 @@ interface StudentDashboardProps {
 }
 
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
+const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 
 export function StudentDashboard({ 
   user, 
@@ -50,9 +56,9 @@ export function StudentDashboard({
   publishedTests
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
-  const [selectedDPP, setSelectedDPP] = useState<any | null>(null);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -63,37 +69,29 @@ export function StudentDashboard({
     return () => { document.body.style.overflow = 'unset'; };
   }, [showFullTimetable]);
 
-  const [dppAttempts, setDppAttempts] = useState<Record<string, { attempts: number, score: number }>>(() => {
-    const saved = localStorage.getItem('dppAttempts');
-    return saved ? JSON.parse(saved) : {};
-  });
+  useEffect(() => {
+    if (activeTab !== 'home' || subTab !== 'dpp') {
+      setActiveDppSession(null);
+      return;
+    }
 
-  // Compute if navbar should be hidden (either by TestSeries state or DPP Practice)
-  const isNavbarHidden = isNavbarInternalHidden || !!selectedDPP;
+    try {
+      const raw = sessionStorage.getItem(ACTIVE_DPP_SESSION_KEY);
+      if (!raw) {
+        setActiveDppSession(null);
+        return;
+      }
 
-  const handleStartDPP = (dpp: any, subjectName?: string) => {
-    setSelectedDPP({
-      ...dpp,
-      subject: subjectName || dpp.subject || 'General'
-    });
-  };
+      setActiveDppSession(JSON.parse(raw) as DppPracticeSession);
+    } catch (error) {
+      console.error('Failed to restore active DPP session', error);
+      sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
+      setActiveDppSession(null);
+    }
+  }, [activeTab, subTab]);
 
-  const handleCompleteDPP = (score: number) => {
-    if (!selectedDPP) return;
-    
-    setDppAttempts(prev => {
-      const current = prev[selectedDPP.id] || { attempts: 0, score: 0 };
-      const updated = {
-        ...prev,
-        [selectedDPP.id]: {
-          attempts: current.attempts + 1,
-          score: score
-        }
-      };
-      localStorage.setItem('dppAttempts', JSON.stringify(updated));
-      return updated;
-    });
-  };
+  const isDppRoute = activeTab === 'home' && subTab === 'dpp';
+  const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
 
   const handleSubTabNavigate = (newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -101,26 +99,6 @@ export function StudentDashboard({
 
   return (
     <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
-      {/* DPP Practice Overlay */}
-      <AnimatePresence>
-        {selectedDPP && (
-          <DPPPractice 
-            dpp={{
-              id: selectedDPP.id,
-              title: selectedDPP.title,
-              subject: selectedDPP.subject,
-              totalQuestions: selectedDPP.questions || selectedDPP.totalQuestions || 20,
-              duration: selectedDPP.duration || 45,
-              difficulty: selectedDPP.difficulty || 'Medium',
-              completed: !!dppAttempts[selectedDPP.id],
-              score: dppAttempts[selectedDPP.id]?.score
-            }}
-            onExit={() => setSelectedDPP(null)}
-            onComplete={handleCompleteDPP}
-          />
-        )}
-      </AnimatePresence>
-
       {/* Navigation */}
       {!isNavbarHidden && (
         <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar">
@@ -201,7 +179,32 @@ export function StudentDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'home' && (
+          {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
+            <DPPPractice
+              session={activeDppSession}
+              onExit={() => {
+                sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
+                onNavigate('home');
+              }}
+              onSessionChange={(nextSession) => {
+                setActiveDppSession(nextSession);
+                sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+              }}
+            />
+          )}
+          {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
+            <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
+              <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
+              <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>
+              <button
+                onClick={() => onNavigate('home')}
+                className="mt-6 rounded-2xl bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          )}
+          {activeTab === 'home' && subTab !== 'dpp' && (
             <HomeTab 
               user={user} 
               onNavigate={onNavigate} 
@@ -209,7 +212,6 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
-              dppAttempts={dppAttempts}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -237,7 +239,6 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
-              dppAttempts={dppAttempts}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -342,15 +343,74 @@ function HomeTab({
   user, 
   onNavigate, 
   onOpenPerformance,
-  dppAttempts,
   onViewTimetable
 }: { 
   user: User; 
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
-  dppAttempts: Record<string, { attempts: number, score: number }>;
   onViewTimetable: () => void;
 }) {
+  const [dppProgress, setDppProgress] = useState({ completed: 0, total: 0, loading: true });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDppProgress = async () => {
+      if (!user.studentDetails?.batch) {
+        if (!cancelled) {
+          setDppProgress({ completed: 0, total: 0, loading: false });
+        }
+        return;
+      }
+
+      try {
+        if (!cancelled) {
+          setDppProgress((prev) => ({ ...prev, loading: true }));
+        }
+
+        const batches = await fetchBatches();
+        const studentBatch = batches.find((batch) => batch.name === user.studentDetails?.batch);
+
+        if (!studentBatch) {
+          if (!cancelled) {
+            setDppProgress({ completed: 0, total: 0, loading: false });
+          }
+          return;
+        }
+
+        const chapters = await apiFetchChapters(studentBatch.id);
+        const dppGroups = await Promise.all(
+          chapters.map((chapter) => fetchDpps(chapter.id).catch(() => []))
+        );
+
+        const dppMap = new Map<string, { submitted_attempt_count?: number }>();
+        dppGroups.flat().forEach((dpp) => {
+          if (!dppMap.has(dpp.id)) {
+            dppMap.set(dpp.id, { submitted_attempt_count: dpp.submitted_attempt_count });
+          }
+        });
+
+        const total = dppMap.size;
+        const completed = Array.from(dppMap.values()).filter((dpp) => Number(dpp.submitted_attempt_count || 0) > 0).length;
+
+        if (!cancelled) {
+          setDppProgress({ completed, total, loading: false });
+        }
+      } catch (error) {
+        console.error('Failed to load DPP progress', error);
+        if (!cancelled) {
+          setDppProgress({ completed: 0, total: 0, loading: false });
+        }
+      }
+    };
+
+    void loadDppProgress();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.studentDetails?.batch]);
+
   const calculateOverallRating = () => {
     if (!user.studentDetails?.ratings) return 0;
     const r = user.studentDetails.ratings;
@@ -361,16 +421,18 @@ function HomeTab({
   };
 
   const currentRating = calculateOverallRating();
-  const completedCount = dppAttempts ? Object.keys(dppAttempts).length : 0;
+  const completedCount = dppProgress.completed;
+  const totalDpps = dppProgress.total;
+  const dppPercentage = totalDpps > 0 ? (completedCount / totalDpps) * 100 : 0;
 
   const stats = [
     { 
       label: 'DPP Completed', 
-      value: `${completedCount}/30`, 
+      value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`,
       icon: ClipboardList, 
       gradient: 'from-green-500 to-emerald-500',
       bgGradient: 'from-green-50 to-emerald-50',
-      percentage: (completedCount / 30) * 100,
+      percentage: dppPercentage,
       clickable: false,
       onClick: undefined
     },
@@ -529,8 +591,24 @@ function AssignedBatchContent({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 rounded-3xl bg-white/60 border border-white shadow-lg">
-        <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6">
+        <DashboardHeroSkeleton />
+        <div className="rounded-3xl border border-gray-100 bg-white/40 p-1 shadow-xl">
+          <div className="p-5">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6 p-5 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <SubjectCardSkeleton key={index} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -552,7 +630,6 @@ function AssignedBatchContent({
         <div className="relative z-10">
           <div className="flex flex-col gap-1">
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
-            <p className="text-slate-600 font-medium">Batch Academic Overview & Content</p>
           </div>
         </div>
         <button 

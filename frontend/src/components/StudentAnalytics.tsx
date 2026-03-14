@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { TestTaking } from './TestTaking';
-import type { ApiAttemptHistoryEntry } from '../api/tests';
+import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
 import {
   Trophy,
   Target,
@@ -33,7 +33,7 @@ interface Question {
   metadata?: {
     section?: string;
   };
-  userAnswer?: number | string | null;
+  userAnswer?: number | string | number[] | null;
 }
 
 interface TestResult {
@@ -47,8 +47,8 @@ interface TestResult {
   unattempted: number;
   timeSpent: number;
   duration: number;
-  rank: number;
-  totalStudents: number;
+  rank?: number;
+  totalStudents?: number;
   submittedAt: string;
   questions: Question[];
   instructions?: string;
@@ -60,6 +60,9 @@ interface StudentAnalyticsProps {
   onViewResults?: (testId: string) => void;
   hideExplanations?: boolean;
   hideDownload?: boolean;
+  hideRank?: boolean;
+  hideTimeSpent?: boolean;
+  subtitle?: string;
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
   loadingAttemptId?: string | null;
@@ -71,6 +74,9 @@ export function StudentAnalytics({
   onViewResults,
   hideExplanations = false,
   hideDownload = false,
+  hideRank = false,
+  hideTimeSpent = false,
+  subtitle = 'Detailed Performance Analysis',
   attemptHistory = [],
   onSelectAttempt,
   loadingAttemptId = null
@@ -81,7 +87,7 @@ export function StudentAnalytics({
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
 
-  const reviewAnswers = result.questions.reduce<Record<string, string | number | null>>((acc, question) => {
+  const reviewAnswers = result.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
     return acc;
   }, {});
@@ -121,14 +127,14 @@ export function StudentAnalytics({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-2 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{result.testTitle}</h1>
-              <p className="text-gray-600">Detailed Performance Analysis</p>
+              <p className="text-gray-600">{subtitle}</p>
             </div>
             <div className="flex gap-3">
               {!hideDownload && (
@@ -188,7 +194,7 @@ export function StudentAnalytics({
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
           
-          <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className={`relative grid grid-cols-1 gap-6 ${hideRank ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
             <div className="text-center">
               <div className="mb-2">
                 <Trophy className="w-12 h-12 mx-auto mb-3 text-yellow-300" />
@@ -217,28 +223,31 @@ export function StudentAnalytics({
               </div>
             </div>
 
-            <div className="text-center">
-              <div className="mb-2">
-                <Award className="w-12 h-12 mx-auto mb-3 text-purple-300" />
+            {!hideRank ? (
+              <div className="text-center">
+                <div className="mb-2">
+                  <Award className="w-12 h-12 mx-auto mb-3 text-purple-300" />
+                </div>
+                <p className="text-blue-100 text-sm mb-1">Your Rank</p>
+                <p className="text-5xl font-bold mb-1">#{result.rank ?? 0}</p>
+                <p className="text-blue-100">out of {result.totalStudents ?? 0}</p>
+                <div className="mt-3 inline-block px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full">
+                  <span className="text-lg font-bold">Top Performance</span>
+                </div>
               </div>
-              <p className="text-blue-100 text-sm mb-1">Your Rank</p>
-              <p className="text-5xl font-bold mb-1">#{result.rank}</p>
-              <p className="text-blue-100">out of {result.totalStudents}</p>
-              <div className="mt-3 inline-block px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full">
-                <span className="text-lg font-bold">Top Performance</span>
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className={`grid gap-4 mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
           {[
             { icon: CheckCircle, label: 'Correct', value: result.correctAnswers, color: 'green' },
             { icon: XCircle, label: 'Wrong', value: result.wrongAnswers, color: 'red' },
-            { icon: Clock, label: 'Time Spent', value: formatTime(result.timeSpent), color: 'blue' },
             { icon: Percent, label: 'Percentage', value: `${percentage}%`, color: 'purple' }
-          ].map((stat, index) => (
+          ]
+            .concat(hideTimeSpent ? [] : [{ icon: Clock, label: 'Time Spent', value: formatTime(result.timeSpent), color: 'blue' as const }])
+            .map((stat, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
@@ -273,6 +282,8 @@ export function StudentAnalytics({
             isFacultyPreview={true}
             disableEditing={true}
             hideExplanations={hideExplanations}
+            reviewAttemptId={(result as any).attempt_id}
+            loadQuestionExplanation={fetchAttemptQuestionExplanation}
           />
         </motion.div>
       </div>
