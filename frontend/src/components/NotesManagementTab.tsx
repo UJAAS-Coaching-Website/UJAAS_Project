@@ -403,7 +403,7 @@ export function NotesManagementTab({
                   <tr className="text-left border-b border-gray-100 bg-gray-50/50">
                     <th className="py-4 px-6 font-bold text-gray-700 text-sm">Chapter Name</th>
                     <th className="py-4 px-6 font-bold text-gray-700 text-sm">Last Updated</th>
-                    <th className="py-4 px-6 font-bold text-gray-700 text-sm text-right">Actions</th>
+                    <th className="py-4 pl-6 pr-8 font-bold text-gray-700 text-sm text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -422,17 +422,20 @@ export function NotesManagementTab({
                         </div>
                       </td>
                       <td className="py-4 px-6 text-sm text-gray-500">{formatRelativeTime(chapter.created_at)}</td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex justify-end gap-2">
+                      <td className="py-4 pl-6 pr-4 text-right align-middle">
+                        <div className="flex items-center justify-end gap-1">
                           {canEdit && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteChapter(chapter); }}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50"
+                              aria-label={`Delete ${chapter.name}`}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
-                          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-teal-600" />
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 transition-colors group-hover:bg-teal-50 group-hover:text-teal-600">
+                            <ChevronRight className="w-5 h-5" />
+                          </span>
                         </div>
                       </td>
                     </tr>
