@@ -46,7 +46,7 @@ interface NotesManagementTabProps {
   readOnly?: boolean;
   variant?: 'admin' | 'faculty' | 'student';
   onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
-  showHeader?: boolean;
+  headerMode?: 'full' | 'tracker-only' | 'hidden';
 }
 
 export function NotesManagementTab({
@@ -59,7 +59,7 @@ export function NotesManagementTab({
   readOnly = false,
   variant = 'student',
   onUpdateBatch,
-  showHeader = true
+  headerMode = 'full'
 }: NotesManagementTabProps) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -272,15 +272,21 @@ export function NotesManagementTab({
   return (
     <div className="space-y-6">
       {/* Header Area */}
-      {showHeader && (
+      {headerMode !== 'hidden' && (headerMode === 'full' || currentView !== 'root') && (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`${variant === 'admin' ? 'bg-white rounded-2xl p-4 border border-gray-100' : 'bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             {currentView !== 'root' && (<button onClick={goBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>)}
             <div>
-              <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
-                {currentView === 'root' ? 'Academic Content' : selectedSubject}
-              </h2>
+              {headerMode === 'full' ? (
+                <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
+                  {currentView === 'root' ? 'Academic Content' : selectedSubject}
+                </h2>
+              ) : (
+                <h2 className="font-bold text-gray-900 text-lg">
+                  {currentView === 'subject' ? selectedSubject : selectedChapterObj?.name}
+                </h2>
+              )}
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 {selectedSubject && (
                   <>
@@ -297,6 +303,7 @@ export function NotesManagementTab({
               </div>
             </div>
           </div>
+          {headerMode === 'full' && (
           <div className="flex items-center gap-3">
             {currentView === 'root' && (
               <>
@@ -327,6 +334,7 @@ export function NotesManagementTab({
               </div>
             )}
           </div>
+          )}
         </div>
       </motion.div>
       )}

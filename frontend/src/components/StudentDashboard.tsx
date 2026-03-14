@@ -547,18 +547,19 @@ function AssignedBatchContent({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-8 rounded-3xl shadow-lg border border-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
           <div className="flex flex-col gap-1">
-            <h2 className="text-3xl font-bold tracking-tight">{user.studentDetails?.batch}</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
+            <p className="text-slate-600 font-medium">Batch Academic Overview & Content</p>
           </div>
         </div>
         <button 
           onClick={onViewTimetable}
-          className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold transition-all shadow-sm border border-white/20 self-start md:self-auto md:ml-auto"
+          className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50 self-start md:self-auto md:ml-auto"
         >
-          <Calendar className="w-5 h-5" />
+          <Calendar className="w-5 h-5 text-teal-600" />
           Time Table
         </button>
       </div>
@@ -579,7 +580,7 @@ function AssignedBatchContent({
             batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}
             readOnly={true}
             variant="student"
-            showHeader={false}
+            headerMode="tracker-only"
           />
         </div>
       </div>
