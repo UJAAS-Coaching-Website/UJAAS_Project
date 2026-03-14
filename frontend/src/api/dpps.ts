@@ -150,6 +150,25 @@ export interface ApiDppAttemptResult {
     questions: ApiDppAttemptResultQuestion[];
 }
 
+export interface ApiDppAnalysisPerformance {
+    studentId: string;
+    studentName: string;
+    attemptCount: number;
+    latestSubmittedAt: string;
+    score: number;
+    totalMarks: number;
+    accuracy: number;
+    attempts: ApiDppAttemptResult[];
+}
+
+export interface ApiDppAnalysis {
+    dppId: string;
+    dppTitle: string;
+    totalMarks: number;
+    totalQuestions: number;
+    performances: ApiDppAnalysisPerformance[];
+}
+
 export interface CreateDppPayload {
     title: string;
     instructions?: string;
@@ -185,6 +204,10 @@ export async function submitMyDppAttempt(id: string, answers: Record<string, str
 
 export async function fetchDppAttemptResult(attemptId: string): Promise<ApiDppAttemptResult> {
     return request<ApiDppAttemptResult>(`/api/dpps/attempts/${attemptId}/result`);
+}
+
+export async function fetchDppAnalysis(dppId: string): Promise<ApiDppAnalysis> {
+    return request<ApiDppAnalysis>(`/api/dpps/${dppId}/attempts/analysis`);
 }
 
 export async function createDpp(payload: CreateDppPayload): Promise<ApiDpp> {

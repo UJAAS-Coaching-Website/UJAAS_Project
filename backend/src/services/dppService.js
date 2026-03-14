@@ -578,6 +578,83 @@ export async function getDppAttemptResultForUser(attemptId, user) {
     return buildDppAttemptResult(attemptId);
 }
 
+export async function getDppAttemptAnalysis(dppId) {
+    const result = await pool.query(`
+        WITH question_counts AS (
+            SELECT COUNT(*)::int AS total_questions
+            FROM questions
+            WHERE dpp_id = $1
+        )
+        SELECT
+            da.id,
+            da.student_id,
+            u.name AS student_name,
+            da.attempt_no,
+            da.submitted_at,
+            da.score,
+            da.correct_answers,
+            da.wrong_answers,
+            da.unattempted,
+            qc.total_questions
+        FROM dpp_attempts da
+        JOIN users u ON u.id = da.student_id
+        CROSS JOIN question_counts qc
+        WHERE da.dpp_id = $1
+        ORDER BY da.submitted_at DESC, da.attempt_no DESC
+    `, [dppId]);
+
+    const dppRow = await getDppRowById(dppId);
+    const questions = await getQuestionsForDpp(dppId);
+    const totalMarks = questions.reduce((sum, question) => sum + Number(question.marks || 0), 0);
+
+    const mappedAttempts = await Promise.all(result.rows.map(async (row) => ({
+        attemptId: row.id,
+        studentId: row.student_id,
+        studentName: row.student_name,
+        attemptNo: Number(row.attempt_no),
+        submittedAt: row.submitted_at,
+        score: Number(row.score || 0),
+        totalMarks,
+        accuracy: Number(row.total_questions || 0) > 0
+            ? Number((((Number(row.correct_answers || 0) / Number(row.total_questions || 1)) * 100).toFixed(1)))
+            : 0,
+        result: await buildDppAttemptResult(row.id),
+    })));
+
+    const grouped = new Map();
+    for (const attempt of mappedAttempts) {
+        const existing = grouped.get(attempt.studentId);
+        if (!existing) {
+            grouped.set(attempt.studentId, {
+                studentId: attempt.studentId,
+                studentName: attempt.studentName,
+                attemptCount: 1,
+                latestSubmittedAt: attempt.submittedAt,
+                score: attempt.attemptNo === 1 ? attempt.score : 0,
+                totalMarks: attempt.totalMarks,
+                accuracy: attempt.attemptNo === 1 ? attempt.accuracy : 0,
+                attempts: [attempt.result],
+            });
+            continue;
+        }
+
+        existing.attemptCount += 1;
+        existing.attempts.push(attempt.result);
+        if (attempt.attemptNo === 1) {
+            existing.score = attempt.score;
+            existing.accuracy = attempt.accuracy;
+        }
+    }
+
+    return {
+        dppId,
+        dppTitle: dppRow?.title || "DPP",
+        totalMarks,
+        totalQuestions: questions.length,
+        performances: Array.from(grouped.values()),
+    };
+}
+
 export async function createDpp({ title, instructions, chapterId, createdBy, questions = [] }) {
     const client = await pool.connect();
     try {

@@ -10,6 +10,7 @@ import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
 import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
+import { DppPerformanceInsights } from './DppPerformanceInsights';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -96,6 +97,7 @@ export function NotesManagementTab({
   const [activeContentType, setActiveContentType] = useState<'notes' | 'dpps'>('notes');
   const [loadingDppId, setLoadingDppId] = useState<string | null>(null);
   const [previewingDppId, setPreviewingDppId] = useState<string | null>(null);
+  const [analyticsDpp, setAnalyticsDpp] = useState<{ id: string; title: string } | null>(null);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -398,6 +400,16 @@ export function NotesManagementTab({
       setPreviewingDppId(null);
     }
   };
+
+  if (analyticsDpp) {
+    return (
+      <DppPerformanceInsights
+        dppId={analyticsDpp.id}
+        dppTitle={analyticsDpp.title}
+        onClose={() => setAnalyticsDpp(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -752,7 +764,7 @@ export function NotesManagementTab({
                   transition={{ delay: index * 0.04 }}
                   className="rounded-2xl border border-white bg-white/80 p-5 shadow-lg"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
@@ -772,7 +784,7 @@ export function NotesManagementTab({
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center self-center gap-2">
                       {variant === 'student' ? (
                         <div className="flex flex-col gap-2">
                           <button
@@ -792,7 +804,14 @@ export function NotesManagementTab({
                             </button>
                           )}
                         </div>
-                      ) : null}
+                      ) : (
+                        <button
+                          onClick={() => setAnalyticsDpp({ id: item.id, title: item.title })}
+                          className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 font-bold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          Analytics
+                        </button>
+                      )}
                       {canManageContent && (
                         <button
                           onClick={() => handleDeleteDPP(item.id)}

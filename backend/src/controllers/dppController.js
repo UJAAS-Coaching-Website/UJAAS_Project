@@ -5,6 +5,7 @@ import {
     startStudentDppAttempt,
     submitStudentDppAttempt,
     getDppAttemptResultForUser,
+    getDppAttemptAnalysis,
     createDpp,
     updateDpp,
     deleteDpp,
@@ -91,6 +92,23 @@ export async function handleGetDppAttemptResult(req, res) {
     } catch (error) {
         console.error("handleGetDppAttemptResult error:", error.message);
         return res.status(500).json({ message: "failed to fetch dpp attempt result", error: error.message });
+    }
+}
+
+export async function handleGetDppAnalysis(req, res) {
+    try {
+        if (req.user.role === "faculty") {
+            const managedDpp = await getFacultyManagedDpp(req.params.id, req.user.sub);
+            if (!managedDpp) {
+                return res.status(403).json({ message: "forbidden" });
+            }
+        }
+
+        const analysis = await getDppAttemptAnalysis(req.params.id);
+        return res.status(200).json(analysis);
+    } catch (error) {
+        console.error("handleGetDppAnalysis error:", error.message);
+        return res.status(500).json({ message: "failed to fetch dpp analytics", error: error.message });
     }
 }
 
