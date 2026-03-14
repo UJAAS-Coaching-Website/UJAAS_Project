@@ -1658,27 +1658,41 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {sortedBatches.map((batch) => (
-        <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}>
-          <div className="flex-1">
-            <div className="mb-1">
-              <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
-              {batch.label}
-              {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
-            </h3>
+    <div className="space-y-6">
+      <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 flex-1">
+          <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
+          <p className="text-gray-600">Open a batch dashboard, review assigned groups, and manage new batches.</p>
           </div>
-          <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
-        </motion.button>
-      ))}
-      <motion.button onClick={onAddBatch} className="p-8 bg-white/40 backdrop-blur-lg rounded-3xl shadow-xl border border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-4 group hover:bg-white/60 transition-colors">
-        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-teal-50 transition-colors">
-          <Plus className="w-7 h-7 text-gray-400 group-hover:text-teal-600" />
+          <div className="flex lg:justify-end lg:pl-6">
+            <button
+              onClick={onAddBatch}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
+            >
+              <Plus className="w-5 h-5" />
+              Add New Batch
+            </button>
+          </div>
         </div>
-        <span className="text-lg font-bold text-gray-500 group-hover:text-teal-600">Create New Batch</span>
-      </motion.button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {sortedBatches.map((batch) => (
+          <motion.button key={batch.slug} onClick={() => onSelectBatch(batch.label)} className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}>
+            <div className="flex-1">
+              <div className="mb-1">
+                <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
+                {batch.label}
+                {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
+              </h3>
+            </div>
+            <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
+          </motion.button>
+        ))}
+      </div>
     </div>
   );
 }
