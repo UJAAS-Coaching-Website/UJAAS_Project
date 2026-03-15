@@ -736,6 +736,8 @@ export function AdminDashboard({
     batchStudentPicker.open ||
     batchFacultyPicker.open ||
     ratingModal.open ||
+    queryModal.open ||
+    permanentDeleteModal.open ||
     showFullTimetable
   );
 
@@ -1066,7 +1068,7 @@ export function AdminDashboard({
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+                className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col mx-4"
               >
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
@@ -1324,8 +1326,20 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const [editingVisionIndex, setEditingVisionIndex] = useState<number | null>(null);
   const maxImageUploadSizeBytes = 600 * 1024;
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isActionPending = (action: string) => pendingAction === action;
+  const isActionInFlight = pendingAction !== null;
+
+  const runLandingAction = async <T,>(action: string, task: () => Promise<T>) => {
+    setPendingAction(action);
+    try {
+      return await task();
+    } finally {
+      setPendingAction((current) => (current === action ? null : current));
+    }
+  };
 
   const showToast = (type: 'success' | 'error', message: string) => {
     if (saveStatusTimer.current) clearTimeout(saveStatusTimer.current);
@@ -1338,8 +1352,10 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     try {
       await onUpdate(newData);
       showToast('success', 'Changes saved to database!');
+      return true;
     } catch {
       showToast('error', 'Failed to save. Please try again.');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -1388,138 +1404,170 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     }
   };
 
-  const handleAddCourse = (e: FormEvent) => {
+  const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault();
     if (newCourse.trim()) {
-      safeUpdate({ ...data, courses: [...data.courses, { id: '', name: newCourse.trim() }] });
-      setNewCourse('');
+      const courseName = newCourse.trim();
+      const saved = await runLandingAction('add-course', () =>
+        safeUpdate({ ...data, courses: [...data.courses, { id: '', name: courseName }] })
+      );
+      if (saved) {
+        setNewCourse('');
+      }
     }
   };
 
-  const handleRemoveCourse = (index: number) => {
-    safeUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) });
+  const handleRemoveCourse = async (index: number) => {
+    await runLandingAction('remove-course', () =>
+      safeUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) })
+    );
   };
 
   const handleAddFaculty = async (e: FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    
-    const fallback = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
-    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'faculty') : fallback;
-    
-    if (url === null && file && file.size > 0) return; // Upload failed
-    
-    safeUpdate({
-      ...data,
-      faculty: [...data.faculty, {
-        name: formData.get('name') as string,
-        subject: formData.get('subject') as string,
-        designation: formData.get('designation') as string,
-        experience: formData.get('experience') as string,
-        image: url || fallback
-      }]
+    await runLandingAction('add-faculty', async () => {
+      const formData = new FormData(e.currentTarget as HTMLFormElement);
+      const file = formData.get('imageFile') as File;
+      
+      const fallback = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
+      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'faculty') : fallback;
+      
+      if (url === null && file && file.size > 0) return false;
+      
+      const saved = await safeUpdate({
+        ...data,
+        faculty: [...data.faculty, {
+          name: formData.get('name') as string,
+          subject: formData.get('subject') as string,
+          designation: formData.get('designation') as string,
+          experience: formData.get('experience') as string,
+          image: url || fallback
+        }]
+      });
+      if (saved) {
+        setIsAddingFaculty(false);
+      }
+      return saved;
     });
-    setIsAddingFaculty(false);
   };
 
   const handleSaveEditedFaculty = async (e: FormEvent) => {
     e.preventDefault();
     if (editingFacultyIndex === null) return;
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    const existing = data.faculty[editingFacultyIndex].image;
-    
-    let url = existing;
-    if (file && file.size > 0) {
-      const uploaded = await uploadAndGetUrl(file, 'faculty');
-      if (uploaded === null) return; // Upload failed
-      url = uploaded;
-      await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
-    }
+    await runLandingAction('update-faculty', async () => {
+      const formData = new FormData(e.currentTarget as HTMLFormElement);
+      const file = formData.get('imageFile') as File;
+      const existing = data.faculty[editingFacultyIndex].image;
+      
+      let url = existing;
+      if (file && file.size > 0) {
+        const uploaded = await uploadAndGetUrl(file, 'faculty');
+        if (uploaded === null) return false;
+        url = uploaded;
+        await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+      }
 
-    const next = [...data.faculty];
-    next[editingFacultyIndex] = {
-      name: formData.get('name') as string,
-      subject: formData.get('subject') as string,
-      designation: formData.get('designation') as string,
-      experience: formData.get('experience') as string,
-      image: url
-    };
-    safeUpdate({ ...data, faculty: next });
-    setEditingFacultyIndex(null);
+      const next = [...data.faculty];
+      next[editingFacultyIndex] = {
+        name: formData.get('name') as string,
+        subject: formData.get('subject') as string,
+        designation: formData.get('designation') as string,
+        experience: formData.get('experience') as string,
+        image: url
+      };
+      const saved = await safeUpdate({ ...data, faculty: next });
+      if (saved) {
+        setEditingFacultyIndex(null);
+      }
+      return saved;
+    });
   };
 
   const handleAddAchiever = async (e: FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    
-    const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
-    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'achiever') : fallback;
-    
-    if (url === null && file && file.size > 0) return; // Upload failed
-    
-    safeUpdate({
-      ...data,
-      achievers: [...data.achievers, {
-        name: formData.get('name') as string,
-        achievement: formData.get('achievement') as string,
-        year: formData.get('year') as string,
-        image: url || fallback
-      }]
+    await runLandingAction('add-achiever', async () => {
+      const formData = new FormData(e.currentTarget as HTMLFormElement);
+      const file = formData.get('imageFile') as File;
+      
+      const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
+      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'achiever') : fallback;
+      
+      if (url === null && file && file.size > 0) return false;
+      
+      const saved = await safeUpdate({
+        ...data,
+        achievers: [...data.achievers, {
+          name: formData.get('name') as string,
+          achievement: formData.get('achievement') as string,
+          year: formData.get('year') as string,
+          image: url || fallback
+        }]
+      });
+      if (saved) {
+        setIsAddingAchiever(false);
+      }
+      return saved;
     });
-    setIsAddingAchiever(false);
   };
 
   const handleAddVision = async (e: FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
+    await runLandingAction('add-vision', async () => {
+      const formData = new FormData(e.currentTarget as HTMLFormElement);
+      const file = formData.get('imageFile') as File;
 
-    const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
-    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'vision') : fallback;
-    
-    if (url === null && file && file.size > 0) return; // Upload failed
+      const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
+      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'vision') : fallback;
+      
+      if (url === null && file && file.size > 0) return false;
 
-    safeUpdate({
-      ...data,
-      visions: [...(data.visions || []), {
-        id: `v-${Date.now()}`,
-        name: formData.get('name') as string,
-        designation: formData.get('designation') as string,
-        vision: formData.get('vision') as string,
-        image: url || fallback
-      }]
+      const saved = await safeUpdate({
+        ...data,
+        visions: [...(data.visions || []), {
+          id: `v-${Date.now()}`,
+          name: formData.get('name') as string,
+          designation: formData.get('designation') as string,
+          vision: formData.get('vision') as string,
+          image: url || fallback
+        }]
+      });
+      if (saved) {
+        setIsAddingVision(false);
+      }
+      return saved;
     });
-    setIsAddingVision(false);
   };
 
   const handleSaveEditedVision = async (e: FormEvent) => {
     e.preventDefault();
     if (editingVisionIndex === null) return;
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    const existing = data.visions[editingVisionIndex].image;
+    await runLandingAction('update-vision', async () => {
+      const formData = new FormData(e.currentTarget as HTMLFormElement);
+      const file = formData.get('imageFile') as File;
+      const existing = data.visions[editingVisionIndex].image;
 
-    let url = existing;
-    if (file && file.size > 0) {
-      const uploaded = await uploadAndGetUrl(file, 'vision');
-      if (uploaded === null) return; // Upload failed
-      url = uploaded;
-      await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
-    }
+      let url = existing;
+      if (file && file.size > 0) {
+        const uploaded = await uploadAndGetUrl(file, 'vision');
+        if (uploaded === null) return false;
+        url = uploaded;
+        await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+      }
 
-    const next = [...data.visions];
-    next[editingVisionIndex] = {
-      ...next[editingVisionIndex],
-      name: formData.get('name') as string,
-      designation: formData.get('designation') as string,
-      vision: formData.get('vision') as string,
-      image: url
-    };
-    safeUpdate({ ...data, visions: next });
-    setEditingVisionIndex(null);
+      const next = [...data.visions];
+      next[editingVisionIndex] = {
+        ...next[editingVisionIndex],
+        name: formData.get('name') as string,
+        designation: formData.get('designation') as string,
+        vision: formData.get('vision') as string,
+        image: url
+      };
+      const saved = await safeUpdate({ ...data, visions: next });
+      if (saved) {
+        setEditingVisionIndex(null);
+      }
+      return saved;
+    });
   };
 
   if (activeSubSection === 'courses') {
@@ -1530,8 +1578,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           <h2 className="text-3xl font-bold text-gray-900">Manage Courses</h2>
         </div>
         <form onSubmit={handleAddCourse} className="flex gap-4 mb-8">
-          <input type="text" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} placeholder="Course name..." className="flex-1 px-4 py-3 rounded-xl border border-gray-200" />
-          <button type="submit" className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition"><Plus className="w-5 h-5" />Add</button>
+          <input type="text" value={newCourse} onChange={(e) => setNewCourse(e.target.value)} placeholder="Course name..." className="flex-1 px-4 py-3 rounded-xl border border-gray-200" disabled={isActionInFlight} />
+          <button type="submit" disabled={isActionInFlight} className="px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70"><Plus className="w-5 h-5" />{isActionPending('add-course') ? 'Adding...' : 'Add'}</button>
         </form>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.courses.map((c, i) => (
@@ -1540,10 +1588,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               <button
                 onClick={() => {
                   if (confirm(`Are you sure you want to remove the course "${c.name}"?`)) {
-                    handleRemoveCourse(i);
+                    void handleRemoveCourse(i);
                   }
                 }}
-                className="p-2 text-red-500 opacity-0 group-hover:opacity-100"
+                disabled={isActionInFlight}
+                className="p-2 text-red-500 opacity-0 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -1562,30 +1611,30 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
             <h2 className="text-3xl font-bold text-gray-900">Manage Faculty</h2>
           </div>
-          <button onClick={() => { setIsAddingFaculty(!isAddingFaculty); setEditingFacultyIndex(null); }} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
+          <button onClick={() => { setIsAddingFaculty(!isAddingFaculty); setEditingFacultyIndex(null); }} disabled={isActionInFlight} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">
             {isAddingFaculty ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingFaculty ? 'Cancel' : 'Add Faculty'}
           </button>
         </div>
         {isAddingFaculty && (
           <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="subject" required placeholder="Subject" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" />
-            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
+            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="subject" required placeholder="Subject" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
           </form>
         )}
         {editingFacultyIndex !== null && (
           <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" />
+            <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Update</button>
-              <button type="button" onClick={() => setEditingFacultyIndex(null)} className="flex-1 py-3 bg-gray-200 rounded-xl">Cancel</button>
+              <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-faculty') ? 'Updating...' : 'Update'}</button>
+              <button type="button" onClick={() => setEditingFacultyIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
             </div>
           </form>
         )}
@@ -1593,14 +1642,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           {data.faculty.map((m, i) => (
             <div key={i} className="bg-white p-4 rounded-2xl border border-gray-100 relative group">
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingFacultyIndex(i); setIsAddingFaculty(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => { setEditingFacultyIndex(i); setIsAddingFaculty(false); }} disabled={isActionInFlight} className="p-2 bg-blue-50 text-blue-500 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"><Edit className="w-4 h-4" /></button>
                 <button
                   onClick={() => {
                     if (confirm(`Are you sure you want to remove ${m.name} from faculty?`)) {
-                      safeUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) });
+                      void runLandingAction('remove-faculty', () => safeUpdate({ ...data, faculty: data.faculty.filter((_, idx) => idx !== i) }));
                     }
                   }}
-                  className="p-2 bg-red-50 text-red-500 rounded-lg"
+                  disabled={isActionInFlight}
+                  className="p-2 bg-red-50 text-red-500 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -1624,17 +1674,17 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
             <h2 className="text-3xl font-bold text-gray-900">Manage Achievers</h2>
           </div>
-          <button onClick={() => setIsAddingAchiever(!isAddingAchiever)} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
+          <button onClick={() => setIsAddingAchiever(!isAddingAchiever)} disabled={isActionInFlight} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">
             {isAddingAchiever ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingAchiever ? 'Cancel' : 'Add Achiever'}
           </button>
         </div>
         {isAddingAchiever && (
           <form onSubmit={handleAddAchiever} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="year" placeholder="Year (optional)" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" />
-            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save</button>
+            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="year" placeholder="Year (optional)" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-achiever') ? 'Adding Achiever...' : 'Save'}</button>
           </form>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1643,10 +1693,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               <button
                 onClick={() => {
                   if (confirm(`Are you sure you want to remove achiever "${a.name}"?`)) {
-                    safeUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) });
+                    void runLandingAction('remove-achiever', () => safeUpdate({ ...data, achievers: data.achievers.filter((_, idx) => idx !== i) }));
                   }
                 }}
-                className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                disabled={isActionInFlight}
+                className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -1673,34 +1724,34 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <button onClick={() => setActiveSubSection('overview')} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft className="w-6 h-6" /></button>
             <h2 className="text-3xl font-bold text-gray-900">Manage The Vision</h2>
           </div>
-          <button onClick={() => setIsAddingVision(!isAddingVision)} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition">
+          <button onClick={() => setIsAddingVision(!isAddingVision)} disabled={isActionInFlight} className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-bold flex items-center gap-2 shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">
             {isAddingVision ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingVision ? 'Cancel' : 'Add Vision Tile'}
           </button>
         </div>
         {isAddingVision && (
           <form onSubmit={handleAddVision} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required placeholder="Name (e.g., Founder Name)" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" />
-            <textarea name="vision" required placeholder="Vision Text" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} />
+            <input name="name" required placeholder="Name (e.g., Founder Name)" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <textarea name="vision" required placeholder="Vision Text" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Square Image</label>
-              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" />
+              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
             </div>
-            <button type="submit" className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Save Vision Tile</button>
+            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-vision') ? 'Saving Vision Tile...' : 'Save Vision Tile'}</button>
           </form>
         )}
         {editingVisionIndex !== null && (
           <form onSubmit={handleSaveEditedVision} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required defaultValue={data.visions[editingVisionIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <input name="designation" required defaultValue={data.visions[editingVisionIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" />
-            <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} />
+            <input name="name" required defaultValue={data.visions[editingVisionIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="designation" required defaultValue={data.visions[editingVisionIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image (Optional)</label>
-              <input name="imageFile" type="file" accept="image/*" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" />
+              <input name="imageFile" type="file" accept="image/*" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
             </div>
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition">Update Vision Tile</button>
-              <button type="button" onClick={() => setEditingVisionIndex(null)} className="flex-1 py-3 bg-gray-200 rounded-xl font-bold transition hover:bg-gray-300">Cancel</button>
+              <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-vision') ? 'Updating Vision Tile...' : 'Update Vision Tile'}</button>
+              <button type="button" onClick={() => setEditingVisionIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl font-bold transition hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
             </div>
           </form>
         )}
@@ -1708,14 +1759,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           {(data.visions || []).map((v, i) => (
             <div key={v.id} className="bg-white p-6 rounded-2xl border border-gray-100 relative group flex flex-col md:flex-row gap-6 items-center">
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingVisionIndex(i); setIsAddingVision(false); }} className="p-2 bg-blue-50 text-blue-500 rounded-lg" title="Edit Vision"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => { setEditingVisionIndex(i); setIsAddingVision(false); }} disabled={isActionInFlight} className="p-2 bg-blue-50 text-blue-500 rounded-lg disabled:cursor-not-allowed disabled:opacity-50" title="Edit Vision"><Edit className="w-4 h-4" /></button>
                 <button
                   onClick={() => {
                     if (confirm(`Are you sure you want to remove vision for "${v.name}"?`)) {
-                      safeUpdate({ ...data, visions: data.visions.filter((_, idx) => idx !== i) });
+                      void runLandingAction('remove-vision', () => safeUpdate({ ...data, visions: data.visions.filter((_, idx) => idx !== i) }));
                     }
                   }}
-                  className="p-2 bg-red-50 text-red-500 rounded-lg"
+                  disabled={isActionInFlight}
+                  className="p-2 bg-red-50 text-red-500 rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
                   title="Delete Vision"
                 >
                   <Trash2 className="w-4 h-4" />
