@@ -241,7 +241,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
     : selectedSubject || 'Question Bank';
 
   const listSubtitle = userRole === 'faculty'
-    ? `${userSubject || 'Your subject'} files for this batch`
+    ? `${userSubject || 'Your subject'} practice questions for this batch`
     : (studentAssignedBatch?.name ? `Available in ${studentAssignedBatch.name}` : 'Available files');
 
   return (
@@ -501,8 +501,18 @@ function QuestionBankUploadModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const isFormValid = title.trim().length > 0 && selectedBatchIds.length > 0 && !!selectedFile;
+  const allowedMimeTypes = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'image/jpeg',
+    'image/png',
+  ]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -517,10 +527,22 @@ function QuestionBankUploadModal({
   const handleFileSelection = (fileList?: FileList | null) => {
     const nextFile = fileList?.[0];
     if (!nextFile) return;
+    if (!allowedMimeTypes.has(nextFile.type)) {
+      setSelectedFile(null);
+      setUploadError('Unsupported file format. Allowed formats: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG.');
+      return;
+    }
+    if (nextFile.size > 50 * 1024 * 1024) {
+      setSelectedFile(null);
+      setUploadError('File is too large. Maximum allowed size is 50MB.');
+      return;
+    }
+    setUploadError('');
     setSelectedFile(nextFile);
   };
 
   const toggleBatch = (batchId: string) => {
+    setUploadError('');
     setSelectedBatchIds((prev) =>
       prev.includes(batchId) ? prev.filter((value) => value !== batchId) : [...prev, batchId]
     );
@@ -530,6 +552,7 @@ function QuestionBankUploadModal({
     event.preventDefault();
     if (!isFormValid || !selectedFile) return;
 
+    setUploadError('');
     setUploading(true);
     try {
       const formData = new FormData();
@@ -541,7 +564,7 @@ function QuestionBankUploadModal({
       await onUploaded();
     } catch (error: any) {
       console.error(error);
-      alert(error.message || 'Failed to upload question bank file.');
+      setUploadError(error.message || 'Failed to upload question bank file.');
     } finally {
       setUploading(false);
     }
@@ -560,7 +583,7 @@ function QuestionBankUploadModal({
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
       >
         <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white flex items-center justify-between">
           <div>
@@ -573,6 +596,12 @@ function QuestionBankUploadModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6">
+          {uploadError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {uploadError}
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <FileText className="w-6 h-6 text-blue-600" />
@@ -582,13 +611,16 @@ function QuestionBankUploadModal({
             <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Title *</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Electrostatics Practice Sheet 01"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                />
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      setUploadError('');
+                    }}
+                    placeholder="e.g., Electrostatics Practice Sheet 01"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -663,11 +695,12 @@ function QuestionBankUploadModal({
                     : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/50'
                 }`}
               >
-                <input
-                  type="file"
-                  onChange={(event) => handleFileSelection(event.target.files)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+                    onChange={(event) => handleFileSelection(event.target.files)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
 
                 <div className="text-center">
                   <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -694,11 +727,14 @@ function QuestionBankUploadModal({
                     <p className="text-sm font-medium text-gray-900 truncate">{selectedFile.name}</p>
                     <p className="text-xs text-gray-600">{formatFileSize(selectedFile.size)}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFile(null)}
-                    className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
-                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setUploadError('');
+                      }}
+                      className="flex-shrink-0 p-2 text-red-600 hover:bg-red-100 rounded-lg transition"
+                    >
                     <X className="w-5 h-5" />
                   </button>
                 </motion.div>
