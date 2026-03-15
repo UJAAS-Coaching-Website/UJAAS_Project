@@ -79,6 +79,19 @@ function formatFileSize(bytes: number) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
+function buildDownloadFileName(item: ApiQuestionBankFile) {
+  const ext = item.original_file_name.includes('.')
+    ? item.original_file_name.split('.').pop()
+    : '';
+  const base = item.title
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return ext ? `${base}.${ext}` : base;
+}
+
 async function forceDownload(url: string, filename: string) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -195,7 +208,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
     event.stopPropagation();
     setDownloadingId(item.id);
     try {
-      await forceDownload(item.file_url, item.original_file_name || item.title);
+      await forceDownload(item.file_url, buildDownloadFileName(item));
     } catch (error) {
       console.error('Download failed:', error);
       window.open(item.file_url, '_blank', 'noopener,noreferrer');
@@ -382,10 +395,6 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
 
           {!loadingItems && items.map((item) => {
             const deleteKey = selectedBatch ? `${item.id}:${selectedBatch.id}` : item.id;
-            const summaryLabel = userRole === 'faculty'
-              ? item.original_file_name
-              : item.subject_name;
-
             return (
               <motion.div
                 key={item.id}
@@ -405,11 +414,6 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
                       <h4 className="font-bold text-gray-900 truncate text-lg">{item.title}</h4>
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getDifficultyClasses(item.difficulty)}`}>
                         {formatDifficulty(item.difficulty)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md text-[10px] font-bold">
-                        {summaryLabel}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">

@@ -101,7 +101,8 @@ export async function handleUploadQuestionBankFile(req, res) {
             req.file.originalname,
             req.file.mimetype,
             context.subject_name,
-            fileId
+            fileId,
+            title.trim()
         );
 
         const file = await createQuestionBankFile({

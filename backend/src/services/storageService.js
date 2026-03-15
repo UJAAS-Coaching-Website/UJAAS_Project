@@ -33,6 +33,18 @@ const sanitizeFileName = (originalName) => {
   return `${sanitizedBase}.${ext}`;
 };
 
+const buildSanitizedFileNameWithSourceExtension = (desiredName, sourceName) => {
+  const extMatch = sourceName.match(/\.([^.]+)$/);
+  const ext = extMatch ? extMatch[1].toLowerCase() : 'bin';
+  const sanitizedBase = String(desiredName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'file';
+
+  return `${sanitizedBase}.${ext}`;
+};
+
 const sanitizePathSegment = (value) =>
   String(value || '')
     .toLowerCase()
@@ -121,8 +133,8 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
   }
 }
 
-export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, mimeType, subjectName, fileId) {
-  const sanitizedFileName = sanitizeFileName(originalName);
+export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, mimeType, subjectName, fileId, title) {
+  const sanitizedFileName = buildSanitizedFileNameWithSourceExtension(title, originalName);
   const objectKey = [
     'subjects',
     sanitizePathSegment(subjectName),
