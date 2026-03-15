@@ -87,6 +87,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Admin landing-page images stored in Supabase S3 bucket (`landing-page`)
 - [x] Admin landing-page data uses normalized relational schema (courses, faculty, achievers, visions)
 - [x] Admin query management exists
+  - Includes listing, status updates, and permanent deletion
 - [x] Admin query form stores course as FK (`course_id`) referencing `landing_courses` table
 - [x] Admin test creation, preview, publish, update, and delete flows exist
 - [~] Some admin analytics/performance sections still contain mock data in the UI

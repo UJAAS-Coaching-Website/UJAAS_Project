@@ -243,7 +243,7 @@ This audit focuses on functionality, not just UI presence.
 - `[VERIFY]` Large image uploads and concurrent edits should be tested.
 
 ### Query Management
-- `[REAL]` Query listing, submission, and status update paths exist.
+- `[REAL]` Query listing, submission, status update, and deletion paths exist.
 - `[REAL]` Query form course dropdown populates from `landing_courses` table and stores `course_id` (UUID FK) instead of text.
 - `[REAL]` Backend resolves course name via JOIN for admin query display.
 - `[VERIFY]` Deleting a course from `landing_courses` sets `course_id` to NULL in existing queries (`ON DELETE SET NULL`).

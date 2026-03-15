@@ -800,12 +800,12 @@
   - list is fetched from backend with course name resolved via JOIN on `landing_courses`
   - each query shows resolved course name (from `course_id` FK), not raw text
   - status change syncs through backend patch
-  - delete only removes from local UI state
+  - delete permanently removes from database
 - QA checks:
   - verify status change persists after refresh
   - verify `new` -> `seen` transition happens automatically on open
   - verify course name displays correctly even if the source course was later renamed/deleted (shows "Unknown" when FK is NULL)
-  - verify deleted query reappears after refresh because no backend delete exists
+  - verify deleted query does NOT reappear after refresh
 
 ### 5.19 Admin Notice Upload Form
 - Entry condition: admin opens notice upload from content manager or upload-notice route if surfaced.
@@ -869,6 +869,5 @@
 - Current code contains several UI-complete but backend-incomplete areas:
   - DPP creation/publishing
   - profile change password
-  - admin query deletion
   - faculty dashboard student/rating data
 - These should be logged as current implementation characteristics unless intended requirements explicitly say otherwise.
