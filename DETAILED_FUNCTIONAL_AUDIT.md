@@ -14,6 +14,28 @@ This audit focuses on functionality, not just UI presence.
 - This is not a full runtime QA pass
 - Use this together with `PROJECT_CHECKLIST.md`
 
+## Latest Verified Changes In This Branch
+- `[REAL]` Student review mode for both tests and DPPs now uses explicit answer-state rendering for MCQ, MSQ, and Numerical questions.
+  - Correct answers are highlighted clearly.
+  - Wrong selected options are shown in red.
+  - Unattempted states are shown explicitly.
+  - Numerical answers now explicitly say whether the student's answer is right or wrong.
+- `[REAL]` Submitted-attempt explanations are lazy-loaded per question instead of being preloaded with the main result payload.
+  - Explanation panels are hidden by default.
+  - Opening one question loads only that question's explanation.
+- `[REAL]` Numerical-answer entry is locked to an on-screen numeric keypad in student attempt flows.
+  - Physical keyboard input is blocked for numerical-answer fields.
+- `[REAL]` Test and DPP authoring forms now start with editable default instruction templates.
+  - Student-side generic fallback instructions were removed from test overview; only authored instructions are shown.
+- `[REAL]` Inactive batches are now operationally locked.
+  - Backend blocks assignment and content-creation actions against inactive batches.
+  - Frontend hides/disables the corresponding admin/faculty action UI.
+- `[REAL]` Admin can permanently delete an already inactive batch.
+  - Batch-owned chapters, notes, DPPs, DPP attempts, and exclusive tests are deleted.
+  - Shared tests are preserved and only unlinked from the deleted batch.
+  - Student and faculty accounts are preserved while their batch links are removed.
+- `[VERIFY]` Permanent delete still needs targeted runtime validation around shared-test preservation and destructive cleanup ordering.
+
 ## Top Findings First
 
 ### Critical / High Attention
@@ -124,6 +146,7 @@ This audit focuses on functionality, not just UI presence.
 ### Submit And Analytics
 - `[REAL]` Submit goes to backend and result analytics screen opens from returned attempt result.
 - `[REAL]` Attempt history and result review are API-backed.
+- `[REAL]` Student analytics/review now supports explanation-on-demand per question rather than eager explanation loading.
 - `[VERIFY]` Needs end-to-end verification for resume, autosubmit, and ranking integrity.
 
 ### Faculty/Admin Test Analytics
@@ -143,6 +166,7 @@ This audit focuses on functionality, not just UI presence.
 
 ### DPP Review
 - `[REAL]` Review mode can fetch explanation per question.
+- `[REAL]` DPP review now shares the same explicit answer-state behavior as test review for MCQ, MSQ, and Numerical questions.
 - `[PARTIAL]` DPP attempts do not have the richer timed-session persistence used in tests.
 
 ### Admin/Faculty DPP Analytics
@@ -182,6 +206,8 @@ This audit focuses on functionality, not just UI presence.
 
 ### Batch CRUD
 - `[REAL]` Batch create/update/delete exists.
+- `[REAL]` Inactive batches are prevented from participating in operational actions.
+- `[REAL]` Permanent delete exists for already inactive batches and performs scoped destructive cleanup.
 - `[VERIFY]` Needs validation for faculty assignment and cross-feature consistency.
 
 ### Landing Page Editor

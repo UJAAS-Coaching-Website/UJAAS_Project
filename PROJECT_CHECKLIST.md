@@ -7,6 +7,25 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - `[ ]` Remaining, incomplete, or needs dedicated follow-up
 - `[~]` Implemented but needs attention, cleanup, or stronger verification
 
+## Latest Verified Changes In This Branch
+- [x] Student submitted-attempt review for tests and DPPs now uses explicit MCQ/MSQ/Numerical result states:
+  - correct answers highlighted clearly
+  - wrong selections shown in red
+  - unattempted states shown explicitly
+- [x] Submitted-attempt explanations are lazy-loaded per question instead of preloaded with the full review payload
+- [x] Numerical-answer questions now accept input only through the on-screen numeric keypad in student test/DPP attempt flows
+- [x] Default editable instruction templates now exist in admin/faculty test and DPP creation forms
+- [x] Student-side generic default test instructions were removed; students now see only saved instructions from the authored test
+- [x] Test overview now places instructions above the question breakdown and opens from the top of the page
+- [x] Test analysis and DPP result/preview close flows now guard against stale late-loading reopen behavior
+- [x] Inactive batches are blocked from operational actions such as student assignment, faculty assignment, chapter creation, test targeting, and DPP creation
+- [x] Inactive-batch action UI is hidden/read-only where those actions are disabled
+- [x] Admin can now permanently delete an already inactive batch, with cleanup of batch-owned chapters, notes, DPPs, exclusive tests, and batch links
+- [~] Permanent delete should still be verified manually with:
+  - a batch containing shared tests
+  - a batch containing exclusive tests
+  - batch-owned chapters/DPPs/notes
+
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
 - [x] Backend app scaffolded with Express

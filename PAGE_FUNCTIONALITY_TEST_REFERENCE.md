@@ -9,6 +9,17 @@
   - `mock/demo-only`
   - `mixed`
 
+## 1.1 Latest Verified Branch Changes
+- Student submitted-attempt review for tests and DPPs now uses explicit review states for MCQ, MSQ, and Numerical questions.
+  - QA should verify `Right Answer`, `Wrong`, `Wrong Answer`, and `Unattempted` labeling behavior.
+- Explanations inside submitted-attempt review are now hidden by default and fetched only when the user opens them for a specific question.
+- Numerical-answer attempt fields now accept input only from the on-screen numeric keypad in student attempt mode.
+- Test and DPP creation forms now start with editable default instruction templates.
+- Student test overview no longer shows generic fallback instructions.
+  - Only authored instructions should render.
+- Inactive batches are read-only/no-action in admin and faculty UI.
+- Inactive admin batches now show a `Delete Permanently` flow with destructive confirmation.
+
 ## 2. Public Pages
 
 ### 2.1 Get Started / Landing Page
@@ -85,7 +96,7 @@
   - subject cards enter chapter view
 - QA checks:
   - verify welcome card shows name, roll, and batch
-  - verify DPP count persists from localStorage
+  - verify DPP count is calculated from assigned-batch backend content and completed DPP attempts
   - verify no-batch state shows placeholder
 
 ### 3.3 Student Timetable Modal
@@ -148,10 +159,12 @@
   - `Confirm & Start Test`
 - Expected behavior:
   - breakdown table renders grouped question stats
-  - instructions render test-specific content or defaults
+  - instructions render only saved test-specific content
+  - instructions appear above the question breakdown
   - start only succeeds when backend allows it
 - QA checks:
   - verify counts and marking display match backend response
+  - verify page opens at top when test overview is shown
   - verify not-live and max-attempt errors surface
 
 ### 3.7 Student Live Test Taking
@@ -168,10 +181,12 @@
   - progress save hits backend
   - unload triggers keepalive auto-submit
   - submit clears active session cache and opens analytics
+  - numerical-answer questions accept input only from the on-screen numeric keypad
 - QA checks:
   - verify timer or unload auto-submit path
   - verify session recovery after reload when attempt is still active
   - verify submit result matches chosen answers
+  - verify physical keyboard input is blocked for numerical-answer questions
 
 ### 3.8 Student Analytics
 - Entry condition: student submits test or opens prior attempt analytics.
@@ -180,9 +195,13 @@
 - Main controls:
   - attempt history selectors
   - close/back control
+  - per-question `Show Explanation` / `Hide Explanation`
 - QA checks:
   - verify switching attempts loads the selected result
   - verify close returns to list state
+  - verify analytics opens from the top of the page
+  - verify close during in-flight loading does not reopen analytics from a stale late response
+  - verify explanation content is fetched only when the specific question is expanded
 
 ### 3.9 Student Result History
 - Entry condition: student clicks `View Results`.
@@ -499,7 +518,8 @@
 - Visibility: admin only.
 - Persistence: `mixed`.
 - Main controls:
-  - edit batch
+  - edit batch for active batches
+  - `Delete Permanently` for inactive batches
   - clear batch/back
   - view timetable
   - add faculty to batch
@@ -507,6 +527,9 @@
 - QA checks:
   - verify clear batch returns to global context
   - verify summary updates after student/faculty assignment changes
+  - verify inactive batches do not show operational action UI
+  - verify permanent delete appears only for inactive batches
+  - verify permanent delete confirmation flow completes and removes the batch from dependent views
 
 ### 5.6 Admin Student Directory
 - Entry condition: admin opens global `Students`.
@@ -656,6 +679,7 @@
   - `Publish Test Series`
 - QA checks:
   - verify required validation in step 1
+  - verify default editable instructions are prefilled for new tests
   - verify question thresholds by format:
     - JEE Main: 90
     - NEET: 180
@@ -663,6 +687,12 @@
   - verify draft save and resume preserve data
   - verify previewed questions retain subject/section metadata
   - verify image upload/delete behavior
+
+### 5.12.1 Admin Create DPP / Faculty Create DPP Instruction Check
+- QA focus for current branch:
+  - verify DPP instruction textarea opens with default editable instructions
+  - verify saved DPP instructions appear for the student before starting when present
+  - verify no generic fallback text appears if authored instructions are absent
 
 ### 5.13 Admin Preview Test
 - Entry condition: admin opens preview from test list.
