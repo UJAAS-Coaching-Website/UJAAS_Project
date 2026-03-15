@@ -1,6 +1,7 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
 import {
   Clock,
   ChevronLeft,
@@ -573,11 +574,9 @@ export function StudentTestTaking({
                             <span className="text-xs font-bold text-green-600">CORRECT ANSWER</span>
                           </div>
                         ) : (
-                          <input
-                            type="text"
-                            value={Array.isArray(answers[question.id]) ? '' : (answers[question.id] || '')}
-                            onChange={(e) => selectAnswer(question.id, e.target.value as any)}
-                            className="w-full max-w-xs px-4 py-3 border-2 border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                          <NumericAnswerKeypad
+                            value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
+                            onChange={(nextValue) => selectAnswer(question.id, nextValue)}
                             placeholder="Enter numerical value"
                           />
                         )}
