@@ -287,6 +287,27 @@ export function NotesManagementTab({
     }
   };
 
+  const handleForceDownload = async (e: any, url: string, filename: string) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Direct download failed. Opening file instead.');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const handleDeleteDPP = async (id: string) => {
     if (!canManageContent) return;
     if (confirm('Are you sure you want to delete this DPP?')) {
@@ -806,7 +827,12 @@ export function NotesManagementTab({
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {apiNotes.map((item) => (
-                        <tr key={item.id} className="hover:bg-teal-50/30 transition-colors group">
+                        <tr 
+                          key={item.id} 
+                          className="hover:bg-teal-50/30 transition-colors group cursor-pointer"
+                          onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                          title="click to open"
+                        >
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center">
@@ -819,7 +845,7 @@ export function NotesManagementTab({
                           <td className="py-4 px-6 text-right">
                             <div className="flex justify-end gap-1">
                               <button
-                                onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                                onClick={(e) => handleForceDownload(e, item.file_url, item.title)}
                                 className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                                 title="Download"
                               >
@@ -827,7 +853,10 @@ export function NotesManagementTab({
                               </button>
                               {canManageContent && (
                                 <button
-                                  onClick={() => handleDeleteNote(item.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteNote(item.id);
+                                  }}
                                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                   title="Delete"
                                 >
@@ -848,7 +877,9 @@ export function NotesManagementTab({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group"
+                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-5 shadow-lg border border-white group cursor-pointer"
+                    onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                    title="click to open"
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg"><FileText className="w-6 h-6" /></div>
@@ -858,7 +889,7 @@ export function NotesManagementTab({
                           <span className="text-xs text-gray-400 font-medium">{new Date(item.created_at).toLocaleDateString()}</span>
                           <div className="flex gap-1">
                             <button
-                              onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
+                              onClick={(e) => handleForceDownload(e, item.file_url, item.title)}
                               className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                               title="Download"
                             >
@@ -866,7 +897,10 @@ export function NotesManagementTab({
                             </button>
                             {canManageContent && (
                               <button
-                                onClick={() => handleDeleteNote(item.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNote(item.id);
+                                }}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                 title="Delete"
                               >
