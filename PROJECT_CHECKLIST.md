@@ -28,6 +28,22 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Question bank is now backend-backed with DB tables, storage upload, batch-linked publication, and role-scoped listing
 - [x] Notes upload and question bank upload now show actionable failure causes for invalid type/size/upload errors
 - [~] Shared image upload route now returns better validation errors; frontend image authoring still uses alert-style error presentation
+- [x] Landing page images are now stored in Supabase S3 (`landing-page` bucket) instead of Base64 in the database
+  - Upload and delete handled through `/api/upload` with `context=landing`
+  - Frontend `AdminDashboard` uses new `uploadLandingImage` / `deleteLandingImage` API functions
+- [x] Landing page data schema fully normalized from a single JSON blob table (`landing_page_data`) into four relational tables:
+  - `landing_courses` (id, name, created_at)
+  - `landing_faculty` (id, name, subject, designation, experience, image_url, created_at)
+  - `landing_achievers` (id, name, achievement, year, image_url, created_at)
+  - `landing_visions` (id, name, designation, vision, image_url, created_at)
+- [x] Ordering is based on `created_at ASC` instead of a manual `display_order` column
+- [x] Backend `landingService.js` rewritten to query normalized tables with upsert support
+- [x] Landing page courses now return `{id, name}` objects from the API and are used as such throughout the frontend
+- [x] Prospect query form (`GetStarted.tsx`) now stores `course_id` (FK to `landing_courses`) instead of plain course text
+  - `prospect_queries` table column changed from `course` (text) to `course_id` (UUID FK)
+  - Backend `queryService.js` performs JOIN to resolve course name when listing queries
+  - Frontend dropdown uses `course.id` as value, `course.name` as label
+- [x] Old `landing_page_data` and `landing_contact` tables dropped
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
@@ -67,7 +83,10 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Admin faculty CRUD exists
 - [x] Admin student CRUD exists
 - [x] Admin landing-page editing exists
+- [x] Admin landing-page images stored in Supabase S3 bucket (`landing-page`)
+- [x] Admin landing-page data uses normalized relational schema (courses, faculty, achievers, visions)
 - [x] Admin query management exists
+- [x] Admin query form stores course as FK (`course_id`) referencing `landing_courses` table
 - [x] Admin test creation, preview, publish, update, and delete flows exist
 - [~] Some admin analytics/performance sections still contain mock data in the UI
 - [~] Some admin remarks/rating-related data is stored locally in the browser
@@ -112,6 +131,9 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 
 ## Data And Persistence
 - [x] Database schema and migrations cover major app domains
+- [x] Landing page data uses a fully normalized relational schema with separate tables per content type
+- [x] Landing page images use Supabase S3 storage instead of inline Base64
+- [x] Prospect queries reference courses by FK (`course_id`) instead of plain text
 - [x] Backend services are organized by domain
 - [~] Several frontend features still rely on `localStorage` or `sessionStorage`
 - [~] There is a mix of API-backed persistence and browser-only persistence that should be normalized

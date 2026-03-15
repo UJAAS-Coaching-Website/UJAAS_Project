@@ -22,6 +22,17 @@
 - Question bank is now backend-backed for faculty and students, including real upload, listing, search, sort, download, and faculty delete-from-batch behavior.
 - Notes upload and question bank upload now surface clearer validation causes for bad format, oversize files, and invalid upload shape.
 - Shared image upload route now returns clearer backend validation errors for invalid format and oversize submissions.
+- Landing page images are now stored in Supabase S3 (`landing-page` bucket) instead of Base64 in the database.
+  - Upload/delete handled through `/api/upload` with `context=landing`.
+  - `AdminDashboard` uses `uploadLandingImage` / `deleteLandingImage` API functions.
+- Landing page data schema normalized from a single JSON blob table into four relational tables: `landing_courses`, `landing_faculty`, `landing_achievers`, `landing_visions`.
+  - Old `landing_page_data` and `landing_contact` tables dropped.
+  - Ordering uses `created_at ASC` (no manual display_order).
+- Landing page courses now return `{id, name}` objects from the API.
+  - Frontend components (`GetStarted.tsx`, `AdminDashboard.tsx`, `App.tsx`) use course objects.
+- Prospect query form course dropdown now uses `course.id` as the submitted value (FK to `landing_courses`) instead of plain text.
+  - `prospect_queries.course` column replaced by `prospect_queries.course_id` (UUID FK).
+  - Backend JOINs `landing_courses` to resolve course name for admin display.
 
 ## 2. Public Pages
 
@@ -49,6 +60,8 @@
 - QA checks:
   - verify all public sections render without auth
   - verify required validation on name/email/phone/course
+  - verify course dropdown is populated from `landing_courses` table (dynamic, not hardcoded)
+  - verify form submits `courseId` (UUID) not course name text
   - verify carousel wrap behavior
   - verify empty-state handling when visions or achievers are missing
 
@@ -488,18 +501,22 @@
 ### 5.2 Admin Landing Page Management
 - Entry condition: admin opens `LPM`.
 - Visibility: admin only.
-- Persistence: `mixed`.
+- Persistence: `backend-backed`.
 - Main controls:
-  - content edit inputs for courses, faculty, achievers, visions, and contact
-  - image upload/change controls
+  - content edit inputs for courses, faculty, achievers, visions
+  - image upload/change controls (stored in Supabase S3 `landing-page` bucket)
   - add/remove item controls
 - Expected behavior:
   - save routes through landing update handler
-  - backend update is expected, but local defaults/localStorage also influence initial state
+  - backend uses normalized relational tables (`landing_courses`, `landing_faculty`, `landing_achievers`, `landing_visions`)
+  - courses are `{id, name}` objects; admin can add by name (backend auto-generates ID)
+  - image uploads go to S3 via `/api/upload` with `context=landing`; old images are cleaned up on replacement
+  - ordering is based on `created_at` (first added = first shown)
 - QA checks:
   - verify each content block can be edited and saved
-  - verify image-heavy data can trigger storage warning path
-  - verify content survives refresh when backend save succeeds
+  - verify content survives refresh (fully backend-persisted)
+  - verify image upload/delete works against S3
+  - verify courses show as `{id, name}` objects in API responses
 
 ### 5.3 Admin Batch Selection
 - Entry condition: admin opens `Batches` without selected batch.
@@ -773,18 +790,20 @@
 ### 5.18 Admin Queries Management
 - Entry condition: admin opens `Queries`.
 - Visibility: admin only.
-- Persistence: `mixed`.
+- Persistence: `backend-backed`.
 - Main controls:
   - query row open/view action
   - status change controls
   - delete query action
   - query modal close
 - Expected behavior:
-  - list is fetched from backend
+  - list is fetched from backend with course name resolved via JOIN on `landing_courses`
+  - each query shows resolved course name (from `course_id` FK), not raw text
   - status change syncs through backend patch
   - delete only removes from local UI state
 - QA checks:
   - verify status change persists after refresh
+  - verify course name displays correctly even if the source course was later renamed/deleted (shows "Unknown" when FK is NULL)
   - verify deleted query reappears after refresh because no backend delete exists
 
 ### 5.19 Admin Notice Upload Form

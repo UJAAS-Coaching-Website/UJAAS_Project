@@ -41,6 +41,20 @@ This audit focuses on functionality, not just UI presence.
   - Deleting from faculty view removes the file only from the selected batch unless it was the last remaining publication link.
 - `[REAL]` Notes upload and question bank upload now return clearer validation errors for unsupported file types, oversize files, and invalid multi-file submissions.
 - `[PARTIAL]` Shared image upload now returns clearer backend-side validation errors, but the UI still uses alert-based messaging in some authoring flows.
+- `[REAL]` Landing page images are now stored in Supabase S3 (`landing-page` bucket) and managed via `/api/upload` with `context=landing`.
+  - `uploadLandingImage` and `deleteLandingImage` API functions handle frontend image management.
+  - Old Base64 image data cleared from database.
+- `[REAL]` Landing page data schema fully normalized from a single JSON blob table into four relational tables:
+  - `landing_courses`, `landing_faculty`, `landing_achievers`, `landing_visions`.
+  - Old `landing_page_data` and `landing_contact` tables dropped.
+  - Ordering uses `created_at ASC` instead of manual `display_order`.
+- `[REAL]` Backend `landingService.js` rewritten to query normalized tables with PostgreSQL upsert (`ON CONFLICT DO UPDATE`) support.
+- `[REAL]` Landing page courses now return `{id, name}` objects from the API.
+  - Frontend `GetStarted.tsx`, `AdminDashboard.tsx`, `App.tsx` all updated to use course objects.
+- `[REAL]` Prospect query form now stores `course_id` (UUID FK to `landing_courses`) instead of plain course text.
+  - `prospect_queries` table column changed from `course` to `course_id`.
+  - Backend `queryService.js` JOINs `landing_courses` to resolve course name when listing queries.
+  - Frontend dropdown uses `course.id` as value, `course.name` as label.
 
 ## Top Findings First
 
@@ -221,11 +235,17 @@ This audit focuses on functionality, not just UI presence.
 
 ### Landing Page Editor
 - `[REAL]` Landing page update API exists and is wired.
-- `[PARTIAL]` App still keeps some local cached landing state.
-- `[VERIFY]` Large images/storage edge cases should be tested.
+- `[REAL]` Landing page data uses normalized relational schema with four separate tables (`landing_courses`, `landing_faculty`, `landing_achievers`, `landing_visions`).
+- `[REAL]` Landing page images are stored in Supabase S3 (`landing-page` bucket) instead of Base64.
+- `[REAL]` Landing page courses return `{id, name}` objects; admin CRUD manages these objects.
+- `[REAL]` Backend uses PostgreSQL upsert (`ON CONFLICT`) for efficient updates without losing `created_at` timestamps.
+- `[VERIFY]` Large image uploads and concurrent edits should be tested.
 
 ### Query Management
 - `[REAL]` Query listing, submission, and status update paths exist.
+- `[REAL]` Query form course dropdown populates from `landing_courses` table and stores `course_id` (UUID FK) instead of text.
+- `[REAL]` Backend resolves course name via JOIN for admin query display.
+- `[VERIFY]` Deleting a course from `landing_courses` sets `course_id` to NULL in existing queries (`ON DELETE SET NULL`).
 
 ### Student Detail Modal
 - `[DEMO]` Mock test performance array is hardcoded.
@@ -319,6 +339,8 @@ This audit focuses on functionality, not just UI presence.
 - `[ ]` Test autosubmit on timeout and browser close
 - `[ ]` DPP attempt limits and result history
 - `[ ]` Landing page editor persistence after reload
+- `[ ]` Landing page image upload/delete in S3 bucket
+- `[ ]` Query form course dropdown correctly resolves from `landing_courses` table
 - `[ ]` Note uploads against real bucket credentials
 - `[ ]` Question bank uploads/list/delete against real bucket credentials
 - `[ ]` Cross-role visibility rules for chapters, notes, tests, and analytics
