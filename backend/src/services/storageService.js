@@ -15,6 +15,7 @@ const s3Client = new S3Client({
 const STORAGE_PUBLIC_BASE_URL = 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public';
 const QUESTIONS_BUCKET_NAME = 'questions';
 const NOTES_BUCKET_NAME = 'notes';
+const QUESTION_BANK_BUCKET_NAME = 'question-bank';
 
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
@@ -31,6 +32,13 @@ const sanitizeFileName = (originalName) => {
 
   return `${sanitizedBase}.${ext}`;
 };
+
+const sanitizePathSegment = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'general';
 
 async function uploadBufferToBucket(bucketName, objectKey, fileBuffer, mimeType) {
   const command = new PutObjectCommand({
@@ -113,6 +121,24 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
   }
 }
 
+export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, mimeType, subjectName, fileId) {
+  const sanitizedFileName = sanitizeFileName(originalName);
+  const objectKey = [
+    'subjects',
+    sanitizePathSegment(subjectName),
+    'files',
+    fileId,
+    sanitizedFileName,
+  ].join('/');
+
+  try {
+    return await uploadBufferToBucket(QUESTION_BANK_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+  } catch (error) {
+    console.error('Question bank storage upload error:', error);
+    throw new Error('Failed to upload question bank file to storage.');
+  }
+}
+
 /**
  * Deletes an image from the Supabase S3 bucket using its public URL.
  * 
@@ -133,6 +159,15 @@ export async function deleteNoteFromStorage(fileUrl) {
   } catch (error) {
     console.error('Notes storage delete error:', error);
     throw new Error('Failed to delete note from storage.');
+  }
+}
+
+export async function deleteQuestionBankFileFromStorage(fileUrl) {
+  try {
+    await deleteFileFromStorageByUrl(fileUrl, QUESTION_BANK_BUCKET_NAME);
+  } catch (error) {
+    console.error('Question bank storage delete error:', error);
+    throw new Error('Failed to delete question bank file from storage.');
   }
 }
 
