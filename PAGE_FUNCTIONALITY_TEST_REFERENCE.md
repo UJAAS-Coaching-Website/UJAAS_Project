@@ -19,6 +19,9 @@
   - Only authored instructions should render.
 - Inactive batches are read-only/no-action in admin and faculty UI.
 - Inactive admin batches now show a `Delete Permanently` flow with destructive confirmation.
+- Question bank is now backend-backed for faculty and students, including real upload, listing, search, sort, download, and faculty delete-from-batch behavior.
+- Notes upload and question bank upload now surface clearer validation causes for bad format, oversize files, and invalid upload shape.
+- Shared image upload route now returns clearer backend validation errors for invalid format and oversize submissions.
 
 ## 2. Public Pages
 
@@ -239,20 +242,24 @@
 ### 3.11 Student Question Bank
 - Entry condition: student opens `Question Bank`.
 - Visibility: student only.
-- Persistence: `localStorage-backed`.
+- Persistence: `backend-backed`.
 - Main controls:
   - subject cards
-  - chapter cards
+  - in-subject search input
+  - sort dropdown
   - search input
   - download buttons
-  - breadcrumb links
+  - back button
 - Expected behavior:
-  - entries are filtered by student batch
-  - search filters by question-set name
+  - subjects are derived from files published to the student's assigned batch
+  - opening a subject lists that subject's files only
+  - search filters by file title
+  - sort supports name, uploaded time, and difficulty ordering
 - QA checks:
-  - verify batch filtering
-  - verify subject/chapter drilldown
+  - verify only assigned-batch content is visible
+  - verify subject drilldown
   - verify empty state when nothing matches
+  - verify clicking a card opens the file and download triggers a file download
 
 ## 4. Faculty Pages
 
@@ -401,6 +408,7 @@
 - QA checks:
   - verify chapter context restoration
   - verify single-file behavior
+  - verify invalid format and oversize errors display the actual cause
   - verify progress and success modal
   - verify stored context keys are cleared after success
 
@@ -423,27 +431,32 @@
 ### 4.12 Faculty Question Bank
 - Entry condition: faculty opens question bank.
 - Visibility: faculty only.
-- Persistence: `localStorage-backed`.
+- Persistence: `backend-backed`.
 - Main controls:
   - `Add to Question Bank`
-  - breadcrumb navigation
-  - chapter delete
-  - question delete
+  - batch cards
+  - back button inside batch
+  - search input
+  - sort dropdown
+  - delete-from-batch action
   - add modal with:
-    - PDF name
-    - chapter
+    - title
     - difficulty buttons
     - target batch toggles
-    - upload PDF input
+    - upload file input
     - `Cancel`
-    - `Upload Question`
+    - `Upload Content`
 - Expected behavior:
-  - data is saved in localStorage only
-  - upload is simulated with timeout
+  - upload stores the file in storage and metadata in DB
+  - faculty sees only their mapped subject content
+  - faculty sees only assigned batches
+  - delete removes the file only from the selected batch unless it was the last linked batch
 - QA checks:
   - verify at least one batch is required
-  - verify PDF file is required
+  - verify supported file validation and 50MB limit messaging
   - verify added entries persist after refresh
+  - verify delete from one batch does not remove the file from other published batches
+  - verify clicking a card opens the file and download triggers a file download
 
 ### 4.13 Faculty Profile
 - Entry condition: faculty clicks avatar.
@@ -827,12 +840,13 @@
 
 ### 6.4 Upload Limits and Validation
 - Verify note upload rejects missing file and missing title.
-- Verify image upload handles invalid metadata or oversize errors from backend.
+- Verify note upload shows the specific reason for invalid type, oversize file, or invalid multi-file submission.
+- Verify image upload handles invalid metadata or oversize/type errors from backend.
+- Verify question bank upload shows the specific reason for invalid type, oversize file, or invalid multi-file submission.
 - Verify note upload accepts one file and enforces practical size expectations.
 
 ### 6.5 Known Test Notes
 - Current code contains several UI-complete but backend-incomplete areas:
-  - question bank
   - DPP creation/publishing
   - profile change password
   - admin query deletion

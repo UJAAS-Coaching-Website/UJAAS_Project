@@ -35,6 +35,12 @@ This audit focuses on functionality, not just UI presence.
   - Shared tests are preserved and only unlinked from the deleted batch.
   - Student and faculty accounts are preserved while their batch links are removed.
 - `[VERIFY]` Permanent delete still needs targeted runtime validation around shared-test preservation and destructive cleanup ordering.
+- `[REAL]` Question bank is now backend-backed for both faculty and students.
+  - Faculty uploads one file at a time with title, difficulty, and batch publication links.
+  - Student view is batch-scoped and subject-grouped.
+  - Deleting from faculty view removes the file only from the selected batch unless it was the last remaining publication link.
+- `[REAL]` Notes upload and question bank upload now return clearer validation errors for unsupported file types, oversize files, and invalid multi-file submissions.
+- `[PARTIAL]` Shared image upload now returns clearer backend-side validation errors, but the UI still uses alert-based messaging in some authoring flows.
 
 ## Top Findings First
 
@@ -105,9 +111,11 @@ This audit focuses on functionality, not just UI presence.
 - `[DEMO]` Notification persistence appears frontend-local in `App.tsx`; no full backend notification workflow was verified from the student UI path.
 
 ### Question Bank
-- `[DEMO]` Question bank data is persisted in `localStorage`.
-  - Source: `frontend/src/components/QuestionBank.tsx`
-- `[RISK]` Browser-only storage means no shared source of truth, no role enforcement, and no cross-device persistence.
+- `[REAL]` Question bank is backed by database tables, storage uploads, and `/api/question-bank`.
+  - Source: `frontend/src/components/QuestionBank.tsx`, `frontend/src/api/questionBank.ts`, `backend/src/routes/questionBankRoutes.js`
+- `[REAL]` Faculty access is scoped to assigned batches and mapped subject.
+- `[REAL]` Student access is scoped to assigned batch content only.
+- `[VERIFY]` Real bucket setup for `question-bank` still needs runtime verification in the target storage environment.
 
 ## 3. Student Profile And Ratings
 
@@ -187,6 +195,7 @@ This audit focuses on functionality, not just UI presence.
 - `[REAL]` Note upload/create/update/delete APIs exist.
 - `[REAL]` Note create/delete checks faculty-managed chapter/note ownership.
   - Source: `backend/src/controllers/noteController.js`, `backend/src/services/contentAccessService.js`
+- `[REAL]` Notes upload now has explicit file-type allowlist and clearer upload-failure messages.
 - `[VERIFY]` Needs real storage environment validation.
 
 ### Batch Notices
@@ -250,11 +259,13 @@ This audit focuses on functionality, not just UI presence.
 ### Question/Image Upload
 - `[REAL]` Admin/faculty can upload question/explanation/option images to storage.
 - `[PARTIAL]` Context and itemRole are validated.
-- `[RISK]` File type validation is still weak.
+- `[REAL]` Image upload now returns clearer backend messages for invalid format, oversize files, and malformed upload submissions.
+- `[VERIFY]` Frontend image-upload surfaces still use alert-based failure display and should be standardized if inline UX is desired everywhere.
 
 ### Note Upload
 - `[REAL]` Faculty note upload path exists and writes to storage + DB.
-- `[RISK]` 50 MB memory upload with no strong file validation can be abused or cause pressure.
+- `[REAL]` Note upload now enforces a MIME allowlist and returns actionable validation errors.
+- `[RISK]` 50 MB memory upload can still cause server memory pressure under abuse or concurrency.
 
 ## 10. Backend Authorization Audit
 
@@ -278,7 +289,8 @@ This audit focuses on functionality, not just UI presence.
 - `[PARTIAL]` Frontend still uses bearer tokens from `localStorage`, weakening the benefits of httpOnly cookies.
 
 ### Upload Validation
-- `[RISK]` No strict MIME allowlist or content inspection found on upload routes.
+- `[PARTIAL]` MIME allowlists now exist for note upload, question bank upload, and shared image upload routes.
+- `[RISK]` Content inspection is still not performed beyond MIME/type checks.
 
 ### Logging / Error Handling
 - `[PARTIAL]` Some backend endpoints return raw error messages in JSON.
@@ -292,7 +304,7 @@ This audit focuses on functionality, not just UI presence.
 - `[ ]` Remove insecure `JWT_SECRET` fallback and fail fast if unset in production
 - `[ ]` Lock down `CORS_ORIGIN`
 - `[ ]` Stop storing access tokens in `localStorage`, or explicitly accept the XSS tradeoff and harden accordingly
-- `[ ]` Add file-type allowlists and stronger validation for uploads
+- `[~]` Add stronger upload validation beyond MIME allowlists where needed
 
 ## Must Fix For Functional Accuracy
 - `[ ]` Replace admin mock student performance data with real test/DPP history
@@ -300,7 +312,7 @@ This audit focuses on functionality, not just UI presence.
 - `[ ]` Implement real change-password flow
 - `[ ]` Replace browser-local student ratings with backend persistence
 - `[ ]` Replace browser-local attendance/remarks with backend persistence where required
-- `[ ]` Decide whether question bank is a real shared feature or intentionally local-only
+- `[x]` Question bank is now implemented as a real shared backend-backed feature
 
 ## Should Verify End-To-End
 - `[ ]` Test attempt resume after refresh
@@ -308,13 +320,13 @@ This audit focuses on functionality, not just UI presence.
 - `[ ]` DPP attempt limits and result history
 - `[ ]` Landing page editor persistence after reload
 - `[ ]` Note uploads against real bucket credentials
+- `[ ]` Question bank uploads/list/delete against real bucket credentials
 - `[ ]` Cross-role visibility rules for chapters, notes, tests, and analytics
 
 ## Quick Reference: Demo Or Local-Only Behaviors Found
 - `[DEMO]` Student profile change password
 - `[DEMO]` Student subject-level performance detail generation
 - `[DEMO]` Student timetable download button
-- `[DEMO]` Student question bank persistence
 - `[DEMO]` Student ratings persistence
 - `[DEMO]` Admin reset password
 - `[DEMO]` Admin student test history modal data
@@ -326,6 +338,6 @@ This audit focuses on functionality, not just UI presence.
 - The codebase is not just a UI shell; a lot of the core app is genuinely implemented, especially tests, DPPs, auth, CRUD flows, and content APIs.
 - The biggest gaps are:
   - demo/mock data still presented as real insights in some dashboards
-  - browser-only persistence for ratings/remarks/attendance/question-bank-style features
+  - browser-only persistence for ratings/remarks/attendance-style features
   - authorization gaps on faculty test/chapter access
-  - deployment/security hardening around tokens, CORS, and uploads
+  - deployment/security hardening around tokens, CORS, and upload content validation

@@ -25,6 +25,9 @@ Use this file as a living tracker while we stabilize and complete the codebase.
   - a batch containing shared tests
   - a batch containing exclusive tests
   - batch-owned chapters/DPPs/notes
+- [x] Question bank is now backend-backed with DB tables, storage upload, batch-linked publication, and role-scoped listing
+- [x] Notes upload and question bank upload now show actionable failure causes for invalid type/size/upload errors
+- [~] Shared image upload route now returns better validation errors; frontend image authoring still uses alert-style error presentation
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
@@ -54,7 +57,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Student test series UI exists
 - [x] Student DPP flow exists
 - [x] Student batch academic content/notes area exists
-- [x] Student question bank UI exists
+- [x] Student question bank is backend-backed and batch-scoped
 - [~] Some student-facing progress/state still uses browser storage instead of a fully backend-driven source of truth
 - [ ] Verify each student screen end-to-end against real seeded backend data
 
@@ -75,6 +78,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Faculty content upload/manage flow exists
 - [x] Faculty DPP creation and management exist
 - [x] Faculty test access/management exists
+- [x] Faculty question bank upload/list/delete flow is backend-backed
 - [~] Some faculty analytics/performance sections still contain mock data in the UI
 - [~] Some faculty attendance/remarks state is stored in `localStorage`
 - [ ] Move faculty analytics, attendance, and remarks to durable backend storage
@@ -101,6 +105,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Chapter routes/services exist
 - [x] Notes routes/services exist
 - [x] Upload route and storage service exist
+- [x] Question bank routes/services and storage flow exist
 - [x] Student batch content view is wired into the dashboard
 - [~] Storage upload/delete behavior needs real environment validation with the target bucket/provider
 - [ ] Add integration tests for upload, note creation, note deletion, and permission checks
