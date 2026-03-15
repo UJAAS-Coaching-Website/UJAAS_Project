@@ -102,6 +102,12 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
   const questions = useMemo(() => (payload ? mapQuestions(payload) : []), [payload]);
 
   useEffect(() => {
+    if (session.mode === 'result') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [session.mode, session.mode === 'result' ? session.result.attempt_id : null]);
+
+  useEffect(() => {
     if (session.mode === 'attempt') {
       setPayload(session.payload);
       setHasStarted(!(session.payload.dpp.instructions || '').trim());

@@ -42,6 +42,7 @@ interface StudentDashboardProps {
 
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
+const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
 
 export function StudentDashboard({ 
   user, 
@@ -95,6 +96,23 @@ export function StudentDashboard({
 
   const handleSubTabNavigate = (newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
+  };
+
+  const handleExitDpp = () => {
+    sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
+
+    try {
+      const raw = localStorage.getItem(NOTES_RETURN_CONTEXT_KEY);
+      if (!raw) {
+        onNavigate('home');
+        return;
+      }
+
+      const saved = JSON.parse(raw) as { returnTab?: Tab };
+      onNavigate(saved.returnTab || 'home');
+    } catch {
+      onNavigate('home');
+    }
   };
 
   return (
@@ -182,10 +200,7 @@ export function StudentDashboard({
           {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
             <DPPPractice
               session={activeDppSession}
-              onExit={() => {
-                sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
-                onNavigate('home');
-              }}
+              onExit={handleExitDpp}
               onSessionChange={(nextSession) => {
                 setActiveDppSession(nextSession);
                 sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
@@ -212,6 +227,7 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
+              activeTab={activeTab}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -239,6 +255,7 @@ export function StudentDashboard({
                 setProfileSection('performance');
                 onNavigate('profile');
               }} 
+              activeTab={activeTab}
               onViewTimetable={() => setShowFullTimetable(true)}
             />
           )}
@@ -343,11 +360,13 @@ function HomeTab({
   user, 
   onNavigate, 
   onOpenPerformance,
+  activeTab,
   onViewTimetable
 }: { 
   user: User; 
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
+  activeTab: Tab;
   onViewTimetable: () => void;
 }) {
   const [dppProgress, setDppProgress] = useState({ completed: 0, total: 0, loading: true });
@@ -549,6 +568,7 @@ function HomeTab({
       <AssignedBatchContent
         user={user}
         onNavigate={onNavigate}
+        currentTab={activeTab}
         onViewTimetable={onViewTimetable}
       />
 
@@ -559,10 +579,12 @@ function HomeTab({
 function AssignedBatchContent({ 
   user, 
   onNavigate,
+  currentTab,
   onViewTimetable
 }: { 
   user: User; 
   onNavigate: (tab: Tab, subTab?: string) => void;
+  currentTab: Tab;
   onViewTimetable: () => void;
 }) {
   const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
@@ -651,6 +673,7 @@ function AssignedBatchContent({
         <div className="p-1">
           <NotesManagementTab 
             onNavigate={onNavigate}
+            currentTab={currentTab}
             selectedBatch={user.studentDetails?.batch || null}
             onChangeBatch={() => onNavigate('home')}
             onViewTimetable={onViewTimetable}

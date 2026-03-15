@@ -42,6 +42,7 @@ const formatRelativeTime = (dateString: string) => {
 
 interface NotesManagementTabProps {
   onNavigate: (t: Tab) => void;
+  currentTab?: string;
   selectedBatch: string | null;
   onChangeBatch: () => void;
   onViewTimetable: () => void;
@@ -93,6 +94,7 @@ async function preloadDppAssets(questions: ApiDpp['questions']) {
 
 export function NotesManagementTab({
   onNavigate,
+  currentTab,
   selectedBatch,
   onChangeBatch,
   onViewTimetable,
@@ -389,6 +391,7 @@ export function NotesManagementTab({
       const payload = await startMyDppAttempt(dppId);
       await preloadDppAssets(payload.dpp.questions);
       localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+        returnTab: currentTab || 'home',
         batchLabel: selectedBatch,
         selectedSubject,
         chapterId: selectedChapterObj?.id,
@@ -420,6 +423,15 @@ export function NotesManagementTab({
       if (!latestAttempt) return;
 
       const result = await fetchDppAttemptResult(latestAttempt.id);
+      localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+        returnTab: currentTab || 'home',
+        batchLabel: selectedBatch,
+        selectedSubject,
+        chapterId: selectedChapterObj?.id,
+        chapterName: selectedChapterObj?.name,
+        currentView,
+        activeContentType,
+      }));
       sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify({
         mode: 'result',
         result,
