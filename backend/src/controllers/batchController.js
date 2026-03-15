@@ -4,6 +4,7 @@ import {
     createBatch,
     updateBatch,
     deleteBatch,
+    permanentlyDeleteBatch,
     assignStudentToBatch,
     removeStudentFromBatch,
     assignFacultyToBatch,
@@ -91,6 +92,25 @@ export async function handleDeleteBatch(req, res) {
     } catch (error) {
         console.error("deleteBatch error:", error.message);
         return res.status(500).json({ message: "failed to delete batch", error: error.message });
+    }
+}
+
+export async function handlePermanentDeleteBatch(req, res) {
+    try {
+        const summary = await permanentlyDeleteBatch(req.params.id);
+        return res.status(200).json({
+            message: "batch permanently deleted",
+            summary,
+        });
+    } catch (error) {
+        if (error?.code === "BATCH_NOT_FOUND") {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error?.code === "BATCH_NOT_INACTIVE") {
+            return res.status(409).json({ message: error.message });
+        }
+        console.error("permanentDeleteBatch error:", error.message);
+        return res.status(500).json({ message: "failed to permanently delete batch", error: error.message });
     }
 }
 

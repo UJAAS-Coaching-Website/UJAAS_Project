@@ -73,6 +73,20 @@ export interface UpdateBatchPayload {
     facultyIds?: string[];
 }
 
+export interface PermanentDeleteBatchSummary {
+    deletedBatchId: string;
+    removedStudentLinks: number;
+    removedFacultyLinks: number;
+    deletedChapters: number;
+    deletedNotes: number;
+    deletedDpps: number;
+    deletedDppAttempts: number;
+    deletedExclusiveTests: number;
+    unlinkedSharedTests: number;
+    deletedNotifications: number;
+    removedTimetableReference: number;
+}
+
 // ── API functions ──────────────────────────────────────
 
 export async function fetchBatches(): Promise<ApiBatch[]> {
@@ -104,6 +118,12 @@ export async function updateBatch(
 
 export async function deleteBatch(id: string): Promise<void> {
     await request(`/api/batches/${id}`, { method: "DELETE" });
+}
+
+export async function permanentlyDeleteBatch(
+    id: string
+): Promise<{ message: string; summary: PermanentDeleteBatchSummary }> {
+    return request(`/api/batches/${id}/permanent`, { method: "DELETE" });
 }
 
 export async function assignStudentToBatch(

@@ -1,6 +1,33 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 
+async function tableExists(tableName, client = pool) {
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = $1
+        ) AS exists`,
+        [tableName]
+    );
+    return result.rows[0]?.exists === true;
+}
+
+async function columnExists(tableName, columnName, client = pool) {
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+        ) AS exists`,
+        [tableName, columnName]
+    );
+    return result.rows[0]?.exists === true;
+}
+
 async function ensureActiveBatchExists(batchId, client = pool) {
     const result = await client.query(
         `SELECT id, is_active
@@ -248,6 +275,236 @@ export async function deleteBatch(id) {
         [id, deletedSuffix]
     );
     return result.rowCount > 0;
+}
+
+export async function permanentlyDeleteBatch(id) {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        const batchResult = await client.query(
+            `SELECT id, is_active, timetable_url
+             FROM batches
+             WHERE id = $1
+             LIMIT 1`,
+            [id]
+        );
+
+        if (batchResult.rowCount === 0) {
+            const error = new Error("batch not found");
+            error.code = "BATCH_NOT_FOUND";
+            throw error;
+        }
+
+        const batch = batchResult.rows[0];
+        if (batch.is_active) {
+            const error = new Error("only inactive batches can be deleted permanently");
+            error.code = "BATCH_NOT_INACTIVE";
+            throw error;
+        }
+
+        const batchModel = await getStudentBatchModel();
+        const hasLegacyStudentBatches = await tableExists("student_batches", client);
+        const hasDppAttempts = await tableExists("dpp_attempts", client);
+        const hasDppTargetBatches = await tableExists("dpp_target_batches", client);
+        const hasNotificationsBatchColumn = await columnExists("notifications", "batch_id", client);
+
+        const [
+            chapterCountResult,
+            notesCountResult,
+            dppCountResult,
+            studentLinkCountResult,
+            facultyLinkCountResult,
+            notificationCountResult,
+            testLinkRowsResult,
+        ] = await Promise.all([
+            client.query(
+                `SELECT COUNT(*)::int AS count
+                 FROM chapters
+                 WHERE batch_id = $1`,
+                [id]
+            ),
+            client.query(
+                `SELECT COUNT(*)::int AS count
+                 FROM notes n
+                 JOIN chapters c ON c.id = n.chapter_id
+                 WHERE c.batch_id = $1`,
+                [id]
+            ),
+            client.query(
+                `SELECT COUNT(*)::int AS count
+                 FROM dpps d
+                 JOIN chapters c ON c.id = d.chapter_id
+                 WHERE c.batch_id = $1`,
+                [id]
+            ),
+            batchModel === "single"
+                ? client.query(
+                    `SELECT COUNT(*)::int AS count
+                     FROM students
+                     WHERE assigned_batch_id = $1`,
+                    [id]
+                )
+                : hasLegacyStudentBatches
+                    ? client.query(
+                        `SELECT COUNT(*)::int AS count
+                         FROM student_batches
+                         WHERE batch_id = $1`,
+                        [id]
+                    )
+                    : Promise.resolve({ rows: [{ count: 0 }] }),
+            client.query(
+                `SELECT COUNT(*)::int AS count
+                 FROM faculty_batches
+                 WHERE batch_id = $1`,
+                [id]
+            ),
+            hasNotificationsBatchColumn
+                ? client.query(
+                    `SELECT COUNT(*)::int AS count
+                     FROM notifications
+                     WHERE batch_id = $1`,
+                    [id]
+                )
+                : Promise.resolve({ rows: [{ count: 0 }] }),
+            client.query(
+                `SELECT ttb.test_id,
+                        COUNT(all_links.batch_id)::int AS linked_batch_count
+                 FROM test_target_batches ttb
+                 JOIN test_target_batches all_links ON all_links.test_id = ttb.test_id
+                 WHERE ttb.batch_id = $1
+                 GROUP BY ttb.test_id`,
+                [id]
+            ),
+        ]);
+
+        const exclusiveTestIds = [];
+        const sharedTestIds = [];
+        for (const row of testLinkRowsResult.rows) {
+            if (Number(row.linked_batch_count) > 1) {
+                sharedTestIds.push(row.test_id);
+            } else {
+                exclusiveTestIds.push(row.test_id);
+            }
+        }
+
+        let dppAttemptCount = 0;
+        if (hasDppAttempts) {
+            const dppAttemptCountResult = await client.query(
+                `SELECT COUNT(*)::int AS count
+                 FROM dpp_attempts da
+                 WHERE EXISTS (
+                     SELECT 1
+                     FROM dpps d
+                     JOIN chapters c ON c.id = d.chapter_id
+                     WHERE d.id = da.dpp_id
+                       AND c.batch_id = $1
+                 )`,
+                [id]
+            );
+            dppAttemptCount = Number(dppAttemptCountResult.rows[0]?.count ?? 0);
+
+            await client.query(
+                `DELETE FROM dpp_attempts da
+                 WHERE EXISTS (
+                     SELECT 1
+                     FROM dpps d
+                     JOIN chapters c ON c.id = d.chapter_id
+                     WHERE d.id = da.dpp_id
+                       AND c.batch_id = $1
+                 )`,
+                [id]
+            );
+        }
+
+        if (hasDppTargetBatches) {
+            await client.query(
+                `DELETE FROM dpp_target_batches dtb
+                 WHERE EXISTS (
+                     SELECT 1
+                     FROM dpps d
+                     JOIN chapters c ON c.id = d.chapter_id
+                     WHERE d.id = dtb.dpp_id
+                       AND c.batch_id = $1
+                 )`,
+                [id]
+            );
+        }
+
+        if (sharedTestIds.length > 0) {
+            await client.query(
+                `DELETE FROM test_target_batches
+                 WHERE batch_id = $1
+                   AND test_id = ANY($2::uuid[])`,
+                [id, sharedTestIds]
+            );
+        }
+
+        if (exclusiveTestIds.length > 0) {
+            await client.query(
+                `DELETE FROM tests
+                 WHERE id = ANY($1::uuid[])`,
+                [exclusiveTestIds]
+            );
+        }
+
+        if (batchModel === "single") {
+            await client.query(
+                `UPDATE students
+                 SET assigned_batch_id = NULL
+                 WHERE assigned_batch_id = $1`,
+                [id]
+            );
+        } else if (hasLegacyStudentBatches) {
+            await client.query(
+                `DELETE FROM student_batches
+                 WHERE batch_id = $1`,
+                [id]
+            );
+        }
+
+        await client.query(
+            `DELETE FROM faculty_batches
+             WHERE batch_id = $1`,
+            [id]
+        );
+
+        if (hasNotificationsBatchColumn) {
+            await client.query(
+                `DELETE FROM notifications
+                 WHERE batch_id = $1`,
+                [id]
+            );
+        }
+
+        await client.query(
+            `DELETE FROM batches
+             WHERE id = $1`,
+            [id]
+        );
+
+        await client.query("COMMIT");
+
+        return {
+            deletedBatchId: id,
+            removedStudentLinks: Number(studentLinkCountResult.rows[0]?.count ?? 0),
+            removedFacultyLinks: Number(facultyLinkCountResult.rows[0]?.count ?? 0),
+            deletedChapters: Number(chapterCountResult.rows[0]?.count ?? 0),
+            deletedNotes: Number(notesCountResult.rows[0]?.count ?? 0),
+            deletedDpps: Number(dppCountResult.rows[0]?.count ?? 0),
+            deletedDppAttempts: dppAttemptCount,
+            deletedExclusiveTests: exclusiveTestIds.length,
+            unlinkedSharedTests: sharedTestIds.length,
+            deletedNotifications: Number(notificationCountResult.rows[0]?.count ?? 0),
+            removedTimetableReference: batch.timetable_url ? 1 : 0,
+        };
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 /**

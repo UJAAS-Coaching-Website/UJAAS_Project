@@ -31,7 +31,8 @@ import {
   Bell,
   Eye,
   Mail,
-  Phone
+  Phone,
+  AlertTriangle
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -71,6 +72,7 @@ interface AdminDashboardProps {
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
+  onPermanentDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -268,6 +270,7 @@ export function AdminDashboard({
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
+  onPermanentDeleteBatch,
   onLogout,
   notifications,
   onMarkAsRead,
@@ -343,6 +346,17 @@ export function AdminDashboard({
   const [batchFacultyPicker, setBatchFacultyPicker] = useState<{ open: boolean; batch: Batch | null }>({
     open: false,
     batch: null
+  });
+  const [permanentDeleteModal, setPermanentDeleteModal] = useState<{
+    open: boolean;
+    batchLabel: Batch | null;
+    submitting: boolean;
+    error: string | null;
+  }>({
+    open: false,
+    batchLabel: null,
+    submitting: false,
+    error: null,
   });
 
   const [queryModal, setQueryModal] = useState<{ open: boolean; query: import('../App').LandingQuery | null }>({
@@ -465,6 +479,35 @@ export function AdminDashboard({
   const openAddBatch = () => setBatchModal({ open: true, mode: 'create' });
   const openEditBatch = (label: string) => setBatchModal({ open: true, mode: 'edit', batchLabel: label });
   const closeBatchModal = () => setBatchModal({ ...batchModal, open: false });
+  const openPermanentDeleteModal = (label: Batch) =>
+    setPermanentDeleteModal({ open: true, batchLabel: label, submitting: false, error: null });
+  const closePermanentDeleteModal = () => {
+    setPermanentDeleteModal((prev) =>
+      prev.submitting
+        ? prev
+        : { open: false, batchLabel: null, submitting: false, error: null }
+    );
+  };
+
+  const handlePermanentDeleteBatch = async () => {
+    const batchLabel = permanentDeleteModal.batchLabel;
+    if (!batchLabel) return;
+
+    setPermanentDeleteModal((prev) => ({ ...prev, submitting: true, error: null }));
+    const result = await onPermanentDeleteBatch(batchLabel);
+
+    if (result.ok) {
+      setPermanentDeleteModal({ open: false, batchLabel: null, submitting: false, error: null });
+      onClearBatch();
+      return;
+    }
+
+    setPermanentDeleteModal((prev) => ({
+      ...prev,
+      submitting: false,
+      error: result.error ?? 'Unable to delete batch permanently.',
+    }));
+  };
 
   const openQueryDetails = (query: import('../App').LandingQuery) => setQueryModal({ open: true, query });
   const closeQueryDetails = () => setQueryModal({ open: false, query: null });
@@ -864,6 +907,7 @@ export function AdminDashboard({
                 <OverviewTab
                   selectedBatch={selectedBatch}
                   onEditBatch={openEditBatch}
+                  onPermanentDeleteBatch={openPermanentDeleteModal}
                   students={students}
                   faculty={faculty}
                   batches={batches}
@@ -930,6 +974,14 @@ export function AdminDashboard({
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
           onDeleteBatch={onDeleteBatch}
+        />
+        <PermanentDeleteBatchModal
+          open={permanentDeleteModal.open}
+          batchLabel={permanentDeleteModal.batchLabel}
+          submitting={permanentDeleteModal.submitting}
+          error={permanentDeleteModal.error}
+          onClose={closePermanentDeleteModal}
+          onConfirm={handlePermanentDeleteBatch}
         />
         <BatchStudentPickerModal
           open={batchStudentPicker.open}
@@ -1783,6 +1835,7 @@ function QueriesManagementTab({
 function OverviewTab({
   selectedBatch,
   onEditBatch,
+  onPermanentDeleteBatch,
   students,
   faculty,
   batches,
@@ -1794,6 +1847,7 @@ function OverviewTab({
 }: {
   selectedBatch: Batch | null;
   onEditBatch: (l: string) => void;
+  onPermanentDeleteBatch: (label: Batch) => void;
   students: Student[];
   faculty: Faculty[];
   batches: BatchInfo[];
@@ -1836,16 +1890,23 @@ function OverviewTab({
           <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
           </div>
         </div>
-        {isBatchActive ? (
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
+          {isBatchActive ? (
             <button
               onClick={() => onEditBatch(selectedBatch)}
               className="px-8 py-3 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold border border-white/30 shadow-lg hover:bg-white/30 transition-all text-sm"
             >
               Batch Settings
             </button>
-          </div>
-        ) : null}
+          ) : (
+            <button
+              onClick={() => onPermanentDeleteBatch(selectedBatch)}
+              className="px-8 py-3 bg-red-500/20 backdrop-blur-md text-white rounded-xl font-bold border border-red-200/40 shadow-lg hover:bg-red-500/30 transition-all text-sm"
+            >
+              Delete Permanently
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Batch Faculty Section */}
@@ -2885,6 +2946,105 @@ function BatchFacultyPickerModal({
           >
             Close
           </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function PermanentDeleteBatchModal({
+  open,
+  batchLabel,
+  submitting,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  batchLabel: Batch | null;
+  submitting: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  if (!open || !batchLabel) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
+      <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" onClick={submitting ? undefined : onClose} />
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-orange-100 overflow-hidden"
+      >
+        <div
+          className="px-6 py-5 border-b border-orange-200 text-white"
+          style={{ background: 'linear-gradient(90deg, #c2410c 0%, #ea580c 55%, #f59e0b 100%)' }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-black/10 flex items-center justify-center border border-white/20 shrink-0 p-3">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold">Delete Batch Permanently</h3>
+              <p className="text-sm text-white/85">
+                This will erase the inactive batch and all content that exists only under it.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 px-6 py-5 text-sm text-orange-950">
+            <p className="font-semibold">
+              You are about to permanently delete <span className="font-bold">"{batchLabel}"</span>.
+            </p>
+            <p className="mt-2 text-orange-900">
+              This action cannot be undone. Shared items linked to other batches will be preserved, but batch-only data will be removed.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-gray-900">This will remove:</p>
+            <ul className="space-y-2 text-sm text-gray-700 list-disc pl-5">
+              <li>The batch itself and its timetable reference</li>
+              <li>All chapters, notes, and DPPs created under this batch</li>
+              <li>Tests linked only to this batch</li>
+              <li>Student and faculty links to this batch</li>
+              <li>Batch-scoped notifications and related attempt data that belongs only to deleted content</li>
+            </ul>
+          </div>
+
+          {error ? (
+            <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-xl border border-orange-200 bg-orange-100 text-orange-900 font-semibold hover:bg-orange-200 transition disabled:opacity-60 justify-self-start"
+              style={{ padding: '0.9rem 1.4rem' }}
+            >
+              Cancel
+            </button>
+            <div className="hidden sm:block" />
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-xl border border-orange-700 text-white font-semibold transition disabled:opacity-60 justify-self-end"
+              style={{
+                padding: '0.9rem 1.4rem',
+                background: 'linear-gradient(90deg, #c2410c 0%, #ea580c 55%, #f59e0b 100%)',
+              }}
+            >
+              {submitting ? 'Deleting...' : 'Delete Permanently'}
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>

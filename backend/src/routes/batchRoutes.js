@@ -5,6 +5,7 @@ import {
     handleCreateBatch,
     handleUpdateBatch,
     handleDeleteBatch,
+    handlePermanentDeleteBatch,
     handleAssignStudent,
     handleRemoveStudent,
     handleAssignFaculty,
@@ -26,6 +27,7 @@ router.get("/:id", getBatch);
 router.post("/", requireRole("admin"), handleCreateBatch);
 router.put("/:id", requireRole("admin"), handleUpdateBatch);
 router.delete("/:id", requireRole("admin"), handleDeleteBatch);
+router.delete("/:id/permanent", requireRole("admin"), handlePermanentDeleteBatch);
 
 // Student assignment (Admin only)
 router.get("/:id/students", requireRole("admin"), handleGetBatchStudents);

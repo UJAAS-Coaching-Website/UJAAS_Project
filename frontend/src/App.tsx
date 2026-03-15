@@ -18,6 +18,7 @@ import {
   createBatch as apiCreateBatch,
   updateBatch as apiUpdateBatch,
   deleteBatch as apiDeleteBatch,
+  permanentlyDeleteBatch as apiPermanentlyDeleteBatch,
   type ApiBatch,
 } from './api/batches';
 import {
@@ -720,6 +721,29 @@ function App() {
     }
   };
 
+  const refreshAdminBatchDependencies = async () => {
+    const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
+      apiFetchBatches(),
+      apiFetchTests().catch((e) => {
+        console.warn('Could not fetch tests from API:', e);
+        return [];
+      }),
+      fetchFaculties().catch((e) => {
+        console.warn('Could not fetch faculties from API:', e);
+        return [];
+      }),
+      apiFetchStudents().catch((e) => {
+        console.warn('Could not fetch students from API:', e);
+        return [];
+      }),
+    ]);
+
+    setAdminBatches(apiBatches.map(apiBatchToInfo));
+    setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
+    setAdminFaculties(apiFaculties);
+    setAdminStudents(apiStudents);
+  };
+
   const isStudentTab = (tab?: string): tab is (typeof studentTabs)[number] =>
     !!tab && studentTabs.includes(tab as (typeof studentTabs)[number]);
 
@@ -870,6 +894,32 @@ function App() {
     }
 
     return { ok: true };
+  };
+
+  const permanentlyDeleteAdminBatch = async (label: string) => {
+    const batch = adminBatches.find((b) => b.label === label);
+    if (!batch?.id) {
+      return { ok: false, error: 'Batch not found.' };
+    }
+
+    showBatchToast('saving', 'Deleting batch permanently...');
+
+    try {
+      await apiPermanentlyDeleteBatch(batch.id);
+
+      if (adminBatch === label) {
+        setAdminBatch(null);
+        setActiveTab('home');
+      }
+
+      await refreshAdminBatchDependencies();
+      showBatchToast('saved', 'Batch permanently deleted');
+      return { ok: true };
+    } catch (error: any) {
+      console.error('Failed to permanently delete batch in API:', error);
+      showBatchToast('error', error?.message || 'Failed to permanently delete batch');
+      return { ok: false, error: error?.message || 'Failed to permanently delete batch' };
+    }
   };
 
   const parsePath = () => {
@@ -1605,6 +1655,7 @@ function App() {
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}
               onDeleteBatch={deleteAdminBatch}
+              onPermanentDeleteBatch={permanentlyDeleteAdminBatch}
               onLogout={handleLogout}
               notifications={notifications}
               onMarkAsRead={handleMarkAsRead}
