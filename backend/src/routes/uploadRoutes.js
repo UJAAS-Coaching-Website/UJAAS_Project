@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadImageToStorage, deleteImageFromStorage } from '../services/storageService.js';
+import { uploadImageToStorage, deleteImageFromStorage, uploadLandingPageImageToStorage, deleteLandingPageImageFromStorage } from '../services/storageService.js';
 import { authenticate, requireAnyRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -52,11 +52,27 @@ router.post('/', authenticate, requireAnyRole('admin', 'faculty'), (req, res) =>
     const { context, contextId, itemRole } = req.body;
 
     // Validate required metadata
-    if (!context || !['tests', 'dpps'].includes(context)) {
-      return res.status(400).json({ status: 'error', message: "Invalid context. Must be 'tests' or 'dpps'." });
+    if (!context || !['tests', 'dpps', 'landing'].includes(context)) {
+      return res.status(400).json({ status: 'error', message: "Invalid context. Must be 'tests', 'dpps' or 'landing'." });
     }
+
+    if (context === 'landing') {
+      if (!itemRole || !['faculty', 'achiever', 'vision'].includes(itemRole)) {
+        return res.status(400).json({ status: 'error', message: "Invalid itemRole for landing. Must be 'faculty', 'achiever' or 'vision'." });
+      }
+
+      const imageUrl = await uploadLandingPageImageToStorage(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype,
+        itemRole
+      );
+      
+      return res.status(200).json({ status: 'success', imageUrl });
+    }
+
     if (!contextId) {
-      return res.status(400).json({ status: 'error', message: "Missing contextId." });
+      return res.status(400).json({ status: 'error', message: "Missing contextId for tests or dpps." });
     }
     if (!itemRole || !['question', 'option', 'explanation'].includes(itemRole)) {
       return res.status(400).json({ status: 'error', message: "Invalid itemRole. Must be 'question', 'option', or 'explanation'." });
@@ -92,7 +108,11 @@ router.delete('/', authenticate, requireAnyRole('admin', 'faculty'), async (req,
       return res.status(400).json({ status: 'error', message: 'No imageUrl provided.' });
     }
 
-    await deleteImageFromStorage(imageUrl);
+    if (imageUrl.includes('landing-page')) {
+      await deleteLandingPageImageFromStorage(imageUrl);
+    } else {
+      await deleteImageFromStorage(imageUrl);
+    }
 
     res.status(200).json({ status: 'success', message: 'Image deleted successfully.' });
   } catch (error) {

@@ -758,7 +758,6 @@ export function FacultyDashboard({
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
-                  { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}

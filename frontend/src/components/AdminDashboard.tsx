@@ -48,6 +48,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
+import { uploadLandingImage, deleteLandingImage } from '../api/landing';
 
 interface AdminDashboardProps {
   user: User;
@@ -415,13 +416,17 @@ export function AdminDashboard({
       return {
         studentId: student.id,
         studentName: student.name,
-        submittedAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+        attemptCount: 1,
+        latestSubmittedAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
         score: obtainedMarks,
         totalMarks: test.totalMarks,
         accuracy,
         rank: index + 1,
         timeSpent: Math.floor(Math.random() * test.duration * 60),
-        result: {
+        attempts: [{
+          attempt_id: `mock-attempt-${index}`,
+          attempt_no: 1,
+          auto_submitted: false,
           testId: test.id,
           testTitle: test.title,
           totalMarks: test.totalMarks,
@@ -438,9 +443,9 @@ export function AdminDashboard({
           instructions: test.instructions,
           questions: test.questions.map(q => ({
             ...q,
-            userAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0 // Mocking correct answers
+            user_answer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0 // Mocking correct answers
           }))
-        }
+        }]
       };
     });
   };
@@ -615,7 +620,7 @@ export function AdminDashboard({
     }
   };
 
-  const handleRemoveStudentFromBatch = async (id: string, batch: Batch) => {
+  const handleRemoveStudentFromBatch = async (id: string, batch: Batch): Promise<void> => {
     if (window.confirm('Remove this student from the current batch?')) {
       try {
         const batchInfo = batches.find(b => b.label === batch);
@@ -1318,6 +1323,35 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     onReady(fallbackUrl);
   };
 
+  const uploadAndGetUrl = async (file: File, itemRole: 'faculty' | 'achiever' | 'vision'): Promise<string | null> => {
+    if (!file) return null;
+    if (file.size > maxImageUploadSizeBytes) {
+      window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+      return null;
+    }
+    
+    setIsSaving(true);
+    try {
+      return await uploadLandingImage(file, itemRole);
+    } catch (error: any) {
+      window.alert(`Upload failed: ${error.message}`);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const conditionallyDeleteImage = async (url: string, fallbackUrl: string) => {
+    // Only delete if it's an S3 url and not a fallback/demo URL
+    if (url && url.includes('landing-page') && url !== fallbackUrl) {
+      try {
+        await deleteLandingImage(url);
+      } catch (e) {
+        console.warn('Failed to clean up old image:', e);
+      }
+    }
+  };
+
   const handleAddCourse = (e: FormEvent) => {
     e.preventDefault();
     if (newCourse.trim()) {
@@ -1330,105 +1364,126 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     safeUpdate({ ...data, courses: data.courses.filter((_, i) => i !== index) });
   };
 
-  const handleAddFaculty = (e: FormEvent) => {
+  const handleAddFaculty = async (e: FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
-    const save = (url: string) => {
-      safeUpdate({
-        ...data,
-        faculty: [...data.faculty, {
-          name: formData.get('name') as string,
-          subject: formData.get('subject') as string,
-          designation: formData.get('designation') as string,
-          experience: formData.get('experience') as string,
-          image: url
-        }]
-      });
-      setIsAddingFaculty(false);
-    };
-    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+    
+    const fallback = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
+    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'faculty') : fallback;
+    
+    if (url === null && file && file.size > 0) return; // Upload failed
+    
+    safeUpdate({
+      ...data,
+      faculty: [...data.faculty, {
+        name: formData.get('name') as string,
+        subject: formData.get('subject') as string,
+        designation: formData.get('designation') as string,
+        experience: formData.get('experience') as string,
+        image: url || fallback
+      }]
+    });
+    setIsAddingFaculty(false);
   };
 
-  const handleSaveEditedFaculty = (e: FormEvent) => {
+  const handleSaveEditedFaculty = async (e: FormEvent) => {
     e.preventDefault();
     if (editingFacultyIndex === null) return;
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
     const existing = data.faculty[editingFacultyIndex].image;
-    const save = (url: string) => {
-      const next = [...data.faculty];
-      next[editingFacultyIndex] = {
+    
+    let url = existing;
+    if (file && file.size > 0) {
+      const uploaded = await uploadAndGetUrl(file, 'faculty');
+      if (uploaded === null) return; // Upload failed
+      url = uploaded;
+      await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+    }
+
+    const next = [...data.faculty];
+    next[editingFacultyIndex] = {
+      name: formData.get('name') as string,
+      subject: formData.get('subject') as string,
+      designation: formData.get('designation') as string,
+      experience: formData.get('experience') as string,
+      image: url
+    };
+    safeUpdate({ ...data, faculty: next });
+    setEditingFacultyIndex(null);
+  };
+
+  const handleAddAchiever = async (e: FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const file = formData.get('imageFile') as File;
+    
+    const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
+    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'achiever') : fallback;
+    
+    if (url === null && file && file.size > 0) return; // Upload failed
+    
+    safeUpdate({
+      ...data,
+      achievers: [...data.achievers, {
         name: formData.get('name') as string,
-        subject: formData.get('subject') as string,
+        achievement: formData.get('achievement') as string,
+        year: formData.get('year') as string,
+        image: url || fallback
+      }]
+    });
+    setIsAddingAchiever(false);
+  };
+
+  const handleAddVision = async (e: FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const file = formData.get('imageFile') as File;
+
+    const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
+    const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'vision') : fallback;
+    
+    if (url === null && file && file.size > 0) return; // Upload failed
+
+    safeUpdate({
+      ...data,
+      visions: [...(data.visions || []), {
+        id: `v-${Date.now()}`,
+        name: formData.get('name') as string,
         designation: formData.get('designation') as string,
-        experience: formData.get('experience') as string,
-        image: url
-      };
-      safeUpdate({ ...data, faculty: next });
-      setEditingFacultyIndex(null);
-    };
-    readImageAsDataUrl(file, save, existing);
+        vision: formData.get('vision') as string,
+        image: url || fallback
+      }]
+    });
+    setIsAddingVision(false);
   };
 
-  const handleAddAchiever = (e: FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    const save = (url: string) => {
-      safeUpdate({
-        ...data,
-        achievers: [...data.achievers, {
-          name: formData.get('name') as string,
-          achievement: formData.get('achievement') as string,
-          year: formData.get('year') as string,
-          image: url
-        }]
-      });
-      setIsAddingAchiever(false);
-    };
-    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
-  };
-
-  const handleAddVision = (e: FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
-    const file = formData.get('imageFile') as File;
-    const save = (url: string) => {
-      safeUpdate({
-        ...data,
-        visions: [...(data.visions || []), {
-          id: `v-${Date.now()}`,
-          name: formData.get('name') as string,
-          designation: formData.get('designation') as string,
-          vision: formData.get('vision') as string,
-          image: url
-        }]
-      });
-      setIsAddingVision(false);
-    };
-    readImageAsDataUrl(file, save, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
-  };
-
-  const handleSaveEditedVision = (e: FormEvent) => {
+  const handleSaveEditedVision = async (e: FormEvent) => {
     e.preventDefault();
     if (editingVisionIndex === null) return;
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const file = formData.get('imageFile') as File;
     const existing = data.visions[editingVisionIndex].image;
-    const save = (url: string) => {
-      const next = [...data.visions];
-      next[editingVisionIndex] = {
-        ...next[editingVisionIndex],
-        name: formData.get('name') as string,
-        designation: formData.get('designation') as string,
-        vision: formData.get('vision') as string,
-        image: url
-      };
-      safeUpdate({ ...data, visions: next });
-      setEditingVisionIndex(null);
+
+    let url = existing;
+    if (file && file.size > 0) {
+      const uploaded = await uploadAndGetUrl(file, 'vision');
+      if (uploaded === null) return; // Upload failed
+      url = uploaded;
+      await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+    }
+
+    const next = [...data.visions];
+    next[editingVisionIndex] = {
+      ...next[editingVisionIndex],
+      name: formData.get('name') as string,
+      designation: formData.get('designation') as string,
+      vision: formData.get('vision') as string,
+      image: url
     };
-    readImageAsDataUrl(file, save, existing);
+    safeUpdate({ ...data, visions: next });
+    setEditingVisionIndex(null);
   };
 
   if (activeSubSection === 'courses') {
@@ -1988,7 +2043,8 @@ function StudentsTab({
   onAddStudent,
   onEditStudent,
   onDeleteStudent,
-  onViewStudent
+  onViewStudent,
+  isBatchActive
 }: {
   students: Student[];
   selectedBatch: Batch;
@@ -2313,11 +2369,13 @@ function TestSeriesManagementTab({
     if (!confirmed) return;
     try {
       setForceLiveLoadingTestId(testId);
-      const updatedTest = await onForceTestLiveNow(testId);
-      setTestOverrides((prev) => ({
-        ...prev,
-        [testId]: updatedTest,
-      }));
+      if (onForceTestLiveNow) {
+        const updatedTest = await onForceTestLiveNow(testId);
+        setTestOverrides((prev) => ({
+          ...prev,
+          [testId]: updatedTest,
+        }));
+      }
     } finally {
       setForceLiveLoadingTestId(null);
     }

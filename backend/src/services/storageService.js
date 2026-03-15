@@ -16,6 +16,7 @@ const STORAGE_PUBLIC_BASE_URL = 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storag
 const QUESTIONS_BUCKET_NAME = 'questions';
 const NOTES_BUCKET_NAME = 'notes';
 const QUESTION_BANK_BUCKET_NAME = 'question-bank';
+const LANDING_PAGE_BUCKET_NAME = 'landing-page';
 
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
@@ -113,6 +114,21 @@ export async function uploadImageToStorage(fileBuffer, originalName, mimeType, c
   }
 }
 
+export async function uploadLandingPageImageToStorage(fileBuffer, originalName, mimeType, itemRole) {
+  const extMatch = originalName.match(/\.([^.]+)$/);
+  const ext = extMatch ? extMatch[1] : 'jpg';
+
+  const randomId = crypto.randomUUID();
+  const objectKey = `${itemRole}/${randomId}.${ext}`;
+
+  try {
+    return await uploadBufferToBucket(LANDING_PAGE_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+  } catch (error) {
+    console.error('Landing page storage upload error:', error);
+    throw new Error('Failed to upload landing page image to storage.');
+  }
+}
+
 export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, chapterContext, noteId) {
   const sanitizedFileName = sanitizeFileName(originalName);
   const objectKey = [
@@ -162,6 +178,15 @@ export async function deleteImageFromStorage(imageUrl) {
   } catch (error) {
     console.error('Storage delete error:', error);
     throw new Error('Failed to delete image from storage.');
+  }
+}
+
+export async function deleteLandingPageImageFromStorage(imageUrl) {
+  try {
+    await deleteFileFromStorageByUrl(imageUrl, LANDING_PAGE_BUCKET_NAME);
+  } catch (error) {
+    console.error('Landing page storage delete error:', error);
+    throw new Error('Failed to delete landing page image from storage.');
   }
 }
 

@@ -1149,6 +1149,10 @@ function App() {
             : Promise.resolve(null),
         ]);
 
+        if (apiLanding) {
+          setLandingData(apiLanding as unknown as LandingData);
+        }
+
         if (profileResponse && profileResponse.user) {
           const loggedInUser = profileResponse.user as User;
           setUser(loggedInUser);

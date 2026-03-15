@@ -1,6 +1,6 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
 
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem("ujaasToken");
     if (token) return { Authorization: `Bearer ${token}` };
     return {};
@@ -46,6 +46,41 @@ export async function updateLandingData(data: LandingDataPayload): Promise<Landi
         method: "PUT",
         body: JSON.stringify(data),
     });
+}
+
+export async function uploadLandingImage(file: File, itemRole: "faculty" | "achiever" | "vision" | "course"): Promise<string> {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("context", "landing");
+    formData.append("itemRole", itemRole);
+
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data?.message || "Image upload failed");
+    }
+    return data.imageUrl;
+}
+
+export async function deleteLandingImage(imageUrl: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ imageUrl }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data?.message || "Image deletion failed");
+    }
 }
 
 // ── Prospect Queries ───────────────────────────────────
