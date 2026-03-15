@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpen,
   ChevronLeft,
+  ChevronDown,
   Download,
   File,
   FileText,
@@ -55,9 +56,9 @@ function formatDifficulty(value: ApiQuestionBankFile['difficulty']) {
 }
 
 function getDifficultyClasses(value: ApiQuestionBankFile['difficulty']) {
-  if (value === 'easy') return 'bg-emerald-100 text-emerald-700';
+  if (value === 'easy') return 'bg-green-100 text-green-700';
   if (value === 'medium') return 'bg-amber-100 text-amber-700';
-  return 'bg-rose-100 text-rose-700';
+  return 'bg-red-100 text-red-700';
 }
 
 function getFileIcon(fileName: string) {
@@ -267,41 +268,44 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
       </div>
 
       {isListView && (
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white/70 backdrop-blur-md rounded-2xl p-4 border border-white shadow-lg">
-          <div className="flex items-center gap-3">
+        <div className="bg-white/70 backdrop-blur-md rounded-2xl p-4 border border-white shadow-lg space-y-4">
+          <div className="flex items-start gap-4 min-w-0">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-teal-600 text-sm font-semibold hover:underline shrink-0"
+              className="flex items-center gap-2 text-teal-600 text-sm font-semibold hover:underline shrink-0 mt-1"
             >
               <ChevronLeft className="w-4 h-4" />
               Back
             </button>
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{listTitle}</h3>
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold text-gray-900 break-words">{listTitle}</h3>
               <p className="text-sm text-gray-500">{listSubtitle}</p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 min-w-[220px]">
+          <div className="flex items-stretch gap-3">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
               />
             </div>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white min-w-[210px]"
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <div className="relative w-52 flex-none">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="px-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white w-full appearance-none"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            </div>
           </div>
         </div>
       )}
