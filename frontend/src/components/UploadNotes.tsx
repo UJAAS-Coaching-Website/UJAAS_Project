@@ -32,6 +32,16 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
   const [uploading, setUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [chapterInfo, setChapterInfo] = useState<{id: string, name: string} | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const allowedMimeTypes = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'image/jpeg',
+    'image/png',
+  ]);
 
   useEffect(() => {
     const id = localStorage.getItem('uploadTargetChapterId');
@@ -78,16 +88,28 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
 
   const handleFile = (fileList: FileList) => {
     if (fileList.length > 1) {
-      alert('Please upload only one file at a time.');
+      setUploadError('Please upload only one file at a time.');
     }
     const nextFile = fileList[0];
     if (nextFile) {
+      if (!allowedMimeTypes.has(nextFile.type)) {
+        setSelectedFile(null);
+        setUploadError('Unsupported file format. Allowed formats: PDF, DOC, DOCX, PPT, PPTX, JPG, PNG.');
+        return;
+      }
+      if (nextFile.size > 50 * 1024 * 1024) {
+        setSelectedFile(null);
+        setUploadError('File is too large. Maximum allowed size is 50MB.');
+        return;
+      }
+      setUploadError('');
       setSelectedFile(nextFile);
     }
   };
 
   const removeFile = () => {
     setSelectedFile(null);
+    setUploadError('');
   };
 
   const formatFileSize = (bytes: number) => {
@@ -110,6 +132,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
 
   const handleSubmit = async () => {
     if (!chapterInfo || !notesData.title || !selectedFile) return;
+    setUploadError('');
     setUploading(true);
 
     try {
@@ -129,7 +152,7 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
         }, 2000);
     } catch (err) {
         console.error(err);
-        alert('Failed to upload notes');
+        setUploadError((err as any)?.message || 'Failed to upload notes.');
         setUploading(false);
     }
   };
@@ -172,6 +195,12 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {uploadError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {uploadError}
+            </div>
+          )}
+
           {/* Notes Information */}
           <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -187,7 +216,10 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
                 <input
                   type="text"
                   value={notesData.title}
-                  onChange={(e) => setNotesData({ ...notesData, title: e.target.value })}
+                  onChange={(e) => {
+                    setNotesData({ ...notesData, title: e.target.value });
+                    setUploadError('');
+                  }}
                   placeholder="e.g., Wave Optics - Complete Theory Notes"
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />

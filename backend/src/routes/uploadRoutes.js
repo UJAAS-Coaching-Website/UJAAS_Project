@@ -4,17 +4,46 @@ import { uploadImageToStorage, deleteImageFromStorage } from '../services/storag
 import { authenticate, requireAnyRole } from '../middleware/auth.js';
 
 const router = Router();
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml',
+]);
 
 // Store file in memory as a Buffer so we can pass it to S3 SDK directly
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB max file size
+  },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Unsupported image format. Allowed formats: JPG, PNG, WEBP, GIF, SVG.'));
   }
 });
 
 // Protect the route so only admins and faculty can upload files
-router.post('/', authenticate, requireAnyRole('admin', 'faculty'), upload.single('image'), async (req, res) => {
+router.post('/', authenticate, requireAnyRole('admin', 'faculty'), (req, res) => {
+  upload.single('image')(req, res, async (error) => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ status: 'error', message: 'Image is too large. Maximum allowed size is 5MB.' });
+      }
+      if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({ status: 'error', message: 'Please upload exactly one image.' });
+      }
+      return res.status(400).json({ status: 'error', message: error.message || 'Upload failed.' });
+    }
+
+    if (error) {
+      return res.status(400).json({ status: 'error', message: error.message || 'Upload failed.' });
+    }
+
   try {
     if (!req.file) {
       return res.status(400).json({ status: 'error', message: 'No image file provided.' });
@@ -51,6 +80,7 @@ router.post('/', authenticate, requireAnyRole('admin', 'faculty'), upload.single
     console.error('Upload route error:', error);
     res.status(500).json({ status: 'error', message: error.message || 'Internal server error during upload.' });
   }
+  });
 });
 
 // Delete an image from S3
