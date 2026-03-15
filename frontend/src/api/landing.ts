@@ -99,7 +99,7 @@ export interface QueryItem {
     courseId?: string;
     message?: string;
     date: string;
-    status: "new" | "contacted" | "completed";
+    status: "new" | "seen" | "contacted";
 }
 
 export async function fetchQueries(): Promise<{ queries: QueryItem[] }> {
@@ -121,10 +121,16 @@ export async function submitQuery(data: {
 
 export async function updateQueryStatus(
     id: string,
-    status: "new" | "contacted" | "completed"
+    status: "new" | "seen" | "contacted"
 ): Promise<{ id: string; status: string }> {
     return apiRequest<{ id: string; status: string }>(`/api/queries/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status }),
+    });
+}
+
+export async function deleteQuery(id: string): Promise<void> {
+    await apiRequest<{ message: string; id: string }>(`/api/queries/${id}`, {
+        method: "DELETE",
     });
 }

@@ -803,6 +803,7 @@
   - delete only removes from local UI state
 - QA checks:
   - verify status change persists after refresh
+  - verify `new` -> `seen` transition happens automatically on open
   - verify course name displays correctly even if the source course was later renamed/deleted (shows "Unknown" when FK is NULL)
   - verify deleted query reappears after refresh because no backend delete exists
 

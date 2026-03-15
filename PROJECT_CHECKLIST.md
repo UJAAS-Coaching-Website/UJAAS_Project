@@ -43,6 +43,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
   - `prospect_queries` table column changed from `course` (text) to `course_id` (UUID FK)
   - Backend `queryService.js` performs JOIN to resolve course name when listing queries
   - Frontend dropdown uses `course.id` as value, `course.name` as label
+  - Query status flow updated: `new` -> `seen` (auto) -> `contacted` (manual)
 - [x] Old `landing_page_data` and `landing_contact` tables dropped
 
 ## Core Platform

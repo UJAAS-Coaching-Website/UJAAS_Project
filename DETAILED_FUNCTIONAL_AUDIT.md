@@ -55,6 +55,7 @@ This audit focuses on functionality, not just UI presence.
   - `prospect_queries` table column changed from `course` to `course_id`.
   - Backend `queryService.js` JOINs `landing_courses` to resolve course name when listing queries.
   - Frontend dropdown uses `course.id` as value, `course.name` as label.
+  - Query status workflow: `new` (default) -> `seen` (auto on open) -> `contacted` (manual).
 
 ## Top Findings First
 

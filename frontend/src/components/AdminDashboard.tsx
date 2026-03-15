@@ -83,6 +83,7 @@ interface AdminDashboardProps {
   onUpdateLandingData: (data: LandingData) => void;
   queries: import('../App').LandingQuery[];
   onUpdateQueries: (queries: import('../App').LandingQuery[]) => void;
+  onDeleteQuery: (id: string) => Promise<void>;
   publishedTests: import('../App').PublishedTest[];
   onPublishTest: (test: Omit<import('../App').PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => Promise<void> | void;
   onSaveDraft: (test: Omit<import('../App').PublishedTest, 'id' | 'status'> & { id?: string }) => Promise<string>;
@@ -281,6 +282,7 @@ export function AdminDashboard({
   onUpdateLandingData,
   queries,
   onUpdateQueries,
+  onDeleteQuery,
   publishedTests,
   onPublishTest,
   onSaveDraft,
@@ -514,20 +516,44 @@ export function AdminDashboard({
     }));
   };
 
-  const openQueryDetails = (query: import('../App').LandingQuery) => setQueryModal({ open: true, query });
-  const closeQueryDetails = () => setQueryModal({ open: false, query: null });
-
-  const handleDeleteQuery = (id: string) => {
-    if (confirm('Are you sure you want to delete this query?')) {
-      onUpdateQueries(queries.filter(q => q.id !== id));
-      if (queryModal.query?.id === id) closeQueryDetails();
-    }
-  };
-
-  const handleQueryStatusChange = (id: string, status: 'new' | 'contacted' | 'completed') => {
+  const handleQueryStatusChange = (id: string, status: 'new' | 'seen' | 'contacted') => {
     onUpdateQueries(queries.map(q => q.id === id ? { ...q, status } : q));
     if (queryModal.query?.id === id) {
       setQueryModal(prev => ({ ...prev, query: prev.query ? { ...prev.query, status } : null }));
+    }
+  };
+
+  const openQueryDetails = (query: import('../App').LandingQuery) => {
+    setQueryModal({ open: true, query });
+    // Auto-change status from 'new' to 'seen' when viewed
+    if (query.status === 'new') {
+      handleQueryStatusChange(query.id, 'seen');
+    }
+  };
+  const closeQueryDetails = () => setQueryModal({ open: false, query: null });
+
+  // Track which "new" query IDs admin has already seen
+  const [seenQueryIds, setSeenQueryIds] = useState<Set<string>>(new Set());
+  const unseenNewCount = queries.filter(q => q.status === 'new' && !seenQueryIds.has(q.id)).length;
+
+  // Mark all current new queries as seen when admin visits queries tab
+  useEffect(() => {
+    if (adminSection === 'queries') {
+      const newIds = queries.filter(q => q.status === 'new').map(q => q.id);
+      if (newIds.length > 0) {
+        setSeenQueryIds(prev => {
+          const next = new Set(prev);
+          newIds.forEach(id => next.add(id));
+          return next;
+        });
+      }
+    }
+  }, [adminSection, queries]);
+
+  const handleDeleteQuery = async (id: string) => {
+    if (confirm('Are you sure you want to delete this query?')) {
+      await onDeleteQuery(id);
+      if (queryModal.query?.id === id) closeQueryDetails();
     }
   };
 
@@ -745,13 +771,22 @@ export function AdminDashboard({
                   <motion.button
                     key={section.id}
                     onClick={() => onNavigateSection(section.id as AdminSection)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
+                    className={`relative flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(adminSection === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test'))) && activeTab !== 'profile'
                       ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
                       : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >
                     <section.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{section.label}</span>
+                    {section.id === 'queries' && unseenNewCount > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg"
+                      >
+                        {unseenNewCount > 9 ? '9+' : unseenNewCount}
+                      </motion.span>
+                    )}
                   </motion.button>
                 ))}
               </div>
@@ -1086,17 +1121,18 @@ export function AdminDashboard({
                   <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-100">
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Update Status</p>
-                      <div className="flex gap-2">
-                        {(['new', 'contacted', 'completed'] as const).map((s) => (
+                      <div className="flex flex-wrap gap-2">
+                        {(['seen', 'contacted'] as const).map((s) => (
                           <button
                             key={s}
                             onClick={() => handleQueryStatusChange(queryModal.query!.id, s)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all ${queryModal.query!.status === s
-                              ? 'bg-teal-600 text-white shadow-md'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                              }`}
+                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                              queryModal.query?.status === s
+                                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
                           >
-                            {s}
+                            {s.charAt(0).toUpperCase() + s.slice(1)}
                           </button>
                         ))}
                       </div>
@@ -1810,7 +1846,7 @@ function QueriesManagementTab({
   queries: import('../App').LandingQuery[];
   onViewQuery: (q: import('../App').LandingQuery) => void;
   onDeleteQuery: (id: string) => void;
-  onStatusChange: (id: string, status: 'new' | 'contacted' | 'completed') => void;
+  onStatusChange: (id: string, status: 'new' | 'seen' | 'contacted') => void;
 }) {
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -1853,11 +1889,12 @@ function QueriesManagementTab({
                   </p>
                 </td>
                 <td className="py-4 px-4">
-                  <span className={`text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-md ${q.status === 'new' ? 'bg-orange-100 text-orange-700' :
-                    q.status === 'contacted' ? 'bg-blue-100 text-blue-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                    {q.status}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm border ${
+                    q.status === 'new' ? 'bg-teal-100 text-teal-700 border-teal-200' :
+                    q.status === 'seen' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                    'bg-green-100 text-green-700 border-green-200'
+                  }`}>
+                    {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                   </span>
                 </td>
                 <td className="py-4 px-4 text-right">

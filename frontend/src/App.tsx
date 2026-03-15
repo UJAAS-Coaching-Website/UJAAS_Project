@@ -12,6 +12,7 @@ import {
   fetchQueries,
   submitQuery as apiSubmitQuery,
   updateQueryStatus as apiUpdateQueryStatus,
+  deleteQuery as apiDeleteQuery,
 } from './api/landing';
 import {
   fetchBatches as apiFetchBatches,
@@ -116,7 +117,7 @@ export interface LandingQuery {
   courseId?: string;
   message?: string;
   date: string;
-  status: 'new' | 'contacted' | 'completed';
+  status: 'new' | 'seen' | 'contacted';
 }
 
 export interface LandingCourse {
@@ -322,6 +323,15 @@ function App() {
     }
     setQueries(updatedQueries);
   }, [queries]);
+
+  const handleDeleteQuery = useCallback(async (id: string) => {
+    try {
+      await apiDeleteQuery(id);
+      setQueries(prev => prev.filter(q => q.id !== id));
+    } catch (error) {
+      console.error('Failed to delete query:', error);
+    }
+  }, []);
 
   const [landingData, setLandingData] = useState<LandingData>(() => {
     const defaultData = {
@@ -1681,6 +1691,7 @@ function App() {
               onUpdateLandingData={handleUpdateLandingData}
               queries={queries}
               onUpdateQueries={handleUpdateQueries}
+              onDeleteQuery={handleDeleteQuery}
               publishedTests={publishedTests}
               onPublishTest={handlePublishTest}
               onSaveDraft={handleSaveDraft}

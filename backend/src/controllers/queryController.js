@@ -1,4 +1,4 @@
-import { getAllQueries, createQuery, updateQueryStatus } from "../services/queryService.js";
+import { getAllQueries, createQuery, updateQueryStatus, deleteQuery } from "../services/queryService.js";
 
 export async function listQueries(req, res) {
     try {
@@ -36,5 +36,18 @@ export async function patchQueryStatus(req, res) {
         return res.status(200).json(result);
     } catch (error) {
         return res.status(400).json({ message: error.message });
+    }
+}
+
+export async function removeQuery(req, res) {
+    const { id } = req.params;
+    try {
+        const result = await deleteQuery(id);
+        if (!result) {
+            return res.status(404).json({ message: "query not found" });
+        }
+        return res.status(200).json({ message: "query deleted", id });
+    } catch (error) {
+        return res.status(500).json({ message: "failed to delete query", error: error.message });
     }
 }

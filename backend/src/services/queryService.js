@@ -51,7 +51,7 @@ export async function createQuery({ name, email, phone, courseId, message }) {
 }
 
 export async function updateQueryStatus(id, status) {
-    const validStatuses = ["new", "contacted", "completed"];
+    const validStatuses = ["new", "seen", "contacted"];
     if (!validStatuses.includes(status)) {
         throw new Error("Invalid status");
     }
@@ -63,4 +63,15 @@ export async function updateQueryStatus(id, status) {
         return null;
     }
     return { id, status };
+}
+
+export async function deleteQuery(id) {
+    const result = await pool.query(
+        "DELETE FROM prospect_queries WHERE id = $1 RETURNING id",
+        [id]
+    );
+    if (result.rowCount === 0) {
+        return null;
+    }
+    return { id };
 }
