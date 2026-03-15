@@ -41,6 +41,22 @@ interface CreateTestSeriesProps {
   resumeTest?: import('../App').PublishedTest;
 }
 
+const DEFAULT_TEST_INSTRUCTIONS = [
+  '1. Read all questions carefully before answering.',
+  '2. The test contains multiple-choice, multiple-select, and/or numerical answer questions as configured by the faculty.',
+  '3. Select the most appropriate answer for each question.',
+  '4. For multiple-select questions, choose all correct options. Partial marking is not assumed unless explicitly mentioned.',
+  '5. For numerical answer questions, enter the answer in the required format using the on-screen numeric keypad.',
+  '6. Each question carries marks as shown in the paper. Negative marking, if applicable, will follow the marks set for that question.',
+  '7. If the page is refreshed during the test, the current responses will be counted and the test will be submitted.',
+  '8. You may navigate between questions during the test and review your answers before final submission.',
+  '9. Use the question palette to track answered, unanswered, and flagged questions.',
+  '10. Do not refresh, close, or leave the test window during the attempt unless necessary.',
+  '11. The test will be auto-submitted when the allotted time ends.',
+  '12. Once submitted, answers cannot be changed.',
+  '13. Follow any additional instructions provided specifically for this test.',
+].join('\n');
+
 function getMetadataSnapshot(data: {
   title: string;
   format: string;
@@ -76,7 +92,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     passingMarks: 120,
     scheduleDate: '',
     scheduleTime: '09:00',
-    instructions: ''
+    instructions: DEFAULT_TEST_INSTRUCTIONS
   });
   const [lastSavedMetadataSnapshot, setLastSavedMetadataSnapshot] = useState(() => getMetadataSnapshot({
     title: '',
@@ -86,7 +102,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     totalMarks: 300,
     scheduleDate: '',
     scheduleTime: '09:00',
-    instructions: ''
+    instructions: DEFAULT_TEST_INSTRUCTIONS
   }));
   const [isDraftDirty, setIsDraftDirty] = useState(false);
 

@@ -18,6 +18,20 @@ interface CreateDPPProps {
   onBack: () => void;
 }
 
+const DEFAULT_DPP_INSTRUCTIONS = [
+  '1. This DPP is intended for focused chapter-wise practice.',
+  '2. Read each question carefully before answering.',
+  '3. The DPP may include multiple-choice, multiple-select, and/or numerical answer questions.',
+  '4. For multiple-select questions, select all correct options. Partial correctness is not treated as correct unless explicitly mentioned.',
+  '5. For numerical answer questions, enter the answer in the required format using the on-screen numeric keypad.',
+  '6. Marks and negative marks, if any, will be applied according to the settings of each question.',
+  '7. You may move between questions and review your answers before submission.',
+  '8. Submit the DPP only after reviewing your responses.',
+  '9. Once submitted, the attempt cannot be edited.',
+  '10. Use this DPP to improve speed, accuracy, and concept clarity for the assigned chapter.',
+  '11. Follow any additional chapter-specific instructions provided by the faculty.',
+].join('\n');
+
 export function CreateDPP({ onBack }: CreateDPPProps) {
   const [step, setStep] = useState(1);
   const [chapter, setChapter] = useState<ApiChapter | null>(null);
@@ -25,7 +39,7 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
   const [publishing, setPublishing] = useState(false);
   const [dppData, setDppData] = useState({
     title: '',
-    instructions: ''
+    instructions: DEFAULT_DPP_INSTRUCTIONS
   });
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);

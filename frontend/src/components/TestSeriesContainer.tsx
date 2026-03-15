@@ -377,6 +377,7 @@ export function TestSeriesContainer({
       )));
 
       setTestState({ mode: 'overview', test: fullTest });
+      window.scrollTo({ top: 0, behavior: 'auto' });
       pendingSubTabRef.current = `Overview-${slugify(fullTest.title)}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
@@ -619,6 +620,26 @@ function TestOverview({
         </div>
 
         <div className="p-8 space-y-12">
+          {test.instructions?.trim() ? (
+            <section className="p-8 bg-amber-50 rounded-3xl border border-amber-100 shadow-sm">
+              <h3 className="text-xl font-bold text-amber-900 mb-6 flex items-center gap-2">
+                <AlertCircle className="w-6 h-6" />
+                General Instructions
+              </h3>
+              <div className="text-amber-800 space-y-4 leading-relaxed font-semibold">
+                {test.instructions
+                  .split('\n')
+                  .map((point, i) => point.trim() && (
+                    <div key={i} className="flex gap-3">
+                      <span className="shrink-0">-</span>
+                      <p>{point.trim()}</p>
+                    </div>
+                  ))
+                }
+              </div>
+            </section>
+          ) : null}
+
           <section>
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-teal-600" />
@@ -661,24 +682,6 @@ function TestOverview({
                 </table>
               </div>
             )}
-          </section>
-
-          <section className="p-8 bg-amber-50 rounded-3xl border border-amber-100 shadow-sm">
-            <h3 className="text-xl font-bold text-amber-900 mb-6 flex items-center gap-2">
-              <AlertCircle className="w-6 h-6" />
-              General Instructions
-            </h3>
-            <div className="text-amber-800 space-y-4 leading-relaxed font-semibold">
-              {(test.instructions || "1. Ensure you have a stable internet connection.\n2. Do not refresh or close the tab during the test.\n3. The test will automatically submit when the timer ends.\n4. Use of unfair means will lead to disqualification.")
-                .split('\n')
-                .map((point, i) => point.trim() && (
-                  <div key={i} className="flex gap-3">
-                    <span className="shrink-0">-</span>
-                    <p>{point.trim()}</p>
-                  </div>
-                ))
-              }
-            </div>
           </section>
 
           <div className="flex flex-col items-center gap-4 pt-4">
