@@ -754,7 +754,7 @@ export function AdminDashboard({
           {activeTab === 'create-test' ? (
             <CreateTestSeries
               onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
-              batches={batches}
+              batches={batches.filter((batch) => batch.is_active)}
               onPublish={onPublishTest}
               onSaveDraft={onSaveDraft}
               resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
@@ -794,7 +794,7 @@ export function AdminDashboard({
                   });
                 }}
                 isPreview={true}
-                availableBatches={batches}
+                availableBatches={batches.filter((batch) => batch.is_active)}
                 initialBatches={selectedPreviewTest.batches}
               />
             </div>
@@ -883,6 +883,7 @@ export function AdminDashboard({
                   onEditStudent={openEditStudent}
                   onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
                   onViewStudent={openStudentRatings}
+                  isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
                 />
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
@@ -1807,6 +1808,7 @@ function OverviewTab({
 
   // Faculty logic
   const currentBatch = batches.find(b => b.label === selectedBatch);
+  const isBatchActive = currentBatch?.is_active !== false;
   const assigned = currentBatch?.facultyAssigned ?? [];
   const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
 
@@ -1834,14 +1836,16 @@ function OverviewTab({
           <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onEditBatch(selectedBatch)}
-            className="px-8 py-3 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold border border-white/30 shadow-lg hover:bg-white/30 transition-all text-sm"
-          >
-            Batch Settings
-          </button>
-        </div>
+        {isBatchActive ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => onEditBatch(selectedBatch)}
+              className="px-8 py-3 bg-white/20 backdrop-blur-md text-white rounded-xl font-bold border border-white/30 shadow-lg hover:bg-white/30 transition-all text-sm"
+            >
+              Batch Settings
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* Batch Faculty Section */}
@@ -1853,12 +1857,14 @@ function OverviewTab({
             </div>
             <h3 className="text-xl font-bold text-gray-900">Batch Faculty</h3>
           </div>
-          <button
-            onClick={onOpenAddFaculty}
-            className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
-          >
-            Assign Faculty
-          </button>
+          {isBatchActive ? (
+            <button
+              onClick={onOpenAddFaculty}
+              className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
+            >
+              Assign Faculty
+            </button>
+          ) : null}
         </div>
 
         {assignedFaculty.length > 0 ? (
@@ -1874,13 +1880,15 @@ function OverviewTab({
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                  title="Remove from batch"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {isBatchActive ? (
+                  <button
+                    onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    title="Remove from batch"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
@@ -1902,6 +1910,7 @@ function OverviewTab({
               onViewTimetable={onViewTimetable}
               onUpdateBatch={onUpdateBatch}
               batches={batches}
+              readOnly={!isBatchActive}
               headerMode="full"
               variant="admin"
           />
@@ -1926,7 +1935,8 @@ function StudentsTab({
   onAddStudent: () => void;
   onEditStudent: (s: Student) => void;
   onDeleteStudent: (id: string) => void;
-  onViewStudent: (s: Student) => void
+  onViewStudent: (s: Student) => void;
+  isBatchActive?: boolean;
 }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   return (
@@ -1936,7 +1946,9 @@ function StudentsTab({
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
-        <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        {isBatchActive ? (
+          <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+        ) : null}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -1958,19 +1970,23 @@ function StudentsTab({
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4 whitespace-nowrap">{renderPerformanceStars(s.rating)}</td>
                 <td className="py-4 px-4 flex gap-1 justify-end">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
-                    className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
-                    title="Edit Student"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {isBatchActive ? (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEditStudent(s); }}
+                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors"
+                        title="Edit Student"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : null}
                 </td>
               </tr>
             ))}

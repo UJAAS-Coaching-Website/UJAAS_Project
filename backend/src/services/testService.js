@@ -13,6 +13,29 @@ const TEST_SCHEDULE_TS_EXPR = `
     END
 `;
 
+async function ensureActiveBatchIds(batchIds, client = pool) {
+    const normalizedBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
+    if (normalizedBatchIds.length === 0) {
+        return;
+    }
+
+    const result = await client.query(
+        `SELECT id
+         FROM batches
+         WHERE id = ANY($1::uuid[])
+           AND is_active = true`,
+        [normalizedBatchIds]
+    );
+
+    if (result.rowCount !== normalizedBatchIds.length) {
+        const activeIds = new Set(result.rows.map((row) => row.id));
+        const invalidIds = normalizedBatchIds.filter((batchId) => !activeIds.has(batchId));
+        const error = new Error(`inactive or missing batches cannot be assigned: ${invalidIds.join(", ")}`);
+        error.code = "INVALID_BATCH_ASSIGNMENT";
+        throw error;
+    }
+}
+
 function normalizeNumericValue(value) {
     const parsed = Number(String(value).trim());
     return Number.isFinite(parsed) ? parsed : null;
@@ -1094,6 +1117,7 @@ export async function createTest({
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        await ensureActiveBatchIds(batchIds, client);
 
         // Insert test
         const testResult = await client.query(
@@ -1370,6 +1394,7 @@ export async function updateTest(id, {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        await ensureActiveBatchIds(batchIds, client);
 
         const existingTestResult = await client.query(
             `SELECT title, format, duration_minutes, total_marks, scheduled_at, schedule_time, instructions

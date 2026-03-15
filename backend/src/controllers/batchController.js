@@ -103,6 +103,9 @@ export async function handleAssignStudent(req, res) {
         await assignStudentToBatch(studentId, req.params.id);
         return res.status(200).json({ message: "student assigned to batch" });
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("assignStudent error:", error.message);
         return res.status(500).json({ message: "failed to assign student", error: error.message });
     }
@@ -130,6 +133,9 @@ export async function handleAssignFaculty(req, res) {
         await assignFacultyToBatch(facultyId, req.params.id);
         return res.status(200).json({ message: "faculty assigned to batch" });
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("assignFaculty error:", error.message);
         return res.status(500).json({ message: "failed to assign faculty", error: error.message });
     }

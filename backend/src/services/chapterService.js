@@ -1,5 +1,27 @@
 import { pool } from "../db/index.js";
 
+async function ensureActiveBatchExists(batchId) {
+    const result = await pool.query(
+        `SELECT id, is_active
+         FROM batches
+         WHERE id = $1
+         LIMIT 1`,
+        [batchId]
+    );
+
+    if (result.rowCount === 0) {
+        const error = new Error("batch not found");
+        error.code = "BATCH_NOT_FOUND";
+        throw error;
+    }
+
+    if (!result.rows[0].is_active) {
+        const error = new Error("inactive batches cannot be used for this action");
+        error.code = "BATCH_INACTIVE";
+        throw error;
+    }
+}
+
 // Fetch chapters for a specific batch and subject
 export const getChapters = async (batchId, subjectName) => {
     let query = `
@@ -33,6 +55,7 @@ export const getChapterById = async (id) => {
 // Create a new chapter
 export const createChapter = async (data) => {
     const { batch_id, subject_name, name, order_index } = data;
+    await ensureActiveBatchExists(batch_id);
     const result = await pool.query(
         `INSERT INTO chapters (batch_id, subject_name, name, order_index)
          VALUES ($1, $2, $3, $4)

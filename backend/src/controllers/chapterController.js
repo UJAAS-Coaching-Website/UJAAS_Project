@@ -32,6 +32,9 @@ export const handleCreateChapter = async (req, res) => {
         res.status(201).json(chapter);
     } catch (error) {
         console.error("Error creating chapter:", error);
+        if (error?.code === 'BATCH_INACTIVE' || error?.code === 'BATCH_NOT_FOUND') {
+            return res.status(400).json({ message: error.message });
+        }
         if (error.code === '23505') { // Unique constraint violation
             return res.status(400).json({ message: "Chapter already exists for this subject in the given batch." });
         }

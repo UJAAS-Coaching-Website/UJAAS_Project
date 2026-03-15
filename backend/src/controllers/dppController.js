@@ -147,6 +147,9 @@ export async function handleCreateDpp(req, res) {
         });
         return res.status(201).json(dpp);
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "CHAPTER_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("handleCreateDpp error:", error.message);
         return res.status(500).json({ message: "failed to create dpp", error: error.message });
     }
@@ -174,6 +177,9 @@ export async function handleUpdateDpp(req, res) {
 
         return res.status(200).json(updated);
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "CHAPTER_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("handleUpdateDpp error:", error.message);
         return res.status(500).json({ message: "failed to update dpp", error: error.message });
     }

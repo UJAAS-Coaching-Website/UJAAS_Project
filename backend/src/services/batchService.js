@@ -1,6 +1,28 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 
+async function ensureActiveBatchExists(batchId, client = pool) {
+    const result = await client.query(
+        `SELECT id, is_active
+         FROM batches
+         WHERE id = $1
+         LIMIT 1`,
+        [batchId]
+    );
+
+    if (result.rowCount === 0) {
+        const error = new Error("batch not found");
+        error.code = "BATCH_NOT_FOUND";
+        throw error;
+    }
+
+    if (!result.rows[0].is_active) {
+        const error = new Error("inactive batches cannot be used for this action");
+        error.code = "BATCH_INACTIVE";
+        throw error;
+    }
+}
+
 /**
  * Get all batches with assigned faculty names.
  * Actual DB columns: id, name, slug, subjects, is_active
@@ -232,6 +254,7 @@ export async function deleteBatch(id) {
  * Assign a student to a batch.
  */
 export async function assignStudentToBatch(studentId, batchId) {
+    await ensureActiveBatchExists(batchId);
     const batchModel = await getStudentBatchModel();
     if (batchModel === "single") {
         await pool.query(
@@ -274,6 +297,7 @@ export async function removeStudentFromBatch(studentId, batchId) {
  * Assign a faculty to a batch.
  */
 export async function assignFacultyToBatch(facultyId, batchId) {
+    await ensureActiveBatchExists(batchId);
     await pool.query(
         `INSERT INTO faculty_batches (faculty_id, batch_id)
          VALUES ($1, $2)

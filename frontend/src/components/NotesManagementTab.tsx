@@ -135,6 +135,7 @@ export function NotesManagementTab({
   const extraColors = ['#8b5cf6', '#ec4899', '#f97316', '#14b8a6', '#6366f1'];
 
   const currentBatch = batches.find(b => b.label === selectedBatch);
+  const isCurrentBatchActive = currentBatch?.is_active !== false;
   const batchSubjects = currentBatch?.subjects || [];
 
   const subjects = batchSubjects.map((subName: string, index: number) => {
@@ -157,8 +158,8 @@ export function NotesManagementTab({
   useBodyScrollLock(isAddChapterModalOpen || isAddSubjectModalOpen || isUploadNoticeModalOpen);
 
   const facultyMatchesSubject = !facultySubject || (selectedSubject && selectedSubject.toLowerCase() === facultySubject.toLowerCase());
-  const canManageStructure = !readOnly && variant === 'admin';
-  const canManageContent = !readOnly && variant === 'faculty' && facultyMatchesSubject;
+  const canManageStructure = !readOnly && isCurrentBatchActive && variant === 'admin';
+  const canManageContent = !readOnly && isCurrentBatchActive && variant === 'faculty' && facultyMatchesSubject;
 
   useEffect(() => {
     if (!selectedBatch) return;
@@ -565,7 +566,7 @@ export function NotesManagementTab({
                 <button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm">
                   <Calendar className="w-4 h-4" />Time Table
                 </button>
-                {variant === 'admin' && (
+                {variant === 'admin' && isCurrentBatchActive && (
                   <>
                     <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
                       <Plus className="w-4 h-4" />Add Subject
@@ -612,6 +613,12 @@ export function NotesManagementTab({
           )}
         </div>
       </motion.div>
+      )}
+
+      {!isCurrentBatchActive && headerMode === 'full' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
+          This batch is inactive. Content can still be viewed, but management actions are hidden.
+        </div>
       )}
 
       {currentView === 'root' && (

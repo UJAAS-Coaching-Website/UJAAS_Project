@@ -3,6 +3,28 @@ import { getStudentBatchModel } from "./studentBatchModel.js";
 
 const MAX_DPP_ATTEMPTS = 3;
 
+async function ensureActiveBatchForChapter(chapterId, client = pool) {
+    const result = await client.query(`
+        SELECT c.id, b.is_active
+        FROM chapters c
+        JOIN batches b ON b.id = c.batch_id
+        WHERE c.id = $1
+        LIMIT 1
+    `, [chapterId]);
+
+    if (result.rowCount === 0) {
+        const error = new Error("chapter not found");
+        error.code = "CHAPTER_NOT_FOUND";
+        throw error;
+    }
+
+    if (!result.rows[0].is_active) {
+        const error = new Error("inactive batches cannot be used for this action");
+        error.code = "BATCH_INACTIVE";
+        throw error;
+    }
+}
+
 function normalizeNumericValue(value) {
     const parsed = Number(String(value).trim());
     return Number.isFinite(parsed) ? parsed : null;
@@ -696,6 +718,7 @@ export async function createDpp({ title, instructions, chapterId, createdBy, que
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        await ensureActiveBatchForChapter(chapterId, client);
 
         const chapterResult = await client.query(`
             SELECT id, batch_id, subject_name
@@ -778,6 +801,7 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        await ensureActiveBatchForChapter(chapterId, client);
 
         await client.query(`
             UPDATE dpps

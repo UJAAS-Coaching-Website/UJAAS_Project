@@ -798,7 +798,7 @@ export function FacultyDashboard({
         >
           {/* Layered Rendering Logic - Standard across dashboards */}
           {activeTab === 'create-test' ? (
-            <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches} />
+            <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches.filter((batch) => batch.is_active)} />
           ) : activeTab === 'question-bank' ? (
             <QuestionBank
               userRole="faculty"
@@ -842,7 +842,7 @@ export function FacultyDashboard({
                 }}
                 isPreview={false}
                 isFacultyPreview={true}
-                availableBatches={batches}
+                availableBatches={batches.filter((batch) => batch.is_active)}
                 initialBatches={selectedPreviewTest.batches}
               />
             </div>
@@ -903,6 +903,7 @@ export function FacultyDashboard({
                       handleSaveAllStudentsAttendance(selectedBatch, lastMonth.month, studentAttendance);
                     }
                   }}
+                  isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
                 />
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
@@ -1100,6 +1101,8 @@ function OverviewTab({
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const currentBatch = batches.find((batch) => batch.label === selectedBatch);
+  const isBatchActive = currentBatch?.is_active !== false;
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
@@ -1117,13 +1120,15 @@ function OverviewTab({
           <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
           </div>
         </div>
-        <button
-          onClick={onOpenAttendance}
-          className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl font-bold transition flex items-center gap-2 border border-white/30"
-        >
-          <Calendar className="w-5 h-5" />
-          Classes Taken
-        </button>
+        {isBatchActive ? (
+          <button
+            onClick={onOpenAttendance}
+            className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl font-bold transition flex items-center gap-2 border border-white/30"
+          >
+            <Calendar className="w-5 h-5" />
+            Classes Taken
+          </button>
+        ) : null}
       </div>
 
       {/* Batch Content Section */}
@@ -1136,6 +1141,7 @@ function OverviewTab({
               onViewTimetable={onViewTimetable}
               facultySubject={facultySubject}
               batches={batches}
+              readOnly={!isBatchActive}
               headerMode="full"
               variant="faculty"
           />
@@ -1163,6 +1169,7 @@ function StudentsTab({
   editMode: boolean;
   onToggleEditMode: () => void;
   onSaveAttendance: (studentAttendance: Record<string, number>) => void;
+  isBatchActive?: boolean;
 }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   const lastMonth = [...batchAttendance].sort((a, b) => b.month.localeCompare(a.month))[0];
@@ -1181,7 +1188,7 @@ function StudentsTab({
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
-        {lastMonth && (
+        {lastMonth && isBatchActive ? (
           <div className="flex gap-3">
             {!editMode ? (
               <button
@@ -1200,7 +1207,7 @@ function StudentsTab({
               </button>
             )}
           </div>
-        )}
+        ) : null}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -1259,7 +1266,7 @@ function StudentsTab({
           </tbody>
         </table>
       </div>
-      {editMode && (
+      {editMode && isBatchActive ? (
         <div className="mt-8 flex justify-end">
           <button
             onClick={() => onSaveAttendance(localAttendance)}
@@ -1268,7 +1275,7 @@ function StudentsTab({
             Save All Attendance
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

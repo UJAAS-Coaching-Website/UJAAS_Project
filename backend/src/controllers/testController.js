@@ -97,6 +97,9 @@ export async function handleCreateTest(req, res) {
 
         return res.status(201).json(test);
     } catch (error) {
+        if (error?.code === "INVALID_BATCH_ASSIGNMENT") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("createTest error:", error.message);
         return res.status(500).json({ message: "failed to create test", error: error.message });
     }
@@ -140,6 +143,9 @@ export async function handleUpdateTest(req, res) {
 
         return res.status(200).json(test);
     } catch (error) {
+        if (error?.code === "INVALID_BATCH_ASSIGNMENT") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("updateTest error:", error.message);
         return res.status(500).json({ message: "failed to update test", error: error.message });
     }
