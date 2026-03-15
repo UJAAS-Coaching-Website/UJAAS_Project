@@ -10,12 +10,12 @@ export async function listQueries(req, res) {
 }
 
 export async function submitQuery(req, res) {
-    const { name, email, phone, course, message } = req.body || {};
-    if (!name || !email || !phone || !course) {
-        return res.status(400).json({ message: "name, email, phone, and course are required" });
+    const { name, email, phone, courseId, message } = req.body || {};
+    if (!name || !email || !phone || !courseId) {
+        return res.status(400).json({ message: "name, email, phone, and courseId are required" });
     }
     try {
-        const query = await createQuery({ name, email, phone, course, message });
+        const query = await createQuery({ name, email, phone, courseId, message });
         return res.status(201).json(query);
     } catch (error) {
         return res.status(500).json({ message: "failed to submit query", error: error.message });

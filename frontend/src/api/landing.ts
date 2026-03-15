@@ -29,8 +29,13 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
 
 // ── Landing Page Data ──────────────────────────────────
 
+export interface LandingCourse {
+    id: string;
+    name: string;
+}
+
 export interface LandingDataPayload {
-    courses: string[];
+    courses: LandingCourse[];
     faculty: { name: string; subject: string; designation: string; experience: string; image: string }[];
     achievers: { name: string; achievement: string; year: string; image: string }[];
     visions: { id: string; name: string; designation: string; vision: string; image: string }[];
@@ -91,6 +96,7 @@ export interface QueryItem {
     email: string;
     phone: string;
     course: string;
+    courseId?: string;
     message?: string;
     date: string;
     status: "new" | "contacted" | "completed";
@@ -104,7 +110,7 @@ export async function submitQuery(data: {
     name: string;
     email: string;
     phone: string;
-    course: string;
+    courseId: string;
     message?: string;
 }): Promise<QueryItem> {
     return apiRequest<QueryItem>("/api/queries", {

@@ -15,8 +15,8 @@ export async function getLandingData() {
         contact: DEFAULT_CONTACT,
     };
 
-    const coursesRes = await pool.query("SELECT name FROM landing_courses ORDER BY created_at ASC");
-    data.courses = coursesRes.rows.map(r => r.name);
+    const coursesRes = await pool.query("SELECT id, name FROM landing_courses ORDER BY created_at ASC");
+    data.courses = coursesRes.rows.map(r => ({ id: r.id, name: r.name }));
 
     const facultyRes = await pool.query("SELECT name, subject, designation, experience, image_url AS image FROM landing_faculty ORDER BY created_at ASC");
     data.faculty = facultyRes.rows;
@@ -39,7 +39,8 @@ export async function updateFullLandingData(data) {
         await client.query("BEGIN");
 
         if (data.courses && Array.isArray(data.courses)) {
-            const names = data.courses.filter(Boolean);
+            // Accept both {id, name} objects and plain strings
+            const names = data.courses.map(c => typeof c === 'string' ? c : c.name).filter(Boolean);
             if (names.length > 0) {
                 await client.query("DELETE FROM landing_courses WHERE name != ALL($1)", [names]);
             } else {

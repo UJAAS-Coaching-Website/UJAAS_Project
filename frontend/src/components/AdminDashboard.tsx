@@ -1355,7 +1355,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const handleAddCourse = (e: FormEvent) => {
     e.preventDefault();
     if (newCourse.trim()) {
-      safeUpdate({ ...data, courses: [...data.courses, newCourse.trim()] });
+      safeUpdate({ ...data, courses: [...data.courses, { id: '', name: newCourse.trim() }] });
       setNewCourse('');
     }
   };
@@ -1499,11 +1499,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         </form>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.courses.map((c, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl group">
-              <span className="font-medium text-gray-700">{c}</span>
+            <div key={c.id || i} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl group">
+              <span className="font-medium text-gray-700">{c.name}</span>
               <button
                 onClick={() => {
-                  if (confirm(`Are you sure you want to remove the course "${c}"?`)) {
+                  if (confirm(`Are you sure you want to remove the course "${c.name}"?`)) {
                     handleRemoveCourse(i);
                   }
                 }}

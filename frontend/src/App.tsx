@@ -113,13 +113,19 @@ export interface LandingQuery {
   email: string;
   phone: string;
   course: string;
+  courseId?: string;
   message?: string;
   date: string;
   status: 'new' | 'contacted' | 'completed';
 }
 
+export interface LandingCourse {
+  id: string;
+  name: string;
+}
+
 export interface LandingData {
-  courses: string[];
+  courses: LandingCourse[];
   faculty: LandingFaculty[];
   achievers: LandingAchiever[];
   visions: LandingVision[];
@@ -279,15 +285,21 @@ function App() {
   const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
   const [queries, setQueries] = useState<LandingQuery[]>([]);
 
-  const handleAddQuery = async (query: Omit<LandingQuery, 'id' | 'date' | 'status'>) => {
+  const handleAddQuery = async (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => {
     try {
       const newQuery = await apiSubmitQuery(query);
       setQueries(prev => [newQuery as LandingQuery, ...prev]);
     } catch (error) {
       console.error('Failed to submit query:', error);
       // Fallback: add locally
+      const courseName = landingData.courses.find(c => c.id === query.courseId)?.name ?? query.courseId;
       const fallback: LandingQuery = {
-        ...query,
+        name: query.name,
+        email: query.email,
+        phone: query.phone,
+        course: courseName,
+        courseId: query.courseId,
+        message: query.message,
         id: Math.random().toString(36).substr(2, 9),
         date: new Date().toISOString(),
         status: 'new'
@@ -314,14 +326,14 @@ function App() {
   const [landingData, setLandingData] = useState<LandingData>(() => {
     const defaultData = {
       courses: [
-        'JEE MAINS / ADVANCED',
-        'NEET',
-        'BOARDS',
-        'GUJCET',
-        '11TH SCIENCE',
-        '12TH SCIENCE',
-        '7TH TO 10TH FOUNDATION',
-        'DROPPER BATCH'
+        { id: 'fallback-1', name: 'JEE MAINS / ADVANCED' },
+        { id: 'fallback-2', name: 'NEET' },
+        { id: 'fallback-3', name: 'BOARDS' },
+        { id: 'fallback-4', name: 'GUJCET' },
+        { id: 'fallback-5', name: '11TH SCIENCE' },
+        { id: 'fallback-6', name: '12TH SCIENCE' },
+        { id: 'fallback-7', name: '7TH TO 10TH FOUNDATION' },
+        { id: 'fallback-8', name: 'DROPPER BATCH' }
       ],
       faculty: [
         {

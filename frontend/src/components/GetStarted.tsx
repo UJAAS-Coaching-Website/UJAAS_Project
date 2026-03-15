@@ -18,7 +18,7 @@ interface GetStartedProps {
   isNewUser?: boolean;
   userName?: string;
   landingData: LandingData;
-  onSubmitQuery: (query: { name: string; email: string; phone: string; course: string; message: string }) => void;
+  onSubmitQuery: (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => void;
 }
 
 export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onSubmitQuery }: GetStartedProps) {
@@ -28,7 +28,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
     name: '',
     email: '',
     phone: '',
-    course: '',
+    courseId: '',
     message: ''
   });
 
@@ -38,7 +38,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
     e.preventDefault();
     onSubmitQuery(formData);
     alert('Thank you! Your interest has been registered. Our team will contact you soon.');
-    setFormData({ name: '', email: '', phone: '', course: '', message: '' });
+    setFormData({ name: '', email: '', phone: '', courseId: '', message: '' });
   };
 
   const nextAchiever = () => {
@@ -218,11 +218,11 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
             {courses.map((course, idx) => (
               <div
-                key={idx}
+                key={course.id || idx}
                 className="bg-white rounded-xl p-6 text-center shadow-lg"
               >
                 <BookOpen className="w-5 h-5 text-teal-600 mx-auto mb-3" />
-                <h3 className="font-bold text-gray-900 text-xl leading-tight">{course}</h3>
+                <h3 className="font-bold text-gray-900 text-xl leading-tight">{course.name}</h3>
               </div>
             ))}
           </div>
@@ -411,13 +411,13 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 </label>
                 <select
                   required
-                  value={formData.course}
-                  onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                  value={formData.courseId}
+                  onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                 >
                   <option value="">Select a course</option>
-                  {courses.map((course, idx) => (
-                    <option key={idx} value={course}>{course}</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.name}</option>
                   ))}
                 </select>
               </div>
