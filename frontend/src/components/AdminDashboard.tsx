@@ -73,9 +73,9 @@ interface AdminDashboardProps {
   onDeleteStudent: (id: string) => Promise<void>;
   onAssignStudentToBatch: (studentId: string, batchId: string) => Promise<import('../api/students').ApiStudent>;
   onRemoveStudentFromBatch: (studentId: string, batchId: string) => Promise<void>;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
-  onDeleteBatch: (label: string) => { ok: boolean; error?: string };
+  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onPermanentDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
@@ -2060,11 +2060,14 @@ function OverviewTab({
   const assigned = currentBatch?.facultyAssigned ?? [];
   const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
 
-  const handleRemoveFacultyFromBatch = (facultyName: string) => {
+  const handleRemoveFacultyFromBatch = async (facultyName: string) => {
     if (!currentBatch) return;
     if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
     const nextAssigned = assigned.filter((name) => name !== facultyName);
-    onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
+    const result = await onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
+    if (!result.ok) {
+      window.alert(result.error ?? 'Unable to update batch faculty.');
+    }
   };
 
   return (
@@ -2613,7 +2616,7 @@ function AddStudentModal({
     setFormState((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     onSubmit?.(formState);
     onClose();
@@ -2799,7 +2802,7 @@ function AddFacultyModal({
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     onSubmit?.(formState);
     onClose();
@@ -3155,9 +3158,9 @@ function BatchFormModal({
   subjectCatalog: import('../api/subjects').ApiSubject[];
   batchLabel?: string;
   onClose: () => void;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
-  onDeleteBatch: (label: string) => { ok: boolean; error?: string };
+  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
   const [formState, setFormState] = useState({
@@ -3168,7 +3171,10 @@ function BatchFormModal({
   });
   const [selectedFacultyNames, setSelectedFacultyNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
+  const subjects = subjectCatalog
+    .map((subject) => subject.name)
+    .filter((name) => typeof name === 'string' && name.trim().length > 0)
+    .sort((a, b) => a.localeCompare(b));
   const currentBatch = mode === 'edit' && batchLabel
     ? batches.find((batch) => batch.label === batchLabel)
     : null;
@@ -3176,20 +3182,24 @@ function BatchFormModal({
 
   useEffect(() => {
     if (!open) return;
-    if (mode === 'edit' && batchLabel) {
-      const current = batches.find((batch) => batch.label === batchLabel);
-      const assignments = (current?.facultyAssigned ?? [])
-        .map((name) => {
-          const found = faculty.find((item) => item.name === name);
-          return found ? { subject: found.subject, faculty: found.name } : null;
-        })
-        .filter((item): item is { subject: string; faculty: string } => !!item);
-      setFormState({
-        name: current?.label ?? batchLabel,
-        subject: '',
-        faculty: '',
-        assignments,
-      });
+      if (mode === 'edit' && batchLabel) {
+        const current = batches.find((batch) => batch.label === batchLabel);
+        const assignments = (current?.facultyAssigned ?? [])
+          .map((name) => {
+            const found = faculty.find((item) => item.name === name);
+            return found ? { subject: found.subject, faculty: found.name } : null;
+          })
+          .filter((item): item is { subject: string; faculty: string } => !!item);
+        const assignedSubjects = new Set(assignments.map((item) => item.subject));
+        const subjectOnlyAssignments = (current?.subjects ?? [])
+          .filter((subject) => subject && !assignedSubjects.has(subject))
+          .map((subject) => ({ subject, faculty: '' }));
+        setFormState({
+          name: current?.label ?? batchLabel,
+          subject: '',
+          faculty: '',
+          assignments: [...assignments, ...subjectOnlyAssignments],
+        });
       } else {
         setFormState({ name: '', subject: '', faculty: '', assignments: [] });
       }
@@ -3204,39 +3214,53 @@ function BatchFormModal({
     : [];
 
   const addAssignment = () => {
-    if (!formState.subject || selectedFacultyNames.length === 0) return;
+    if (!formState.subject) return;
     setFormState((prev) => {
+      if (selectedFacultyNames.length === 0) {
+        const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject);
+        if (alreadyExists) {
+          return { ...prev, faculty: '' };
+        }
+        return {
+          ...prev,
+          assignments: [...prev.assignments, { subject: prev.subject, faculty: '' }],
+          faculty: '',
+        };
+      }
       const additions = selectedFacultyNames
         .filter((name) => !prev.assignments.some((item) => item.subject === prev.subject && item.faculty === name))
         .map((name) => ({ subject: prev.subject, faculty: name }));
       if (additions.length === 0) {
         return { ...prev, faculty: '' };
       }
+      const withoutPlaceholder = prev.assignments.filter(
+        (item) => !(item.subject === prev.subject && item.faculty.trim().length === 0)
+      );
       return {
         ...prev,
-        assignments: [...prev.assignments, ...additions],
+        assignments: [...withoutPlaceholder, ...additions],
         faculty: '',
       };
     });
     setSelectedFacultyNames([]);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const selectedSubjects = Array.from(new Set(formState.assignments.map((item) => item.subject)));
-    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty)));
+    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty).filter((name) => name.trim().length > 0)));
     if (!formState.name.trim()) {
       setError('Batch name is required.');
       return;
     }
-    if (selectedSubjects.length === 0 || selectedFaculty.length === 0) {
-      setError('Add at least one subject and faculty.');
+    if (selectedSubjects.length === 0) {
+      setError('Add at least one subject.');
       return;
     }
     const result =
       mode === 'edit'
-        ? onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty, batchLabel)
-        : onCreateBatch(formState.name.trim(), selectedSubjects, selectedFaculty);
+        ? await onUpdateBatch(formState.name.trim(), selectedSubjects, selectedFaculty, batchLabel)
+        : await onCreateBatch(formState.name.trim(), selectedSubjects, selectedFaculty);
     if (!result.ok) {
       setError(result.error ?? 'Unable to save batch.');
       return;
@@ -3244,10 +3268,10 @@ function BatchFormModal({
     onClose();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!batchLabel) return;
     if (window.confirm(`Are you sure you want to delete the batch "${batchLabel}"?`)) {
-      const result = onDeleteBatch(batchLabel);
+      const result = await onDeleteBatch(batchLabel);
       if (result.ok) {
         onClose();
       } else {
@@ -3313,11 +3337,12 @@ function BatchFormModal({
           </label>
 
           <div className="space-y-3">
-            <p className="text-sm font-medium text-gray-700">Subject & Faculty *</p>
+            <p className="text-sm font-medium text-gray-700">Subject & Faculty</p>
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-start">
               <label className="space-y-2 text-sm font-medium text-gray-700 block">
                 <span className="block">Subject</span>
-                <select
+                <input
+                  list="batch-subject-options"
                   value={formState.subject}
                   onChange={(event) => {
                     const nextSubject = event.target.value;
@@ -3329,12 +3354,13 @@ function BatchFormModal({
                     setSelectedFacultyNames([]);
                   }}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
-                >
-                  <option value="">Select subject</option>
+                  placeholder="Select or type a subject"
+                />
+                <datalist id="batch-subject-options">
                   {subjects.map((subject) => (
-                    <option key={subject} value={subject}>{subject}</option>
+                    <option key={subject} value={subject} />
                   ))}
-                </select>
+                </datalist>
               </label>
 
               <div className="space-y-2 text-sm font-medium text-gray-700">
@@ -3385,7 +3411,7 @@ function BatchFormModal({
                   {formState.assignments.map((item, index) => (
                   <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
-                      {item.subject} — <span className="font-semibold">{item.faculty}</span>
+                      {item.subject} — <span className="font-semibold">{item.faculty ? item.faculty : 'Unassigned'}</span>
                     </span>
                     <button
                       type="button"

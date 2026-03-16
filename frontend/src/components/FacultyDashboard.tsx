@@ -58,7 +58,7 @@ interface FacultyDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
+  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -1296,7 +1296,15 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
-        <form onSubmit={(e) => { e.preventDefault(); onUpdateBatch(batchLabel); onClose(); }} className="space-y-4">
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          const result = await onUpdateBatch(batchLabel);
+          if (result.ok) {
+            onClose();
+          } else {
+            window.alert(result.error ?? 'Unable to update batch.');
+          }
+        }} className="space-y-4">
           <input name="label" defaultValue={batchLabel} disabled className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500" />
           <div className="flex gap-3 pt-4"><button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">Cancel</button><button type="submit" className="flex-1 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold">Save</button></div>
         </form>

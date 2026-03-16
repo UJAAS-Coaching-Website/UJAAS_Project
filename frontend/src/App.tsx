@@ -840,7 +840,7 @@ function App() {
     return adminBatches.find((batch) => batch.label === label)?.slug ?? null;
   };
 
-  const addAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+  const addAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[]) => {
     const trimmedLabel = label.trim();
     if (adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase())) {
       return { ok: false, error: 'A batch with this name already exists' };
@@ -852,40 +852,24 @@ function App() {
       return fac?.id;
     }).filter((id): id is string => !!id);
 
-    // Optimistically create local batch
-    const newLocalBatch: AdminBatchInfo = {
-      label: trimmedLabel,
-      slug: trimmedLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch', // Temporary slug
-      subjects: trimmedSubjects,
-      studentCount: 0,
-      facultyAssigned: facultyAssigned || [],
-      testsConducted: 0,
-      averagePerformance: 0,
-      is_active: true,
-    };
-    setAdminBatches((prev) => [...prev, newLocalBatch]);
-
-    // Sync with API in the background
-    showBatchToast('saving', 'Creating batch in database…');
-    apiCreateBatch({
-      name: trimmedLabel,
-      subjects: trimmedSubjects,
-      facultyIds: facultyIds,
-    }).then((apiBatch) => {
-      setAdminBatches((prev) =>
-        prev.map((b) => b.label === trimmedLabel && !b.id ? apiBatchToInfo(apiBatch) : b)
-      );
-      showBatchToast('saved', 'Batch created in database ✓');
-    }).catch((err) => {
+    try {
+      showBatchToast('saving', 'Creating batch in database...');
+      const apiBatch = await apiCreateBatch({
+        name: trimmedLabel,
+        subjects: trimmedSubjects,
+        facultyIds: facultyIds,
+      });
+      setAdminBatches((prev) => [...prev, apiBatchToInfo(apiBatch)]);
+      showBatchToast('saved', 'Batch created in database.');
+      return { ok: true, label: trimmedLabel };
+    } catch (err) {
       console.error('Failed to create batch in API:', err);
-      // We don't roll back the UI automatically to avoid confusing jumps, but we show an error
       showBatchToast('error', 'Failed to save batch to database');
-    });
-
-    return { ok: true, label: trimmedLabel };
+      return { ok: false, error: 'Failed to save batch to database' };
+    }
   };
 
-  const updateAdminBatch = (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
+  const updateAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
     const targetLabel = oldLabel || label;
     const trimmedLabel = label.trim();
 
@@ -903,71 +887,55 @@ function App() {
       return fac?.id;
     }).filter((id): id is string => !!id);
 
-    // Optimistically update local state
-    setAdminBatches((prev) =>
-      prev.map((b) => {
-        if (b.label === targetLabel) {
-          return {
-            ...b,
-            label: trimmedLabel,
-            subjects: trimmedSubjects.length > 0 ? trimmedSubjects : b.subjects,
-            facultyAssigned: facultyAssigned ?? b.facultyAssigned,
-          };
-        }
-        return b;
-      })
-    );
-
-    if (adminBatch === targetLabel) {
-      setAdminBatch(trimmedLabel);
+    if (!batchId) {
+      return { ok: false, error: 'Batch not found in database.' };
     }
 
-    // Sync with API in the background
-    if (batchId) {
-      showBatchToast('saving', 'Saving changes to database…');
-      apiUpdateBatch(batchId, {
+    try {
+      showBatchToast('saving', 'Saving changes to database...');
+      const apiBatch = await apiUpdateBatch(batchId, {
         name: trimmedLabel,
         subjects: trimmedSubjects,
         facultyIds: facultyIds,
-      }).then((apiBatch) => {
-        setAdminBatches((prev) =>
-          prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
-        );
-        showBatchToast('saved', 'Batch updated and saved to database ✓');
-      }).catch((err) => {
-        console.error('Failed to update batch in API:', err);
-        showBatchToast('error', 'Failed to save changes to database');
       });
+      setAdminBatches((prev) =>
+        prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
+      );
+      if (adminBatch === targetLabel) {
+        setAdminBatch(trimmedLabel);
+      }
+      showBatchToast('saved', 'Batch updated and saved to database.');
+      return { ok: true };
+    } catch (err) {
+      console.error('Failed to update batch in API:', err);
+      showBatchToast('error', 'Failed to save changes to database');
+      return { ok: false, error: 'Failed to save changes to database' };
     }
-
-    return { ok: true };
   };
 
-  const deleteAdminBatch = (label: string) => {
+  const deleteAdminBatch = async (label: string) => {
     const batch = adminBatches.find((b) => b.label === label);
     if (!batch) {
       return { ok: false, error: 'Batch not found.' };
     }
-
-    // Optimistically update local state to inactive instead of removing
-    setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
-
-    if (adminBatch === label) {
-      setAdminBatch(null);
+    if (!batch.id) {
+      return { ok: false, error: 'Batch not found in database.' };
     }
 
-    // Sync with API in the background
-    if (batch.id) {
-      showBatchToast('saving', 'Deleting batch from database…');
-      apiDeleteBatch(batch.id).then(() => {
-        showBatchToast('saved', 'Batch deleted from database ✓');
-      }).catch((err) => {
-        console.error('Failed to delete batch in API:', err);
-        showBatchToast('error', 'Failed to delete batch from database');
-      });
+    try {
+      showBatchToast('saving', 'Deleting batch from database...');
+      await apiDeleteBatch(batch.id);
+      setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
+      if (adminBatch === label) {
+        setAdminBatch(null);
+      }
+      showBatchToast('saved', 'Batch deleted from database.');
+      return { ok: true };
+    } catch (err) {
+      console.error('Failed to delete batch in API:', err);
+      showBatchToast('error', 'Failed to delete batch from database');
+      return { ok: false, error: 'Failed to delete batch from database' };
     }
-
-    return { ok: true };
   };
 
   const permanentlyDeleteAdminBatch = async (label: string) => {

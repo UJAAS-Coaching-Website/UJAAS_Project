@@ -51,7 +51,7 @@ interface NotesManagementTabProps {
   batches: BatchInfo[];
   readOnly?: boolean;
   variant?: 'admin' | 'faculty' | 'student';
-  onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
+  onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   headerMode?: 'full' | 'tracker-only' | 'hidden';
   subjectCatalog?: import('../api/subjects').ApiSubject[];
   onRemoveSubjectFromBatch?: (batchId: string, subjectId: string) => Promise<{ ok: boolean; status: number; links?: Record<string, number>; message?: string; action?: "removed" | "deleted" }>;
@@ -374,7 +374,7 @@ export function NotesManagementTab({
       const nextSubjects = [...batchSubjects, name];
       const assigned = currentBatch.facultyAssigned ?? [];
 
-      const result = onUpdateBatch(selectedBatch, nextSubjects, assigned);
+      const result = await onUpdateBatch(selectedBatch, nextSubjects, assigned);
 
       if (result.ok) {
         toast.success(`Subject "${name}" added successfully.`);
