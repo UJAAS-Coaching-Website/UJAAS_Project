@@ -43,7 +43,6 @@ import { QuestionBank } from './QuestionBank';
 import { TestTaking } from './TestTaking';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
 import { generateInitialPassword } from '../utils/passwords';
@@ -75,7 +74,7 @@ interface FacultyDashboardProps {
 export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;
@@ -317,6 +316,9 @@ export function FacultyDashboard({
   const [batchModal, setBatchModal] = useState<{ open: boolean; batchLabel?: string; }>({ open: false });
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student; }>({ open: false });
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const selectedBatchInfo = selectedBatch
+    ? batches.find((batch) => batch.label === selectedBatch)
+    : null;
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -862,12 +864,29 @@ export function FacultyDashboard({
                   <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
                 </div>
                 <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <img src={demotimetable} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
-                  </div>
+                  {selectedBatchInfo?.timetable_url ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <img src={selectedBatchInfo.timetable_url} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 w-full">
+                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
-                  <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"><Download className="w-4 h-4" />Download PDF</button>
+                  {selectedBatchInfo?.timetable_url && (
+                    <a
+                      href={selectedBatchInfo.timetable_url}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />Download
+                    </a>
+                  )}
                   <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
                 </div>
               </motion.div>

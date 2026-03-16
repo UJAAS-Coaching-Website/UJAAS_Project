@@ -39,7 +39,7 @@ function average(entries, selector) {
     );
 }
 
-function buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, subjectRatings) {
+function buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, batchId, subjectRatings) {
     const ratingEntries = Object.values(subjectRatings);
     const subjectRemarks = Object.fromEntries(
         Object.entries(subjectRatings).map(([subjectName, entry]) => [subjectName, entry?.remarks || ""])
@@ -54,6 +54,7 @@ function buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, s
         studentDetails: {
             rollNumber: studentRow?.roll_number ?? "",
             batch: batchName ?? "",
+            batchId: batchId ?? null,
             joinDate: studentRow?.join_date ?? null,
             phone: studentRow?.phone ?? "",
             address: studentRow?.address ?? "",
@@ -86,7 +87,7 @@ async function getStudentEnrollment(userId, client = pool) {
 
     if (batchModel === "single") {
         const result = await client.query(
-            `SELECT b.name
+            `SELECT b.id, b.name
              FROM students s
              LEFT JOIN batches b ON b.id = s.assigned_batch_id
              WHERE s.user_id = $1
@@ -94,10 +95,36 @@ async function getStudentEnrollment(userId, client = pool) {
             [userId]
         );
         const batchName = result.rows[0]?.name || "";
-        return {
-            enrolledCourses: batchName ? [batchName] : [],
-            batchName,
-        };
+        const batchId = result.rows[0]?.id || null;
+        if (batchId) {
+            return {
+                enrolledCourses: batchName ? [batchName] : [],
+                batchName,
+                batchId,
+            };
+        }
+
+        const hasStudentBatches = await tableExists("student_batches", client);
+        if (hasStudentBatches) {
+            const fallback = await client.query(
+                `SELECT b.id, b.name
+                 FROM student_batches sb
+                 JOIN batches b ON b.id = sb.batch_id
+                 WHERE sb.student_id = $1
+                 ORDER BY b.name
+                 LIMIT 1`,
+                [userId]
+            );
+            const fallbackName = fallback.rows[0]?.name || "";
+            const fallbackId = fallback.rows[0]?.id || null;
+            return {
+                enrolledCourses: fallbackName ? [fallbackName] : [],
+                batchName: fallbackName,
+                batchId: fallbackId,
+            };
+        }
+
+        return { enrolledCourses: [], batchName: "", batchId: null };
     }
 
     const hasStudentBatches = await tableExists("student_batches", client);
@@ -106,7 +133,7 @@ async function getStudentEnrollment(userId, client = pool) {
     }
 
     const result = await client.query(
-        `SELECT b.name
+        `SELECT b.id, b.name
          FROM student_batches sb
          JOIN batches b ON b.id = sb.batch_id
          WHERE sb.student_id = $1
@@ -115,9 +142,11 @@ async function getStudentEnrollment(userId, client = pool) {
     );
 
     const enrolledCourses = result.rows.map((row) => row.name).filter(Boolean);
+    const batchId = result.rows[0]?.id || null;
     return {
         enrolledCourses,
         batchName: enrolledCourses[0] || "",
+        batchId,
     };
 }
 
@@ -315,10 +344,10 @@ export async function fetchUserProfileById(userId) {
             );
 
             const studentRow = studentResult.rows[0] || {};
-            const { enrolledCourses, batchName } = await getStudentEnrollment(userId, client);
+            const { enrolledCourses, batchName, batchId } = await getStudentEnrollment(userId, client);
             const subjectRatings = await getStudentSubjectRatings(userId, client);
 
-            return buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, subjectRatings);
+            return buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, batchId, subjectRatings);
         }
 
         if (baseUser.role === "faculty") {

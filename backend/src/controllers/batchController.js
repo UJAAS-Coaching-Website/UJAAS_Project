@@ -14,6 +14,7 @@ import {
     createBatchNotification,
 } from "../services/batchService.js";
 import { removeSubjectFromBatch } from "../services/subjectService.js";
+import { uploadTimetableToStorage, deleteTimetableFromStorage } from "../services/storageService.js";
 
 export async function listBatches(req, res) {
     try {
@@ -226,5 +227,55 @@ export async function handleRemoveBatchSubject(req, res) {
         }
         console.error("removeBatchSubject error:", error.message);
         return res.status(500).json({ message: "failed to remove subject from batch" });
+    }
+}
+
+export async function handleUploadBatchTimetable(req, res) {
+    try {
+        const batchId = req.params.id;
+        const batch = await getBatchById(batchId);
+        if (!batch) {
+            return res.status(404).json({ message: "batch not found" });
+        }
+        if (!req.file) {
+            return res.status(400).json({ message: "No timetable file provided." });
+        }
+
+        if (batch.timetable_url) {
+            await deleteTimetableFromStorage(batch.timetable_url);
+        }
+
+        const timetableUrl = await uploadTimetableToStorage(
+            req.file.buffer,
+            req.file.originalname,
+            req.file.mimetype,
+            batchId
+        );
+
+        const updated = await updateBatch(batchId, { timetable_url: timetableUrl });
+        return res.status(200).json(updated);
+    } catch (error) {
+        console.error("uploadBatchTimetable error:", error.message);
+        return res.status(500).json({ message: "failed to upload timetable", error: error.message });
+    }
+}
+
+export async function handleDeleteBatchTimetable(req, res) {
+    try {
+        const batchId = req.params.id;
+        const batch = await getBatchById(batchId);
+        if (!batch) {
+            return res.status(404).json({ message: "batch not found" });
+        }
+
+        if (batch.timetable_url) {
+            await deleteTimetableFromStorage(batch.timetable_url);
+        }
+
+        const updated = await updateBatch(batchId, { timetable_url: null });
+        return res.status(200).json(updated);
+    } catch (error) {
+        console.error("deleteBatchTimetable error:", error.message);
+        return res.status(500).json({ message: "failed to delete timetable", error: error.message });
     }
 }

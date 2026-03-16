@@ -9,7 +9,7 @@ import {
   BookOpen,
   ClipboardList
 } from 'lucide-react';
-import { fetchBatches, ApiBatch } from '../api/batches';
+import { fetchBatches, fetchBatch, ApiBatch } from '../api/batches';
 import { apiFetchChapters } from '../api/chapters';
 import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
@@ -19,7 +19,6 @@ import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import demotimetable from '../assets/demotimetable.jpg';
 import { X, Calendar } from 'lucide-react';
 import { NotesManagementTab } from './NotesManagementTab';
 import { DPPPractice, type DppPracticeSession } from './DPPPractice';
@@ -60,6 +59,11 @@ export function StudentDashboard({
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
+  const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
+  const [batchDetailsLoading, setBatchDetailsLoading] = useState(false);
+  const [batchDetailsError, setBatchDetailsError] = useState<string | null>(null);
+  const [batchListCount, setBatchListCount] = useState<number | null>(null);
+  const [batchMatchInfo, setBatchMatchInfo] = useState<string | null>(null);
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -69,6 +73,77 @@ export function StudentDashboard({
     }
     return () => { document.body.style.overflow = 'unset'; };
   }, [showFullTimetable]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadBatchDetails = async () => {
+      if (!user.studentDetails?.batch) {
+        if (!cancelled) {
+          setBatchDetails(null);
+          setBatchDetailsLoading(false);
+        }
+        return;
+      }
+      try {
+        if (!cancelled) {
+          setBatchDetailsLoading(true);
+          setBatchDetailsError(null);
+        }
+        const studentBatchId = user.studentDetails?.batchId;
+        const target = user.studentDetails?.batch?.toLowerCase().trim();
+        let studentBatch: ApiBatch | null = null;
+        try {
+          const batches = await fetchBatches();
+          if (!cancelled) {
+            setBatchListCount(batches.length);
+          }
+          studentBatch = batches.find((batch) =>
+            (studentBatchId && batch.id === studentBatchId)
+            || batch.name?.toLowerCase().trim() === target
+            || batch.slug?.toLowerCase().trim() === target
+          ) || null;
+          if (!cancelled) {
+            setBatchMatchInfo(studentBatch ? `matched:${studentBatch.name}` : 'not-found');
+          }
+        } catch (error: any) {
+          console.error('Failed to fetch batches list:', error);
+          if (!cancelled) {
+            setBatchDetailsError(error?.message || 'Failed to load batches.');
+          }
+        }
+
+        if (!studentBatch && studentBatchId) {
+          try {
+            studentBatch = await fetchBatch(studentBatchId);
+          } catch (error) {
+            console.error('Failed to fetch batch by id:', error);
+            if (!cancelled) {
+              setBatchDetailsError((error as any)?.message || 'Failed to load batch by id.');
+            }
+          }
+        }
+        if (!cancelled) {
+          setBatchDetails(studentBatch);
+        }
+      } catch (err) {
+        console.error('Failed to fetch batch details:', err);
+        if (!cancelled) {
+          setBatchDetails(null);
+          setBatchDetailsError((err as any)?.message || 'Failed to load batch details.');
+        }
+      } finally {
+        if (!cancelled) {
+          setBatchDetailsLoading(false);
+        }
+      }
+    };
+
+    void loadBatchDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.studentDetails?.batch]);
 
   useEffect(() => {
     if (activeTab !== 'home' || subTab !== 'dpp') {
@@ -90,6 +165,22 @@ export function StudentDashboard({
       setActiveDppSession(null);
     }
   }, [activeTab, subTab]);
+
+  const homeTabProps = {
+    user,
+    onNavigate,
+    onOpenPerformance: () => {
+      setProfileSection('performance');
+      onNavigate('profile');
+    },
+    activeTab,
+    onViewTimetable: () => setShowFullTimetable(true),
+    batchDetails,
+    batchDetailsLoading,
+    batchDetailsError,
+    batchListCount,
+    batchMatchInfo,
+  };
 
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
@@ -220,16 +311,7 @@ export function StudentDashboard({
             </div>
           )}
           {activeTab === 'home' && subTab !== 'dpp' && (
-            <HomeTab 
-              user={user} 
-              onNavigate={onNavigate} 
-              onOpenPerformance={() => {
-                setProfileSection('performance');
-                onNavigate('profile');
-              }} 
-              activeTab={activeTab}
-              onViewTimetable={() => setShowFullTimetable(true)}
-            />
+            <HomeTab {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
             <TestSeriesContainer 
@@ -248,16 +330,7 @@ export function StudentDashboard({
             />
           )}
           {activeTab === 'batch-detail' && (
-            <HomeTab 
-              user={user} 
-              onNavigate={onNavigate} 
-              onOpenPerformance={() => {
-                setProfileSection('performance');
-                onNavigate('profile');
-              }} 
-              activeTab={activeTab}
-              onViewTimetable={() => setShowFullTimetable(true)}
-            />
+            <HomeTab {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
             <QuestionBank 
@@ -296,12 +369,29 @@ export function StudentDashboard({
                 <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
                </div>
               <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                <div className="w-full h-full flex items-center justify-center">
-                  <img src={demotimetable} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
-                </div>
+                {batchDetails?.timetable_url ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img src={batchDetails.timetable_url} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
+                  </div>
+                ) : (
+                  <div className="text-center py-20 w-full">
+                    <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
+                  </div>
+                )}
               </div>
               <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
-                <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"><Download className="w-4 h-4" />Download PDF</button>
+                {batchDetails?.timetable_url && (
+                  <a
+                    href={batchDetails.timetable_url}
+                    download
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />Download
+                  </a>
+                )}
                 <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
               </div>
             </motion.div>
@@ -361,13 +451,23 @@ function HomeTab({
   onNavigate, 
   onOpenPerformance,
   activeTab,
-  onViewTimetable
+  onViewTimetable,
+  batchDetails,
+  batchDetailsLoading,
+  batchDetailsError,
+  batchListCount,
+  batchMatchInfo
 }: { 
   user: User; 
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
   activeTab: Tab;
   onViewTimetable: () => void;
+  batchDetails: ApiBatch | null;
+  batchDetailsLoading: boolean;
+  batchDetailsError: string | null;
+  batchListCount: number | null;
+  batchMatchInfo: string | null;
 }) {
   const [dppProgress, setDppProgress] = useState({ completed: 0, total: 0, loading: true });
 
@@ -387,8 +487,23 @@ function HomeTab({
           setDppProgress((prev) => ({ ...prev, loading: true }));
         }
 
-        const batches = await fetchBatches();
-        const studentBatch = batches.find((batch) => batch.name === user.studentDetails?.batch);
+        const studentBatchId = user.studentDetails?.batchId;
+        const target = user.studentDetails?.batch?.toLowerCase().trim();
+        let studentBatch: ApiBatch | null = null;
+        if (studentBatchId) {
+          try {
+            studentBatch = await fetchBatch(studentBatchId);
+          } catch (error) {
+            console.error('Failed to fetch batch by id:', error);
+          }
+        }
+        if (!studentBatch) {
+          const batches = await fetchBatches();
+          studentBatch = batches.find((batch) =>
+            batch.name?.toLowerCase().trim() === target
+            || batch.slug?.toLowerCase().trim() === target
+          ) || null;
+        }
 
         if (!studentBatch) {
           if (!cancelled) {
@@ -570,6 +685,11 @@ function HomeTab({
         onNavigate={onNavigate}
         currentTab={activeTab}
         onViewTimetable={onViewTimetable}
+        batchDetails={batchDetails}
+        loading={batchDetailsLoading}
+        batchDetailsError={batchDetailsError}
+        batchListCount={batchListCount}
+        batchMatchInfo={batchMatchInfo}
       />
 
     </div>
@@ -580,37 +700,23 @@ function AssignedBatchContent({
   user, 
   onNavigate,
   currentTab,
-  onViewTimetable
+  onViewTimetable,
+  batchDetails,
+  loading,
+  batchDetailsError,
+  batchListCount,
+  batchMatchInfo
 }: { 
   user: User; 
   onNavigate: (tab: Tab, subTab?: string) => void;
   currentTab: Tab;
   onViewTimetable: () => void;
+  batchDetails: ApiBatch | null;
+  loading: boolean;
+  batchDetailsError: string | null;
+  batchListCount: number | null;
+  batchMatchInfo: string | null;
 }) {
-  const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadBatch = async () => {
-      try {
-        const batches = await fetchBatches();
-        const studentBatch = batches.find(b => b.name === user.studentDetails?.batch);
-        if (studentBatch) {
-          setBatchDetails(studentBatch);
-        }
-      } catch (err) {
-        console.error("Failed to fetch batch details:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user.studentDetails?.batch) {
-      loadBatch();
-    } else {
-      setLoading(false);
-    }
-  }, [user.studentDetails?.batch]);
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -670,11 +776,12 @@ function AssignedBatchContent({
           </div>
           <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
         </div>
+        
         <div className="p-1">
           <NotesManagementTab 
             onNavigate={onNavigate}
             currentTab={currentTab}
-            selectedBatch={user.studentDetails?.batch || null}
+            selectedBatch={batchDetails?.name || user.studentDetails?.batch || null}
             onChangeBatch={() => onNavigate('home')}
             onViewTimetable={onViewTimetable}
             batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}

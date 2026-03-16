@@ -46,7 +46,6 @@ import { TestTaking } from './TestTaking';
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { uploadLandingImage, deleteLandingImage } from '../api/landing';
 import { adminResetUserPassword } from '../api/auth';
@@ -76,6 +75,8 @@ interface AdminDashboardProps {
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
+  onUploadBatchTimetable: (batchId: string, file: File) => Promise<{ ok: boolean; error?: string; timetableUrl?: string | null }>;
+  onDeleteBatchTimetable: (batchId: string) => Promise<{ ok: boolean; error?: string }>;
   onPermanentDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
@@ -107,7 +108,7 @@ export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-s
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;
@@ -299,6 +300,8 @@ export function AdminDashboard({
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
+  onUploadBatchTimetable,
+  onDeleteBatchTimetable,
   onPermanentDeleteBatch,
   onLogout,
   notifications,
@@ -374,7 +377,7 @@ export function AdminDashboard({
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
-  const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
+  const [timeTableImage, setTimeTableImage] = useState<string | null>(null);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; defaultBatch: Batch | null; initialData?: Student; title: string }>({
@@ -503,21 +506,35 @@ export function AdminDashboard({
     // Apply stored remarks to students rendered from API
   }, [adminStudents]);
 
-  const handleTimeTableUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const selectedBatchInfo = selectedBatch
+    ? batches.find((batch) => batch.label === selectedBatch)
+    : null;
+
+  useEffect(() => {
+    setTimeTableImage(selectedBatchInfo?.timetable_url ?? null);
+  }, [selectedBatchInfo?.timetable_url]);
+
+  const handleTimeTableUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setTimeTableImage(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file || !selectedBatchInfo?.id) return;
+    const result = await onUploadBatchTimetable(selectedBatchInfo.id, file);
+    if (result.ok) {
+      setTimeTableImage(result.timetableUrl ?? null);
+    } else {
+      window.alert(result.error ?? 'Failed to upload timetable.');
     }
   };
 
-  const handleTimeTableDelete = () => {
+  const handleTimeTableDelete = async () => {
+    if (!selectedBatchInfo?.id) return;
     if (window.confirm('Are you sure you want to delete the timetable?')) {
-      setTimeTableImage(null);
-      setShowFullTimetable(false);
+      const result = await onDeleteBatchTimetable(selectedBatchInfo.id);
+      if (result.ok) {
+        setTimeTableImage(null);
+        setShowFullTimetable(false);
+      } else {
+        window.alert(result.error ?? 'Failed to delete timetable.');
+      }
     }
   };
 
@@ -1267,10 +1284,16 @@ export function AdminDashboard({
                   </div>
                   <div className="flex gap-2">
                     {timeTableImage && (
-                      <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2">
+                      <a
+                        href={timeTableImage}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"
+                      >
                         <Download className="w-4 h-4" />
-                        Download PDF
-                      </button>
+                        Download
+                      </a>
                     )}
                     <button
                       onClick={() => setShowFullTimetable(false)}

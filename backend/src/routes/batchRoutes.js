@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import {
     listBatches,
     getBatch,
@@ -14,10 +15,32 @@ import {
     handleGetBatchFaculty,
     handleCreateBatchNotification,
     handleRemoveBatchSubject,
+    handleUploadBatchTimetable,
+    handleDeleteBatchTimetable,
 } from "../controllers/batchController.js";
 import { authenticate, requireRole } from "../middleware/auth.js";
 
 const router = Router();
+const ALLOWED_TIMETABLE_MIME_TYPES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+]);
+
+const timetableUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_TIMETABLE_MIME_TYPES.has(file.mimetype)) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error("Unsupported timetable format. Allowed formats: JPG, PNG, WEBP, GIF."));
+    },
+});
 
 // All batch routes require authentication
 router.use(authenticate);
@@ -45,5 +68,27 @@ router.post("/:id/notifications", requireRole("admin"), handleCreateBatchNotific
 
 // Batch subject removal (Admin only)
 router.delete("/:id/subjects/:subjectId", requireRole("admin"), handleRemoveBatchSubject);
+
+// Batch timetable upload/delete (Admin only)
+router.post("/:id/timetable", requireRole("admin"), (req, res) => {
+    timetableUpload.single("image")(req, res, (error) => {
+        if (error instanceof multer.MulterError) {
+            if (error.code === "LIMIT_FILE_SIZE") {
+                return res.status(400).json({ message: "Timetable image is too large. Maximum allowed size is 5MB." });
+            }
+            if (error.code === "LIMIT_FILE_COUNT" || error.code === "LIMIT_UNEXPECTED_FILE") {
+                return res.status(400).json({ message: "Please upload exactly one image." });
+            }
+            return res.status(400).json({ message: error.message || "Upload failed." });
+        }
+
+        if (error) {
+            return res.status(400).json({ message: error.message || "Upload failed." });
+        }
+
+        return handleUploadBatchTimetable(req, res);
+    });
+});
+router.delete("/:id/timetable", requireRole("admin"), handleDeleteBatchTimetable);
 
 export default router;

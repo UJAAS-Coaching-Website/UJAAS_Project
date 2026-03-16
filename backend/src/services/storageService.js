@@ -17,6 +17,7 @@ const QUESTIONS_BUCKET_NAME = 'questions';
 const NOTES_BUCKET_NAME = 'notes';
 const QUESTION_BANK_BUCKET_NAME = 'question-bank';
 const LANDING_PAGE_BUCKET_NAME = 'landing-page';
+const TIMETABLES_BUCKET_NAME = 'timetables';
 
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
@@ -167,6 +168,18 @@ export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, 
   }
 }
 
+export async function uploadTimetableToStorage(fileBuffer, originalName, mimeType, batchId) {
+  const sanitizedFileName = sanitizeFileName(originalName);
+  const objectKey = ['batches', sanitizePathSegment(batchId), sanitizedFileName].join('/');
+
+  try {
+    return await uploadBufferToBucket(TIMETABLES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+  } catch (error) {
+    console.error('Timetable storage upload error:', error);
+    throw new Error('Failed to upload timetable to storage.');
+  }
+}
+
 /**
  * Deletes an image from the Supabase S3 bucket using its public URL.
  * 
@@ -205,6 +218,15 @@ export async function deleteQuestionBankFileFromStorage(fileUrl) {
   } catch (error) {
     console.error('Question bank storage delete error:', error);
     throw new Error('Failed to delete question bank file from storage.');
+  }
+}
+
+export async function deleteTimetableFromStorage(fileUrl) {
+  try {
+    await deleteFileFromStorageByUrl(fileUrl, TIMETABLES_BUCKET_NAME);
+  } catch (error) {
+    console.error('Timetable storage delete error:', error);
+    throw new Error('Failed to delete timetable from storage.');
   }
 }
 

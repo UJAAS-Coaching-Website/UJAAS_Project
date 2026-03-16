@@ -49,6 +49,10 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Student profile performance uses real subject ratings only (assigned subjects, no mock data)
 - [x] Admin/faculty student detail performance summary now pulls real test analytics per batch
 - [x] Question bank faculty context updated to new subjects + batch_subjects + faculty_assignments schema
+- [x] Admin batch create/update/delete now wait for backend confirmation before updating UI state
+- [x] Batch subject picker is now DB-backed and supports type-to-create
+- [x] Batch subjects can be added without assigning faculty
+- [x] Removed redundant "Assign Faculty" action from admin batch dashboard
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
@@ -85,6 +89,7 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 ## Admin Experience
 - [x] Admin dashboard exists
 - [x] Admin batch CRUD exists
+- [x] Batch subject assignments support optional faculty (subject-only batch assignment)
 - [x] Admin faculty CRUD exists
 - [x] Admin student CRUD exists
 - [x] Admin landing-page editing exists

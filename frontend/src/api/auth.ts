@@ -1,6 +1,7 @@
 export interface StudentDetails {
   rollNumber: string;
   batch: string;
+  batchId?: string | null;
   joinDate: string | null;
   phone: string;
   address: string;

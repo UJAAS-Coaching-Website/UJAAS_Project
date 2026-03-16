@@ -20,6 +20,8 @@ import {
   updateBatch as apiUpdateBatch,
   deleteBatch as apiDeleteBatch,
   permanentlyDeleteBatch as apiPermanentlyDeleteBatch,
+  uploadBatchTimetable as apiUploadBatchTimetable,
+  deleteBatchTimetable as apiDeleteBatchTimetable,
   type ApiBatch,
 } from './api/batches';
 import {
@@ -255,6 +257,7 @@ function App() {
     studentCount?: number;
     testsConducted?: number;
     averagePerformance?: number;
+    timetable_url?: string | null;
   };
 
   /** Convert API batch to local AdminBatchInfo format */
@@ -268,6 +271,7 @@ function App() {
     studentCount: b.student_count || 0,
     testsConducted: (b as any).testsConducted || 0,
     averagePerformance: (b as any).averagePerformance || 0,
+    timetable_url: b.timetable_url ?? null,
   });
 
   const [user, setUser] = useState<User | null>(null);
@@ -935,6 +939,34 @@ function App() {
       console.error('Failed to delete batch in API:', err);
       showBatchToast('error', 'Failed to delete batch from database');
       return { ok: false, error: 'Failed to delete batch from database' };
+    }
+  };
+
+  const uploadAdminBatchTimetable = async (batchId: string, file: File) => {
+    try {
+      showBatchToast('saving', 'Uploading timetable...');
+      const updated = await apiUploadBatchTimetable(batchId, file);
+      setAdminBatches((prev) => prev.map((b) => (b.id === batchId ? apiBatchToInfo(updated) : b)));
+      showBatchToast('saved', 'Timetable uploaded.');
+      return { ok: true, timetableUrl: updated.timetable_url };
+    } catch (error: any) {
+      console.error('Failed to upload timetable:', error);
+      showBatchToast('error', error?.message || 'Failed to upload timetable');
+      return { ok: false, error: error?.message || 'Failed to upload timetable' };
+    }
+  };
+
+  const deleteAdminBatchTimetable = async (batchId: string) => {
+    try {
+      showBatchToast('saving', 'Deleting timetable...');
+      const updated = await apiDeleteBatchTimetable(batchId);
+      setAdminBatches((prev) => prev.map((b) => (b.id === batchId ? apiBatchToInfo(updated) : b)));
+      showBatchToast('saved', 'Timetable deleted.');
+      return { ok: true };
+    } catch (error: any) {
+      console.error('Failed to delete timetable:', error);
+      showBatchToast('error', error?.message || 'Failed to delete timetable');
+      return { ok: false, error: error?.message || 'Failed to delete timetable' };
     }
   };
 
@@ -1756,6 +1788,8 @@ function App() {
               onCreateBatch={addAdminBatch}
               onUpdateBatch={updateAdminBatch}
               onDeleteBatch={deleteAdminBatch}
+              onUploadBatchTimetable={uploadAdminBatchTimetable}
+              onDeleteBatchTimetable={deleteAdminBatchTimetable}
               onPermanentDeleteBatch={permanentlyDeleteAdminBatch}
               onLogout={handleLogout}
               notifications={notifications}

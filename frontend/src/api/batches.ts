@@ -38,6 +38,31 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────
 
+
+function normalizeSubjects(input: unknown): string[] | null {
+    if (Array.isArray(input)) {
+        return input.map((s) => String(s).trim()).filter(Boolean);
+    }
+    if (typeof input === "string") {
+        const trimmed = input.trim();
+        if (!trimmed || trimmed == "{}") return [];
+        const body = trimmed.replace(/^{|}$/g, "");
+        return body
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+    }
+    if (input == null) return null;
+    return [String(input).trim()].filter(Boolean);
+}
+
+function normalizeBatch(batch: ApiBatch): ApiBatch {
+    return {
+        ...batch,
+        subjects: normalizeSubjects(batch.subjects),
+    };
+}
+
 export interface ApiBatchFaculty {
     id: string;
     name: string;
@@ -59,7 +84,6 @@ export interface CreateBatchPayload {
     year?: string;
     startDate?: string;
     endDate?: string;
-    description?: string;
     subjects?: string[];
     timetable_url?: string;
     facultyIds?: string[];
@@ -90,11 +114,13 @@ export interface PermanentDeleteBatchSummary {
 // ── API functions ──────────────────────────────────────
 
 export async function fetchBatches(): Promise<ApiBatch[]> {
-    return request<ApiBatch[]>("/api/batches");
+    const batches = await request<ApiBatch[]>("/api/batches");
+    return batches.map(normalizeBatch);
 }
 
 export async function fetchBatch(id: string): Promise<ApiBatch> {
-    return request<ApiBatch>(`/api/batches/${id}`);
+    const batch = await request<ApiBatch>(`/api/batches/${id}`);
+    return normalizeBatch(batch);
 }
 
 export async function createBatch(
@@ -103,6 +129,37 @@ export async function createBatch(
     return request<ApiBatch>("/api/batches", {
         method: "POST",
         body: JSON.stringify(data),
+    });
+}
+
+export async function uploadBatchTimetable(
+    batchId: string,
+    file: File
+): Promise<ApiBatch> {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const response = await fetch(`${API_BASE_URL}/api/batches/${batchId}/timetable`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+            ...getAuthHeaders(),
+        },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error((data as any)?.message || "Failed to upload timetable");
+    }
+    return data;
+}
+
+export async function deleteBatchTimetable(
+    batchId: string
+): Promise<ApiBatch> {
+    return request<ApiBatch>(`/api/batches/${batchId}/timetable`, {
+        method: "DELETE",
     });
 }
 

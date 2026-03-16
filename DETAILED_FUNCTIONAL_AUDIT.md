@@ -66,6 +66,10 @@ This audit focuses on functionality, not just UI presence.
   - Test list is derived from tests assigned to the student’s batch.
   - Scores, rank, and accuracy are pulled from test analysis endpoints.
 - `[REAL]` Question bank faculty context now uses the new subjects + batch_subjects + faculty_assignments schema.
+- `[REAL]` Admin batch create/update/delete now waits for backend confirmation before updating UI state.
+- `[REAL]` Admin batch subject selection now uses a DB-backed subject catalog and supports creating new subjects from typed input.
+- `[REAL]` Subjects can be assigned to batches without assigning faculty.
+- `[REAL]` Admin batch dashboard removed the redundant batch-level "Assign Faculty" action.
 
 ## Top Findings First
 
@@ -205,7 +209,9 @@ This audit focuses on functionality, not just UI presence.
 ## 6. Notes, Chapters, Subjects, Notices
 
 ### Subjects In Batch
-- `[REAL]` Add/remove subject appears to update batch structure through parent batch update callbacks.
+- `[REAL]` Add/remove subject now uses backend-confirmed batch updates (no optimistic UI mutation).
+- `[REAL]` Subject picker is DB-backed and supports type-to-create for new subjects.
+- `[REAL]` Subject can be assigned without faculty; faculty assignments remain optional per subject.
 - `[VERIFY]` Needs runtime validation that faculty assignments and batch subjects stay consistent after updates.
 
 ### Chapters

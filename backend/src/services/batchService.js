@@ -56,9 +56,28 @@ async function ensureActiveBatchExists(batchId, client = pool) {
 export async function getAllBatches() {
     const batchModel = await getStudentBatchModel();
     const hasBatchSubjects = await tableExists("batch_subjects");
+    const hasSubjectsColumn = await columnExists("batches", "subjects");
     
     const subjectsSubquery = hasBatchSubjects
-        ? `ARRAY(SELECT s.name FROM batch_subjects bs JOIN subjects s ON s.id = bs.subject_id WHERE bs.batch_id = b.id)`
+        ? hasSubjectsColumn
+            ? `COALESCE(
+                    (
+                        SELECT array_agg(s.name)
+                        FROM batch_subjects bs
+                        JOIN subjects s ON s.id = bs.subject_id
+                        WHERE bs.batch_id = b.id
+                    ),
+                    b.subjects
+                )`
+            : `COALESCE(
+                    (
+                        SELECT array_agg(s.name)
+                        FROM batch_subjects bs
+                        JOIN subjects s ON s.id = bs.subject_id
+                        WHERE bs.batch_id = b.id
+                    ),
+                    '{}'
+                )`
         : `b.subjects`;
 
     const facultySubquery = hasBatchSubjects
@@ -110,9 +129,28 @@ export async function getAllBatches() {
 export async function getBatchById(id) {
     const batchModel = await getStudentBatchModel();
     const hasBatchSubjects = await tableExists("batch_subjects");
+    const hasSubjectsColumn = await columnExists("batches", "subjects");
     
     const subjectsSubquery = hasBatchSubjects
-        ? `ARRAY(SELECT s.name FROM batch_subjects bs JOIN subjects s ON s.id = bs.subject_id WHERE bs.batch_id = b.id)`
+        ? hasSubjectsColumn
+            ? `COALESCE(
+                    (
+                        SELECT array_agg(s.name)
+                        FROM batch_subjects bs
+                        JOIN subjects s ON s.id = bs.subject_id
+                        WHERE bs.batch_id = b.id
+                    ),
+                    b.subjects
+                )`
+            : `COALESCE(
+                    (
+                        SELECT array_agg(s.name)
+                        FROM batch_subjects bs
+                        JOIN subjects s ON s.id = bs.subject_id
+                        WHERE bs.batch_id = b.id
+                    ),
+                    '{}'
+                )`
         : `b.subjects`;
 
     const facultySubquery = hasBatchSubjects

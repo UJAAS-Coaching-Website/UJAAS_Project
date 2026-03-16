@@ -22,6 +22,10 @@
 - Question bank is now backend-backed for faculty and students, including real upload, listing, search, sort, download, and faculty delete-from-batch behavior.
 - Notes upload and question bank upload now surface clearer validation causes for bad format, oversize files, and invalid upload shape.
 - Shared image upload route now returns clearer backend validation errors for invalid format and oversize submissions.
+- Admin batch management now uses backend-confirmed updates (no optimistic batch UI changes).
+- Admin batch subject assignment now uses a database-backed subject catalog with a type-to-create flow.
+- Batch subjects can be added without assigning any faculty.
+- Redundant batch-level "Assign Faculty" action is removed from the admin batch dashboard.
 - Landing page images are now stored in Supabase S3 (`landing-page` bucket) instead of Base64 in the database.
   - Upload/delete handled through `/api/upload` with `context=landing`.
   - `AdminDashboard` uses `uploadLandingImage` / `deleteLandingImage` API functions.
@@ -539,13 +543,14 @@
 - Persistence: `backend-backed`.
 - Main controls:
   - batch name inputs
-  - subject assignment controls
-  - faculty assignment controls
+  - subject assignment controls (type-to-select with suggestions)
+  - optional faculty assignment controls per subject
   - create/update/delete actions
   - cancel/close controls
 - QA checks:
   - verify create, edit, and delete all persist through backend
   - verify subject/faculty assignments survive refresh
+  - verify a subject can be added with no faculty assignment
 
 ### 5.5 Admin Batch Dashboard
 - Entry condition: admin selects a batch and lands on `home`.
@@ -556,7 +561,6 @@
   - `Delete Permanently` for inactive batches
   - clear batch/back
   - view timetable
-  - add faculty to batch
   - navigation into students/content
 - QA checks:
   - verify clear batch returns to global context
@@ -759,7 +763,7 @@
   - `Time Table`
   - `Add Subject`
   - `Upload Notice`
-  - subject delete buttons
+  - subject delete buttons (single action handles remove-or-delete)
 - Subject-level controls:
   - `Add Chapter`
   - chapter delete buttons
@@ -769,13 +773,15 @@
   - `Create DPP`
   - note download/delete buttons
 - Expected behavior:
-  - add/delete subject mutates batch subjects
+  - add subject mutates batch subjects
+  - delete subject removes from current batch or deletes globally if it is the last linked batch
+  - delete is blocked if batch-scoped content exists
   - upload notice sends backend batch notification
   - chapters and notes use backend APIs
   - DPP tab remains placeholder
 - QA checks:
   - verify subject add rejects duplicates
-  - verify subject delete warns that content itself is not removed
+  - verify subject delete shows a blocking alert listing linked content
   - verify notice requires title and message
   - verify note delete removes the backend note
 
