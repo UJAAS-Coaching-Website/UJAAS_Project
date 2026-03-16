@@ -14,6 +14,7 @@ import { apiFetchChapters } from '../api/chapters';
 import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
+import { MiniAvatar } from './MiniAvatar';
 import { QuestionBank } from './QuestionBank';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
@@ -291,10 +292,10 @@ export function StudentDashboard({
                     setProfileSection('overview');
                     onNavigate('profile');
                   }}
-                  className="w-10 h-10 bg-gradient-to-br from-teal-600 via-cyan-600 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                  className="p-0 border-none bg-transparent"
                   title="View Profile"
                 >
-                  {user.name.charAt(0).toUpperCase()}
+                  <MiniAvatar user={user} className="w-10 h-10" />
                 </motion.button>
               </div>
             </div>
@@ -615,11 +616,7 @@ function HomeTab({
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <motion.div
-            className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
-          >
-            {user.name.charAt(0).toUpperCase()}
-          </motion.div>
+          <MiniAvatar user={user} className="w-24 h-24 text-4xl border-4 border-white/30 shadow-2xl" />
           
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">

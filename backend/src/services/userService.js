@@ -50,6 +50,7 @@ function buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, b
         name: baseUser.name,
         loginId: baseUser.login_id,
         role: baseUser.role,
+        avatarUrl: baseUser.avatar_url,
         enrolledCourses,
         studentDetails: {
             rollNumber: studentRow?.roll_number ?? "",
@@ -318,7 +319,7 @@ export async function fetchUserProfileById(userId) {
     const client = await pool.connect();
     try {
         const userResult = await client.query(
-            `SELECT id, name, login_id, role
+            `SELECT id, name, login_id, role, avatar_url
              FROM users
              WHERE id = $1
              LIMIT 1`,
@@ -356,6 +357,7 @@ export async function fetchUserProfileById(userId) {
                 name: baseUser.name,
                 loginId: baseUser.login_id,
                 role: baseUser.role,
+                avatarUrl: baseUser.avatar_url,
                 enrolledCourses: [],
                 studentDetails: null,
                 facultyDetails: await getFacultyDetails(userId, client),
@@ -367,6 +369,7 @@ export async function fetchUserProfileById(userId) {
             name: baseUser.name,
             loginId: baseUser.login_id,
             role: baseUser.role,
+            avatarUrl: baseUser.avatar_url,
             enrolledCourses: [],
             studentDetails: null,
             facultyDetails: null,
@@ -450,4 +453,12 @@ export async function resetUserPassword(userId, newPassword, { revokeRefreshToke
     } finally {
         client.release();
     }
+}
+
+export async function updateUserAvatar(userId, avatarUrl) {
+    const result = await pool.query(
+        `UPDATE users SET avatar_url = $1 WHERE id = $2 RETURNING avatar_url`,
+        [avatarUrl, userId]
+    );
+    return result.rows[0]?.avatar_url;
 }

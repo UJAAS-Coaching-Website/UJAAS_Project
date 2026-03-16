@@ -32,6 +32,7 @@ import {
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { FacultyProfile } from './FacultyProfile';
+import { MiniAvatar } from './MiniAvatar';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -692,10 +693,10 @@ export function FacultyDashboard({
             <div className="flex items-center gap-4">
               <motion.button
                 onClick={() => onNavigate('profile')}
-                className="w-10 h-10 bg-gradient-to-br from-cyan-600 via-blue-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="p-0 border-none bg-transparent"
                 title="View Profile"
               >
-                {user.name.charAt(0).toUpperCase()}
+                <MiniAvatar user={user as any} className="w-10 h-10" />
               </motion.button>
             </div>
           </div>

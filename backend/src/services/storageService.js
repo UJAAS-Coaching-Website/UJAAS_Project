@@ -18,9 +18,41 @@ const NOTES_BUCKET_NAME = 'notes';
 const QUESTION_BANK_BUCKET_NAME = 'question-bank';
 const LANDING_PAGE_BUCKET_NAME = 'landing-page';
 const TIMETABLES_BUCKET_NAME = 'timetables';
+const AVATARS_BUCKET_NAME = 'avatar';
 
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
+
+import sharp from 'sharp';
+
+/**
+ * Uploads a profile picture to the Supabase S3 bucket.
+ * Resizes and compresses the image using sharp.
+ * 
+ * @param {Buffer} fileBuffer - The binary file buffer from multer.
+ * @param {string} userId - The ID of the user.
+ * @returns {Promise<string>} The public URL of the uploaded avatar.
+ */
+export async function uploadAvatarToStorage(fileBuffer, userId) {
+  try {
+    // Process image with sharp: resize to 400x400 max, convert to WebP with 80% quality
+    // This should easily stay under 50kb for an avatar
+    const processedBuffer = await sharp(fileBuffer)
+      .resize(400, 400, {
+        fit: 'cover',
+        withoutEnlargement: true
+      })
+      .webp({ quality: 80 })
+      .toBuffer();
+
+    const objectKey = `${userId}/avatar-${Date.now()}.webp`;
+
+    return await uploadBufferToBucket(AVATARS_BUCKET_NAME, objectKey, processedBuffer, 'image/webp');
+  } catch (error) {
+    console.error('Avatar storage upload error:', error);
+    throw new Error('Failed to process and upload avatar.');
+  }
+}
 
 const sanitizeFileName = (originalName) => {
   const extMatch = originalName.match(/\.([^.]+)$/);

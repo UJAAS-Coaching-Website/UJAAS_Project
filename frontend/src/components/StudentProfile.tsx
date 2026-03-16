@@ -20,8 +20,10 @@ import {
   X,
   CheckCircle,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Camera
 } from 'lucide-react';
+import { EditableAvatar } from './EditableAvatar';
 
 interface StudentProfileProps {
   user: {
@@ -197,8 +199,12 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
     const dppPerformance = (studentDetails.ratings as any).dppPerformance || 0;
 
     const ratingsList = [attendance, tests, behavior, dppPerformance];
-    const total = ratingsList.reduce((sum, value) => sum + value, 0);
+    const total = ratingsList.reduce((sum, value) => sum + Number(value || 0), 0);
     return Number((total / ratingsList.length).toFixed(1));
+  };
+
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    setProfileUser(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
   };
 
   const overallPerformance = calculateOverallPerformance();
@@ -216,11 +222,10 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <motion.div
-            className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
-          >
-            {profileUser.name.charAt(0).toUpperCase()}
-          </motion.div>
+          <EditableAvatar 
+            user={profileUser as any} 
+            onAvatarUpdate={handleAvatarUpdate} 
+          />
           
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">

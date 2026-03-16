@@ -49,6 +49,7 @@ export interface AuthUser {
   name: string;
   loginId?: string | null;
   role: "student" | "faculty" | "admin";
+  avatarUrl?: string | null;
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
   subjectRatings?: Record<string, SubjectRating>;
@@ -162,6 +163,25 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<{ 
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+    method: "POST",
+    headers: {
+      ...getAuthHeaders(),
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Avatar upload failed");
+  }
+  return data;
 }
 
 export async function logout(): Promise<void> {

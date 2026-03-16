@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { changeMyPassword, me, verifyMyPassword } from '../api/auth';
 import { motion } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { Mail, Lock, LogOut } from 'lucide-react';
+import { Mail, Lock, LogOut, Camera } from 'lucide-react';
+import { EditableAvatar } from './EditableAvatar';
 
 interface AdminProfileProps {
   user: {
@@ -46,6 +47,10 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
     };
   }, []);
 
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    setProfileUser(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
+  };
+
   const displayName =
     profileUser.role === 'admin' && profileUser.name.trim().toLowerCase() === 'admin user'
       ? 'Administrator'
@@ -62,11 +67,10 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
 
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <motion.div
-            className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
-          >
-            {displayName.charAt(0).toUpperCase()}
-          </motion.div>
+          <EditableAvatar 
+            user={profileUser as any} 
+            onAvatarUpdate={handleAvatarUpdate} 
+          />
 
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">

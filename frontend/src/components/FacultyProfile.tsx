@@ -11,8 +11,10 @@ import {
   Settings,
   Lock,
   Phone,
-  LogOut
+  LogOut,
+  Camera
 } from 'lucide-react';
+import { EditableAvatar } from './EditableAvatar';
 
 interface FacultyProfileProps {
   user: {
@@ -109,6 +111,10 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
     };
   }, []);
 
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    setProfileUser(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Profile Header */}
@@ -122,11 +128,10 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
         
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <motion.div
-            className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30"
-          >
-            {profileUser.name.charAt(0).toUpperCase()}
-          </motion.div>
+          <EditableAvatar 
+            user={profileUser as any} 
+            onAvatarUpdate={handleAvatarUpdate} 
+          />
           
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
