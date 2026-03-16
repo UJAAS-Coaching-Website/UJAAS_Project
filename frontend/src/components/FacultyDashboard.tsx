@@ -1388,8 +1388,9 @@ function StudentRatingsModal({
     const nextDrafts: Record<string, { attendance: string; tests: string; dppPerformance: string; behavior: string }> = {};
     const nextRemarks: Record<string, string> = {};
     Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
+      const attRating = (r.attendance / (r.total_classes || 1)) * 5;
       nextDrafts[subject] = {
-        attendance: (r.attendance ?? 0).toString(),
+        attendance: attRating.toFixed(1),
         tests: (r.tests ?? 0).toString(),
         dppPerformance: (r.dppPerformance ?? 0).toString(),
         behavior: (r.behavior ?? 0).toString(),
@@ -1646,12 +1647,13 @@ function StudentRatingsModal({
                               type="button"
                               onClick={() => {
                                 const ratings = {
+                                  attendance: null as any, // Do not update count from this modal
                                   tests: Number(currentDraft.tests),
                                   dppPerformance: Number(currentDraft.dppPerformance),
                                   behavior: Number(currentDraft.behavior),
                                 };
 
-                                const invalid = Object.values(ratings).some(v => Number.isNaN(v) || v < 0 || v > 5);
+                                const invalid = [ratings.tests, ratings.dppPerformance, ratings.behavior].some(v => Number.isNaN(v) || v < 0 || v > 5);
                                 if (invalid) {
                                   window.alert('Please enter ratings between 0 and 5 for all factors.');
                                   return;
@@ -1670,7 +1672,10 @@ function StudentRatingsModal({
                         )}
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                           {[
-                            { label: 'Attendance', val: `${r.attendance}/${r.total_classes || 0}` },
+                            { 
+                              label: 'Attendance', 
+                              val: `${((r.attendance / (r.total_classes || 1)) * 5).toFixed(1)}/5` 
+                            },
                             { label: 'Test Performance', val: `${r.tests}/5` },
                             { label: 'DPP Performance', val: `${r.dppPerformance}/5` },
                             { label: 'Class Behaviour', val: `${r.behavior}/5` }

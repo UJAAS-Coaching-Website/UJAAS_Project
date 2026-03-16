@@ -42,6 +42,7 @@ export async function getAllStudents() {
                         json_build_object(
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
+                            'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
                             'tests', r.test_performance,
                             'dppPerformance', r.dpp_performance,
                             'behavior', r.behavior,
@@ -91,7 +92,7 @@ export async function getAllStudents() {
 
         return {
             ...row,
-            rating_attendance: ratingEntries[0]?.attendance || 0,
+            rating_attendance: ratingEntries[0]?.attendance_rating || 0,
             rating_total_classes: ratingEntries[0]?.total_classes || 0,
             rating_assignments: ratingEntries[0]?.tests || 0,
             rating_participation: ratingEntries[0]?.dppPerformance || 0,
@@ -121,6 +122,7 @@ export async function getStudentById(id) {
                         json_build_object(
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
+                            'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
                             'tests', r.test_performance,
                             'dppPerformance', r.dpp_performance,
                             'behavior', r.behavior,
@@ -170,7 +172,7 @@ export async function getStudentById(id) {
     
     return {
         ...row,
-        rating_attendance: ratingEntries[0]?.attendance || 0,
+        rating_attendance: ratingEntries[0]?.attendance_rating || 0,
         rating_total_classes: ratingEntries[0]?.total_classes || 0,
         rating_assignments: ratingEntries[0]?.tests || 0,
         rating_participation: ratingEntries[0]?.dppPerformance || 0,
@@ -399,7 +401,7 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         }
         
         // 3. Update total_classes in batch_subjects if provided
-        if (total_classes !== undefined) {
+        if (total_classes !== undefined && total_classes !== null) {
             await client.query(
                 "UPDATE batch_subjects SET total_classes = $1 WHERE id = $2",
                 [total_classes, batchSubjectId]
@@ -407,18 +409,27 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         }
         
         // 4. UPSERT student_ratings for this batch_subject_id
+        // Parameters: $1: studentId, $2: batchSubjectId, $3: attendance, $4: tests, $5: dppPerformance, $6: behavior, $7: remarks
         const result = await client.query(
             `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
              VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), $7, NOW())
              ON CONFLICT (student_id, batch_subject_id) DO UPDATE SET
-                attendance = COALESCE($3, student_ratings.attendance),
-                test_performance = COALESCE($4, student_ratings.test_performance),
-                dpp_performance = COALESCE($5, student_ratings.dpp_performance),
-                behavior = COALESCE($6, student_ratings.behavior),
-                remarks = COALESCE($7, student_ratings.remarks),
+                attendance = CASE WHEN $3 IS NOT NULL THEN $3 ELSE student_ratings.attendance END,
+                test_performance = CASE WHEN $4 IS NOT NULL THEN $4 ELSE student_ratings.test_performance END,
+                dpp_performance = CASE WHEN $5 IS NOT NULL THEN $5 ELSE student_ratings.dpp_performance END,
+                behavior = CASE WHEN $6 IS NOT NULL THEN $6 ELSE student_ratings.behavior END,
+                remarks = CASE WHEN $7 IS NOT NULL THEN $7 ELSE student_ratings.remarks END,
                 updated_at = NOW()
-             RETURNING *`,
-            [studentId, batchSubjectId, attendance, tests, dppPerformance, behavior, remarks]
+             RETURNING id`,
+            [
+                studentId, 
+                batchSubjectId, 
+                attendance !== undefined ? attendance : null, 
+                tests !== undefined ? tests : null, 
+                dppPerformance !== undefined ? dppPerformance : null, 
+                behavior !== undefined ? behavior : null, 
+                remarks !== undefined ? remarks : null
+            ]
         );
         
         await client.query("COMMIT");
@@ -428,6 +439,7 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
             SELECT 
                 r.*, 
                 bs.total_classes,
+                CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END as attendance_rating,
                 sub.name as subject,
                 r.test_performance as tests,
                 r.dpp_performance as "dppPerformance"

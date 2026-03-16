@@ -1164,13 +1164,37 @@ function App() {
       // Update local adminStudents state to reflect changes
       setAdminStudents(prev => prev.map(s => {
         if (s.id === studentId) {
+          // The backend returns a joined record representing the rating for ONE subject.
+          // However, we need to update the main rating fields IF this is the first/primary rating,
+          // OR better yet, update the subject_ratings/subject_remarks maps.
+          
+          const newSubjectRatings = { ...(s.subject_ratings || {}) };
+          const newSubjectRemarks = { ...(s.subject_remarks || {}) };
+          
+          if (updatedRating.subject) {
+            newSubjectRatings[updatedRating.subject] = {
+              attendance: updatedRating.attendance,
+              total_classes: updatedRating.total_classes,
+              tests: updatedRating.tests,
+              dppPerformance: updatedRating.dppPerformance,
+              behavior: updatedRating.behavior
+            };
+            if (updatedRating.remarks !== undefined) {
+              newSubjectRemarks[updatedRating.subject] = updatedRating.remarks;
+            }
+          }
+
           return {
             ...s,
+            // Update top-level rating fields as well (usually reflects first subject or aggregate)
             rating_attendance: updatedRating.attendance,
             rating_total_classes: updatedRating.total_classes,
-            rating_assignments: updatedRating.assignments,
-            rating_participation: updatedRating.participation,
+            rating_assignments: updatedRating.tests,
+            rating_participation: updatedRating.dppPerformance,
             rating_behavior: updatedRating.behavior,
+            subject_ratings: newSubjectRatings,
+            subject_remarks: newSubjectRemarks,
+            admin_remark: updatedRating.admin_remark !== undefined ? updatedRating.admin_remark : s.admin_remark
           };
         }
         return s;

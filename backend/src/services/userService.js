@@ -2,6 +2,12 @@ import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 
 export function toApiUser(row) {
+    const totalClasses = Number(row.total_classes) || 0;
+    const attendanceCount = Number(row.attendance) || 0;
+    const attendanceRating = totalClasses > 0 
+        ? Math.min(5, (attendanceCount / totalClasses) * 5) 
+        : 0;
+
     return {
         id: row.user_id,
         name: row.name,
@@ -19,7 +25,7 @@ export function toApiUser(row) {
                     dateOfBirth: row.dob ?? null,
                     parentContact: row.parent_contact ?? "",
                     ratings: {
-                        attendance: row.attendance ?? 0,
+                        attendance: attendanceRating,
                         testPerformance: row.test_performance ?? 0,
                         dppPerformance: row.dpp_performance ?? 0,
                         behavior: row.behavior ?? 0,
@@ -58,6 +64,7 @@ export async function fetchUserProfileById(userId) {
       f.designation AS faculty_designation,
       TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS faculty_join_date,
       COALESCE(r.attendance, 0) AS attendance,
+      COALESCE(bs.total_classes, 0) AS total_classes,
       COALESCE(r.test_performance, 0) AS test_performance,
       COALESCE(r.dpp_performance, 0) AS dpp_performance,
       COALESCE(r.behavior, 0) AS behavior,
@@ -71,13 +78,14 @@ export async function fetchUserProfileById(userId) {
     LEFT JOIN faculties f ON f.user_id = u.id
     LEFT JOIN subjects sub ON sub.id = f.subject_id
     LEFT JOIN student_ratings r ON r.student_id = s.user_id
+    LEFT JOIN batch_subjects bs ON bs.id = r.batch_subject_id
     LEFT JOIN batches b ON b.id = s.assigned_batch_id
     WHERE u.id = $1
     GROUP BY
       u.id, u.name, u.login_id, u.role,
       s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
       f.phone, sub.name, f.designation, f."joining-date",
-      r.attendance, r.test_performance, r.dpp_performance, r.behavior,
+      r.attendance, bs.total_classes, r.test_performance, r.dpp_performance, r.behavior,
       b.id, b.name
   `
         : `
@@ -97,6 +105,7 @@ export async function fetchUserProfileById(userId) {
       f.designation AS faculty_designation,
       TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS faculty_join_date,
       COALESCE(r.attendance, 0) AS attendance,
+      COALESCE(bs.total_classes, 0) AS total_classes,
       COALESCE(r.test_performance, 0) AS test_performance,
       COALESCE(r.dpp_performance, 0) AS dpp_performance,
       COALESCE(r.behavior, 0) AS behavior,
@@ -110,6 +119,7 @@ export async function fetchUserProfileById(userId) {
     LEFT JOIN faculties f ON f.user_id = u.id
     LEFT JOIN subjects sub ON sub.id = f.subject_id
     LEFT JOIN student_ratings r ON r.student_id = s.user_id
+    LEFT JOIN batch_subjects bs ON bs.id = r.batch_subject_id
     LEFT JOIN student_batches sb ON sb.student_id = s.user_id
     LEFT JOIN batches b ON b.id = sb.batch_id
     WHERE u.id = $1
@@ -117,7 +127,7 @@ export async function fetchUserProfileById(userId) {
       u.id, u.name, u.login_id, u.role,
       s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
       f.phone, sub.name, f.designation, f."joining-date",
-      r.attendance, r.test_performance, r.dpp_performance, r.behavior
+      r.attendance, bs.total_classes, r.test_performance, r.dpp_performance, r.behavior
   `;
 
     const result = await pool.query(query, [userId]);
