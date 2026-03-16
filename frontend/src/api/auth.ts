@@ -72,7 +72,7 @@ function isLikelyJwt(token: string | null): token is string {
   return token.split(".").length === 3;
 }
 
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("ujaasToken");
   if (!isLikelyJwt(token)) {
     if (token) {
@@ -121,7 +121,7 @@ async function tryRefreshToken(): Promise<boolean> {
   return refreshInFlight;
 }
 
-async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+export async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
   const response = await runRequest(path, options);
 
   if (response.status === 401 && !retried && path !== "/api/auth/refresh" && path !== "/api/auth/login") {

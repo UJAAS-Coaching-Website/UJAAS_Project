@@ -32,8 +32,10 @@ import {
   Eye,
   Mail,
   Phone,
-  AlertTriangle
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
+import { triggerReviewSession } from '../api/facultyReviews';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { AdminProfile } from './AdminProfile';
@@ -144,6 +146,7 @@ interface Faculty {
   designation?: string;
   phone?: string;
   rating?: number;
+  reviewCount?: number;
   joinDate?: string;
 }
 
@@ -168,6 +171,7 @@ type FacultyFormState = {
   phone: string;
   joinDate: string;
   rating: number;
+  reviewCount: number;
 };
 
 type SubjectActionResult = {
@@ -2385,12 +2389,51 @@ function StudentsDirectoryTab({
   );
 }
 
-function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFaculty, onDeleteFaculty }: { faculty: Faculty[]; onAddFaculty: () => void; onViewFaculty: (t: Faculty) => void; onEditFaculty: (t: Faculty) => void; onDeleteFaculty: (id: string) => void }) {
+function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFaculty, onDeleteFaculty, onRefreshFaculty }: { faculty: Faculty[]; onAddFaculty: () => void; onViewFaculty: (t: Faculty) => void; onEditFaculty: (t: Faculty) => void; onDeleteFaculty: (id: string) => void; onRefreshFaculty?: () => void }) {
+  const [isTriggering, setIsTriggering] = useState(false);
+
+  const handleTriggerReview = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to trigger a new Faculty Review session?\n\nThis will:\n1. RESET all current faculty ratings to 0\n2. DELETE all previous individual review data\n3. Start a new 3-day rating window for students"
+    );
+
+    if (!confirmed) return;
+
+    setIsTriggering(true);
+    try {
+      await triggerReviewSession();
+      window.alert("Faculty Review session started successfully! All students will now see the rating notification.");
+      if (onRefreshFaculty) {
+        onRefreshFaculty();
+      }
+    } catch (error: any) {
+      window.alert("Failed to trigger review session: " + error.message);
+    } finally {
+      setIsTriggering(false);
+    }
+  };
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex justify-between items-center mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2><p className="text-gray-500">Manage all faculties and subject experts</p></div>
-        <button onClick={onAddFaculty} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Faculty</button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Faculty Directory</h2>
+          <p className="text-gray-500">Manage all faculties and subject experts</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button 
+            onClick={handleTriggerReview} 
+            disabled={isTriggering}
+            className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold shadow-sm flex items-center gap-2 hover:bg-orange-50 transition disabled:opacity-50"
+          >
+            {isTriggering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Star className="w-5 h-5" />}
+            Trigger Faculty Review
+          </button>
+          <button onClick={onAddFaculty} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition">
+            <Plus className="w-5 h-5" />
+            Add Faculty
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {faculty.map(t => (
@@ -2421,8 +2464,8 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
             <p className="text-sm font-semibold text-teal-600 uppercase mb-1">{t.subject}</p>
             {t.designation && <p className="text-xs text-gray-600 font-medium mb-3">{t.designation}</p>}
-            {t.rating && (
-              <div className="mb-4">
+            {t.rating !== undefined && (
+              <div className="flex items-center gap-2 mb-4">
                 {renderPerformanceStars(t.rating)}
               </div>
             )}
@@ -2798,6 +2841,7 @@ function AddFacultyModal({
     email: initialData?.email ?? '',
     joinDate: initialData?.joinDate ?? '',
     rating: initialData?.rating ?? 0,
+    reviewCount: initialData?.reviewCount ?? 0,
   });
 
   useEffect(() => {
@@ -2812,13 +2856,14 @@ function AddFacultyModal({
       email: initialData?.email ?? '',
       joinDate: initialData?.joinDate ?? '',
       rating: initialData?.rating ?? 0,
+      reviewCount: initialData?.reviewCount ?? 0,
     });
   }, [open, initialData, isInitialEditing]);
 
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = field === 'rating' ? parseFloat(event.target.value) || 0 : event.target.value;
+    const value = field === 'rating' || field === 'reviewCount' ? parseFloat(event.target.value) || 0 : event.target.value;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
   const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
@@ -2938,16 +2983,23 @@ function AddFacultyModal({
             </label>
 
             {initialData?.id && (
-              <label className="space-y-2 text-sm font-medium text-gray-700 block">
-                <span className="block">Faculty Rating (0-5)</span>
-                <input
-                  type="number"
-                  readOnly
-                  value={formState.rating}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
-                  placeholder="0.0"
-                />
-              </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 block">
+                  <span className="block">Faculty Rating (0-5)</span>
+                  <input
+                    type="number"
+                    readOnly
+                    value={formState.rating}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 bg-gray-50 text-gray-500 cursor-not-allowed outline-none"
+                    placeholder="0.0"
+                  />
+                </label>
+                {!isEditing && (
+                  <p className="text-[10px] text-gray-400 font-bold uppercase ml-1">
+                    Based on {formState.reviewCount || 0} reviews
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

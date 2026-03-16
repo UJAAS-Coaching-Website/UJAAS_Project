@@ -10,6 +10,8 @@ export interface Notification {
   time: string;
   read: boolean;
   icon?: 'notes' | 'dpp' | 'award' | 'alert';
+  isSticky?: boolean;
+  onClick?: () => void;
 }
 
 interface NotificationCenterProps {
@@ -136,7 +138,13 @@ export function NotificationCenter({
                         className={`p-4 hover:bg-gray-50 transition cursor-pointer ${
                           !notification.read ? 'bg-blue-50' : ''
                         }`}
-                        onClick={() => onMarkAsRead(notification.id)}
+                        onClick={() => {
+                          if (notification.onClick) {
+                            notification.onClick();
+                          } else {
+                            onMarkAsRead(notification.id);
+                          }
+                        }}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`w-10 h-10 bg-gradient-to-br ${getNotificationColor(notification.type)} rounded-lg flex items-center justify-center text-white flex-shrink-0`}>
@@ -148,7 +156,7 @@ export function NotificationCenter({
                               <h4 className="font-semibold text-gray-900 text-sm">
                                 {notification.title}
                               </h4>
-                              {!notification.read && (
+                              {!notification.read && !notification.isSticky && (
                                 <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1" />
                               )}
                             </div>
@@ -157,15 +165,17 @@ export function NotificationCenter({
                             </p>
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-gray-500">{notification.time}</span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDelete(notification.id);
-                                }}
-                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {!notification.isSticky && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(notification.id);
+                                  }}
+                                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

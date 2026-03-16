@@ -37,6 +37,8 @@ export async function getAllFaculties() {
             f.subject_id,
             f.designation, 
             f.phone,
+            f.rating,
+            f.review_count,
             TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
         FROM users u
         INNER JOIN faculties f ON u.id = f.user_id
@@ -47,7 +49,8 @@ export async function getAllFaculties() {
 
     return result.rows.map(row => ({
         ...row,
-        rating: 4.5
+        rating: Number(row.rating || 0),
+        reviewCount: Number(row.review_count || 0)
     }));
 }
 
@@ -87,7 +90,8 @@ export async function createFaculty({ name, email, subject, phone, designation, 
             designation: designation || null,
             phone: phone || null,
             joining_date: joinDate || null,
-            rating: 4.5,
+            rating: 0,
+            reviewCount: 0
         };
     } catch (error) {
         await client.query("ROLLBACK");
@@ -132,13 +136,18 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
         // Fetch and return the updated faculty
         const result = await pool.query(`
             SELECT u.id, u.name, u.login_id as email, s.name as subject, f.subject_id, f.designation, f.phone,
+                   f.rating, f.review_count,
                    TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
             FROM users u 
             INNER JOIN faculties f ON u.id = f.user_id
             LEFT JOIN subjects s ON s.id = f.subject_id
             WHERE u.id = $1
         `, [id]);
-        return result.rows[0] ? { ...result.rows[0], rating: 4.5 } : null;
+        return result.rows[0] ? { 
+            ...result.rows[0], 
+            rating: Number(result.rows[0].rating || 0),
+            reviewCount: Number(result.rows[0].review_count || 0)
+        } : null;
     } catch (error) {
         await client.query("ROLLBACK");
         throw error;

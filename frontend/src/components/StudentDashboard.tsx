@@ -15,6 +15,8 @@ import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { MiniAvatar } from './MiniAvatar';
+import { FacultyReviewModal } from './FacultyReviewModal';
+import { getFacultiesToRate, type FacultyToRate, type ReviewSession } from '../api/facultyReviews';
 import { QuestionBank } from './QuestionBank';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
@@ -65,6 +67,62 @@ export function StudentDashboard({
   const [batchDetailsError, setBatchDetailsError] = useState<string | null>(null);
   const [batchListCount, setBatchListCount] = useState<number | null>(null);
   const [batchMatchInfo, setBatchMatchInfo] = useState<string | null>(null);
+  const [toRateFaculties, setToRateFaculties] = useState<FacultyToRate[]>([]);
+  const [reviewSession, setReviewSession] = useState<ReviewSession | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
+    return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
+  });
+
+  useEffect(() => {
+    const loadReviewInfo = async () => {
+      try {
+        const { faculties, session } = await getFacultiesToRate();
+        setToRateFaculties(faculties);
+        setReviewSession(session);
+        
+        // Show modal automatically if session is active, student has teachers to rate, 
+        // and hasn't dismissed it in this session yet
+        if (session && faculties.length > 0 && !hasDismissedReview) {
+          setShowReviewModal(true);
+        }
+      } catch (error) {
+        console.error('Failed to load review session info:', error);
+      }
+    };
+    loadReviewInfo();
+  }, [hasDismissedReview]);
+
+  const handleReviewSubmitSuccess = () => {
+    setShowReviewModal(false);
+    setToRateFaculties([]); // Assume all rated for immediate UI feedback
+    localStorage.removeItem('ujaas_dismissed_review_session');
+  };
+
+  const handleCloseReview = () => {
+    setShowReviewModal(false);
+    setHasReviewDismissed(true);
+    localStorage.setItem('ujaas_dismissed_review_session', 'true');
+  };
+
+  // Inject special sticky notification
+  const enhancedNotifications = [...notifications];
+  if (reviewSession && toRateFaculties.length > 0) {
+    const expiryDate = new Date(reviewSession.expiry_time);
+    const now = new Date();
+    const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    enhancedNotifications.unshift({
+      id: 'faculty-review-sticky',
+      title: '🌟 Faculty Review Live',
+      message: `Rate your teachers to help us improve. Window ends in ${diffDays} days.`,
+      type: 'info',
+      timestamp: reviewSession.start_time,
+      isRead: false,
+      isSticky: true, // Special flag for UI
+      onClick: () => setShowReviewModal(true)
+    } as any);
+  }
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -282,7 +340,7 @@ export function StudentDashboard({
               {/* Profile Button */}
               <div className="flex items-center gap-4">
                 <NotificationCenter 
-                  notifications={notifications}
+                  notifications={enhancedNotifications}
                   onMarkAsRead={onMarkAsRead}
                   onMarkAllAsRead={onMarkAllAsRead}
                   onDelete={onDeleteNotification}
@@ -368,6 +426,17 @@ export function StudentDashboard({
 
       {/* Footer */}
       {!isNavbarHidden && <Footer />}
+
+      {/* Faculty Review Modal */}
+      <AnimatePresence>
+        {showReviewModal && toRateFaculties.length > 0 && (
+          <FacultyReviewModal 
+            faculties={toRateFaculties}
+            onClose={handleCloseReview}
+            onSubmitSuccess={handleReviewSubmitSuccess}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Timetable Modal */}
       <AnimatePresence>

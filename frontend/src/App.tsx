@@ -1720,6 +1720,14 @@ function App() {
                   throw err;
                 }
               }}
+              onRefreshFaculties={async () => {
+                try {
+                  const refreshed = await apiFetchFaculties();
+                  setAdminFaculties(refreshed);
+                } catch (err) {
+                  console.error("Failed to refresh faculties:", err);
+                }
+              }}
               adminStudents={adminStudents}
               onCreateStudent={async (data: import('./api/students').CreateStudentPayload) => {
                 showBatchToast('saving', 'Saving student to database...');

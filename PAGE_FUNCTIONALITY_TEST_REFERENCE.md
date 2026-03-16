@@ -41,6 +41,12 @@
   - Current password is verified first; new/confirm inputs appear only after verification.
 - Student profile performance uses real subject ratings only (assigned subjects).
 - Admin/faculty student detail test performance summary uses real test analysis per batch.
+- Faculty Review System is now fully backend-backed.
+  - Admin can trigger a 3-day review session which resets all current faculty ratings and individual review data.
+  - Students see a persistent "sticky" notification (cannot be deleted) during active sessions.
+  - Rating modal lists only faculties assigned to the student's batch.
+  - Real-time continuous average calculation updates faculty ratings in the database immediately upon submission.
+  - Unique constraints prevent duplicate ratings from the same student for the same faculty.
 - User profile and avatar functionality is now fully backend-backed for all roles.
   - Avatars are compressed and resized to 400x400 (WebP, <50kb) using `sharp` in the backend.
   - Avatar storage uses the `avatar` S3 bucket in Supabase.
