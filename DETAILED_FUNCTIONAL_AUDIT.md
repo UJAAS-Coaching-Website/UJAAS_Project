@@ -70,6 +70,10 @@ This audit focuses on functionality, not just UI presence.
 - `[REAL]` Admin batch subject selection now uses a DB-backed subject catalog and supports creating new subjects from typed input.
 - `[REAL]` Subjects can be assigned to batches without assigning faculty.
 - `[REAL]` Admin batch dashboard removed the redundant batch-level "Assign Faculty" action.
+- `[REAL]` User profile and avatar functionality is fully backend-backed.
+  - Avatars are compressed via `sharp` (WebP, <50kb) and stored in Supabase S3.
+  - All profile details (Phone, Address, DOB, etc.) for all roles are fetched from the database.
+  - `EditableAvatar` (with camera upload button) and `MiniAvatar` components are used.
 
 ## Top Findings First
 
@@ -143,12 +147,13 @@ This audit focuses on functionality, not just UI presence.
 - `[REAL]` Student access is scoped to assigned batch content only.
 - `[VERIFY]` Real bucket setup for `question-bank` still needs runtime verification in the target storage environment.
 
-## 3. Student Profile And Ratings
+### Student Profile And Ratings
 
 ### Profile Editing
 - `[REAL]` Student profile update is backed by `/api/profile/me`.
   - Source: `frontend/src/api/auth.ts`, `backend/src/controllers/profileController.js`
-- `[VERIFY]` Needs runtime testing for validation, formatting, and edge cases.
+- `[REAL]` Admin Remarks for students are now fully persisted in the `students.admin_remark` database column.
+- `[REAL]` User profile and avatar functionality is fully backend-backed with `sharp` compression and S3 storage.
 
 ### Password Change
 - `[REAL]` “Change Password” now verifies current password and updates the password via the backend.
@@ -157,8 +162,11 @@ This audit focuses on functionality, not just UI presence.
 ### Performance Breakdown
 - `[REAL]` Subject detail ratings are derived from backend subject ratings only (no mock subjects).
   - Source: `frontend/src/components/StudentProfile.tsx`
+- `[REAL]` Student rating system (per subject) is backend-backed and updatable by faculty/admin.
+  - Note: The specialized `StudentRating.tsx` ranking component still uses `localStorage`, but the primary rating flow in student/faculty dashboards is `[REAL]`.
 
 ## 4. Test Series
+
 
 ### Student Test List
 - `[REAL]` Student can view assigned tests loaded from backend.

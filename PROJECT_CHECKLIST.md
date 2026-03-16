@@ -53,6 +53,11 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Batch subject picker is now DB-backed and supports type-to-create
 - [x] Batch subjects can be added without assigning faculty
 - [x] Removed redundant "Assign Faculty" action from admin batch dashboard
+- [x] User profile and avatar functionality is now fully backend-backed:
+  - Avatars compressed via `sharp` (WebP, <50kb) and stored in Supabase S3 `avatar` bucket
+  - All profile details (Roll Number, Phone, DOB, Address, Parent Contact, Admin Remarks) are fully fetched from the database for all roles
+  - Dashboard navigation and welcome cards use `MiniAvatar` component
+  - Profile pages use `EditableAvatar` with floating camera upload button
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
@@ -173,8 +178,11 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 
 ## Highest-Priority Attention Items
 - [ ] Break up `frontend/src/App.tsx` into smaller feature/state modules
-- [ ] Replace remaining mock analytics in admin/faculty dashboards
-- [ ] Move remarks, ratings, attendance, and similar browser-only state into backend persistence where needed
+- [x] Replace remaining mock analytics in admin/faculty dashboards with real test/DPP history
+- [~] Move remaining remarks, ratings, and attendance browser-only state into backend persistence
+  - [x] Admin remarks for students are now database-persisted
+  - [x] Student ratings (per subject) are now database-persisted
+  - [ ] Faculty attendance tracking still needs backend persistence
 - [ ] Add automated tests around auth, tests, DPPs, uploads, and role permissions
 - [ ] Reduce frontend bundle size with code-splitting/lazy loading
 - [ ] Add a concise setup-and-run README for new contributors

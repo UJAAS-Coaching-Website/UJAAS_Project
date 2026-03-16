@@ -41,6 +41,18 @@
   - Current password is verified first; new/confirm inputs appear only after verification.
 - Student profile performance uses real subject ratings only (assigned subjects).
 - Admin/faculty student detail test performance summary uses real test analysis per batch.
+- User profile and avatar functionality is now fully backend-backed for all roles.
+  - Avatars are compressed and resized to 400x400 (WebP, <50kb) using `sharp` in the backend.
+  - Avatar storage uses the `avatar` S3 bucket in Supabase.
+  - All profile details (Roll Number, Phone, DOB, Address, Parent Contact, Admin Remarks) are now fully fetched from the database for students, faculty, and admins.
+  - Dashboard navigation and welcome cards use the `MiniAvatar` component.
+  - Profile pages use the `EditableAvatar` component with a floating camera upload button.
+- Student Timetable is now fully backend-backed.
+  - Admin can upload/delete timetable images per batch (Supabase S3 `timetables` bucket).
+  - Student dashboard fetches and displays the real batch timetable.
+- Admin Remarks for students are now fully persisted in the `students.admin_remark` database column.
+- DPP creation and publishing are now fully backend-backed through the `CreateDPP` component and `dppService.js`.
+- Batch Notifications are now backend-backed for creation, though a dedicated fetch/read-tracking endpoint for students is still pending.
 
 ## 2. Public Pages
 
