@@ -334,6 +334,9 @@ export function AdminDashboard({
       dateOfBirth: s.date_of_birth || '',
       address: s.address || '',
       parentContact: s.parent_contact || '',
+      subjectRatings,
+      subjectRemarks: (s as any).subject_remarks || {},
+      adminRemark: (s as any).admin_remark || '',
     };
   };
 

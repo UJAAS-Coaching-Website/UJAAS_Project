@@ -1646,24 +1646,28 @@ function StudentRatingsModal({
                             </button>
                           </div>
                         )}
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {[
-                            { 
-                              label: 'Attendance', 
-                              val: `${getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating).toFixed(1)}/5` 
-                            },
-                            { label: 'Test Performance', val: `${r.tests}/5` },
-                            { label: 'DPP Performance', val: `${r.dppPerformance}/5` },
-                            { label: 'Class Behaviour', val: `${r.behavior}/5` }
-                          ].map(param => (
-                            <div key={param.label} className="flex flex-col gap-1">
-                              <div className="flex justify-between text-xs font-bold text-gray-700 uppercase tracking-tighter">
-                                <span>{param.label}</span>
-                                <span>{param.val}</span>
+                        {!isEditing && (
+                          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[
+                              { label: 'Attendance', value: getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating) },
+                              { label: 'Test Performance', value: Number(r.tests ?? 0) },
+                              { label: 'DPP Performance', value: Number(r.dppPerformance ?? 0) },
+                              { label: 'Class Behaviour', value: Number(r.behavior ?? 0) }
+                            ].map(param => (
+                              <div key={param.label} className="flex flex-col gap-3">
+                                <div className="flex items-center justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                  <span>{param.label}</span>
+                                  <span>{param.value.toFixed(1)}/5</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="scale-110 origin-left">
+                                    {renderPerformanceStars(param.value)}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                         <div className="px-6 pb-6 space-y-3">
                           <div>
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Faculty Remark</p>

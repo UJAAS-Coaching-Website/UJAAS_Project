@@ -405,6 +405,7 @@ function OverviewSection({
 function PerformanceSection({ details, user }: { details: StudentDetails; user: any }) {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const ratings = details.ratings || {};
+  const subjectRatings = (user as any).subjectRatings || {};
   
   useBodyScrollLock(!!selectedSubject);
   
@@ -417,51 +418,44 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
     'General': { color: 'from-indigo-500 to-purple-500', bgColor: 'from-indigo-50 to-purple-50' }
   };
 
-  // Always show all 4 subjects
-  const subjects = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+  // Show only subjects assigned to this student
+  const subjects = Object.keys(subjectRatings);
+  const hasSubjects = subjects.length > 0;
 
-  // Helper to get detailed ratings for a subject (mocked for each subject to be unique)
+  // Helper to get detailed ratings for a subject from backend data
   const getDetailedRatings = (subject: string) => {
-    // In a real app, this would come from user.studentDetails.subjectRatings[subject]
-    const sr = (user as any).subjectRatings?.[subject];
-    if (sr) {
-      return {
-        attendance: getAttendanceRatingValue(sr.attendance, sr.total_classes, sr.attendanceRating),
-        tests: Number(sr.tests || 0),
-        dppPerformance: Number(sr.dppPerformance || 0),
-        behavior: Number(sr.behavior || 0),
-      };
-    }
-
-    // Create unique mock data for each subject based on its name
-    const hash = subject.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const variation = (hash % 10) / 10; // 0.0 to 0.9
+    const sr = subjectRatings?.[subject];
+    if (!sr) return null;
 
     return {
-      attendance: Math.min(5, Math.max(3, (ratings.attendance || 4.5) - (variation * 0.5))),
-      tests: Math.min(5, Math.max(2.5, (ratings.tests || 4.0) + (variation * 0.8) - 0.4)),
-      dppPerformance: Math.min(5, Math.max(3, (ratings.dppPerformance || 4.2) + (variation * 0.4) - 0.2)),
-      behavior: Math.min(5, Math.max(4, (ratings.behavior || 4.8) - (variation * 0.2)))
+      attendance: getAttendanceRatingValue(sr.attendance, sr.total_classes, sr.attendanceRating),
+      tests: Number(sr.tests || 0),
+      dppPerformance: Number(sr.dppPerformance || 0),
+      behavior: Number(sr.behavior || 0),
     };
   };
 
   const performanceData = subjects.map((subject: string) => {
     const detailed = getDetailedRatings(subject);
-    const avg = (detailed.attendance + detailed.tests + detailed.dppPerformance + detailed.behavior) / 4;
+    const avg = detailed
+      ? (detailed.attendance + detailed.tests + detailed.dppPerformance + detailed.behavior) / 4
+      : 0;
     const style = subjectColors[subject];
     
     return {
       label: subject,
       value: avg,
       max: 5,
-      color: style.color,
-      bgColor: style.bgColor,
+      color: style?.color || subjectColors['General'].color,
+      bgColor: style?.bgColor || subjectColors['General'].bgColor,
       detailed
     };
   });
 
   // Calculate overall performance for the card
-  const overallPerformance = performanceData.reduce((acc: number, curr: any) => acc + curr.value, 0) / performanceData.length;
+  const overallPerformance = performanceData.length > 0
+    ? performanceData.reduce((acc: number, curr: any) => acc + curr.value, 0) / performanceData.length
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -588,7 +582,10 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
           <BarChart3 className="w-6 h-6 text-indigo-600" />
           Subject-wise Performance
         </h3>
-        <p className="text-sm text-gray-500 mb-6 -mt-4">Click on a subject to see detailed breakdown</p>
+        <p className="text-sm text-gray-500 mb-6 -mt-4">
+          {hasSubjects ? 'Click on a subject to see detailed breakdown' : 'No subject ratings available yet.'}
+        </p>
+        {hasSubjects ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {performanceData.map((item: any, index: number) => (
             <motion.button
@@ -605,11 +602,18 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
               </div>
               <p className="text-xs font-bold text-gray-500 mt-2 uppercase tracking-widest">{item.value.toFixed(1)} / 5.0</p>
               <div className="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
-                View Detailed Breakdown →
+                View Detailed Breakdown {'>'}
               </div>
             </motion.button>
           ))}
         </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center shadow-sm">
+            <BarChart3 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+            <p className="font-semibold text-gray-700">No subject ratings to show</p>
+            <p className="mt-2 text-sm text-gray-500">Ratings will appear once faculty updates them.</p>
+          </div>
+        )}
       </motion.div>
     </div>
   );
