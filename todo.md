@@ -8,7 +8,3 @@ Allow student to review faculties.
 . student will be allowed to fill the rating only once. if the rating is filled, the form will be submitted and will be removed from the notification section.
 . after the form will be inaccessible from the students, the rating calculation will be performed and the total updated rating will be shown to the admin.
 . the new calculated ratings will overwrite the old ratings. there will be no rating history.
-
-Student rating: since it is already made through only frontend logic that the faculty will rate the 4 performence measure of the student in his subject. the attandnance rating will be self calculated from the attandnance. and the other ratings will be edited by the faculty. so make it functional. we have a table in database for rating. you can restructure the table if needed. make sure we have only 4 performance measures: attandnance, test performance, dpp performance and class behaviour. also save the remarks given by the faculty. the remarks given by the admin will directly store in the students table i guess. also reflect the rating in the student's profile in the dedicated section provided. ask me if you want help with anything.
-
-show the actual test performence in the student details/test performance summery section. fetch the details from the test the student was shown(can be fetch by the batch information) ask me if you need any information

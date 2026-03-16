@@ -43,7 +43,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
 import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
 import { TestTaking } from './TestTaking';
-import { forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
+import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
@@ -3511,6 +3511,17 @@ function StudentRatingsModal({
     parentContact: '',
     address: '',
   });
+  const [testPerformanceRows, setTestPerformanceRows] = useState<Array<{
+    id: string;
+    title: string;
+    date: string;
+    score: string;
+    rank: string;
+    accuracy: string;
+    status: 'Attempted' | 'Not Attempted';
+  }>>([]);
+  const [isPerformanceLoading, setIsPerformanceLoading] = useState(false);
+  const [performanceError, setPerformanceError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !student) return;
@@ -3525,17 +3536,81 @@ function StudentRatingsModal({
       address: student.address ?? '',
     });
     setAdminRemarkDraft(student.adminRemark ?? '');
+    setTestPerformanceRows([]);
+    setIsPerformanceLoading(false);
+    setPerformanceError(null);
   }, [open, student]);
 
   if (!open || !student) return null;
 
-  const mockTestPerformance = [
-    { title: 'Unit Test 1: Physics Basics', date: '2025-08-15', score: '85/100', rank: '12/150', accuracy: '88%', status: 'Attempted' },
-    { title: 'Monthly Mock: JEE Main Pattern', date: '2025-09-01', score: '245/300', rank: '45/1200', accuracy: '82%', status: 'Attempted' },
-    { title: 'Surprise Quiz: Organic Chemistry', date: '2025-09-10', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
-    { title: 'Unit Test 2: Calculus I', date: '2025-09-20', score: '92/100', rank: '5/160', accuracy: '95%', status: 'Attempted' },
-    { title: 'Full Length Mock 01', date: '2025-10-05', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
-  ];
+  const formatPerformanceDate = (value?: string | null) => {
+    if (!value) return '-';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const loadTestPerformance = async () => {
+    const batchId = batches.find((b) => b.label === student.batch)?.id;
+    if (!batchId) {
+      setTestPerformanceRows([]);
+      setPerformanceError('Student batch is not assigned yet.');
+      return;
+    }
+
+    setIsPerformanceLoading(true);
+    setPerformanceError(null);
+    try {
+      const tests = await fetchTests();
+      const relevantTests = tests.filter((test) =>
+        (test.batches || []).some((b) => b.id === batchId || b.name === student.batch)
+      );
+
+      const analyses = await Promise.all(
+        relevantTests.map(async (test) => {
+          try {
+            const analysis = await fetchTestAnalysis(test.id);
+            return { test, analysis };
+          } catch {
+            return { test, analysis: null };
+          }
+        })
+      );
+
+      const rows = analyses.map(({ test, analysis }) => {
+        const performance = analysis?.performances?.find((p) => p.studentId === student.id);
+        const attempted = !!performance && performance.attemptCount > 0;
+        const totalStudents = analysis?.performances?.length || 0;
+        const rankDisplay = performance
+          ? totalStudents > 0
+            ? `${performance.rank}/${totalStudents}`
+            : `${performance.rank}`
+          : '-';
+        return {
+          id: test.id,
+          title: test.title,
+          date: performance?.latestSubmittedAt
+            ? formatPerformanceDate(performance.latestSubmittedAt)
+            : (test.schedule_date || '-'),
+          score: performance ? `${performance.score}/${performance.totalMarks}` : '-',
+          rank: rankDisplay,
+          accuracy: performance ? `${Math.round(performance.accuracy)}%` : '-',
+          status: attempted ? 'Attempted' : 'Not Attempted',
+        };
+      });
+
+      setTestPerformanceRows(rows);
+    } catch (error: any) {
+      setPerformanceError(error?.message || 'Failed to load test performance.');
+    } finally {
+      setIsPerformanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || activeView !== 'performance') return;
+    void loadTestPerformance();
+  }, [open, activeView, student?.id, student?.batch]);
 
   const handleResetPassword = async () => {
     const newPass = generateInitialPassword(student.name);
@@ -4115,48 +4190,68 @@ function StudentRatingsModal({
                 <h4 className="text-xl font-bold text-gray-900">Test Performance Summary</h4>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Test Name</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Score</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Rank</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Accuracy</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/50">
-                    {mockTestPerformance.map((perf, idx) => {
-                      const isAttempted = perf.status === 'Attempted';
-                      return (
-                        <tr
-                          key={idx}
-                          className={`transition-colors ${isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
-                            }`}
-                        >
-                          <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
-                            {perf.title}
-                          </td>
-                          <td className="px-4 py-3 text-[10px] font-medium text-gray-500 whitespace-nowrap">
-                            {perf.date}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono font-bold text-gray-700 text-center">
-                            {perf.score}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-black text-blue-600 text-center">
-                            {perf.rank}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-black text-teal-600 text-center">
-                            {perf.accuracy}
-                          </td>
+              {isPerformanceLoading ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center shadow-sm">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="font-semibold text-gray-700">Loading test performance...</p>
+                </div>
+              ) : performanceError ? (
+                <div className="rounded-2xl border border-dashed border-red-200 bg-red-50 px-6 py-10 text-center shadow-sm">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-red-300" />
+                  <p className="font-semibold text-red-700">{performanceError}</p>
+                </div>
+              ) : testPerformanceRows.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center shadow-sm">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                  <p className="font-semibold text-gray-700">No tests found for this batch</p>
+                  <p className="mt-2 text-sm text-gray-500">Once tests are assigned to the batch, results will appear here.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Test Name</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Score</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Rank</th>
+                          <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Accuracy</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-gray-400 italic">* This table is for review only and is not included in the printed report.</p>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100/50">
+                        {testPerformanceRows.map((perf) => {
+                          const isAttempted = perf.status === 'Attempted';
+                          return (
+                            <tr
+                              key={perf.id}
+                              className={`transition-colors ${isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
+                                }`}
+                            >
+                              <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
+                                {perf.title}
+                              </td>
+                              <td className="px-4 py-3 text-[10px] font-medium text-gray-500 whitespace-nowrap">
+                                {perf.date}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-mono font-bold text-gray-700 text-center">
+                                {perf.score}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-black text-blue-600 text-center">
+                                {perf.rank}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-black text-teal-600 text-center">
+                                {perf.accuracy}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-xs text-gray-400 italic">* This table is for review only and is not included in the printed report.</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-8">
