@@ -256,6 +256,7 @@ export function FacultyDashboard({
     if (adminStudents && adminStudents.length > 0) {
       const mappedStudents: Student[] = adminStudents.map(api => {
         const subRatings = (api as any).subject_ratings || {};
+        const subRemarks = (api as any).subject_remarks || {};
         const facultySubData = facultySubject ? subRatings[facultySubject] : null;
         
         return {
@@ -274,10 +275,11 @@ export function FacultyDashboard({
           totalAttendance: facultySubData ? facultySubData.attendance : api.rating_attendance,
           totalClasses: facultySubData ? facultySubData.total_classes : api.rating_total_classes,
           subjectRatings: subRatings,
-          subjectRemarks: {},
+          subjectRemarks: subRemarks,
+          adminRemark: (api as any).admin_remark || '',
         };
       });
-      setStudents(withStoredRemarks(mappedStudents));
+      setStudents(mappedStudents);
     } else {
       setStudents([]);
     }
@@ -463,48 +465,23 @@ export function FacultyDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const handleSaveFacultySubjectRating = (
+  const handleSaveFacultySubjectRating = async (
     studentId: string,
     subject: string,
     ratings: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }
   ) => {
-    setStudents((prev) =>
-      prev.map((student) => {
-        if (student.id !== studentId) return student;
+    try {
+      await onUpdateStudentRating(studentId, {
+        subject,
+        ...ratings
+      });
 
-        const updatedSubjectRatings = {
-          ...(student.subjectRatings ?? {}),
-          [subject]: {
-            attendance: Math.max(0, ratings.attendance),
-            total_classes: ratings.total_classes,
-            tests: Math.max(0, Math.min(5, ratings.tests)),
-            dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
-            behavior: Math.max(0, Math.min(5, ratings.behavior)),
-          },
-        };
+      setStudents((prev) =>
+        prev.map((student) => {
+          if (student.id !== studentId) return student;
 
-        const values = Object.values(updatedSubjectRatings);
-        const avg =
-          values.length > 0
-            ? values.reduce((acc, curr) => acc + (curr.attendance / (curr.total_classes || 1) * 5 + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
-            values.length
-            : student.rating;
-
-        return {
-          ...student,
-          subjectRatings: updatedSubjectRatings,
-          rating: Number(avg.toFixed(1)),
-        };
-      })
-    );
-    setRatingModal((prev) => {
-      if (!prev.student || prev.student.id !== studentId) return prev;
-      return {
-        ...prev,
-        student: {
-          ...prev.student,
-          subjectRatings: {
-            ...(prev.student.subjectRatings ?? {}),
+          const updatedSubjectRatings = {
+            ...(student.subjectRatings ?? {}),
             [subject]: {
               attendance: Math.max(0, ratings.attendance),
               total_classes: ratings.total_classes,
@@ -512,40 +489,82 @@ export function FacultyDashboard({
               dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
               behavior: Math.max(0, Math.min(5, ratings.behavior)),
             },
-          },
-        },
-      };
-    });
-  };
-  const handleSaveFacultySubjectRemark = (studentId: string, subject: string, remark: string) => {
-    const cleanedRemark = remark.trim();
-    setStudents((prev) =>
-      prev.map((student) =>
-        student.id === studentId
-          ? {
+          };
+
+          const values = Object.values(updatedSubjectRatings);
+          const avg =
+            values.length > 0
+              ? values.reduce((acc, curr) => acc + (curr.attendance / (curr.total_classes || 1) * 5 + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
+              values.length
+              : student.rating;
+
+          return {
             ...student,
+            subjectRatings: updatedSubjectRatings,
+            rating: Number(avg.toFixed(1)),
+          };
+        })
+      );
+      setRatingModal((prev) => {
+        if (!prev.student || prev.student.id !== studentId) return prev;
+        return {
+          ...prev,
+          student: {
+            ...prev.student,
+            subjectRatings: {
+              ...(prev.student.subjectRatings ?? {}),
+              [subject]: {
+                attendance: Math.max(0, ratings.attendance),
+                total_classes: ratings.total_classes,
+                tests: Math.max(0, Math.min(5, ratings.tests)),
+                dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
+                behavior: Math.max(0, Math.min(5, ratings.behavior)),
+              },
+            },
+          },
+        };
+      });
+    } catch (error: any) {
+      alert("Failed to save rating: " + error.message);
+    }
+  };
+  const handleSaveFacultySubjectRemark = async (studentId: string, subject: string, remark: string) => {
+    const cleanedRemark = remark.trim();
+    try {
+      await onUpdateStudentRating(studentId, {
+        subject,
+        remarks: cleanedRemark
+      });
+
+      setStudents((prev) =>
+        prev.map((student) =>
+          student.id === studentId
+            ? {
+              ...student,
+              subjectRemarks: {
+                ...(student.subjectRemarks ?? {}),
+                [subject]: cleanedRemark,
+              },
+            }
+            : student
+        )
+      );
+      setRatingModal((prev) => {
+        if (!prev.student || prev.student.id !== studentId) return prev;
+        return {
+          ...prev,
+          student: {
+            ...prev.student,
             subjectRemarks: {
-              ...(student.subjectRemarks ?? {}),
+              ...(prev.student.subjectRemarks ?? {}),
               [subject]: cleanedRemark,
             },
-          }
-          : student
-      )
-    );
-    setRatingModal((prev) => {
-      if (!prev.student || prev.student.id !== studentId) return prev;
-      return {
-        ...prev,
-        student: {
-          ...prev.student,
-          subjectRemarks: {
-            ...(prev.student.subjectRemarks ?? {}),
-            [subject]: cleanedRemark,
           },
-        },
-      };
-    });
-    writeStoredRemarks(studentId, { subjectRemarks: { [subject]: cleanedRemark } });
+        };
+      });
+    } catch (error: any) {
+      alert("Failed to save remark: " + error.message);
+    }
   };
   const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
 

@@ -42,9 +42,10 @@ export async function getAllStudents() {
                         json_build_object(
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
-                            'tests', r.assignments,
-                            'dppPerformance', r.participation,
-                            'behavior', r.behavior
+                            'tests', r.test_performance,
+                            'dppPerformance', r.dpp_performance,
+                            'behavior', r.behavior,
+                            'remarks', r.remarks
                         )
                     )
                     FROM student_ratings r
@@ -67,6 +68,7 @@ export async function getAllStudents() {
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+            s.admin_remark,
             CASE
                 WHEN b.id IS NULL THEN NULL
                 ELSE json_build_object('id', b.id, 'name', b.name)
@@ -80,7 +82,13 @@ export async function getAllStudents() {
     `);
     
     return result.rows.map(row => {
-        const ratingEntries = Object.values(row.ratings || {});
+        const ratings = row.ratings || {};
+        const ratingEntries = Object.values(ratings);
+        const subjectRemarks = {};
+        Object.entries(ratings).forEach(([subName, data]) => {
+            subjectRemarks[subName] = data.remarks;
+        });
+
         return {
             ...row,
             rating_attendance: ratingEntries[0]?.attendance || 0,
@@ -88,7 +96,8 @@ export async function getAllStudents() {
             rating_assignments: ratingEntries[0]?.tests || 0,
             rating_participation: ratingEntries[0]?.dppPerformance || 0,
             rating_behavior: ratingEntries[0]?.behavior || 0,
-            subject_ratings: row.ratings
+            subject_ratings: ratings,
+            subject_remarks: subjectRemarks
         };
     });
 }
@@ -112,9 +121,10 @@ export async function getStudentById(id) {
                         json_build_object(
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
-                            'tests', r.assignments,
-                            'dppPerformance', r.participation,
-                            'behavior', r.behavior
+                            'tests', r.test_performance,
+                            'dppPerformance', r.dpp_performance,
+                            'behavior', r.behavior,
+                            'remarks', r.remarks
                         )
                     )
                     FROM student_ratings r
@@ -137,6 +147,7 @@ export async function getStudentById(id) {
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
+            s.admin_remark,
             CASE
                 WHEN b.id IS NULL THEN NULL
                 ELSE json_build_object('id', b.id, 'name', b.name)
@@ -150,7 +161,12 @@ export async function getStudentById(id) {
     
     if (result.rowCount === 0) return null;
     const row = result.rows[0];
-    const ratingEntries = Object.values(row.ratings || {});
+    const ratings = row.ratings || {};
+    const ratingEntries = Object.values(ratings);
+    const subjectRemarks = {};
+    Object.entries(ratings).forEach(([subName, data]) => {
+        subjectRemarks[subName] = data.remarks;
+    });
     
     return {
         ...row,
@@ -159,7 +175,8 @@ export async function getStudentById(id) {
         rating_assignments: ratingEntries[0]?.tests || 0,
         rating_participation: ratingEntries[0]?.dppPerformance || 0,
         rating_behavior: ratingEntries[0]?.behavior || 0,
-        subject_ratings: row.ratings
+        subject_ratings: ratings,
+        subject_remarks: subjectRemarks
     };
 }
 
@@ -219,7 +236,7 @@ export async function createStudent({ name, rollNumber, phone, address, dateOfBi
 /**
  * Update student details.
  */
-export async function updateStudent(id, { name, rollNumber, phone, address, dateOfBirth, parentContact }) {
+export async function updateStudent(id, { name, rollNumber, phone, address, dateOfBirth, parentContact, adminRemark }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -234,9 +251,10 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
                  phone = COALESCE($3, phone),
                  address = COALESCE($4, address),
                  dob = COALESCE(NULLIF($5, '')::date, dob),
-                 parent_contact = COALESCE($6, parent_contact)
+                 parent_contact = COALESCE($6, parent_contact),
+                 admin_remark = COALESCE($7, admin_remark)
              WHERE user_id = $1`,
-            [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null]
+            [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null, adminRemark || null]
         );
 
         if (rollNumber) {
@@ -314,7 +332,7 @@ export async function removeStudentFromBatch(studentId, batchId) {
  * Update student rating for a specific subject.
  */
 export async function updateStudentRating(studentId, subjectName, ratings) {
-    const { attendance, total_classes, tests, dppPerformance, behavior } = ratings;
+    const { attendance, total_classes, tests, dppPerformance, behavior, remarks } = ratings;
     const client = await pool.connect();
     
     try {
@@ -326,17 +344,18 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         if (!hasBatchSubjects) {
             // Legacy schema update
             const result = await client.query(
-                `INSERT INTO student_ratings (student_id, subject, attendance, total_classes, assignments, participation, behavior, updated_at)
-                 VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), NOW())
+                `INSERT INTO student_ratings (student_id, subject, attendance, total_classes, test_performance, dpp_performance, behavior, remarks, updated_at)
+                 VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), $8, NOW())
                  ON CONFLICT (student_id, subject) DO UPDATE SET
                     attendance = COALESCE($3, student_ratings.attendance),
                     total_classes = COALESCE($4, student_ratings.total_classes),
-                    assignments = COALESCE($5, student_ratings.assignments),
-                    participation = COALESCE($6, student_ratings.participation),
+                    test_performance = COALESCE($5, student_ratings.test_performance),
+                    dpp_performance = COALESCE($6, student_ratings.dpp_performance),
                     behavior = COALESCE($7, student_ratings.behavior),
+                    remarks = COALESCE($8, student_ratings.remarks),
                     updated_at = NOW()
                  RETURNING *`,
-                [studentId, subjectName, attendance, total_classes, tests, dppPerformance, behavior]
+                [studentId, subjectName, attendance, total_classes, tests, dppPerformance, behavior, remarks]
             );
             await client.query("COMMIT");
             return result.rows[0];
@@ -388,18 +407,18 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         }
         
         // 4. UPSERT student_ratings for this batch_subject_id
-        // Map tests -> assignments, dppPerformance -> participation
         const result = await client.query(
-            `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, assignments, participation, behavior, updated_at)
-             VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), NOW())
+            `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
+             VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), $7, NOW())
              ON CONFLICT (student_id, batch_subject_id) DO UPDATE SET
                 attendance = COALESCE($3, student_ratings.attendance),
-                assignments = COALESCE($4, student_ratings.assignments),
-                participation = COALESCE($5, student_ratings.participation),
+                test_performance = COALESCE($4, student_ratings.test_performance),
+                dpp_performance = COALESCE($5, student_ratings.dpp_performance),
                 behavior = COALESCE($6, student_ratings.behavior),
+                remarks = COALESCE($7, student_ratings.remarks),
                 updated_at = NOW()
              RETURNING *`,
-            [studentId, batchSubjectId, attendance, tests, dppPerformance, behavior]
+            [studentId, batchSubjectId, attendance, tests, dppPerformance, behavior, remarks]
         );
         
         await client.query("COMMIT");
@@ -410,8 +429,8 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
                 r.*, 
                 bs.total_classes,
                 sub.name as subject,
-                r.assignments as tests,
-                r.participation as "dppPerformance"
+                r.test_performance as tests,
+                r.dpp_performance as "dppPerformance"
             FROM student_ratings r
             JOIN batch_subjects bs ON bs.id = r.batch_subject_id
             JOIN subjects sub ON sub.id = bs.subject_id
