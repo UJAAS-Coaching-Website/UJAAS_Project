@@ -396,10 +396,6 @@ export function AdminDashboard({
     open: false,
     batch: null
   });
-  const [batchFacultyPicker, setBatchFacultyPicker] = useState<{ open: boolean; batch: Batch | null }>({
-    open: false,
-    batch: null
-  });
   const [permanentDeleteModal, setPermanentDeleteModal] = useState<{
     open: boolean;
     batchLabel: Batch | null;
@@ -733,14 +729,6 @@ export function AdminDashboard({
       window.alert(`Error assigning student to batch: ${error.message}`);
     }
   };
-  const openBatchFacultyPicker = (batch: Batch) => setBatchFacultyPicker({ open: true, batch });
-  const closeBatchFacultyPicker = () => setBatchFacultyPicker({ open: false, batch: null });
-  const handleAssignExistingFacultyToBatch = (facultyName: string, batch: Batch) => {
-    const currentBatch = batches.find((item) => item.label === batch);
-    if (!currentBatch) return;
-    const nextAssigned = Array.from(new Set([...(currentBatch.facultyAssigned ?? []), facultyName]));
-    onUpdateBatch(batch, currentBatch.subjects ?? [], nextAssigned);
-  };
 
   const [ratingModal, setRatingModal] = useState<{ open: boolean; student?: Student }>({
     open: false,
@@ -786,7 +774,6 @@ export function AdminDashboard({
     facultyModal.open ||
     batchModal.open ||
     batchStudentPicker.open ||
-    batchFacultyPicker.open ||
     ratingModal.open ||
     queryModal.open ||
     permanentDeleteModal.open ||
@@ -1009,10 +996,9 @@ export function AdminDashboard({
                   onClearBatch={onClearBatch}
                   onViewTimetable={() => setShowFullTimetable(true)}
                   onUpdateBatch={onUpdateBatch}
-                  onOpenAddFaculty={() => openBatchFacultyPicker(selectedBatch)}
-                  subjectCatalog={subjectCatalog}
-                  onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
-                />
+                    subjectCatalog={subjectCatalog}
+                    onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
+                  />
               )}
               {activeTab === 'students' && (
                 <StudentsTab
@@ -1089,15 +1075,6 @@ export function AdminDashboard({
           onClose={closeBatchStudentPicker}
           onAssign={handleAssignExistingStudentToBatch}
         />
-        <BatchFacultyPickerModal
-          open={batchFacultyPicker.open}
-          selectedBatch={batchFacultyPicker.batch}
-          batches={batches}
-          faculty={faculty}
-          onClose={closeBatchFacultyPicker}
-          onAssign={handleAssignExistingFacultyToBatch}
-        />
-
         <AnimatePresence>
           {ratingModal.open && (
             <StudentRatingsModal
@@ -2058,7 +2035,6 @@ function OverviewTab({
   onClearBatch,
   onViewTimetable,
   onUpdateBatch,
-  onOpenAddFaculty,
   subjectCatalog,
   onRemoveSubjectFromBatch,
 }: {
@@ -2072,7 +2048,6 @@ function OverviewTab({
   onClearBatch: () => void;
   onViewTimetable: () => void;
   onUpdateBatch: any;
-  onOpenAddFaculty: () => void;
   subjectCatalog: import('../api/subjects').ApiSubject[];
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
@@ -2137,14 +2112,6 @@ function OverviewTab({
             </div>
             <h3 className="text-xl font-bold text-gray-900">Batch Faculty</h3>
           </div>
-          {isBatchActive ? (
-            <button
-              onClick={onOpenAddFaculty}
-              className="px-4 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition"
-            >
-              Assign Faculty
-            </button>
-          ) : null}
         </div>
 
         {assignedFaculty.length > 0 ? (
@@ -2276,60 +2243,6 @@ function StudentsTab({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
-
-function BatchFacultyTab({ selectedBatch, faculty, batches, onUpdateBatch, onOpenAddFaculty }: { selectedBatch: Batch; faculty: Faculty[]; batches: BatchInfo[]; onUpdateBatch: any; onOpenAddFaculty: () => void }) {
-  const currentBatch = batches.find(b => b.label === selectedBatch);
-  const assigned = currentBatch?.facultyAssigned ?? [];
-  const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
-  const handleRemoveFacultyFromBatch = (facultyName: string) => {
-    if (!currentBatch) return;
-    if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
-    const nextAssigned = assigned.filter((name) => name !== facultyName);
-    onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
-  };
-
-  return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Manage Batch Faculty</h2>
-        <button
-          type="button"
-          onClick={onOpenAddFaculty}
-          className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Faculty
-        </button>
-      </div>
-      {assignedFaculty.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white/60 p-8 text-center text-gray-600">
-          No faculty assigned to this batch yet.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {assignedFaculty.map((t) => (
-            <div key={t.id} className="p-6 rounded-3xl border-2 transition-all text-left border-cyan-500 bg-cyan-50 shadow-md">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-teal-600 text-white">
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900">{t.name}</h3>
-              <p className="text-sm font-semibold text-cyan-600 uppercase tracking-wider">{t.subject}</p>
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFacultyFromBatch(t.name)}
-                  className="px-3 py-2 rounded-lg text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -3123,74 +3036,6 @@ function BatchStudentPickerModal({
   );
 }
 
-function BatchFacultyPickerModal({
-  open,
-  selectedBatch,
-  batches,
-  faculty,
-  onClose,
-  onAssign,
-}: {
-  open: boolean;
-  selectedBatch: Batch | null;
-  batches: BatchInfo[];
-  faculty: import('../api/faculties').ApiFaculty[];
-  onClose: () => void;
-  onAssign: (facultyName: string, batch: Batch) => void;
-}) {
-  if (!open || !selectedBatch) return null;
-
-  const currentBatch = batches.find((item) => item.label === selectedBatch);
-  const assigned = currentBatch?.facultyAssigned ?? [];
-  const availableFaculty = faculty.filter((item) => !assigned.includes(item.name));
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-white overflow-hidden flex flex-col"
-      >
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white">
-          <h3 className="text-xl font-semibold">Add Existing Faculty</h3>
-          <p className="text-sm text-white/80">Select faculty to assign to {selectedBatch}.</p>
-        </div>
-        <div className="p-6 overflow-y-auto custom-scrollbar space-y-3">
-          {availableFaculty.length === 0 ? (
-            <p className="text-sm text-gray-500">All available faculty are already assigned to this batch.</p>
-          ) : (
-            availableFaculty.map((item) => (
-              <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
-                <div>
-                  <p className="font-semibold text-gray-900">{item.name}</p>
-                  <p className="text-sm text-gray-500">{item.subject}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onAssign(item.name, selectedBatch)}
-                  className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition"
-                >
-                  Add
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
-          >
-            Close
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 function PermanentDeleteBatchModal({
   open,
   batchLabel,
@@ -3321,6 +3166,7 @@ function BatchFormModal({
     faculty: '',
     assignments: [] as { subject: string; faculty: string }[],
   });
+  const [selectedFacultyNames, setSelectedFacultyNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
   const currentBatch = mode === 'edit' && batchLabel
@@ -3344,11 +3190,12 @@ function BatchFormModal({
         faculty: '',
         assignments,
       });
-    } else {
-      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
-    }
-    setError(null);
-  }, [open, mode, batchLabel, batches, faculty]);
+      } else {
+        setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+      }
+      setSelectedFacultyNames([]);
+      setError(null);
+    }, [open, mode, batchLabel, batches, faculty]);
 
   if (!open) return null;
 
@@ -3357,21 +3204,21 @@ function BatchFormModal({
     : [];
 
   const addAssignment = () => {
-    if (!formState.subject || !formState.faculty) return;
+    if (!formState.subject || selectedFacultyNames.length === 0) return;
     setFormState((prev) => {
-      const exists = prev.assignments.some(
-        (item) => item.subject === prev.subject && item.faculty === prev.faculty
-      );
-      if (exists) {
-        return { ...prev, subject: '', faculty: '' };
+      const additions = selectedFacultyNames
+        .filter((name) => !prev.assignments.some((item) => item.subject === prev.subject && item.faculty === name))
+        .map((name) => ({ subject: prev.subject, faculty: name }));
+      if (additions.length === 0) {
+        return { ...prev, faculty: '' };
       }
       return {
         ...prev,
-        assignments: [...prev.assignments, { subject: prev.subject, faculty: prev.faculty }],
-        subject: '',
+        assignments: [...prev.assignments, ...additions],
         faculty: '',
       };
     });
+    setSelectedFacultyNames([]);
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -3472,13 +3319,15 @@ function BatchFormModal({
                 <span className="block">Subject</span>
                 <select
                   value={formState.subject}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const nextSubject = event.target.value;
                     setFormState((prev) => ({
                       ...prev,
-                      subject: event.target.value,
+                      subject: nextSubject,
                       faculty: '',
-                    }))
-                  }
+                    }));
+                    setSelectedFacultyNames([]);
+                  }}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
                 >
                   <option value="">Select subject</option>
@@ -3488,27 +3337,43 @@ function BatchFormModal({
                 </select>
               </label>
 
-              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <div className="space-y-2 text-sm font-medium text-gray-700">
                 <span className="block">Faculty</span>
-                <select
-                  value={formState.faculty}
-                  onChange={(event) => setFormState((prev) => ({ ...prev, faculty: event.target.value }))}
-                  disabled={!formState.subject}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
-                >
-                  <option value="">{formState.subject ? 'Select faculty' : 'Select subject first'}</option>
-                  {facultyOptions.map((item) => (
-                    <option key={item.id} value={item.name}>{item.name}</option>
-                  ))}
-                </select>
-              </label>
+                <div className={`w-full rounded-xl border border-gray-200 px-4 py-3 bg-white ${!formState.subject ? 'bg-gray-50 text-gray-400' : ''}`}>
+                  {!formState.subject ? (
+                    <span className="text-sm text-gray-400">Select subject first</span>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {facultyOptions.length === 0 && (
+                        <span className="text-sm text-gray-500">No faculty found for this subject.</span>
+                      )}
+                      {facultyOptions.map((item) => (
+                        <label key={item.id} className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={selectedFacultyNames.includes(item.name)}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              setSelectedFacultyNames((prev) =>
+                                checked ? [...prev, item.name] : prev.filter((name) => name !== item.name)
+                              );
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          <span>{item.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <button
                 type="button"
                 onClick={addAssignment}
                 className="mt-7 px-5 py-3 min-h-[44px] rounded-xl bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold leading-none whitespace-nowrap shadow-md hover:shadow-lg transition"
               >
-                Add
+                Add Selected
               </button>
             </div>
           </div>
