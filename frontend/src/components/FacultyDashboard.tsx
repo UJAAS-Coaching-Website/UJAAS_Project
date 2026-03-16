@@ -491,6 +491,29 @@ export function FacultyDashboard({
     );
   };
 
+  const handleTimetableDownload = async (fileUrl: string | null | undefined) => {
+    if (!fileUrl) return;
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download timetable.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const fileName = fileUrl.split('/').pop()?.split('?')[0] || 'timetable';
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Timetable download failed:', error);
+      window.alert('Failed to download timetable. Please try again.');
+    }
+  };
+
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
   const handleSaveFacultySubjectRating = async (
@@ -877,15 +900,13 @@ export function FacultyDashboard({
                 </div>
                 <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
                   {selectedBatchInfo?.timetable_url && (
-                    <a
-                      href={selectedBatchInfo.timetable_url}
-                      download
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"
+                    <button
+                      type="button"
+                      onClick={() => handleTimetableDownload(selectedBatchInfo.timetable_url)}
+                      className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-blue-700 transition flex items-center gap-2 shadow-lg shadow-indigo-200/60 border border-indigo-500/60"
                     >
                       <Download className="w-4 h-4" />Download
-                    </a>
+                    </button>
                   )}
                   <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
                 </div>

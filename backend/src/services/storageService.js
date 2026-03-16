@@ -75,14 +75,31 @@ async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
     return;
   }
 
-  const objectKey = fileUrl.slice(urlPrefix.length);
+  let objectKey = fileUrl.slice(urlPrefix.length);
+  if (objectKey.startsWith(`${bucketName}/`)) {
+    objectKey = objectKey.slice(bucketName.length + 1);
+  }
 
   const command = new DeleteObjectCommand({
     Bucket: bucketName,
     Key: objectKey
   });
 
-  await s3Client.send(command);
+  try {
+    await s3Client.send(command);
+  } catch (error) {
+    const isMissingObject =
+      error?.Code === 'NoSuchKey' ||
+      error?.name === 'NoSuchKey' ||
+      error?.$metadata?.httpStatusCode === 404;
+
+    if (isMissingObject) {
+      console.warn('Storage object not found, skipping delete:', { bucketName, objectKey });
+      return;
+    }
+
+    throw error;
+  }
 }
 
 /**
