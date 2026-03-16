@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { me } from '../api/auth';
+import { changeMyPassword, me, verifyMyPassword } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
@@ -627,6 +627,8 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
     newPassword: '',
     confirmPassword: '',
   });
+  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+  const [passwordAction, setPasswordAction] = useState<'idle' | 'verifying' | 'updating'>('idle');
   useBodyScrollLock(showLogoutConfirm || showChangePassword);
 
   const handleLogout = () => {
@@ -637,15 +639,52 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
   const closeChangePassword = () => {
     setShowChangePassword(false);
     setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+    setIsPasswordVerified(false);
+    setPasswordAction('idle');
   };
 
   const handlePasswordChange = (field: keyof typeof passwordForm) => (event: ChangeEvent<HTMLInputElement>) => {
     setPasswordForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handlePasswordSubmit = (event: FormEvent) => {
+  const handlePasswordSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    closeChangePassword();
+    const { oldPassword, newPassword, confirmPassword } = passwordForm;
+    if (!isPasswordVerified) {
+      if (!oldPassword) {
+        window.alert('Please enter your current password.');
+        return;
+      }
+      try {
+        setPasswordAction('verifying');
+        await verifyMyPassword(oldPassword);
+        setIsPasswordVerified(true);
+        setPasswordAction('idle');
+      } catch (error: any) {
+        setPasswordAction('idle');
+        window.alert(error?.message || 'Current password is incorrect.');
+      }
+      return;
+    }
+
+    if (!newPassword || !confirmPassword) {
+      window.alert('Please enter and confirm the new password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      window.alert('New password and confirmation do not match.');
+      return;
+    }
+    try {
+      setPasswordAction('updating');
+      await changeMyPassword(oldPassword, newPassword, confirmPassword);
+      window.alert('Password updated successfully.');
+      closeChangePassword();
+      window.location.reload();
+    } catch (error: any) {
+      setPasswordAction('idle');
+      window.alert(error?.message || 'Failed to update password.');
+    }
   };
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
@@ -753,45 +792,55 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                     <Lock className="w-8 h-8 text-indigo-600" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Change Password</h3>
-                  <p className="text-gray-600">Enter your current password and choose a new one.</p>
+                  <p className="text-gray-600">
+                    {isPasswordVerified
+                      ? 'Choose a new password and confirm it.'
+                      : 'Enter your current password to continue.'}
+                  </p>
                 </div>
 
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Old Password
-                    <input
-                      type="password"
-                      required
-                      value={passwordForm.oldPassword}
-                      onChange={handlePasswordChange('oldPassword')}
-                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      placeholder="Enter old password"
-                    />
-                  </label>
+                  {!isPasswordVerified && (
+                    <label className="block text-sm font-medium text-gray-700">
+                      Old Password
+                      <input
+                        type="password"
+                        required
+                        value={passwordForm.oldPassword}
+                        onChange={handlePasswordChange('oldPassword')}
+                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                        placeholder="Enter old password"
+                      />
+                    </label>
+                  )}
 
-                  <label className="block text-sm font-medium text-gray-700">
-                    New Password
-                    <input
-                      type="password"
-                      required
-                      value={passwordForm.newPassword}
-                      onChange={handlePasswordChange('newPassword')}
-                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      placeholder="Enter new password"
-                    />
-                  </label>
+                  {isPasswordVerified && (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700">
+                        New Password
+                        <input
+                          type="password"
+                          required
+                          value={passwordForm.newPassword}
+                          onChange={handlePasswordChange('newPassword')}
+                          className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          placeholder="Enter new password"
+                        />
+                      </label>
 
-                  <label className="block text-sm font-medium text-gray-700">
-                    Confirm Password
-                    <input
-                      type="password"
-                      required
-                      value={passwordForm.confirmPassword}
-                      onChange={handlePasswordChange('confirmPassword')}
-                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      placeholder="Re-enter new password"
-                    />
-                  </label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Confirm Password
+                        <input
+                          type="password"
+                          required
+                          value={passwordForm.confirmPassword}
+                          onChange={handlePasswordChange('confirmPassword')}
+                          className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          placeholder="Re-enter new password"
+                        />
+                      </label>
+                    </>
+                  )}
 
                   <div className="pt-2 flex gap-3">
                     <motion.button
@@ -803,9 +852,16 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                     </motion.button>
                     <motion.button
                       type="submit"
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
+                      disabled={passwordAction !== 'idle'}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                      Update Password
+                      {passwordAction === 'verifying'
+                        ? 'Verifying...'
+                        : passwordAction === 'updating'
+                          ? 'Updating...'
+                          : isPasswordVerified
+                            ? 'Update Password'
+                            : 'Verify Password'}
                     </motion.button>
                   </div>
                 </form>

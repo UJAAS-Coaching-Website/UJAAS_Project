@@ -3,9 +3,10 @@ import { pool } from "../db/index.js";
 const FACULTY_CONTEXT_QUERY = `
     SELECT
         u.id AS faculty_user_id,
-        COALESCE(NULLIF(TRIM(f.subject), ''), '') AS subject_name
+        COALESCE(NULLIF(TRIM(s.name), ''), '') AS subject_name
     FROM users u
     JOIN faculties f ON f.user_id = u.id
+    LEFT JOIN subjects s ON s.id = f.subject_id
     WHERE u.id = $1
       AND u.role = 'faculty'
     LIMIT 1
@@ -38,6 +39,19 @@ function buildSortClause(sort) {
     }
 }
 
+async function tableExists(tableName, client = pool) {
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = $1
+        ) AS exists`,
+        [tableName]
+    );
+    return result.rows[0]?.exists === true;
+}
+
 export async function getFacultyQuestionBankContext(facultyUserId) {
     const contextResult = await pool.query(FACULTY_CONTEXT_QUERY, [facultyUserId]);
     const context = contextResult.rows[0] || null;
@@ -46,17 +60,31 @@ export async function getFacultyQuestionBankContext(facultyUserId) {
         return null;
     }
 
-    const batchesResult = await pool.query(
-        `
-        SELECT b.id, b.name
-        FROM faculty_batches fb
-        JOIN batches b ON b.id = fb.batch_id
-        WHERE fb.faculty_id = $1
-          AND b.is_active = true
-        ORDER BY b.name ASC
-        `,
-        [facultyUserId]
-    );
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    const batchesResult = hasBatchSubjects
+        ? await pool.query(
+            `
+            SELECT DISTINCT b.id, b.name
+            FROM faculty_assignments fa
+            JOIN batch_subjects bs ON bs.id = fa.batch_subject_id
+            JOIN batches b ON b.id = bs.batch_id
+            WHERE fa.faculty_id = $1
+              AND b.is_active = true
+            ORDER BY b.name ASC
+            `,
+            [facultyUserId]
+        )
+        : await pool.query(
+            `
+            SELECT b.id, b.name
+            FROM faculty_batches fb
+            JOIN batches b ON b.id = fb.batch_id
+            WHERE fb.faculty_id = $1
+              AND b.is_active = true
+            ORDER BY b.name ASC
+            `,
+            [facultyUserId]
+        );
 
     return {
         facultyUserId,

@@ -211,3 +211,78 @@ export async function adminResetPassword(req, res) {
         return res.status(500).json({ message: "reset failed", error: error.message });
     }
 }
+
+export async function changePassword(req, res) {
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    if (!currentPassword || typeof currentPassword !== "string") {
+        return res.status(400).json({ message: "currentPassword is required" });
+    }
+
+    if (newPassword === undefined && confirmPassword === undefined) {
+        try {
+            const userId = req.user?.sub;
+            if (!userId) {
+                return res.status(401).json({ message: "unauthorized" });
+            }
+
+            const userResult = await pool.query(
+                "SELECT id, password_hash FROM users WHERE id = $1",
+                [userId]
+            );
+
+            if (userResult.rowCount === 0) {
+                return res.status(404).json({ message: "user not found" });
+            }
+
+            const validPassword = verifyPassword(currentPassword, userResult.rows[0].password_hash);
+            if (!validPassword) {
+                return res.status(401).json({ message: "invalid current password" });
+            }
+
+            return res.status(200).json({ message: "current password verified" });
+        } catch (error) {
+            console.error("verify password failed:", error.stack || error.message);
+            return res.status(500).json({ message: "verify password failed", error: error.message });
+        }
+    }
+
+    if (!newPassword || typeof newPassword !== "string" || !newPassword.trim()) {
+        return res.status(400).json({ message: "newPassword is required" });
+    }
+
+    if (typeof confirmPassword !== "string" || newPassword !== confirmPassword) {
+        return res.status(400).json({ message: "passwords do not match" });
+    }
+
+    try {
+        const userId = req.user?.sub;
+        if (!userId) {
+            return res.status(401).json({ message: "unauthorized" });
+        }
+
+        const userResult = await pool.query(
+            "SELECT id, password_hash FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (userResult.rowCount === 0) {
+            return res.status(404).json({ message: "user not found" });
+        }
+
+        const validPassword = verifyPassword(currentPassword, userResult.rows[0].password_hash);
+        if (!validPassword) {
+            return res.status(401).json({ message: "invalid current password" });
+        }
+
+        const updated = await resetUserPassword(userId, newPassword.trim());
+        if (!updated) {
+            return res.status(404).json({ message: "user not found" });
+        }
+
+        return res.status(200).json({ message: "password updated" });
+    } catch (error) {
+        console.error("change password failed:", error.stack || error.message);
+        return res.status(500).json({ message: "change password failed", error: error.message });
+    }
+}

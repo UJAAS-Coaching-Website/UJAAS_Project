@@ -177,3 +177,17 @@ export async function adminResetUserPassword(userId: string, newPassword: string
     body: JSON.stringify({ userId, newPassword }),
   });
 }
+
+export async function changeMyPassword(currentPassword: string, newPassword: string, confirmPassword: string): Promise<void> {
+  await request("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+  });
+}
+
+export async function verifyMyPassword(currentPassword: string): Promise<void> {
+  await request("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword }),
+  });
+}
