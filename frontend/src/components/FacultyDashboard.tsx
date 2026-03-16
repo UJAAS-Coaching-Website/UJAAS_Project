@@ -46,6 +46,7 @@ import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
+import { generateInitialPassword } from '../utils/passwords';
 
 interface FacultyDashboardProps {
   user: User;
@@ -448,6 +449,9 @@ export function FacultyDashboard({
       setStudents(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name, rollNumber: data.rollNumber, batch: data.batch } : s));
     } else {
       setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch, phoneNumber: data.phoneNumber, dateOfBirth: data.dateOfBirth, address: data.address, parentContact: data.parentContact, totalAttendance: 0, totalClasses: 0 }, ...prev]);
+      const initialPassword = generateInitialPassword(data.name);
+      const loginId = data.rollNumber || 'Not provided';
+      window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
     }
   };
 

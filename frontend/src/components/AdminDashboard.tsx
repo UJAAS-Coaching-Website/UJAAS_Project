@@ -50,6 +50,7 @@ import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { uploadLandingImage, deleteLandingImage } from '../api/landing';
 import { adminResetUserPassword } from '../api/auth';
+import { generateInitialPassword } from '../utils/passwords';
 
 interface AdminDashboardProps {
   user: User;
@@ -618,7 +619,7 @@ export function AdminDashboard({
       } else {
         // Find the batch ID for assignment
         const batchInfo = batches.find(b => b.label === data.batch);
-        await onCreateStudent({
+        const createdStudent = await onCreateStudent({
           name: data.name,
           rollNumber: data.rollNumber,
           phone: data.phoneNumber,
@@ -628,7 +629,8 @@ export function AdminDashboard({
           batchId: batchInfo?.id,
         });
         const initialPassword = generateInitialPassword(data.name);
-        window.alert(`New Student added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+        const loginId = (createdStudent as any)?.login_id || data.rollNumber || 'Not provided';
+        window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save student'}`);
@@ -656,8 +658,9 @@ export function AdminDashboard({
           phone: data.phone,
           joinDate: data.joinDate,
         });
-        const initialPassword = data.name.split(' ')[0].toLowerCase() + '@123';
-        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nInitial Password: ${initialPassword}`);
+        const initialPassword = generateInitialPassword(data.name);
+        const loginId = data.email || 'Not provided';
+        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save faculty'}`);
@@ -3476,11 +3479,6 @@ function BatchFormModal({
     </div>
   );
 }
-
-const generateInitialPassword = (name: string) => {
-  const firstName = name.trim().split(/\s+/)[0].toLowerCase();
-  return `${firstName}@123`;
-};
 
 function StudentRatingsModal({
   open,
