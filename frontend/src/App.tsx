@@ -36,6 +36,7 @@ import {
   deleteStudent as apiDeleteStudent,
   assignStudentToBatch as apiAssignStudentToBatch,
   removeStudentFromBatch as apiRemoveStudentFromBatch,
+  updateStudentRating as apiUpdateStudentRating,
   type ApiStudent,
 } from './api/students';
 import {
@@ -1156,6 +1157,30 @@ function App() {
     window.history.pushState({ tab: targetTab, batch: null, section }, '', path);
   };
 
+  const handleUpdateStudentRating = async (studentId: string, data: any) => {
+    try {
+      const updatedRating = await apiUpdateStudentRating(studentId, data);
+      
+      // Update local adminStudents state to reflect changes
+      setAdminStudents(prev => prev.map(s => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            rating_attendance: updatedRating.attendance,
+            rating_total_classes: updatedRating.total_classes,
+            rating_assignments: updatedRating.assignments,
+            rating_participation: updatedRating.participation,
+            rating_behavior: updatedRating.behavior,
+          };
+        }
+        return s;
+      }));
+    } catch (error: any) {
+      console.error('Failed to update student rating:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const initializeSession = async () => {
       try {
@@ -1196,16 +1221,19 @@ function App() {
             const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
             setAdminBatches(apiBatches.map(apiBatchToInfo));
 
+            const fetchTasks: Promise<any>[] = [];
             if (loggedInUser.role === 'admin') {
-              const [apiFaculties, apiStudents] = await Promise.all([
-                fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-                apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-              ]);
-              setAdminFaculties(apiFaculties);
-              setAdminStudents(apiStudents);
+              fetchTasks.push(fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }));
+            }
+            fetchTasks.push(apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }));
+
+            const results = await Promise.all(fetchTasks);
+            if (loggedInUser.role === 'admin') {
+              setAdminFaculties(results[0]);
+              setAdminStudents(results[1]);
             } else {
               setAdminFaculties([]);
-              setAdminStudents([]);
+              setAdminStudents(results[0]);
             }
           }
         } else {
@@ -1372,10 +1400,10 @@ function App() {
             setAdminStudents(apiStudents);
           } else {
             setAdminFaculties([]);
-            setAdminStudents([]);
+            const apiStudents = await apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; });
+            setAdminStudents(apiStudents);
           }
         }
-
         if (userData.role === 'admin') {
           try {
             const { queries: dbQueries } = await fetchQueries();
@@ -1557,6 +1585,8 @@ function App() {
               onPreviewTest={handlePreviewTest}
               onUpdatePublishedTest={updatePublishedTest}
               selectedPreviewTest={selectedPreviewTest}
+              adminStudents={adminStudents}
+              onUpdateStudentRating={handleUpdateStudentRating}
             />
           </motion.div>
         ) : (

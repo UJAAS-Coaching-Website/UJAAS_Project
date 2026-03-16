@@ -21,6 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
             ...(options.headers || {}),
         },
     });
+    if (response.status === 204) return {} as T;
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
         throw new Error((data as any)?.message || "Request failed");
@@ -46,6 +47,7 @@ export interface ApiStudent {
     parent_contact: string | null;
     join_date: string | null;
     rating_attendance: number;
+    rating_total_classes: number;
     rating_assignments: number;
     rating_participation: number;
     rating_behavior: number;
@@ -69,6 +71,15 @@ export interface UpdateStudentPayload {
     address?: string;
     dateOfBirth?: string;
     parentContact?: string;
+}
+
+export interface UpdateStudentRatingPayload {
+    subject: string;
+    attendance?: number;
+    total_classes?: number;
+    assignments?: number;
+    participation?: number;
+    behavior?: number;
 }
 
 // ── API functions ──────────────────────────────────────
@@ -120,5 +131,15 @@ export async function removeStudentFromBatch(
 ): Promise<void> {
     await request(`/api/students/${studentId}/batches/${batchId}`, {
         method: "DELETE",
+    });
+}
+
+export async function updateStudentRating(
+    studentId: string,
+    data: UpdateStudentRatingPayload
+): Promise<any> {
+    return request<any>(`/api/students/${studentId}/rating`, {
+        method: "PUT",
+        body: JSON.stringify(data),
     });
 }

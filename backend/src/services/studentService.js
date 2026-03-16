@@ -27,6 +27,7 @@ export async function getAllStudents() {
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.total_classes, 0) AS rating_total_classes,
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
@@ -52,6 +53,7 @@ export async function getAllStudents() {
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.total_classes, 0) AS rating_total_classes,
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
@@ -68,7 +70,7 @@ export async function getAllStudents() {
         GROUP BY
             u.id, u.name, u.login_id,
             s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
-            r.attendance, r.assignments, r.participation, r.behavior
+            r.attendance, r.total_classes, r.assignments, r.participation, r.behavior
         ORDER BY u.name
     `);
     return result.rows;
@@ -91,6 +93,7 @@ export async function getStudentById(id) {
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.total_classes, 0) AS rating_total_classes,
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
@@ -115,6 +118,7 @@ export async function getStudentById(id) {
             s.parent_contact,
             TO_CHAR(s.join_date, 'YYYY-MM-DD') AS join_date,
             COALESCE(r.attendance, 0) AS rating_attendance,
+            COALESCE(r.total_classes, 0) AS rating_total_classes,
             COALESCE(r.assignments, 0) AS rating_assignments,
             COALESCE(r.participation, 0) AS rating_participation,
             COALESCE(r.behavior, 0) AS rating_behavior,
@@ -131,7 +135,7 @@ export async function getStudentById(id) {
         GROUP BY
             u.id, u.name, u.login_id,
             s.roll_number, s.phone, s.address, s.dob, s.parent_contact, s.join_date,
-            r.attendance, r.assignments, r.participation, r.behavior
+            r.attendance, r.total_classes, r.assignments, r.participation, r.behavior
     `, [id]);
     return result.rows[0] || null;
 }
@@ -283,4 +287,45 @@ export async function removeStudentFromBatch(studentId, batchId) {
         [studentId, batchId]
     );
     return result.rowCount > 0;
+}
+
+/**
+ * Update student rating for a specific subject.
+ */
+export async function updateStudentRating(studentId, subject, ratings) {
+    const { attendance, total_classes, assignments, participation, behavior } = ratings;
+    
+    // Ensure the subject unique constraint exists for UPSERT
+    // The current table doesn't have a unique constraint on (student_id, subject).
+    // Let's check the schema again or just use student_id if subject is null/single.
+    // Based on the schema provided earlier:
+    // CREATE TABLE IF NOT EXISTS student_ratings (
+    //   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    //   student_id uuid REFERENCES students(user_id) ON DELETE CASCADE,
+    //   subject text,
+    //   attendance numeric NOT NULL DEFAULT 0,
+    //   assignments numeric NOT NULL DEFAULT 0,
+    //   participation numeric NOT NULL DEFAULT 0,
+    //   behavior numeric NOT NULL DEFAULT 0,
+    //   updated_at timestamptz NOT NULL DEFAULT now()
+    // );
+    
+    // If multiple subjects per student are needed, we should have a unique constraint.
+    // For now, let's assume one rating entry per student per subject if subject is provided.
+    
+    const result = await pool.query(
+        `INSERT INTO student_ratings (student_id, subject, attendance, total_classes, assignments, participation, behavior, updated_at)
+         VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), NOW())
+         ON CONFLICT (student_id, subject) DO UPDATE SET
+            attendance = COALESCE($3, student_ratings.attendance),
+            total_classes = COALESCE($4, student_ratings.total_classes),
+            assignments = COALESCE($5, student_ratings.assignments),
+            participation = COALESCE($6, student_ratings.participation),
+            behavior = COALESCE($7, student_ratings.behavior),
+            updated_at = NOW()
+         RETURNING *`,
+        [studentId, subject || 'General', attendance, total_classes, assignments, participation, behavior]
+    );
+    
+    return result.rows[0];
 }

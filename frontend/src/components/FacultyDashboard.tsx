@@ -25,7 +25,9 @@ import {
   Image as ImageIcon,
   Upload,
   X,
-  Bell
+  Bell,
+  Save,
+  Check
 } from 'lucide-react';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -64,6 +66,8 @@ interface FacultyDashboardProps {
   onPreviewTest: (testId: string) => void;
   onUpdatePublishedTest: (testId: string, updates: Partial<import('../App').PublishedTest>) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
+  adminStudents?: import('../api/students').ApiStudent[];
+  onUpdateStudentRating: (studentId: string, data: any) => Promise<void>;
 }
 
 export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -84,8 +88,11 @@ interface Student {
   dateOfBirth: string;
   address: string;
   parentContact: string;
+  totalAttendance: number;
+  totalClasses: number;
   subjectRatings?: Record<string, {
     attendance: number;
+    total_classes?: number;
     tests: number;
     dppPerformance: number;
     behavior: number;
@@ -157,143 +164,7 @@ function renderPerformanceStars(rating: number) {
   );
 }
 
-const MOCK_STUDENTS: Student[] = [
-  // 11th JEE
-  {
-    id: '1', name: 'Rahul Kumar', rollNumber: 'UJAAS-11J-001',
-    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-01', performance: 87, rating: 4.2, batch: '11th JEE',
-    phoneNumber: '+91 98765 43210', dateOfBirth: '2008-05-15', address: 'Mumbai', parentContact: '+91 98765 00000',
-    subjectRatings: { 'Physics': { attendance: 4.5, tests: 4.0, dppPerformance: 4.2, behavior: 4.8 } }
-  },
-  {
-    id: '10', name: 'Aditya Singh', rollNumber: 'UJAAS-11J-002',
-    enrolledCourses: ['JEE Mains'], joinDate: '2025-09-02', performance: 75, rating: 3.8, batch: '11th JEE',
-    phoneNumber: '+91 98765 43220', dateOfBirth: '2008-06-10', address: 'Pune', parentContact: '+91 98765 00010',
-    subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.5, dppPerformance: 3.8, behavior: 4.0 } }
-  },
-  {
-    id: '11', name: 'Ishaan Verma', rollNumber: 'UJAAS-11J-003',
-    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-03', performance: 92, rating: 4.7, batch: '11th JEE',
-    phoneNumber: '+91 98765 43221', dateOfBirth: '2008-07-20', address: 'Nagpur', parentContact: '+91 98765 00011',
-    subjectRatings: { 'Chemistry': { attendance: 4.8, tests: 4.6, dppPerformance: 4.7, behavior: 4.9 } }
-  },
-
-  // 11th NEET
-  {
-    id: '2', name: 'Priya Sharma', rollNumber: 'UJAAS-11N-001',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-05', performance: 92, rating: 4.5, batch: '11th NEET',
-    phoneNumber: '+91 98765 43211', dateOfBirth: '2008-08-20', address: 'Delhi', parentContact: '+91 98765 11111',
-    subjectRatings: { 'Biology': { attendance: 5.0, tests: 4.8, dppPerformance: 4.7, behavior: 4.9 } }
-  },
-  {
-    id: '12', name: 'Anjali Gupta', rollNumber: 'UJAAS-11N-002',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-06', performance: 80, rating: 4.0, batch: '11th NEET',
-    phoneNumber: '+91 98765 43222', dateOfBirth: '2008-09-15', address: 'Gurgaon', parentContact: '+91 98765 11112',
-    subjectRatings: { 'Physics': { attendance: 4.0, tests: 3.8, dppPerformance: 4.0, behavior: 4.2 } }
-  },
-  {
-    id: '13', name: 'Riya Patel', rollNumber: 'UJAAS-11N-003',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-07', performance: 85, rating: 4.2, batch: '11th NEET',
-    phoneNumber: '+91 98765 43223', dateOfBirth: '2008-10-05', address: 'Noida', parentContact: '+91 98765 11113',
-    subjectRatings: { 'Chemistry': { attendance: 4.2, tests: 4.0, dppPerformance: 4.3, behavior: 4.5 } }
-  },
-
-  // 12th JEE
-  {
-    id: '3', name: 'Amit Patel', rollNumber: 'UJAAS-12J-001',
-    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-10', performance: 78, rating: 3.8, batch: '12th JEE',
-    phoneNumber: '+91 98765 43212', dateOfBirth: '2007-12-10', address: 'Surat', parentContact: '+91 98765 22222',
-    subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.2, dppPerformance: 3.0, behavior: 4.0 } }
-  },
-  {
-    id: '14', name: 'Karan Mehra', rollNumber: 'UJAAS-12J-002',
-    enrolledCourses: ['JEE Mains'], joinDate: '2025-09-11', performance: 82, rating: 4.1, batch: '12th JEE',
-    phoneNumber: '+91 98765 43224', dateOfBirth: '2007-11-12', address: 'Ahmedabad', parentContact: '+91 98765 22223',
-    subjectRatings: { 'Mathematics': { attendance: 4.2, tests: 4.0, dppPerformance: 4.1, behavior: 4.3 } }
-  },
-  {
-    id: '15', name: 'Siddharth Jain', rollNumber: 'UJAAS-12J-003',
-    enrolledCourses: ['JEE Advanced'], joinDate: '2025-09-12', performance: 88, rating: 4.4, batch: '12th JEE',
-    phoneNumber: '+91 98765 43225', dateOfBirth: '2007-10-25', address: 'Rajkot', parentContact: '+91 98765 22224',
-    subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.3, dppPerformance: 4.4, behavior: 4.6 } }
-  },
-
-  // 12th NEET
-  {
-    id: '4', name: 'Sneha Reddy', rollNumber: 'UJAAS-12N-001',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-12', performance: 85, rating: 4.0, batch: '12th NEET',
-    phoneNumber: '+91 98765 43213', dateOfBirth: '2007-06-25', address: 'Hyderabad', parentContact: '+91 98765 33333',
-    subjectRatings: { 'Biology': { attendance: 4.2, tests: 4.0, dppPerformance: 3.8, behavior: 4.5 } }
-  },
-  {
-    id: '16', name: 'Megha Rao', rollNumber: 'UJAAS-12N-002',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-13', performance: 90, rating: 4.6, batch: '12th NEET',
-    phoneNumber: '+91 98765 43226', dateOfBirth: '2007-05-10', address: 'Bangalore', parentContact: '+91 98765 33334',
-    subjectRatings: { 'Chemistry': { attendance: 4.7, tests: 4.5, dppPerformance: 4.6, behavior: 4.8 } }
-  },
-  {
-    id: '17', name: 'Arjun Das', rollNumber: 'UJAAS-12N-003',
-    enrolledCourses: ['NEET'], joinDate: '2025-09-14', performance: 72, rating: 3.5, batch: '12th NEET',
-    phoneNumber: '+91 98765 43227', dateOfBirth: '2007-04-15', address: 'Chennai', parentContact: '+91 98765 33335',
-    subjectRatings: { 'Physics': { attendance: 3.5, tests: 3.0, dppPerformance: 3.2, behavior: 4.0 } }
-  },
-
-  // Dropper JEE
-  {
-    id: '5', name: 'Vikram Singh', rollNumber: 'UJAAS-DRJ-001',
-    enrolledCourses: ['JEE Mains'], joinDate: '2025-10-01', performance: 80, rating: 3.9, batch: 'Dropper JEE',
-    phoneNumber: '+91 98765 43214', dateOfBirth: '2006-11-05', address: 'Jaipur', parentContact: '+91 98765 44444',
-    subjectRatings: { 'Mathematics': { attendance: 4.0, tests: 3.8, dppPerformance: 3.5, behavior: 4.2 } }
-  },
-  {
-    id: '18', name: 'Rohit Balan', rollNumber: 'UJAAS-DRJ-002',
-    enrolledCourses: ['JEE Advanced'], joinDate: '2025-10-02', performance: 85, rating: 4.2, batch: 'Dropper JEE',
-    phoneNumber: '+91 98765 43228', dateOfBirth: '2006-10-10', address: 'Jodhpur', parentContact: '+91 98765 44445',
-    subjectRatings: { 'Physics': { attendance: 4.3, tests: 4.1, dppPerformance: 4.0, behavior: 4.5 } }
-  },
-  {
-    id: '19', name: 'Sanjay Dutt', rollNumber: 'UJAAS-DRJ-003',
-    enrolledCourses: ['JEE Mains'], joinDate: '2025-10-03', performance: 70, rating: 3.4, batch: 'Dropper JEE',
-    phoneNumber: '+91 98765 43229', dateOfBirth: '2006-09-15', address: 'Udaipur', parentContact: '+91 98765 44446',
-    subjectRatings: { 'Chemistry': { attendance: 3.5, tests: 3.2, dppPerformance: 3.4, behavior: 3.8 } }
-  },
-
-  // Dropper NEET
-  {
-    id: '6', name: 'Ananya Gupta', rollNumber: 'UJAAS-DRN-001',
-    enrolledCourses: ['NEET'], joinDate: '2025-10-05', performance: 88, rating: 4.3, batch: 'Dropper NEET',
-    phoneNumber: '+91 98765 43215', dateOfBirth: '2006-03-12', address: 'Lucknow', parentContact: '+91 98765 55555',
-    subjectRatings: { 'Chemistry': { attendance: 4.5, tests: 4.2, dppPerformance: 4.0, behavior: 4.8 } }
-  },
-  {
-    id: '20', name: 'Zoya Khan', rollNumber: 'UJAAS-DRN-002',
-    enrolledCourses: ['NEET'], joinDate: '2025-10-06', performance: 94, rating: 4.8, batch: 'Dropper NEET',
-    phoneNumber: '+91 98765 43230', dateOfBirth: '2006-02-10', address: 'Kanpur', parentContact: '+91 98765 55556',
-    subjectRatings: { 'Biology': { attendance: 4.9, tests: 4.8, dppPerformance: 4.7, behavior: 5.0 } }
-  },
-  {
-    id: '21', name: 'Vivek Oberoi', rollNumber: 'UJAAS-DRN-003',
-    enrolledCourses: ['NEET'], joinDate: '2025-10-07', performance: 76, rating: 3.7, batch: 'Dropper NEET',
-    phoneNumber: '+91 98765 43231', dateOfBirth: '2006-01-15', address: 'Varanasi', parentContact: '+91 98765 55557',
-    subjectRatings: { 'Physics': { attendance: 3.8, tests: 3.5, dppPerformance: 3.6, behavior: 4.0 } }
-  }
-];
-
-const MOCK_FACULTY: Faculty[] = [
-  { id: 'f1', name: 'Arvind Sir', email: 'arvind@example.com', subject: 'Physics', phone: '+91 98765 11111' },
-  { id: 'f2', name: 'Megha Maam', email: 'megha@example.com', subject: 'Chemistry', phone: '+91 98765 22222' },
-];
-
 const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
-const BATCH_ATTENDANCE_STORAGE_KEY = 'ujaas_batch_attendance';
-
-type MonthlyAttendance = {
-  month: string;
-  totalClasses: number;
-  studentAttendance: Record<string, number>;
-};
-
-type BatchAttendance = Record<string, MonthlyAttendance[]>;
 
 type StoredStudentRemarks = Record<
   string,
@@ -366,28 +237,38 @@ export function FacultyDashboard({
   publishedTests,
   onPreviewTest,
   onUpdatePublishedTest,
-  selectedPreviewTest
+  selectedPreviewTest,
+  adminStudents,
+  onUpdateStudentRating
 }: FacultyDashboardProps) {
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
-  const [faculty, setFaculty] = useState<Faculty[]>(MOCK_FACULTY);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [faculty, setFaculty] = useState<Faculty[]>([]);
 
-  const [batchAttendance, setBatchAttendance] = useState<BatchAttendance>(() => {
-    try {
-      const stored = localStorage.getItem(BATCH_ATTENDANCE_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
+  useEffect(() => {
+    if (adminStudents && adminStudents.length > 0) {
+      const mappedStudents: Student[] = adminStudents.map(api => ({
+        id: api.id,
+        name: api.name,
+        rollNumber: api.roll_number,
+        enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
+        joinDate: api.join_date || new Date().toISOString().split('T')[0],
+        performance: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4 * 20,
+        rating: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4,
+        batch: api.assigned_batch?.name || "",
+        phoneNumber: api.phone || '',
+        dateOfBirth: api.date_of_birth || '',
+        address: api.address || '',
+        parentContact: api.parent_contact || '',
+        totalAttendance: api.rating_attendance,
+        totalClasses: api.rating_total_classes,
+        subjectRatings: {}, // Default empty, can be extended if API provides it
+        subjectRemarks: {},
+      }));
+      setStudents(withStoredRemarks(mappedStudents));
+    } else {
+      setStudents([]);
     }
-  });
-
-  useEffect(() => {
-    localStorage.setItem(BATCH_ATTENDANCE_STORAGE_KEY, JSON.stringify(batchAttendance));
-  }, [batchAttendance]);
-
-  useEffect(() => {
-    // Ensure mock students are always loaded and correctly assigned to current batches
-    setStudents(withStoredRemarks(MOCK_STUDENTS));
-  }, [batches]);
+  }, [adminStudents, batches]);
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
     open: false,
@@ -411,8 +292,6 @@ export function FacultyDashboard({
     open: false,
     batch: null
   });
-  const [attendanceModal, setAttendanceModal] = useState<{ open: boolean; batch: Batch | null }>({ open: false, batch: null });
-  const [attendanceEditMode, setAttendanceEditMode] = useState(false);
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
 
   const generateMockPerformances = (testId: string): StudentPerformance[] => {
@@ -490,8 +369,7 @@ export function FacultyDashboard({
     showFullTimetable ||
     batchStudentPicker.open ||
     isAddSubjectModalOpen ||
-    isAddChapterModalOpen ||
-    attendanceModal.open
+    isAddChapterModalOpen
   );
 
   const handleAddSubject = (e: FormEvent) => {
@@ -532,7 +410,7 @@ export function FacultyDashboard({
     if (data.id) {
       setStudents(prev => prev.map(s => s.id === data.id ? { ...s, name: data.name, rollNumber: data.rollNumber, batch: data.batch } : s));
     } else {
-      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch, phoneNumber: data.phoneNumber, dateOfBirth: data.dateOfBirth, address: data.address, parentContact: data.parentContact }, ...prev]);
+      setStudents(prev => [{ id: `student-${Date.now()}`, name: data.name, rollNumber: data.rollNumber, enrolledCourses: [], joinDate: new Date().toISOString().slice(0, 10), performance: 0, rating: 0, batch: data.batch, phoneNumber: data.phoneNumber, dateOfBirth: data.dateOfBirth, address: data.address, parentContact: data.parentContact, totalAttendance: 0, totalClasses: 0 }, ...prev]);
     }
   };
 
@@ -582,7 +460,7 @@ export function FacultyDashboard({
   const handleSaveFacultySubjectRating = (
     studentId: string,
     subject: string,
-    ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
+    ratings: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }
   ) => {
     setStudents((prev) =>
       prev.map((student) => {
@@ -591,7 +469,8 @@ export function FacultyDashboard({
         const updatedSubjectRatings = {
           ...(student.subjectRatings ?? {}),
           [subject]: {
-            attendance: Math.max(0, Math.min(5, ratings.attendance)),
+            attendance: Math.max(0, ratings.attendance),
+            total_classes: ratings.total_classes,
             tests: Math.max(0, Math.min(5, ratings.tests)),
             dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
             behavior: Math.max(0, Math.min(5, ratings.behavior)),
@@ -601,7 +480,7 @@ export function FacultyDashboard({
         const values = Object.values(updatedSubjectRatings);
         const avg =
           values.length > 0
-            ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
+            ? values.reduce((acc, curr) => acc + (curr.attendance / (curr.total_classes || 1) * 5 + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) /
             values.length
             : student.rating;
 
@@ -621,7 +500,8 @@ export function FacultyDashboard({
           subjectRatings: {
             ...(prev.student.subjectRatings ?? {}),
             [subject]: {
-              attendance: Math.max(0, Math.min(5, ratings.attendance)),
+              attendance: Math.max(0, ratings.attendance),
+              total_classes: ratings.total_classes,
               tests: Math.max(0, Math.min(5, ratings.tests)),
               dppPerformance: Math.max(0, Math.min(5, ratings.dppPerformance)),
               behavior: Math.max(0, Math.min(5, ratings.behavior)),
@@ -662,53 +542,6 @@ export function FacultyDashboard({
     writeStoredRemarks(studentId, { subjectRemarks: { [subject]: cleanedRemark } });
   };
   const closeBatchModal = () => setBatchModal((prev) => ({ ...prev, open: false }));
-
-  const handleUpdateBatchAttendance = (batch: string, updatedMonthlyAttendance: MonthlyAttendance[]) => {
-    setBatchAttendance(prev => ({
-      ...prev,
-      [batch]: updatedMonthlyAttendance
-    }));
-
-    // Update students' attendance ratings based on last month
-    if (updatedMonthlyAttendance.length > 0 && facultySubject) {
-      const lastMonth = [...updatedMonthlyAttendance].sort((a, b) => b.month.localeCompare(a.month))[0];
-      const hasAttendanceData = Object.keys(lastMonth.studentAttendance).length > 0;
-
-      if (lastMonth.totalClasses > 0 && hasAttendanceData) {
-        setStudents(prev => prev.map(student => {
-          if (student.batch !== batch) return student;
-          const attended = lastMonth.studentAttendance[student.id] || 0;
-          const rating = (attended / lastMonth.totalClasses) * 5;
-
-          const updatedSubjectRatings = {
-            ...(student.subjectRatings ?? {}),
-            [facultySubject]: {
-              ...(student.subjectRatings?.[facultySubject] ?? { tests: 0, dppPerformance: 0, behavior: 0 }),
-              attendance: Number(rating.toFixed(1))
-            }
-          };
-
-          const values = Object.values(updatedSubjectRatings) as { attendance: number; tests: number; dppPerformance: number; behavior: number; }[];
-          const avg = values.length > 0
-            ? values.reduce((acc, curr) => acc + (curr.attendance + curr.tests + curr.dppPerformance + curr.behavior) / 4, 0) / values.length
-            : student.rating;
-
-          return {
-            ...student,
-            subjectRatings: updatedSubjectRatings,
-            rating: Number(avg.toFixed(1))
-          };
-        }));
-      }
-    }
-  };
-
-  const handleSaveAllStudentsAttendance = (batch: string, month: string, studentAttendance: Record<string, number>) => {
-    const currentBatchAtt = batchAttendance[batch] || [];
-    const updated = currentBatchAtt.map(m => m.month === month ? { ...m, studentAttendance } : m);
-    handleUpdateBatchAttendance(batch, updated);
-    setAttendanceEditMode(false);
-  };
 
   return (
     <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col pt-16">
@@ -883,7 +716,6 @@ export function FacultyDashboard({
                   onClearBatch={onClearBatch}
                   onViewTimetable={() => setShowFullTimetable(true)}
                   facultySubject={facultySubject}
-                  onOpenAttendance={() => setAttendanceModal({ open: true, batch: selectedBatch })}
                   batches={batches}
                 />
               )}
@@ -893,15 +725,8 @@ export function FacultyDashboard({
                   selectedBatch={selectedBatch}
                   onChangeBatch={onClearBatch}
                   onViewStudent={openStudentRatings}
-                  batchAttendance={batchAttendance[selectedBatch] || []}
-                  editMode={attendanceEditMode}
-                  onToggleEditMode={() => setAttendanceEditMode(!attendanceEditMode)}
-                  onSaveAttendance={(studentAttendance) => {
-                    const lastMonth = [...(batchAttendance[selectedBatch] || [])].sort((a, b) => b.month.localeCompare(a.month))[0];
-                    if (lastMonth) {
-                      handleSaveAllStudentsAttendance(selectedBatch, lastMonth.month, studentAttendance);
-                    }
-                  }}
+                  facultySubject={facultySubject}
+                  onUpdateRating={onUpdateStudentRating}
                   isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
                 />
               )}
@@ -951,18 +776,6 @@ export function FacultyDashboard({
               facultySubject={facultySubject}
               onSaveSubjectRating={handleSaveFacultySubjectRating}
               onSaveSubjectRemark={handleSaveFacultySubjectRemark}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {attendanceModal.open && attendanceModal.batch && (
-            <AttendanceCalendarModal
-              open={attendanceModal.open}
-              batch={attendanceModal.batch}
-              onClose={() => setAttendanceModal({ open: false, batch: null })}
-              monthlyAttendance={batchAttendance[attendanceModal.batch] || []}
-              onUpdateAttendance={(updated) => handleUpdateBatchAttendance(attendanceModal.batch!, updated)}
             />
           )}
         </AnimatePresence>
@@ -1081,12 +894,11 @@ function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, 
 
 function OverviewTab({
   selectedBatch,
-  students,
+  students: _students,
   onNavigate,
   onClearBatch,
   onViewTimetable,
   facultySubject,
-  onOpenAttendance,
   batches
 }: {
   selectedBatch: Batch | null;
@@ -1095,11 +907,9 @@ function OverviewTab({
   onClearBatch: () => void;
   onViewTimetable: () => void;
   facultySubject: string | null;
-  onOpenAttendance: () => void;
   batches: BatchInfo[];
 }) {
   if (!selectedBatch) return null;
-  const batchStudents = students.filter(s => s.batch === selectedBatch);
   const currentBatch = batches.find((batch) => batch.label === selectedBatch);
   const isBatchActive = currentBatch?.is_active !== false;
   return (
@@ -1119,15 +929,6 @@ function OverviewTab({
           <p className="text-teal-50/90 font-medium">Batch Academic Overview & Content</p>
           </div>
         </div>
-        {isBatchActive ? (
-          <button
-            onClick={onOpenAttendance}
-            className="px-6 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl font-bold transition flex items-center gap-2 border border-white/30"
-          >
-            <Calendar className="w-5 h-5" />
-            Classes Taken
-          </button>
-        ) : null}
       </div>
 
       {/* Batch Content Section */}
@@ -1153,61 +954,126 @@ function OverviewTab({
 function StudentsTab({
   students,
   selectedBatch,
-  onChangeBatch: _onChangeBatch,
   onViewStudent,
-  batchAttendance,
-  editMode,
-  onToggleEditMode,
-  onSaveAttendance
+  facultySubject,
+  onUpdateRating,
+  isBatchActive
 }: {
   students: Student[];
   selectedBatch: Batch;
   onChangeBatch: () => void;
   onViewStudent: (s: Student) => void;
-  batchAttendance: MonthlyAttendance[];
-  editMode: boolean;
-  onToggleEditMode: () => void;
-  onSaveAttendance: (studentAttendance: Record<string, number>) => void;
+  facultySubject: string | null;
+  onUpdateRating: (studentId: string, data: any) => Promise<void>;
   isBatchActive?: boolean;
 }) {
   const batchStudents = students.filter(s => s.batch === selectedBatch);
-  const lastMonth = [...batchAttendance].sort((a, b) => b.month.localeCompare(a.month))[0];
+  
+  // Local state for batch-level total classes
+  const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
+  const [batchTotalClasses, setBatchTotalClasses] = useState(initialBatchTotalClasses);
   const [localAttendance, setLocalAttendance] = useState<Record<string, number>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
+  const [isEditingAttendance, setIsEditingAttendance] = useState(false);
 
   useEffect(() => {
-    if (lastMonth) {
-      setLocalAttendance(lastMonth.studentAttendance || {});
+    const att: Record<string, number> = {};
+    batchStudents.forEach(s => {
+      att[s.id] = s.totalAttendance;
+    });
+    setLocalAttendance(att);
+    setBatchTotalClasses(batchStudents.length > 0 ? batchStudents[0].totalClasses : 0);
+  }, [students, selectedBatch]);
+
+  const handleSaveTotalClasses = () => {
+    setIsEditingTotal(false);
+    setIsEditingAttendance(true);
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!facultySubject) {
+      alert("Faculty subject not assigned.");
+      return;
     }
-  }, [lastMonth, editMode]);
+    setIsSaving(true);
+    try {
+      const promises = batchStudents.map(s => 
+        onUpdateRating(s.id, {
+          subject: facultySubject,
+          total_classes: batchTotalClasses,
+          attendance: localAttendance[s.id] || 0
+        })
+      );
+      await Promise.all(promises);
+      alert("Attendance updated successfully!");
+      setIsEditingAttendance(false);
+    } catch (error: any) {
+      alert("Failed to update attendance: " + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
-        {lastMonth && isBatchActive ? (
-          <div className="flex gap-3">
-            {!editMode ? (
+        
+        {isBatchActive && facultySubject && (
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-bold text-teal-700 whitespace-nowrap">Total Classes Taken:</label>
+              {isEditingTotal ? (
+                <input
+                  type="number"
+                  min="0"
+                  value={batchTotalClasses}
+                  onChange={(e) => setBatchTotalClasses(parseInt(e.target.value) || 0)}
+                  className="w-20 px-3 py-2 rounded-xl border border-teal-200 focus:ring-2 focus:ring-teal-500 outline-none font-bold text-center"
+                />
+              ) : (
+                <span className="text-xl font-black text-teal-900 px-4">{batchTotalClasses}</span>
+              )}
+            </div>
+            
+            {!isEditingTotal && !isEditingAttendance && (
               <button
-                onClick={onToggleEditMode}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition flex items-center gap-2"
+                onClick={() => setIsEditingTotal(true)}
+                className="px-6 py-2 bg-white text-teal-600 border border-teal-200 rounded-xl font-bold shadow-sm hover:bg-teal-50 transition flex items-center gap-2"
               >
-                <Edit className="w-5 h-5" />
-                Fill Attendance ({new Date(lastMonth.month).toLocaleString('default', { month: 'long', year: 'numeric' })})
+                <Edit className="w-4 h-4" />
+                Update Total Classes
               </button>
-            ) : (
+            )}
+
+            {isEditingTotal && (
               <button
-                onClick={() => onSaveAttendance(localAttendance)}
-                className="px-8 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                onClick={handleSaveTotalClasses}
+                className="px-6 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition flex items-center gap-2"
               >
-                Save Attendance
+                <Check className="w-4 h-4" />
+                Proceed to Attendance
+              </button>
+            )}
+
+            {isEditingAttendance && (
+              <button
+                onClick={handleSaveAttendance}
+                disabled={isSaving}
+                className="px-6 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? 'Saving...' : 'Save All Attendance'}
               </button>
             )}
           </div>
-        ) : null}
+        )}
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -1220,40 +1086,35 @@ function StudentsTab({
           </thead>
           <tbody className="divide-y divide-gray-50">
             {batchStudents.map((s) => (
-              <tr key={s.id} onClick={() => !editMode && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!editMode ? 'cursor-pointer' : ''} group`}>
+              <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
                   <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
-                <td className="py-4 px-4">
-                  {lastMonth ? (
-                    <div className="flex items-center gap-2">
-                      {editMode ? (
-                        <>
-                          <input
-                            type="number"
-                            min="0"
-                            max={lastMonth.totalClasses}
-                            value={localAttendance[s.id] || 0}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value) || 0;
-                              setLocalAttendance({ ...localAttendance, [s.id]: Math.min(val, lastMonth.totalClasses) });
-                            }}
-                            className="w-16 px-2 py-1 rounded border border-teal-200 focus:ring-2 focus:ring-teal-100 outline-none"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <span className="text-gray-400 font-medium">/ {lastMonth.totalClasses}</span>
-                        </>
-                      ) : (
-                        <span className="font-bold text-gray-700">
-                          {lastMonth.studentAttendance[s.id] || 0} / {lastMonth.totalClasses}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm italic">Not set</span>
-                  )}
+                <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2">
+                    {isEditingAttendance && batchTotalClasses > 0 ? (
+                      <>
+                        <input
+                          type="number"
+                          min="0"
+                          max={batchTotalClasses}
+                          value={localAttendance[s.id] ?? 0}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setLocalAttendance({ ...localAttendance, [s.id]: Math.min(val, batchTotalClasses) });
+                          }}
+                          className="w-16 px-2 py-1 rounded border border-teal-200 focus:ring-2 focus:ring-teal-100 outline-none font-medium"
+                        />
+                        <span className="text-gray-400 font-medium">/ {batchTotalClasses}</span>
+                      </>
+                    ) : (
+                      <span className="font-bold text-gray-700">
+                        {s.totalAttendance} / {s.totalClasses}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-4 px-4">
                   <div className="flex items-center">
@@ -1265,16 +1126,6 @@ function StudentsTab({
           </tbody>
         </table>
       </div>
-      {editMode && isBatchActive ? (
-        <div className="mt-8 flex justify-end">
-          <button
-            onClick={() => onSaveAttendance(localAttendance)}
-            className="px-10 py-4 bg-gradient-to-r from-teal-600 to-emerald-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition transform hover:-translate-y-1"
-          >
-            Save All Attendance
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1488,7 +1339,7 @@ function StudentRatingsModal({
   onSaveSubjectRating?: (
     studentId: string,
     subject: string,
-    ratings: { attendance: number; tests: number; dppPerformance: number; behavior: number }
+    ratings: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }
   ) => void;
   onSaveSubjectRemark?: (studentId: string, subject: string, remark: string) => void;
 }) {
@@ -1527,8 +1378,9 @@ function StudentRatingsModal({
     { title: 'Full Length Mock 01', date: '2025-10-05', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
   ];
 
-  const calculateSubjectRating = (r: { attendance: number; tests: number; dppPerformance: number; behavior: number }) => {
-    return (r.attendance + r.tests + r.dppPerformance + r.behavior) / 4;
+  const calculateSubjectRating = (r: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }) => {
+    const attendanceRating = (r.attendance / (r.total_classes || 1)) * 5;
+    return (attendanceRating + r.tests + r.dppPerformance + r.behavior) / 4;
   };
 
   const calculateFinalRating = () => {
@@ -1695,7 +1547,7 @@ function StudentRatingsModal({
                     const isEditing = editingSubject === subject;
 
                     const currentDraft = draftRatings[subject] || {
-                      attendance: r.attendance.toString(),
+                      attendance: ((r.attendance / (r.total_classes || 1)) * 5).toFixed(1),
                       tests: r.tests.toString(),
                       dppPerformance: r.dppPerformance.toString(),
                       behavior: r.behavior.toString(),
@@ -1732,21 +1584,21 @@ function StudentRatingsModal({
                           <div className="p-6 border-b border-gray-100 bg-teal-50/50 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                               {[
-                                { label: 'Attendance', key: 'attendance', readOnly: true },
+                                { label: 'Attendance Rating', key: 'attendance', readOnly: true },
                                 { label: 'Test Performance', key: 'tests' },
                                 { label: 'DPP Performance', key: 'dppPerformance' },
                                 { label: 'Class Behaviour', key: 'behavior' },
                               ].map((item) => (
                                 <div key={item.key} className="space-y-1">
                                   <label className="text-xs font-bold text-gray-500 uppercase">
-                                    {item.label} {(item as any).readOnly && <span className="text-[10px] text-teal-600 normal-case ml-1">(Calculated)</span>}
+                                    {item.label} {item.key === 'attendance' && <span className="text-[10px] text-teal-600 normal-case ml-1">(Auto-calculated)</span>}
                                   </label>
                                   <input
                                     type="number"
                                     min={0}
                                     max={5}
                                     step={0.1}
-                                    readOnly={(item as any).readOnly}
+                                    readOnly={item.key === 'attendance'}
                                     value={currentDraft[item.key as keyof typeof currentDraft]}
                                     onChange={(e) => setDraftRatings((prev) => ({
                                       ...prev,
@@ -1755,8 +1607,7 @@ function StudentRatingsModal({
                                         [item.key]: e.target.value
                                       }
                                     }))}
-                                    className={`w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all ${(item as any).readOnly ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'
-                                      }`}
+                                    className={`w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200 transition-all ${item.key === 'attendance' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'}`}
                                   />
                                 </div>
                               ))}                            </div>
@@ -1764,7 +1615,6 @@ function StudentRatingsModal({
                               type="button"
                               onClick={() => {
                                 const ratings = {
-                                  attendance: Number(currentDraft.attendance),
                                   tests: Number(currentDraft.tests),
                                   dppPerformance: Number(currentDraft.dppPerformance),
                                   behavior: Number(currentDraft.behavior),
@@ -1789,17 +1639,16 @@ function StudentRatingsModal({
                         )}
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                           {[
-                            { label: 'Attendance', val: r.attendance },
-                            { label: 'Test Performance', val: r.tests },
-                            { label: 'DPP Performance', val: r.dppPerformance },
-                            { label: 'Class Behaviour', val: r.behavior }
+                            { label: 'Attendance', val: `${r.attendance}/${r.total_classes || 0}` },
+                            { label: 'Test Performance', val: `${r.tests}/5` },
+                            { label: 'DPP Performance', val: `${r.dppPerformance}/5` },
+                            { label: 'Class Behaviour', val: `${r.behavior}/5` }
                           ].map(param => (
                             <div key={param.label} className="flex flex-col gap-1">
-                              <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-tighter">
+                              <div className="flex justify-between text-xs font-bold text-gray-700 uppercase tracking-tighter">
                                 <span>{param.label}</span>
-                                <span>{param.val}/5</span>
+                                <span>{param.val}</span>
                               </div>
-                              {renderPerformanceStars(param.val)}
                             </div>
                           ))}
                         </div>
@@ -1904,70 +1753,6 @@ function StudentRatingsModal({
           >
             Close
           </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-export function AttendanceCalendarModal({ open, batch, onClose, monthlyAttendance, onUpdateAttendance }: { open: boolean; batch: string; onClose: () => void; monthlyAttendance: MonthlyAttendance[]; onUpdateAttendance: (updated: MonthlyAttendance[]) => void; }) {
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const year = new Date().getFullYear();
-
-  const handleUpdateClasses = (monthStr: string, totalClasses: number) => {
-    const [y, m] = monthStr.split('-').map(Number);
-    const daysInMonth = new Date(y, m, 0).getDate();
-    const validatedClasses = Math.min(totalClasses, daysInMonth);
-
-    const existing = monthlyAttendance.find(m => m.month === monthStr);
-    let updated;
-    if (existing) {
-      updated = monthlyAttendance.map(m => m.month === monthStr ? { ...m, totalClasses: validatedClasses } : m);
-    } else {
-      updated = [...monthlyAttendance, { month: monthStr, totalClasses: validatedClasses, studentAttendance: {} }];
-    }
-    onUpdateAttendance(updated);
-  };
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Classes Taken - {batch}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {months.map((month, idx) => {
-            const monthStr = `${year}-${(idx + 1).toString().padStart(2, '0')}`;
-            const data = monthlyAttendance.find(m => m.month === monthStr);
-            const [y, m] = monthStr.split('-').map(Number);
-            const daysInMonth = new Date(y, m, 0).getDate();
-            return (
-              <div key={month} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-gray-700">{month} {year}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-500">Total Classes:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={daysInMonth}
-                    value={data?.totalClasses || ''}
-                    onChange={(e) => handleUpdateClasses(monthStr, parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                    className="w-20 px-3 py-1 rounded-lg border border-gray-200 focus:border-teal-500 outline-none"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="mt-8 flex justify-end">
-          <button onClick={onClose} className="px-8 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition">Done</button>
         </div>
       </motion.div>
     </div>

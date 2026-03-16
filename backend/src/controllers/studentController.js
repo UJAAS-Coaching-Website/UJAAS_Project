@@ -6,6 +6,7 @@ import {
     deleteStudent,
     assignStudentToBatch,
     removeStudentFromBatch,
+    updateStudentRating,
 } from "../services/studentService.js";
 
 export async function listStudents(req, res) {
@@ -123,5 +124,22 @@ export async function handleRemoveStudentFromBatch(req, res) {
     } catch (error) {
         console.error("removeStudentFromBatch error:", error.message);
         return res.status(500).json({ message: "failed to remove student from batch", error: error.message });
+    }
+}
+
+export async function handleUpdateStudentRating(req, res) {
+    try {
+        const { subject, attendance, total_classes, assignments, participation, behavior } = req.body;
+        const rating = await updateStudentRating(req.params.id, subject, {
+            attendance,
+            total_classes,
+            assignments,
+            participation,
+            behavior
+        });
+        return res.status(200).json(rating);
+    } catch (error) {
+        console.error("handleUpdateStudentRating error:", error.message);
+        return res.status(500).json({ message: "failed to update student rating", error: error.message });
     }
 }
