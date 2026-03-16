@@ -13,6 +13,7 @@ import {
     getBatchFaculty,
     createBatchNotification,
 } from "../services/batchService.js";
+import { removeSubjectFromBatch } from "../services/subjectService.js";
 
 export async function listBatches(req, res) {
     try {
@@ -205,5 +206,25 @@ export async function handleCreateBatchNotification(req, res) {
     } catch (error) {
         console.error("createBatchNotification error:", error.message);
         return res.status(500).json({ message: "failed to send notice", error: error.message });
+    }
+}
+
+export async function handleRemoveBatchSubject(req, res) {
+    try {
+        const { id: batchId, subjectId } = req.params;
+        const result = await removeSubjectFromBatch(batchId, subjectId);
+        if (!result.ok) {
+            return res.status(409).json({ ok: false, reason: "linked", links: result.links });
+        }
+        return res.status(200).json({ ok: true, action: result.action });
+    } catch (error) {
+        if (error?.code === "SUBJECT_NOT_FOUND" || error?.code === "BATCH_SUBJECT_NOT_FOUND") {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error?.code === "SUBJECTS_UNSUPPORTED") {
+            return res.status(400).json({ message: error.message });
+        }
+        console.error("removeBatchSubject error:", error.message);
+        return res.status(500).json({ message: "failed to remove subject from batch" });
     }
 }

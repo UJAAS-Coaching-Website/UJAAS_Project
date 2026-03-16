@@ -51,6 +51,7 @@ import { NotesManagementTab } from './NotesManagementTab';
 import { uploadLandingImage, deleteLandingImage } from '../api/landing';
 import { adminResetUserPassword } from '../api/auth';
 import { generateInitialPassword } from '../utils/passwords';
+import { formatLinkSummary } from '../utils/subjectAlerts';
 
 interface AdminDashboardProps {
   user: User;
@@ -97,6 +98,8 @@ interface AdminDashboardProps {
   onForceTestLiveNow?: (testId: string) => Promise<import('../App').PublishedTest>;
   onDeletePublishedTest: (testId: string) => void;
   selectedPreviewTest: import('../App').PublishedTest | null;
+  subjectCatalog: import('../api/subjects').ApiSubject[];
+  onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -163,6 +166,14 @@ type FacultyFormState = {
   phone: string;
   joinDate: string;
   rating: number;
+};
+
+type SubjectActionResult = {
+  ok: boolean;
+  status: number;
+  links?: Record<string, number>;
+  message?: string;
+  action?: "removed" | "deleted";
 };
 
 const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
@@ -310,6 +321,8 @@ export function AdminDashboard({
   onForceTestLiveNow,
   onDeletePublishedTest,
   selectedPreviewTest,
+  subjectCatalog,
+  onRemoveSubjectFromBatch,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
@@ -353,6 +366,13 @@ export function AdminDashboard({
     rating: f.rating,
     joinDate: f.joining_date
   }));
+  const subjectOptions = Array.from(new Set([
+    ...batches.flatMap((batch) => batch.subjects ?? []),
+    ...faculty.map((item) => item.subject),
+  ]))
+    .map((subject) => subject.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(demotimetable);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -990,6 +1010,8 @@ export function AdminDashboard({
                   onViewTimetable={() => setShowFullTimetable(true)}
                   onUpdateBatch={onUpdateBatch}
                   onOpenAddFaculty={() => openBatchFacultyPicker(selectedBatch)}
+                  subjectCatalog={subjectCatalog}
+                  onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
                 />
               )}
               {activeTab === 'students' && (
@@ -1029,25 +1051,28 @@ export function AdminDashboard({
           onSubmit={handleSaveStudent}
         />
 
-        <AddFacultyModal
-          open={facultyModal.open}
-          onClose={closeFacultyModal}
-          initialData={facultyModal.initialData}
-          title={facultyModal.title}
-          onSubmit={handleSaveFaculty}
-          isInitialEditing={facultyModal.isEditing}
-        />
+          <AddFacultyModal
+            open={facultyModal.open}
+            onClose={closeFacultyModal}
+            initialData={facultyModal.initialData}
+            title={facultyModal.title}
+            onSubmit={handleSaveFaculty}
+            isInitialEditing={facultyModal.isEditing}
+            subjectOptions={subjectOptions}
+          />
 
         <BatchFormModal
           open={batchModal.open}
           mode={batchModal.mode}
           batches={batches}
           faculty={faculty}
+          subjectCatalog={subjectCatalog}
           batchLabel={batchModal.batchLabel}
           onClose={closeBatchModal}
           onCreateBatch={onCreateBatch}
           onUpdateBatch={onUpdateBatch}
           onDeleteBatch={onDeleteBatch}
+          onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
         />
         <PermanentDeleteBatchModal
           open={permanentDeleteModal.open}
@@ -1647,24 +1672,38 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             {isAddingFaculty ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingFaculty ? 'Cancel' : 'Add Faculty'}
           </button>
         </div>
-        {isAddingFaculty && (
-          <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="subject" required placeholder="Subject" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
-            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
-          </form>
-        )}
-        {editingFacultyIndex !== null && (
-          <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
-            <div className="md:col-span-2 flex gap-3">
+          {isAddingFaculty && (
+            <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+                {subjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+              <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
+            </form>
+          )}
+          {editingFacultyIndex !== null && (
+            <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+                {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
+                  .map((subject) => subject.trim())
+                  .filter(Boolean)
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+              <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+              <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-faculty') ? 'Updating...' : 'Update'}</button>
               <button type="button" onClick={() => setEditingFacultyIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
             </div>
@@ -2019,7 +2058,9 @@ function OverviewTab({
   onClearBatch,
   onViewTimetable,
   onUpdateBatch,
-  onOpenAddFaculty
+  onOpenAddFaculty,
+  subjectCatalog,
+  onRemoveSubjectFromBatch,
 }: {
   selectedBatch: Batch | null;
   onEditBatch: (l: string) => void;
@@ -2032,6 +2073,8 @@ function OverviewTab({
   onViewTimetable: () => void;
   onUpdateBatch: any;
   onOpenAddFaculty: () => void;
+  subjectCatalog: import('../api/subjects').ApiSubject[];
+  onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
   if (!selectedBatch) return null;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
@@ -2141,15 +2184,17 @@ function OverviewTab({
       <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100">
         <div className="p-1">
           <NotesManagementTab
-              onNavigate={onNavigate}
-              selectedBatch={selectedBatch}
-              onChangeBatch={onClearBatch}
-              onViewTimetable={onViewTimetable}
-              onUpdateBatch={onUpdateBatch}
-              batches={batches}
-              readOnly={!isBatchActive}
-              headerMode="full"
-              variant="admin"
+            onNavigate={onNavigate}
+            selectedBatch={selectedBatch}
+            onChangeBatch={onClearBatch}
+            onViewTimetable={onViewTimetable}
+            onUpdateBatch={onUpdateBatch}
+            batches={batches}
+            readOnly={!isBatchActive}
+            headerMode="full"
+            variant="admin"
+            subjectCatalog={subjectCatalog}
+            onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
           />
         </div>
       </div>
@@ -2793,6 +2838,7 @@ function AddFacultyModal({
   title,
   onSubmit,
   isInitialEditing,
+  subjectOptions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -2800,6 +2846,7 @@ function AddFacultyModal({
   title?: string;
   onSubmit?: (data: FacultyFormState) => void;
   isInitialEditing?: boolean;
+  subjectOptions: string[];
 }) {
   const [isEditing, setIsEditing] = useState(isInitialEditing ?? !initialData?.id);
   const [formState, setFormState] = useState<FacultyFormState>({
@@ -2830,10 +2877,14 @@ function AddFacultyModal({
 
   if (!open) return null;
 
-  const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = field === 'rating' ? parseFloat(event.target.value) || 0 : event.target.value;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
+  const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
+    .map((subject) => subject.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -2867,19 +2918,22 @@ function AddFacultyModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Subject {isEditing && requiredMark}</span>
-              <input
-                type="text"
-                required={isEditing}
-                readOnly={!isEditing}
-                value={formState.subject}
-                onChange={handleChange('subject')}
-                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
-                placeholder="e.g. Physics"
-              />
-            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+                <span className="block">Subject {isEditing && requiredMark}</span>
+                <select
+                  required={isEditing}
+                  disabled={!isEditing}
+                  value={formState.subject}
+                  onChange={handleChange('subject')}
+                  className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+                >
+                  <option value="">{mergedSubjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+                  {mergedSubjectOptions.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+              </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Designation</span>
@@ -3241,21 +3295,25 @@ function BatchFormModal({
   mode,
   batches,
   faculty,
+  subjectCatalog,
   batchLabel,
   onClose,
   onCreateBatch,
   onUpdateBatch,
   onDeleteBatch,
+  onRemoveSubjectFromBatch,
 }: {
   open: boolean;
   mode: 'create' | 'edit';
   batches: BatchInfo[];
   faculty: import('../api/faculties').ApiFaculty[];
+  subjectCatalog: import('../api/subjects').ApiSubject[];
   batchLabel?: string;
   onClose: () => void;
   onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => { ok: boolean; error?: string; label?: string };
   onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   onDeleteBatch: (label: string) => { ok: boolean; error?: string };
+  onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
   const [formState, setFormState] = useState({
     name: '',
@@ -3265,6 +3323,10 @@ function BatchFormModal({
   });
   const [error, setError] = useState<string | null>(null);
   const subjects = Array.from(new Set(faculty.map((item) => item.subject))).sort();
+  const currentBatch = mode === 'edit' && batchLabel
+    ? batches.find((batch) => batch.label === batchLabel)
+    : null;
+  const currentBatchSubjects = currentBatch?.subjects ?? [];
 
   useEffect(() => {
     if (!open) return;
@@ -3347,6 +3409,36 @@ function BatchFormModal({
     }
   };
 
+  const resolveSubjectId = (subjectName: string) =>
+    subjectCatalog.find((subject) => subject.name.toLowerCase() === subjectName.toLowerCase())?.id;
+
+  const handleRemoveOrDeleteSubject = async (subjectName: string) => {
+    if (!currentBatch?.id) return;
+    const subjectId = resolveSubjectId(subjectName);
+    if (!subjectId) {
+      window.alert(`Unable to find subject "${subjectName}" in the catalog.`);
+      return;
+    }
+    if (!window.confirm(`Delete "${subjectName}" for this batch? If it is linked to only one batch, it will be deleted globally.`)) {
+      return;
+    }
+    const result = await onRemoveSubjectFromBatch(currentBatch.id, subjectId);
+    if (result.ok) {
+      setFormState((prev) => ({
+        ...prev,
+        assignments: prev.assignments.filter((item) => item.subject !== subjectName),
+      }));
+      return;
+    }
+    if (result.status === 409) {
+      const summary = formatLinkSummary(result.links);
+      window.alert(`Cannot delete "${subjectName}".\n\nDelete/unlink the following first:\n${summary}`);
+      return;
+    }
+    window.alert(result.message || 'Failed to remove subject from batch.');
+  };
+
+
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
@@ -3421,11 +3513,11 @@ function BatchFormModal({
             </div>
           </div>
 
-          {formState.assignments.length > 0 && (
-            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
-              <p className="text-sm font-medium text-gray-700">Selected</p>
-              <div className="space-y-1">
-                {formState.assignments.map((item, index) => (
+            {formState.assignments.length > 0 && (
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+                <p className="text-sm font-medium text-gray-700">Selected</p>
+                <div className="space-y-1">
+                  {formState.assignments.map((item, index) => (
                   <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
                       {item.subject} — <span className="font-semibold">{item.faculty}</span>
@@ -3443,10 +3535,11 @@ function BatchFormModal({
                       Remove
                     </button>
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
