@@ -13,6 +13,7 @@ import {
     handleGetBatchStudents,
     handleGetBatchFaculty,
     handleCreateBatchNotification,
+    handleRemoveBatchSubject,
 } from "../controllers/batchController.js";
 import { authenticate, requireRole } from "../middleware/auth.js";
 
@@ -41,5 +42,8 @@ router.delete("/:id/faculty/:facultyId", requireRole("admin"), handleRemoveFacul
 
 // Batch Notifications (Admin only)
 router.post("/:id/notifications", requireRole("admin"), handleCreateBatchNotification);
+
+// Batch subject removal (Admin only)
+router.delete("/:id/subjects/:subjectId", requireRole("admin"), handleRemoveBatchSubject);
 
 export default router;

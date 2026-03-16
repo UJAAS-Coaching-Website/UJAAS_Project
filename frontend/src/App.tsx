@@ -40,6 +40,12 @@ import {
   type ApiStudent,
 } from './api/students';
 import {
+  fetchSubjects as apiFetchSubjects,
+  deleteSubjectGlobal as apiDeleteSubjectGlobal,
+  deleteSubjectFromBatch as apiDeleteSubjectFromBatch,
+  type ApiSubject,
+} from './api/subjects';
+import {
   fetchTests as apiFetchTests,
   fetchTestById as apiFetchTestById,
   createTest as apiCreateTest,
@@ -728,6 +734,7 @@ function App() {
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
   const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
+  const [adminSubjects, setAdminSubjects] = useState<ApiSubject[]>([]);
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -765,6 +772,50 @@ function App() {
     setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
     setAdminFaculties(apiFaculties);
     setAdminStudents(apiStudents);
+  };
+
+  const refreshAdminSubjects = async () => {
+    try {
+      const subjects = await apiFetchSubjects();
+      setAdminSubjects(subjects);
+    } catch (error) {
+      console.warn('Could not fetch subjects from API:', error);
+      setAdminSubjects([]);
+    }
+  };
+
+  const handleRemoveSubjectFromBatch = async (batchId: string, subjectId: string) => {
+    showBatchToast('saving', 'Checking subject linkage...');
+    const result = await apiDeleteSubjectFromBatch(batchId, subjectId);
+    if (result.ok) {
+      try {
+        const apiBatches = await apiFetchBatches();
+        setAdminBatches(apiBatches.map(apiBatchToInfo));
+      } catch (error) {
+        console.warn('Could not refresh batches after subject removal:', error);
+      }
+      if (result.action === 'deleted') {
+        showBatchToast('saved', 'Subject deleted globally');
+      } else {
+        showBatchToast('saved', 'Subject removed from batch');
+      }
+      return result;
+    }
+    if (result.status === 409) {
+      showBatchToast('error', 'Cannot delete subject. Unlink content first.');
+      return result;
+    }
+    showBatchToast('error', result.message || 'Failed to delete subject');
+    return result;
+  };
+
+  const handleDeleteSubjectGlobal = async (subjectId: string) => {
+    const result = await apiDeleteSubjectGlobal(subjectId);
+    if (result.ok) {
+      await refreshAdminBatchDependencies();
+      await refreshAdminSubjects();
+    }
+    return result;
   };
 
   const isStudentTab = (tab?: string): tab is (typeof studentTabs)[number] =>
@@ -1251,15 +1302,16 @@ function App() {
             }
             fetchTasks.push(apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }));
 
-            const results = await Promise.all(fetchTasks);
-            if (loggedInUser.role === 'admin') {
-              setAdminFaculties(results[0]);
-              setAdminStudents(results[1]);
-            } else {
-              setAdminFaculties([]);
-              setAdminStudents(results[0]);
+              const results = await Promise.all(fetchTasks);
+              if (loggedInUser.role === 'admin') {
+                setAdminFaculties(results[0]);
+                setAdminStudents(results[1]);
+                await refreshAdminSubjects();
+              } else {
+                setAdminFaculties([]);
+                setAdminStudents(results[0]);
+              }
             }
-          }
         } else {
           setUser(null);
           // If no user, set empty batches
@@ -1414,19 +1466,20 @@ function App() {
           const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
           setAdminBatches(apiBatches.map(apiBatchToInfo));
 
-          if (userData.role === 'admin') {
-            const [apiFaculties, apiStudents] = await Promise.all([
-              fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-              apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-            ]);
+            if (userData.role === 'admin') {
+              const [apiFaculties, apiStudents] = await Promise.all([
+                fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
+                apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
+              ]);
 
-            setAdminFaculties(apiFaculties);
-            setAdminStudents(apiStudents);
-          } else {
-            setAdminFaculties([]);
-            const apiStudents = await apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; });
-            setAdminStudents(apiStudents);
-          }
+              setAdminFaculties(apiFaculties);
+              setAdminStudents(apiStudents);
+              await refreshAdminSubjects();
+            } else {
+              setAdminFaculties([]);
+              const apiStudents = await apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; });
+              setAdminStudents(apiStudents);
+            }
         }
         if (userData.role === 'admin') {
           try {
@@ -1757,6 +1810,8 @@ function App() {
               onForceTestLiveNow={handleForceTestLiveNow}
               onDeletePublishedTest={handleDeletePublishedTest}
               selectedPreviewTest={selectedPreviewTest}
+              subjectCatalog={adminSubjects}
+              onRemoveSubjectFromBatch={handleRemoveSubjectFromBatch}
             />
           </motion.div>
         )}

@@ -16,6 +16,7 @@ import chapterRoutes from "./routes/chapterRoutes.js";
 import noteRoutes from "./routes/noteRoutes.js";
 import questionBankRoutes from "./routes/questionBankRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import subjectRoutes from "./routes/subjectRoutes.js";
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use("/api/chapters", chapterRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/question-bank", questionBankRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/subjects", subjectRoutes);
 app.use(healthRoutes);
 
 export default app;

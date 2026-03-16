@@ -13,6 +13,7 @@ import { createBatchNotification } from '../api/batches';
 import { DppPerformanceInsights } from './DppPerformanceInsights';
 import { TestTaking } from './TestTaking';
 import { ChapterCardSkeleton, DppCardSkeleton, NoteCardSkeleton, TableRowsSkeleton } from './ui/content-skeletons';
+import { formatLinkSummary } from '../utils/subjectAlerts';
 
 // Type stubs that reflect the app
 type Tab = any;
@@ -52,6 +53,8 @@ interface NotesManagementTabProps {
   variant?: 'admin' | 'faculty' | 'student';
   onUpdateBatch?: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => { ok: boolean; error?: string };
   headerMode?: 'full' | 'tracker-only' | 'hidden';
+  subjectCatalog?: import('../api/subjects').ApiSubject[];
+  onRemoveSubjectFromBatch?: (batchId: string, subjectId: string) => Promise<{ ok: boolean; status: number; links?: Record<string, number>; message?: string; action?: "removed" | "deleted" }>;
 }
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
@@ -103,7 +106,9 @@ export function NotesManagementTab({
   readOnly = false,
   variant = 'student',
   onUpdateBatch,
-  headerMode = 'full'
+  headerMode = 'full',
+  subjectCatalog,
+  onRemoveSubjectFromBatch,
 }: NotesManagementTabProps) {
   const [currentView, setCurrentView] = useState<'root' | 'subject' | 'chapter'>('root');
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -321,30 +326,37 @@ export function NotesManagementTab({
     }
   };
 
-  const handleDeleteSubject = async (subjectName: string) => {
-    if (!canManageStructure || !selectedBatch || !onUpdateBatch || !currentBatch) return;
-
-    if (window.confirm(`Are you sure you want to delete the subject "${subjectName}" from this batch? This will NOT delete any content (notes/DPPs) but will remove the subject association for this batch.`)) {
-      try {
-        const nextSubjects = batchSubjects.filter((s: string) => s !== subjectName);
-        const assigned = currentBatch.facultyAssigned ?? [];
-
-        // Find faculty assigned to this subject in this batch (if any) and remove them too
-        // We need to look up faculty by subject
-        const result = onUpdateBatch(selectedBatch, nextSubjects, assigned);
-
-        if (result.ok) {
-          toast.success(`Subject "${subjectName}" removed successfully.`);
-          // The component should re-render because batches/selectedBatch/currentBatch likely changes via parent state
-        } else {
-          toast.error(result.error || 'Failed to remove subject.');
-        }
-      } catch (err: any) {
-        console.error(err);
-        toast.error('An error occurred while removing the subject.');
-      }
+  const handleRemoveOrDeleteSubject = async (subjectName: string) => {
+    if (!canManageStructure || !currentBatch?.id || !onRemoveSubjectFromBatch) return;
+    const subjectId = subjectCatalog?.find((s) => s.name.toLowerCase() === subjectName.toLowerCase())?.id;
+    if (!subjectId) {
+      window.alert(`Unable to find subject "${subjectName}" in the catalog.`);
+      return;
     }
+
+    if (!window.confirm(`Delete "${subjectName}" for this batch? If it is linked to only one batch, it will be deleted globally.`)) {
+      return;
+    }
+
+    const result = await onRemoveSubjectFromBatch(currentBatch.id, subjectId);
+    if (result.ok) {
+      if (result.action === 'deleted') {
+        toast.success(`Subject "${subjectName}" deleted globally.`);
+      } else {
+        toast.success(`Subject "${subjectName}" removed from this batch.`);
+      }
+      return;
+    }
+
+    if (result.status === 409) {
+      const summary = formatLinkSummary(result.links);
+      window.alert(`Cannot delete "${subjectName}".\n\nDelete/unlink the following first:\n${summary}`);
+      return;
+    }
+
+    window.alert(result.message || 'Failed to delete subject.');
   };
+
 
   const handleAddSubject = async (e: FormEvent) => {
     e.preventDefault();
@@ -653,18 +665,20 @@ export function NotesManagementTab({
               onClick={() => navigateToSubject(sub.name)}
               className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group cursor-pointer hover:shadow-xl transition-all relative"
             >
-              {variant === 'admin' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSubject(sub.name);
-                  }}
-                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
-                  title="Delete Subject"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+                {variant === 'admin' && (
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 z-10">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveOrDeleteSubject(sub.name);
+                      }}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                      title="Delete subject"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               <div
                 className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white"
                 style={{ backgroundColor: sub.color }}
