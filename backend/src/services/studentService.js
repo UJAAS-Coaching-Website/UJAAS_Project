@@ -29,6 +29,7 @@ async function columnExists(tableName, columnName, client = pool) {
     return result.rows[0]?.exists === true;
 }
 
+
 /**
  * Generate initial password from student name: firstname@123
  */
@@ -43,12 +44,26 @@ function generateInitialPassword(name) {
 export async function getAllStudents() {
     const batchModel = await getStudentBatchModel();
     const hasBatchSubjects = await tableExists("batch_subjects");
+    const hasSubjectsTable = await tableExists("subjects");
+    const hasBatchSubjectId = await columnExists("student_ratings", "batch_subject_id");
+    const hasLegacySubject = await columnExists("student_ratings", "subject");
+    const hasTotalClasses = await columnExists("student_ratings", "total_classes");
+    const hasTestPerformance = await columnExists("student_ratings", "test_performance");
+    const hasAssignments = await columnExists("student_ratings", "assignments");
+    const hasDppPerformance = await columnExists("student_ratings", "dpp_performance");
+    const hasParticipation = await columnExists("student_ratings", "participation");
+    const hasRemarks = await columnExists("student_ratings", "remarks");
     
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
         : `(SELECT batch_id FROM student_batches WHERE student_id = u.id LIMIT 1)`;
 
-    const ratingsSubquery = hasBatchSubjects
+    const testColumn = hasTestPerformance ? "r.test_performance" : hasAssignments ? "r.assignments" : "0";
+    const dppColumn = hasDppPerformance ? "r.dpp_performance" : hasParticipation ? "r.participation" : "0";
+    const remarksColumn = hasRemarks ? "COALESCE(r.remarks, '')" : "''";
+    const totalClassesColumn = hasTotalClasses ? "r.total_classes" : "0";
+
+    const ratingsSubquery = hasBatchSubjects && hasSubjectsTable && hasBatchSubjectId
         ? `COALESCE(
                 (
                     SELECT json_object_agg(
@@ -57,10 +72,10 @@ export async function getAllStudents() {
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
                             'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
-                            'tests', r.test_performance,
-                            'dppPerformance', r.dpp_performance,
+                            'tests', COALESCE(${testColumn}, 0),
+                            'dppPerformance', COALESCE(${dppColumn}, 0),
                             'behavior', r.behavior,
-                            'remarks', r.remarks
+                            'remarks', ${remarksColumn}
                         )
                     )
                     FROM student_ratings r
@@ -70,7 +85,27 @@ export async function getAllStudents() {
                 ),
                 '{}'
             )`
-        : `'{}'`;
+        : hasLegacySubject
+            ? `COALESCE(
+                (
+                    SELECT json_object_agg(
+                        COALESCE(r.subject, 'General'),
+                        json_build_object(
+                            'attendance', r.attendance,
+                            'total_classes', COALESCE(${totalClassesColumn}, 0),
+                            'attendance_rating', CASE WHEN COALESCE(${totalClassesColumn}, 0) > 0 THEN LEAST(5, (r.attendance::float / ${totalClassesColumn}::float) * 5) ELSE 0 END,
+                            'tests', COALESCE(${testColumn}, 0),
+                            'dppPerformance', COALESCE(${dppColumn}, 0),
+                            'behavior', r.behavior,
+                            'remarks', ${remarksColumn}
+                        )
+                    )
+                    FROM student_ratings r
+                    WHERE r.student_id = u.id
+                ),
+                '{}'
+            )`
+            : `'{}'`;
 
     const result = await pool.query(`
         SELECT
@@ -123,12 +158,26 @@ export async function getAllStudents() {
 export async function getStudentById(id) {
     const batchModel = await getStudentBatchModel();
     const hasBatchSubjects = await tableExists("batch_subjects");
+    const hasSubjectsTable = await tableExists("subjects");
+    const hasBatchSubjectId = await columnExists("student_ratings", "batch_subject_id");
+    const hasLegacySubject = await columnExists("student_ratings", "subject");
+    const hasTotalClasses = await columnExists("student_ratings", "total_classes");
+    const hasTestPerformance = await columnExists("student_ratings", "test_performance");
+    const hasAssignments = await columnExists("student_ratings", "assignments");
+    const hasDppPerformance = await columnExists("student_ratings", "dpp_performance");
+    const hasParticipation = await columnExists("student_ratings", "participation");
+    const hasRemarks = await columnExists("student_ratings", "remarks");
 
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
         : `(SELECT batch_id FROM student_batches WHERE student_id = u.id LIMIT 1)`;
 
-    const ratingsSubquery = hasBatchSubjects
+    const testColumn = hasTestPerformance ? "r.test_performance" : hasAssignments ? "r.assignments" : "0";
+    const dppColumn = hasDppPerformance ? "r.dpp_performance" : hasParticipation ? "r.participation" : "0";
+    const remarksColumn = hasRemarks ? "COALESCE(r.remarks, '')" : "''";
+    const totalClassesColumn = hasTotalClasses ? "r.total_classes" : "0";
+
+    const ratingsSubquery = hasBatchSubjects && hasSubjectsTable && hasBatchSubjectId
         ? `COALESCE(
                 (
                     SELECT json_object_agg(
@@ -137,10 +186,10 @@ export async function getStudentById(id) {
                             'attendance', r.attendance,
                             'total_classes', bs.total_classes,
                             'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
-                            'tests', r.test_performance,
-                            'dppPerformance', r.dpp_performance,
+                            'tests', COALESCE(${testColumn}, 0),
+                            'dppPerformance', COALESCE(${dppColumn}, 0),
                             'behavior', r.behavior,
-                            'remarks', r.remarks
+                            'remarks', ${remarksColumn}
                         )
                     )
                     FROM student_ratings r
@@ -150,7 +199,27 @@ export async function getStudentById(id) {
                 ),
                 '{}'
             )`
-        : `'{}'`;
+        : hasLegacySubject
+            ? `COALESCE(
+                (
+                    SELECT json_object_agg(
+                        COALESCE(r.subject, 'General'),
+                        json_build_object(
+                            'attendance', r.attendance,
+                            'total_classes', COALESCE(${totalClassesColumn}, 0),
+                            'attendance_rating', CASE WHEN COALESCE(${totalClassesColumn}, 0) > 0 THEN LEAST(5, (r.attendance::float / ${totalClassesColumn}::float) * 5) ELSE 0 END,
+                            'tests', COALESCE(${testColumn}, 0),
+                            'dppPerformance', COALESCE(${dppColumn}, 0),
+                            'behavior', r.behavior,
+                            'remarks', ${remarksColumn}
+                        )
+                    )
+                    FROM student_ratings r
+                    WHERE r.student_id = u.id
+                ),
+                '{}'
+            )`
+            : `'{}'`;
 
     const result = await pool.query(`
         SELECT
@@ -366,6 +435,12 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
 
         const normalizedSubjectName = String(subjectName).trim();
 
+        const attendanceValue = null;
+        const behaviorValue = behavior;
+        const testsValue = tests;
+        const dppValue = dppPerformance;
+        const totalClassesValue = total_classes;
+
         if (!hasBatchSubjects || !hasBatchSubjectId) {
             if (!hasLegacySubjectColumn) {
                 throw new Error("student_ratings schema is missing both batch_subject_id and subject columns");
@@ -404,7 +479,7 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
                     remarks = COALESCE($8, student_ratings.remarks),
                     updated_at = NOW()
                  RETURNING *`,
-                [studentId, normalizedSubjectName, attendance, total_classes, tests, dppPerformance, behavior, remarks]
+                [studentId, normalizedSubjectName, attendanceValue, totalClassesValue, testsValue, dppValue, behaviorValue, remarks]
             );
             await client.query("COMMIT");
             return result.rows[0];
@@ -454,7 +529,7 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         if (total_classes !== undefined && total_classes !== null) {
             await client.query(
                 "UPDATE batch_subjects SET total_classes = $1 WHERE id = $2",
-                [total_classes, batchSubjectId]
+                [totalClassesValue ?? 0, batchSubjectId]
             );
         }
         
@@ -474,10 +549,10 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
             [
                 studentId, 
                 batchSubjectId, 
-                attendance !== undefined ? attendance : null, 
-                tests !== undefined ? tests : null, 
-                dppPerformance !== undefined ? dppPerformance : null, 
-                behavior !== undefined ? behavior : null, 
+                attendance !== undefined ? attendanceValue : null, 
+                tests !== undefined ? testsValue : null, 
+                dppPerformance !== undefined ? dppValue : null, 
+                behavior !== undefined ? behaviorValue : null, 
                 remarks !== undefined ? remarks : null
             ]
         );

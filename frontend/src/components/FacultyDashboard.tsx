@@ -93,6 +93,7 @@ interface Student {
   subjectRatings?: Record<string, {
     attendance: number;
     total_classes?: number;
+    attendanceRating?: number;
     tests: number;
     dppPerformance: number;
     behavior: number;
@@ -162,6 +163,18 @@ function renderPerformanceStars(rating: number) {
       <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
+}
+
+function getAttendanceRatingValue(attendance?: number, totalClasses?: number, attendanceRating?: number): number {
+  if (typeof attendanceRating === 'number' && Number.isFinite(attendanceRating)) {
+    return Math.max(0, Math.min(5, attendanceRating));
+  }
+  const attendanceCount = Number(attendance ?? 0);
+  const classCount = Number(totalClasses ?? 0);
+  if (classCount > 0) {
+    return Math.max(0, Math.min(5, (attendanceCount / classCount) * 5));
+  }
+  return Math.max(0, Math.min(5, attendanceCount));
 }
 
 const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
@@ -259,14 +272,22 @@ export function FacultyDashboard({
         const subRemarks = (api as any).subject_remarks || {};
         const facultySubData = facultySubject ? subRatings[facultySubject] : null;
         
+        const subjectValues = Object.values(subRatings || {});
+        const overallFromSubjects = subjectValues.length > 0
+          ? subjectValues.reduce((acc, curr) => {
+              const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
+              return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+            }, 0) / subjectValues.length
+          : null;
+
         return {
           id: api.id,
           name: api.name,
           rollNumber: api.roll_number,
           enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
           joinDate: api.join_date || new Date().toISOString().split('T')[0],
-          performance: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4 * 20,
-          rating: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4,
+          performance: (overallFromSubjects ?? (((api.rating_attendance || 0) + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4)) * 20,
+          rating: overallFromSubjects ?? (((api.rating_attendance || 0) + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4),
           batch: api.assigned_batch?.name || "",
           phoneNumber: api.phone || '',
           dateOfBirth: api.date_of_birth || '',
@@ -1402,8 +1423,8 @@ function StudentRatingsModal({
   }, [open, student]);
   if (!open || !student) return null;
 
-  const calculateSubjectRating = (r: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }) => {
-    const attendanceRating = (r.attendance / (r.total_classes || 1)) * 5;
+  const calculateSubjectRating = (r: { attendance: number; total_classes?: number; attendanceRating?: number; tests: number; dppPerformance: number; behavior: number }) => {
+    const attendanceRating = getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating);
     return (attendanceRating + r.tests + r.dppPerformance + r.behavior) / 4;
   };
 
@@ -1534,7 +1555,7 @@ function StudentRatingsModal({
                     const isEditing = editingSubject === subject;
 
                     const currentDraft = draftRatings[subject] || {
-                      attendance: ((r.attendance / (r.total_classes || 1)) * 5).toFixed(1),
+                      attendance: getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating).toFixed(1),
                       tests: r.tests.toString(),
                       dppPerformance: r.dppPerformance.toString(),
                       behavior: r.behavior.toString(),
@@ -1629,7 +1650,7 @@ function StudentRatingsModal({
                           {[
                             { 
                               label: 'Attendance', 
-                              val: `${((r.attendance / (r.total_classes || 1)) * 5).toFixed(1)}/5` 
+                              val: `${getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating).toFixed(1)}/5` 
                             },
                             { label: 'Test Performance', val: `${r.tests}/5` },
                             { label: 'DPP Performance', val: `${r.dppPerformance}/5` },

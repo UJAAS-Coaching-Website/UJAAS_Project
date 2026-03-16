@@ -120,6 +120,8 @@ interface Student {
   parentContact: string;
   subjectRatings?: Record<string, {
     attendance: number;
+    total_classes?: number;
+    attendanceRating?: number;
     tests: number;
     dppPerformance: number;
     behavior: number;
@@ -250,6 +252,18 @@ function renderPerformanceStars(rating: number) {
   );
 }
 
+function getAttendanceRatingValue(attendance?: number, totalClasses?: number, attendanceRating?: number): number {
+  if (typeof attendanceRating === 'number' && Number.isFinite(attendanceRating)) {
+    return Math.max(0, Math.min(5, attendanceRating));
+  }
+  const attendanceCount = Number(attendance ?? 0);
+  const classCount = Number(totalClasses ?? 0);
+  if (classCount > 0) {
+    return Math.max(0, Math.min(5, (attendanceCount / classCount) * 5));
+  }
+  return Math.max(0, Math.min(5, attendanceCount));
+}
+
 export function AdminDashboard({
   user,
   activeTab,
@@ -297,20 +311,31 @@ export function AdminDashboard({
   selectedPreviewTest,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
-  const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => ({
-    id: s.id,
-    name: s.name,
-    rollNumber: s.roll_number,
-    enrolledCourses: s.assigned_batch ? [s.assigned_batch.name] : [],
-    joinDate: s.join_date || '',
-    performance: 0,
-    rating: (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
-    batch: s.assigned_batch?.name || 'Unassigned',
-    phoneNumber: s.phone || '',
-    dateOfBirth: s.date_of_birth || '',
-    address: s.address || '',
-    parentContact: s.parent_contact || '',
-  });
+  const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
+    const subjectRatings = (s as any).subject_ratings || {};
+    const subjectValues = Object.values(subjectRatings);
+    const overallFromSubjects = subjectValues.length > 0
+      ? subjectValues.reduce((acc: number, curr: any) => {
+          const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
+          return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+        }, 0) / subjectValues.length
+      : null;
+
+    return {
+      id: s.id,
+      name: s.name,
+      rollNumber: s.roll_number,
+      enrolledCourses: s.assigned_batch ? [s.assigned_batch.name] : [],
+      joinDate: s.join_date || '',
+      performance: 0,
+      rating: overallFromSubjects ?? (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
+      batch: s.assigned_batch?.name || 'Unassigned',
+      phoneNumber: s.phone || '',
+      dateOfBirth: s.date_of_birth || '',
+      address: s.address || '',
+      parentContact: s.parent_contact || '',
+    };
+  };
 
   const students = adminStudents.map(apiToLocalStudent);
   // Use adminFaculties prop directly, ensuring we format joining_date to joinDate
@@ -3522,8 +3547,9 @@ function StudentRatingsModal({
     }
   };
 
-  const calculateSubjectRating = (r: { attendance: number; tests: number; dppPerformance: number; behavior: number }) => {
-    return (r.attendance + r.tests + r.dppPerformance + r.behavior) / 4;
+  const calculateSubjectRating = (r: { attendance: number; total_classes?: number; attendanceRating?: number; tests: number; dppPerformance: number; behavior: number }) => {
+    const attendanceRating = getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating);
+    return (attendanceRating + r.tests + r.dppPerformance + r.behavior) / 4;
   };
 
   const calculateFinalRating = () => {
