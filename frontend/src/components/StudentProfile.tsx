@@ -365,13 +365,13 @@ function OverviewSection({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white"
+        className="rounded-2xl border border-white bg-white/80 p-4 shadow-lg backdrop-blur-lg sm:p-6"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+        <div className="mb-4 flex items-center justify-between sm:mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Personal Information</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6">
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
             { label: 'Date of Birth', value: details.dateOfBirth, icon: Calendar, key: 'dateOfBirth', type: 'date' },
@@ -387,11 +387,11 @@ function OverviewSection({
               transition={{ delay: 0.4 + index * 0.05 }}
               className="group"
             >
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-600 mb-2">
-                <field.icon className="w-4 h-4" />
+              <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-gray-600 sm:mb-2 sm:text-sm">
+                <field.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {field.label}
               </label>
-              <p className="text-gray-900 font-medium px-4 py-2 bg-gray-50 rounded-lg group-hover:bg-indigo-50 transition">
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 transition group-hover:bg-indigo-50 sm:px-4 sm:text-base">
                 {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
               </p>
             </motion.div>

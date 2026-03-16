@@ -793,7 +793,7 @@ export function AdminDashboard({
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-              <span className="text-xl font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
+              <span className="hidden text-xl font-bold sm:inline" style={{ color: 'rgb(159, 29, 14)' }}>
                 UJAAS Admin
               </span>
             </motion.button>
