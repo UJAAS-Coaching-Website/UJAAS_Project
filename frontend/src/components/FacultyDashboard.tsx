@@ -244,31 +244,44 @@ export function FacultyDashboard({
   const [students, setStudents] = useState<Student[]>([]);
   const [faculty, setFaculty] = useState<Faculty[]>([]);
 
+  const facultySubject =
+    ((user as any).facultyDetails?.subjectSpecialty ||
+      faculty.find(
+        (f) =>
+          (user.email && f.email.toLowerCase() === user.email.toLowerCase()) ||
+          f.name.toLowerCase() === user.name.toLowerCase()
+      )?.subject) ?? null;
+
   useEffect(() => {
     if (adminStudents && adminStudents.length > 0) {
-      const mappedStudents: Student[] = adminStudents.map(api => ({
-        id: api.id,
-        name: api.name,
-        rollNumber: api.roll_number,
-        enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
-        joinDate: api.join_date || new Date().toISOString().split('T')[0],
-        performance: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4 * 20,
-        rating: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4,
-        batch: api.assigned_batch?.name || "",
-        phoneNumber: api.phone || '',
-        dateOfBirth: api.date_of_birth || '',
-        address: api.address || '',
-        parentContact: api.parent_contact || '',
-        totalAttendance: api.rating_attendance,
-        totalClasses: api.rating_total_classes,
-        subjectRatings: {}, // Default empty, can be extended if API provides it
-        subjectRemarks: {},
-      }));
+      const mappedStudents: Student[] = adminStudents.map(api => {
+        const subRatings = (api as any).subject_ratings || {};
+        const facultySubData = facultySubject ? subRatings[facultySubject] : null;
+        
+        return {
+          id: api.id,
+          name: api.name,
+          rollNumber: api.roll_number,
+          enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
+          joinDate: api.join_date || new Date().toISOString().split('T')[0],
+          performance: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4 * 20,
+          rating: (api.rating_attendance / (api.rating_total_classes || 1) * 5 + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4,
+          batch: api.assigned_batch?.name || "",
+          phoneNumber: api.phone || '',
+          dateOfBirth: api.date_of_birth || '',
+          address: api.address || '',
+          parentContact: api.parent_contact || '',
+          totalAttendance: facultySubData ? facultySubData.attendance : api.rating_attendance,
+          totalClasses: facultySubData ? facultySubData.total_classes : api.rating_total_classes,
+          subjectRatings: subRatings,
+          subjectRemarks: {},
+        };
+      });
       setStudents(withStoredRemarks(mappedStudents));
     } else {
       setStudents([]);
     }
-  }, [adminStudents, batches]);
+  }, [adminStudents, batches, facultySubject]);
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentFormState; defaultBatch: Batch | null; title: string; }>({
     open: false,
@@ -450,13 +463,6 @@ export function FacultyDashboard({
 
   const openStudentRatings = (student: Student) => setRatingModal({ open: true, student });
   const closeStudentRatings = () => setRatingModal({ open: false });
-  const facultySubject =
-    ((user as any).facultyDetails?.subjectSpecialty ||
-      faculty.find(
-        (f) =>
-          (user.email && f.email.toLowerCase() === user.email.toLowerCase()) ||
-          f.name.toLowerCase() === user.name.toLowerCase()
-      )?.subject) ?? null;
   const handleSaveFacultySubjectRating = (
     studentId: string,
     subject: string,
@@ -566,44 +572,50 @@ export function FacultyDashboard({
                   { id: 'batches', label: 'Batches', icon: GraduationCap },
                   { id: 'test-series', label: 'Test Series', icon: FileText },
                   { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
-                ].map((section) => (
-                  <motion.button
-                    key={section.id}
-                    onClick={() => {
-                      if (section.id === 'question-bank') {
-                        onNavigate('question-bank');
-                      } else {
-                        onNavigateSection(section.id as FacultySection);
-                      }
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
-                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                  >
-                    <section.icon className="w-5 h-5" />
-                    <span className="hidden sm:inline">{section.label}</span>
-                  </motion.button>
-                ))}
+                ].map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => {
+                        if (section.id === 'question-bank') {
+                          onNavigate('question-bank');
+                        } else {
+                          onNavigateSection(section.id as FacultySection);
+                        }
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(activeTab === section.id || (section.id === 'test-series' && (activeTab === 'test-series' || activeTab === 'create-test')) || (section.id === 'batches' && adminSection === 'batches' && activeTab !== 'question-bank')) && activeTab !== 'profile'
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="hidden sm:inline">{section.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 {[
                   { id: 'home', label: 'Dashboard', icon: LayoutDashboard },
                   { id: 'students', label: 'Batch Students', icon: Users },
-                ].map((tab) => (
-                  <motion.button
-                    key={tab.id}
-                    onClick={() => onNavigate(tab.id as Tab)}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${activeTab === tab.id && activeTab !== 'profile'
-                      ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                  >
-                    <tab.icon className="w-5 h-5" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </motion.button>
-                ))}
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => onNavigate(tab.id as Tab)}
+                      className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${activeTab === tab.id && activeTab !== 'profile'
+                        ? 'bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="hidden sm:inline">{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1358,10 +1370,10 @@ function StudentRatingsModal({
     const nextRemarks: Record<string, string> = {};
     Object.entries(student.subjectRatings ?? {}).forEach(([subject, r]) => {
       nextDrafts[subject] = {
-        attendance: r.attendance.toString(),
-        tests: r.tests.toString(),
-        dppPerformance: r.dppPerformance.toString(),
-        behavior: r.behavior.toString(),
+        attendance: (r.attendance ?? 0).toString(),
+        tests: (r.tests ?? 0).toString(),
+        dppPerformance: (r.dppPerformance ?? 0).toString(),
+        behavior: (r.behavior ?? 0).toString(),
       };
       nextRemarks[subject] = student.subjectRemarks?.[subject] ?? '';
     });

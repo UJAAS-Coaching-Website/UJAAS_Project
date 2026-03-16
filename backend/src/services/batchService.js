@@ -51,110 +51,115 @@ async function ensureActiveBatchExists(batchId, client = pool) {
 }
 
 /**
- * Get all batches with assigned faculty names.
- * Actual DB columns: id, name, slug, subjects, is_active
+ * Get all batches with assigned faculty names and subjects.
  */
 export async function getAllBatches() {
     const batchModel = await getStudentBatchModel();
-    const result = await pool.query(batchModel === "single" ? `
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    
+    const subjectsSubquery = hasBatchSubjects
+        ? `ARRAY(SELECT s.name FROM batch_subjects bs JOIN subjects s ON s.id = bs.subject_id WHERE bs.batch_id = b.id)`
+        : `b.subjects`;
+
+    const facultySubquery = hasBatchSubjects
+        ? `COALESCE(
+                (
+                    SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'subject', s.name))
+                    FROM faculty_assignments fa
+                    JOIN batch_subjects bs ON bs.id = fa.batch_subject_id
+                    JOIN subjects s ON s.id = bs.subject_id
+                    JOIN users u ON u.id = fa.faculty_id
+                    WHERE bs.batch_id = b.id
+                ),
+                '[]'
+            )`
+        : `COALESCE(
+                (
+                    SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'subject', f.subject))
+                    FROM faculty_batches fb
+                    JOIN faculties f ON f.user_id = fb.faculty_id
+                    JOIN users u ON u.id = f.user_id
+                    WHERE fb.batch_id = b.id
+                ),
+                '[]'
+            )`;
+
+    const studentCountSubquery = batchModel === 'single' 
+        ? `(SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)`
+        : `(SELECT COUNT(*) FROM student_batches sb WHERE sb.batch_id = b.id)`;
+
+    const result = await pool.query(`
         SELECT
             b.id,
             b.name,
             b.slug,
-            b.subjects,
             b.is_active,
             b.timetable_url,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', u.id, 'name', u.name)
-                ) FILTER (WHERE u.id IS NOT NULL),
-                '[]'
-            ) AS faculty,
-            (SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)::int AS student_count
+            ${subjectsSubquery} as subjects,
+            ${facultySubquery} AS faculty,
+            ${studentCountSubquery}::int AS student_count
         FROM batches b
-        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
-        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
-        LEFT JOIN users u ON u.id = f.user_id
-        GROUP BY b.id
         ORDER BY b.name
-    ` : `
-        SELECT
-            b.id,
-            b.name,
-            b.slug,
-            b.subjects,
-            b.is_active,
-            b.timetable_url,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', u.id, 'name', u.name)
-                ) FILTER (WHERE u.id IS NOT NULL),
-                '[]'
-            ) AS faculty,
-            (SELECT COUNT(*) FROM student_batches sb WHERE sb.batch_id = b.id)::int AS student_count
-        FROM batches b
-        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
-        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
-        LEFT JOIN users u ON u.id = f.user_id
-        GROUP BY b.id
-        ORDER BY b.name
-    `);
+    `); // No parameters needed here as we used JS variables for subqueries
     return result.rows;
 }
 
 /**
- * Get a single batch by ID with faculty and student counts.
+ * Get a single batch by ID.
  */
 export async function getBatchById(id) {
     const batchModel = await getStudentBatchModel();
-    const result = await pool.query(batchModel === "single" ? `
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    
+    const subjectsSubquery = hasBatchSubjects
+        ? `ARRAY(SELECT s.name FROM batch_subjects bs JOIN subjects s ON s.id = bs.subject_id WHERE bs.batch_id = b.id)`
+        : `b.subjects`;
+
+    const facultySubquery = hasBatchSubjects
+        ? `COALESCE(
+                (
+                    SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'subject', s.name))
+                    FROM faculty_assignments fa
+                    JOIN batch_subjects bs ON bs.id = fa.batch_subject_id
+                    JOIN subjects s ON s.id = bs.subject_id
+                    JOIN users u ON u.id = fa.faculty_id
+                    WHERE bs.batch_id = b.id
+                ),
+                '[]'
+            )`
+        : `COALESCE(
+                (
+                    SELECT json_agg(json_build_object('id', u.id, 'name', u.name, 'subject', f.subject))
+                    FROM faculty_batches fb
+                    JOIN faculties f ON f.user_id = fb.faculty_id
+                    JOIN users u ON u.id = f.user_id
+                    WHERE fb.batch_id = b.id
+                ),
+                '[]'
+            )`;
+
+    const studentCountSubquery = batchModel === 'single' 
+        ? `(SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)`
+        : `(SELECT COUNT(*) FROM student_batches sb WHERE sb.batch_id = b.id)`;
+
+    const result = await pool.query(`
         SELECT
             b.id,
             b.name,
             b.slug,
-            b.subjects,
             b.is_active,
             b.timetable_url,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', u.id, 'name', u.name)
-                ) FILTER (WHERE u.id IS NOT NULL),
-                '[]'
-            ) AS faculty,
-            (SELECT COUNT(*) FROM students s WHERE s.assigned_batch_id = b.id)::int AS student_count
+            ${subjectsSubquery} as subjects,
+            ${facultySubquery} AS faculty,
+            ${studentCountSubquery}::int AS student_count
         FROM batches b
-        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
-        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
-        LEFT JOIN users u ON u.id = f.user_id
         WHERE b.id = $1
-        GROUP BY b.id
-    ` : `
-        SELECT
-            b.id,
-            b.name,
-            b.slug,
-            b.subjects,
-            b.is_active,
-            b.timetable_url,
-            COALESCE(
-                json_agg(
-                    json_build_object('id', u.id, 'name', u.name)
-                ) FILTER (WHERE u.id IS NOT NULL),
-                '[]'
-            ) AS faculty,
-            (SELECT COUNT(*) FROM student_batches sb WHERE sb.batch_id = b.id)::int AS student_count
-        FROM batches b
-        LEFT JOIN faculty_batches fb ON fb.batch_id = b.id
-        LEFT JOIN faculties f ON f.user_id = fb.faculty_id
-        LEFT JOIN users u ON u.id = f.user_id
-        WHERE b.id = $1
-        GROUP BY b.id
-    `, [id]);
+    `, [id]); // Only one parameter needed
     return result.rows[0] || null;
 }
 
 /**
- * Create a new batch with optional faculty assignments.
+ * Create a new batch.
  */
 export async function createBatch({ name, subjects, facultyIds, timetable_url }) {
     const client = await pool.connect();
@@ -171,23 +176,62 @@ export async function createBatch({ name, subjects, facultyIds, timetable_url })
             counter++;
         }
 
+        // Check if new schema is active
+        const hasBatchSubjects = await tableExists("batch_subjects", client);
+
         const batchResult = await client.query(
-            `INSERT INTO batches (id, name, slug, subjects, is_active, timetable_url)
-             VALUES (gen_random_uuid(), $1, $2, $3, true, $4)
+            `INSERT INTO batches (id, name, slug, is_active, timetable_url ${hasBatchSubjects ? '' : ', subjects'})
+             VALUES (gen_random_uuid(), $1, $2, true, $3 ${hasBatchSubjects ? '' : ', $4'})
              RETURNING *`,
-            [name, slug, subjects && subjects.length ? subjects : null, timetable_url || null]
+            hasBatchSubjects ? [name, slug, timetable_url || null] : [name, slug, timetable_url || null, subjects || []]
         );
         const batch = batchResult.rows[0];
 
-        // Assign faculty if provided
-        if (facultyIds && facultyIds.length > 0) {
-            for (const facultyId of facultyIds) {
-                await client.query(
-                    `INSERT INTO faculty_batches (faculty_id, batch_id)
-                     VALUES ($1, $2)
-                     ON CONFLICT DO NOTHING`,
-                    [facultyId, batch.id]
-                );
+        if (hasBatchSubjects) {
+            // 1. Handle Subjects
+            if (subjects && subjects.length > 0) {
+                for (const sName of subjects) {
+                    let sRes = await client.query("SELECT id FROM subjects WHERE name = $1", [sName]);
+                    let sId;
+                    if (sRes.rowCount === 0) {
+                        sRes = await client.query("INSERT INTO subjects (name) VALUES ($1) RETURNING id", [sName]);
+                    }
+                    sId = sRes.rows[0].id;
+                    await client.query(
+                        "INSERT INTO batch_subjects (batch_id, subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                        [batch.id, sId]
+                    );
+                }
+            }
+
+            // 2. Assign Faculty
+            if (facultyIds && facultyIds.length > 0) {
+                for (const facultyId of facultyIds) {
+                    const fRes = await client.query("SELECT subject_id FROM faculties WHERE user_id = $1", [facultyId]);
+                    const fSubId = fRes.rows[0]?.subject_id;
+                    if (fSubId) {
+                        const bsRes = await client.query(
+                            "SELECT id FROM batch_subjects WHERE batch_id = $1 AND subject_id = $2",
+                            [batch.id, fSubId]
+                        );
+                        if (bsRes.rowCount > 0) {
+                            await client.query(
+                                "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                                [facultyId, bsRes.rows[0].id]
+                            );
+                        }
+                    }
+                }
+            }
+        } else {
+            // Legacy schema: link to faculty_batches
+            if (facultyIds && facultyIds.length > 0) {
+                for (const facultyId of facultyIds) {
+                    await client.query(
+                        "INSERT INTO faculty_batches (faculty_id, batch_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                        [facultyId, batch.id]
+                    );
+                }
             }
         }
 
@@ -202,7 +246,7 @@ export async function createBatch({ name, subjects, facultyIds, timetable_url })
 }
 
 /**
- * Update batch details and faculty assignments.
+ * Update batch details.
  */
 export async function updateBatch(id, { name, is_active, subjects, facultyIds, timetable_url }) {
     const client = await pool.connect();
@@ -222,36 +266,70 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds, t
             }
         }
 
+        const hasBatchSubjects = await tableExists("batch_subjects", client);
+
         await client.query(
             `UPDATE batches
              SET name = COALESCE($2, name),
                  slug = COALESCE($3, slug),
                  is_active = COALESCE($4, is_active),
-                 subjects = COALESCE($5, subjects),
-                 timetable_url = COALESCE($6, timetable_url)
+                 timetable_url = COALESCE($5, timetable_url)
+                 ${hasBatchSubjects ? '' : ', subjects = COALESCE($6, subjects)'}
              WHERE id = $1`,
-            [
-                id,
-                name || null,
-                newSlug,
-                is_active !== undefined ? is_active : null,
-                subjects !== undefined ? (subjects && subjects.length ? subjects : null) : null,
-                timetable_url !== undefined ? (timetable_url || null) : null
-            ]
+            hasBatchSubjects 
+                ? [id, name || null, newSlug, is_active !== undefined ? is_active : null, timetable_url !== undefined ? (timetable_url || null) : null]
+                : [id, name || null, newSlug, is_active !== undefined ? is_active : null, timetable_url !== undefined ? (timetable_url || null) : null, subjects || null]
         );
 
-        // Replace faculty assignments if provided
-        if (facultyIds !== undefined) {
-            await client.query(
-                "DELETE FROM faculty_batches WHERE batch_id = $1",
-                [id]
-            );
-            if (facultyIds && facultyIds.length > 0) {
+        if (hasBatchSubjects) {
+            if (subjects !== undefined) {
+                for (const sName of subjects) {
+                    let sRes = await client.query("SELECT id FROM subjects WHERE name = $1", [sName]);
+                    let sId;
+                    if (sRes.rowCount === 0) {
+                        sRes = await client.query("INSERT INTO subjects (name) VALUES ($1) RETURNING id", [sName]);
+                    }
+                    sId = sRes.rows[0].id;
+                    await client.query(
+                        "INSERT INTO batch_subjects (batch_id, subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                        [id, sId]
+                    );
+                }
+            }
+
+            if (facultyIds !== undefined) {
+                await client.query(
+                    `DELETE FROM faculty_assignments 
+                     WHERE batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $1)`,
+                    [id]
+                );
+                
+                if (facultyIds && facultyIds.length > 0) {
+                    for (const facultyId of facultyIds) {
+                        const fRes = await client.query("SELECT subject_id FROM faculties WHERE user_id = $1", [facultyId]);
+                        const fSubId = fRes.rows[0]?.subject_id;
+                        if (fSubId) {
+                            const bsRes = await client.query(
+                                "SELECT id FROM batch_subjects WHERE batch_id = $1 AND subject_id = $2",
+                                [id, fSubId]
+                            );
+                            if (bsRes.rowCount > 0) {
+                                await client.query(
+                                    "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                                    [facultyId, bsRes.rows[0].id]
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Legacy faculty link
+            if (facultyIds !== undefined) {
+                await client.query("DELETE FROM faculty_batches WHERE batch_id = $1", [id]);
                 for (const facultyId of facultyIds) {
                     await client.query(
-                        `INSERT INTO faculty_batches (faculty_id, batch_id)
-                         VALUES ($1, $2)
-                         ON CONFLICT DO NOTHING`,
+                        "INSERT INTO faculty_batches (faculty_id, batch_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
                         [facultyId, id]
                     );
                 }
@@ -309,6 +387,15 @@ export async function permanentlyDeleteBatch(id) {
         const hasDppAttempts = await tableExists("dpp_attempts", client);
         const hasDppTargetBatches = await tableExists("dpp_target_batches", client);
         const hasNotificationsBatchColumn = await columnExists("notifications", "batch_id", client);
+        const hasBatchSubjects = await tableExists("batch_subjects", client);
+
+        const chapterFilter = hasBatchSubjects 
+            ? `batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $1)`
+            : `batch_id = $1`;
+
+        const facultyLinkQuery = hasBatchSubjects
+            ? `SELECT COUNT(*)::int AS count FROM faculty_assignments fa JOIN batch_subjects bs ON bs.id = fa.batch_subject_id WHERE bs.batch_id = $1`
+            : `SELECT COUNT(*)::int AS count FROM faculty_batches WHERE batch_id = $1`;
 
         const [
             chapterCountResult,
@@ -319,64 +406,19 @@ export async function permanentlyDeleteBatch(id) {
             notificationCountResult,
             testLinkRowsResult,
         ] = await Promise.all([
-            client.query(
-                `SELECT COUNT(*)::int AS count
-                 FROM chapters
-                 WHERE batch_id = $1`,
-                [id]
-            ),
-            client.query(
-                `SELECT COUNT(*)::int AS count
-                 FROM notes n
-                 JOIN chapters c ON c.id = n.chapter_id
-                 WHERE c.batch_id = $1`,
-                [id]
-            ),
-            client.query(
-                `SELECT COUNT(*)::int AS count
-                 FROM dpps d
-                 JOIN chapters c ON c.id = d.chapter_id
-                 WHERE c.batch_id = $1`,
-                [id]
-            ),
+            client.query(`SELECT COUNT(*)::int AS count FROM chapters WHERE ${chapterFilter}`, [id]),
+            client.query(`SELECT COUNT(*)::int AS count FROM notes n JOIN chapters c ON c.id = n.chapter_id WHERE c.${chapterFilter}`, [id]),
+            client.query(`SELECT COUNT(*)::int AS count FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE c.${chapterFilter}`, [id]),
             batchModel === "single"
-                ? client.query(
-                    `SELECT COUNT(*)::int AS count
-                     FROM students
-                     WHERE assigned_batch_id = $1`,
-                    [id]
-                )
+                ? client.query(`SELECT COUNT(*)::int AS count FROM students WHERE assigned_batch_id = $1`, [id])
                 : hasLegacyStudentBatches
-                    ? client.query(
-                        `SELECT COUNT(*)::int AS count
-                         FROM student_batches
-                         WHERE batch_id = $1`,
-                        [id]
-                    )
+                    ? client.query(`SELECT COUNT(*)::int AS count FROM student_batches WHERE batch_id = $1`, [id])
                     : Promise.resolve({ rows: [{ count: 0 }] }),
-            client.query(
-                `SELECT COUNT(*)::int AS count
-                 FROM faculty_batches
-                 WHERE batch_id = $1`,
-                [id]
-            ),
+            client.query(facultyLinkQuery, [id]),
             hasNotificationsBatchColumn
-                ? client.query(
-                    `SELECT COUNT(*)::int AS count
-                     FROM notifications
-                     WHERE batch_id = $1`,
-                    [id]
-                )
+                ? client.query(`SELECT COUNT(*)::int AS count FROM notifications WHERE batch_id = $1`, [id])
                 : Promise.resolve({ rows: [{ count: 0 }] }),
-            client.query(
-                `SELECT ttb.test_id,
-                        COUNT(all_links.batch_id)::int AS linked_batch_count
-                 FROM test_target_batches ttb
-                 JOIN test_target_batches all_links ON all_links.test_id = ttb.test_id
-                 WHERE ttb.batch_id = $1
-                 GROUP BY ttb.test_id`,
-                [id]
-            ),
+            client.query(`SELECT ttb.test_id, COUNT(all_links.batch_id)::int AS linked_batch_count FROM test_target_batches ttb JOIN test_target_batches all_links ON all_links.test_id = ttb.test_id WHERE ttb.batch_id = $1 GROUP BY ttb.test_id`, [id]),
         ]);
 
         const exclusiveTestIds = [];
@@ -391,98 +433,30 @@ export async function permanentlyDeleteBatch(id) {
 
         let dppAttemptCount = 0;
         if (hasDppAttempts) {
-            const dppAttemptCountResult = await client.query(
-                `SELECT COUNT(*)::int AS count
-                 FROM dpp_attempts da
-                 WHERE EXISTS (
-                     SELECT 1
-                     FROM dpps d
-                     JOIN chapters c ON c.id = d.chapter_id
-                     WHERE d.id = da.dpp_id
-                       AND c.batch_id = $1
-                 )`,
-                [id]
-            );
+            const dppAttemptCountResult = await client.query(`SELECT COUNT(*)::int AS count FROM dpp_attempts da WHERE EXISTS (SELECT 1 FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE d.id = da.dpp_id AND c.${chapterFilter})`, [id]);
             dppAttemptCount = Number(dppAttemptCountResult.rows[0]?.count ?? 0);
-
-            await client.query(
-                `DELETE FROM dpp_attempts da
-                 WHERE EXISTS (
-                     SELECT 1
-                     FROM dpps d
-                     JOIN chapters c ON c.id = d.chapter_id
-                     WHERE d.id = da.dpp_id
-                       AND c.batch_id = $1
-                 )`,
-                [id]
-            );
+            await client.query(`DELETE FROM dpp_attempts da WHERE EXISTS (SELECT 1 FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE d.id = da.dpp_id AND c.${chapterFilter})`, [id]);
         }
 
         if (hasDppTargetBatches) {
-            await client.query(
-                `DELETE FROM dpp_target_batches dtb
-                 WHERE EXISTS (
-                     SELECT 1
-                     FROM dpps d
-                     JOIN chapters c ON c.id = d.chapter_id
-                     WHERE d.id = dtb.dpp_id
-                       AND c.batch_id = $1
-                 )`,
-                [id]
-            );
+            await client.query(`DELETE FROM dpp_target_batches dtb WHERE EXISTS (SELECT 1 FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE d.id = dtb.dpp_id AND c.${chapterFilter})`, [id]);
         }
 
         if (sharedTestIds.length > 0) {
-            await client.query(
-                `DELETE FROM test_target_batches
-                 WHERE batch_id = $1
-                   AND test_id = ANY($2::uuid[])`,
-                [id, sharedTestIds]
-            );
+            await client.query(`DELETE FROM test_target_batches WHERE batch_id = $1 AND test_id = ANY($2::uuid[])`, [id, sharedTestIds]);
         }
 
         if (exclusiveTestIds.length > 0) {
-            await client.query(
-                `DELETE FROM tests
-                 WHERE id = ANY($1::uuid[])`,
-                [exclusiveTestIds]
-            );
+            await client.query(`DELETE FROM tests WHERE id = ANY($1::uuid[])`, [exclusiveTestIds]);
         }
 
         if (batchModel === "single") {
-            await client.query(
-                `UPDATE students
-                 SET assigned_batch_id = NULL
-                 WHERE assigned_batch_id = $1`,
-                [id]
-            );
+            await client.query(`UPDATE students SET assigned_batch_id = NULL WHERE assigned_batch_id = $1`, [id]);
         } else if (hasLegacyStudentBatches) {
-            await client.query(
-                `DELETE FROM student_batches
-                 WHERE batch_id = $1`,
-                [id]
-            );
+            await client.query(`DELETE FROM student_batches WHERE batch_id = $1`, [id]);
         }
 
-        await client.query(
-            `DELETE FROM faculty_batches
-             WHERE batch_id = $1`,
-            [id]
-        );
-
-        if (hasNotificationsBatchColumn) {
-            await client.query(
-                `DELETE FROM notifications
-                 WHERE batch_id = $1`,
-                [id]
-            );
-        }
-
-        await client.query(
-            `DELETE FROM batches
-             WHERE id = $1`,
-            [id]
-        );
+        await client.query(`DELETE FROM batches WHERE id = $1`, [id]);
 
         await client.query("COMMIT");
 
@@ -514,20 +488,10 @@ export async function assignStudentToBatch(studentId, batchId) {
     await ensureActiveBatchExists(batchId);
     const batchModel = await getStudentBatchModel();
     if (batchModel === "single") {
-        await pool.query(
-            `UPDATE students
-             SET assigned_batch_id = $2
-             WHERE user_id = $1`,
-            [studentId, batchId]
-        );
+        await pool.query(`UPDATE students SET assigned_batch_id = $2 WHERE user_id = $1`, [studentId, batchId]);
     } else {
         await pool.query(`DELETE FROM student_batches WHERE student_id = $1`, [studentId]);
-        await pool.query(
-            `INSERT INTO student_batches (student_id, batch_id)
-             VALUES ($1, $2)
-             ON CONFLICT DO NOTHING`,
-            [studentId, batchId]
-        );
+        await pool.query(`INSERT INTO student_batches (student_id, batch_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [studentId, batchId]);
     }
 }
 
@@ -538,13 +502,8 @@ export async function removeStudentFromBatch(studentId, batchId) {
     const batchModel = await getStudentBatchModel();
     const result = await pool.query(
         batchModel === "single"
-            ? `UPDATE students
-               SET assigned_batch_id = NULL
-               WHERE user_id = $1
-                 AND assigned_batch_id = $2`
-            : `DELETE FROM student_batches
-               WHERE student_id = $1
-                 AND batch_id = $2`,
+            ? `UPDATE students SET assigned_batch_id = NULL WHERE user_id = $1 AND assigned_batch_id = $2`
+            : `DELETE FROM student_batches WHERE student_id = $1 AND batch_id = $2`,
         [studentId, batchId]
     );
     return result.rowCount > 0;
@@ -555,22 +514,29 @@ export async function removeStudentFromBatch(studentId, batchId) {
  */
 export async function assignFacultyToBatch(facultyId, batchId) {
     await ensureActiveBatchExists(batchId);
-    await pool.query(
-        `INSERT INTO faculty_batches (faculty_id, batch_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
-        [facultyId, batchId]
-    );
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    if (hasBatchSubjects) {
+        const fRes = await pool.query("SELECT subject_id FROM faculties WHERE user_id = $1", [facultyId]);
+        const fSubId = fRes.rows[0]?.subject_id;
+        if (fSubId) {
+            const bsRes = await pool.query("SELECT id FROM batch_subjects WHERE batch_id = $1 AND subject_id = $2", [batchId, fSubId]);
+            if (bsRes.rowCount > 0) {
+                await pool.query(`INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [facultyId, bsRes.rows[0].id]);
+            }
+        }
+    } else {
+        await pool.query(`INSERT INTO faculty_batches (faculty_id, batch_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [facultyId, batchId]);
+    }
 }
 
 /**
  * Remove a faculty from a batch.
  */
 export async function removeFacultyFromBatch(facultyId, batchId) {
-    const result = await pool.query(
-        "DELETE FROM faculty_batches WHERE faculty_id = $1 AND batch_id = $2",
-        [facultyId, batchId]
-    );
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    const result = hasBatchSubjects
+        ? await pool.query(`DELETE FROM faculty_assignments WHERE faculty_id = $1 AND batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $2)`, [facultyId, batchId])
+        : await pool.query(`DELETE FROM faculty_batches WHERE faculty_id = $1 AND batch_id = $2`, [facultyId, batchId]);
     return result.rowCount > 0;
 }
 
@@ -589,7 +555,7 @@ export async function getBatchStudents(batchId) {
         SELECT u.id, u.name, s.roll_number, s.phone
         FROM student_batches sb
         JOIN students s ON s.user_id = sb.student_id
-        JOIN users u ON u.id = s.user_id
+        JOIN users u ON u.id = sb.student_id
         WHERE sb.batch_id = $1
         ORDER BY u.name
     `, [batchId]);
@@ -600,14 +566,10 @@ export async function getBatchStudents(batchId) {
  * Get all faculty in a batch.
  */
 export async function getBatchFaculty(batchId) {
-    const result = await pool.query(`
-        SELECT u.id, u.name, f.subject, f.phone
-        FROM faculty_batches fb
-        JOIN faculties f ON f.user_id = fb.faculty_id
-        JOIN users u ON u.id = f.user_id
-        WHERE fb.batch_id = $1
-        ORDER BY u.name
-    `, [batchId]);
+    const hasBatchSubjects = await tableExists("batch_subjects");
+    const result = hasBatchSubjects
+        ? await pool.query(`SELECT u.id, u.name, s.name as subject, f.phone FROM faculty_assignments fa JOIN batch_subjects bs ON bs.id = fa.batch_subject_id JOIN subjects s ON s.id = bs.subject_id JOIN faculties f ON f.user_id = fa.faculty_id JOIN users u ON u.id = f.user_id WHERE bs.batch_id = $1 ORDER BY u.name`, [batchId])
+        : await pool.query(`SELECT u.id, u.name, f.subject, f.phone FROM faculty_batches fb JOIN faculties f ON f.user_id = fb.faculty_id JOIN users u ON u.id = f.user_id WHERE fb.batch_id = $1 ORDER BY u.name`, [batchId]);
     return result.rows;
 }
 
@@ -619,24 +581,23 @@ export async function createBatchNotification(batchId, { title, message, type = 
     try {
         await client.query("BEGIN");
         const batchModel = await getStudentBatchModel();
+        const hasBatchSubjects = await tableExists("batch_subjects", client);
 
-        // Insert notifications for all students and faculty in the batch
-        // We use an INSERT INTO ... SELECT to do this efficiently in one go
-        await client.query(batchModel === "single" ? `
+        const batchSubquery = batchModel === 'single'
+            ? `SELECT user_id FROM students WHERE assigned_batch_id = $1`
+            : `SELECT student_id AS user_id FROM student_batches WHERE batch_id = $1`;
+
+        const facultySubquery = hasBatchSubjects
+            ? `SELECT faculty_id AS user_id FROM faculty_assignments fa JOIN batch_subjects bs ON bs.id = fa.batch_subject_id WHERE bs.batch_id = $1`
+            : `SELECT faculty_id AS user_id FROM faculty_batches WHERE batch_id = $1`;
+
+        await client.query(`
             INSERT INTO notifications (user_id, title, message, type)
             SELECT p.user_id, $2, $3, $4
             FROM (
-                SELECT user_id FROM students WHERE assigned_batch_id = $1
+                ${batchSubquery}
                 UNION
-                SELECT faculty_id AS user_id FROM faculty_batches WHERE batch_id = $1
-            ) p
-        ` : `
-            INSERT INTO notifications (user_id, title, message, type)
-            SELECT p.user_id, $2, $3, $4
-            FROM (
-                SELECT student_id AS user_id FROM student_batches WHERE batch_id = $1
-                UNION
-                SELECT faculty_id AS user_id FROM faculty_batches WHERE batch_id = $1
+                ${facultySubquery}
             ) p
         `, [batchId, title, message, type]);
 

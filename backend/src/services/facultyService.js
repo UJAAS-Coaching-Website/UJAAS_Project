@@ -2,6 +2,21 @@ import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
 
 /**
+ * Helper to get or create subject ID by name
+ */
+async function getOrCreateSubjectId(name, client = pool) {
+    if (!name) return null;
+    const existing = await client.query("SELECT id FROM subjects WHERE name = $1", [name]);
+    if (existing.rows[0]) return existing.rows[0].id;
+
+    const created = await client.query(
+        "INSERT INTO subjects (name) VALUES ($1) RETURNING id",
+        [name]
+    );
+    return created.rows[0].id;
+}
+
+/**
  * Generate initial password from faculty name: firstname@123
  */
 function generateInitialPassword(name) {
@@ -10,7 +25,7 @@ function generateInitialPassword(name) {
 }
 
 /**
- * Fetch all faculties by joining users and faculties tables.
+ * Fetch all faculties by joining users, faculties and subjects.
  */
 export async function getAllFaculties() {
     const result = await pool.query(`
@@ -18,12 +33,14 @@ export async function getAllFaculties() {
             u.id, 
             u.name, 
             u.login_id as email, 
-            f.subject, 
+            s.name as subject, 
+            f.subject_id,
             f.designation, 
             f.phone,
             TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
         FROM users u
         INNER JOIN faculties f ON u.id = f.user_id
+        LEFT JOIN subjects s ON s.id = f.subject_id
         WHERE u.role = 'faculty'
         ORDER BY u.name ASC
     `);
@@ -42,6 +59,7 @@ export async function createFaculty({ name, email, subject, phone, designation, 
     try {
         await client.query("BEGIN");
 
+        const subjectId = await getOrCreateSubjectId(subject, client);
         const password = hashPassword(generateInitialPassword(name));
 
         const userResult = await client.query(
@@ -53,9 +71,9 @@ export async function createFaculty({ name, email, subject, phone, designation, 
         const userId = userResult.rows[0].id;
 
         await client.query(
-            `INSERT INTO faculties (user_id, phone, subject, designation, "joining-date")
+            `INSERT INTO faculties (user_id, phone, subject_id, designation, "joining-date")
              VALUES ($1, $2, $3, $4, $5)`,
-            [userId, phone || null, subject || null, designation || null, joinDate || null]
+            [userId, phone || null, subjectId, designation || null, joinDate || null]
         );
 
         await client.query("COMMIT");
@@ -65,6 +83,7 @@ export async function createFaculty({ name, email, subject, phone, designation, 
             name,
             email,
             subject: subject || null,
+            subject_id: subjectId,
             designation: designation || null,
             phone: phone || null,
             joining_date: joinDate || null,
@@ -93,23 +112,30 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
             await client.query(`UPDATE users SET login_id = $1 WHERE id = $2`, [email, id]);
         }
 
+        let subjectId = undefined;
+        if (subject !== undefined) {
+            subjectId = await getOrCreateSubjectId(subject, client);
+        }
+
         await client.query(
             `UPDATE faculties
              SET phone = COALESCE($2, phone),
-                 subject = COALESCE($3, subject),
+                 subject_id = COALESCE($3, subject_id),
                  designation = COALESCE($4, designation),
                  "joining-date" = COALESCE($5, "joining-date")
              WHERE user_id = $1`,
-            [id, phone || null, subject || null, designation || null, joinDate || undefined]
+            [id, phone || null, subjectId, designation || null, joinDate || undefined]
         );
 
         await client.query("COMMIT");
 
         // Fetch and return the updated faculty
         const result = await pool.query(`
-            SELECT u.id, u.name, u.login_id as email, f.subject, f.designation, f.phone,
+            SELECT u.id, u.name, u.login_id as email, s.name as subject, f.subject_id, f.designation, f.phone,
                    TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
-            FROM users u INNER JOIN faculties f ON u.id = f.user_id
+            FROM users u 
+            INNER JOIN faculties f ON u.id = f.user_id
+            LEFT JOIN subjects s ON s.id = f.subject_id
             WHERE u.id = $1
         `, [id]);
         return result.rows[0] ? { ...result.rows[0], rating: 4.5 } : null;
