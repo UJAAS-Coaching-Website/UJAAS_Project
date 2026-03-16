@@ -45,6 +45,10 @@ Use this file as a living tracker while we stabilize and complete the codebase.
   - Frontend dropdown uses `course.id` as value, `course.name` as label
   - Query status flow updated: `new` -> `seen` (auto) -> `contacted` (manual)
 - [x] Old `landing_page_data` and `landing_contact` tables dropped
+- [x] Change-password flow is now backend-backed for student, faculty, and admin with a two-step verification UI
+- [x] Student profile performance uses real subject ratings only (assigned subjects, no mock data)
+- [x] Admin/faculty student detail performance summary now pulls real test analytics per batch
+- [x] Question bank faculty context updated to new subjects + batch_subjects + faculty_assignments schema
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
@@ -90,7 +94,6 @@ Use this file as a living tracker while we stabilize and complete the codebase.
   - Includes listing, status updates, and permanent deletion
 - [x] Admin query form stores course as FK (`course_id`) referencing `landing_courses` table
 - [x] Admin test creation, preview, publish, update, and delete flows exist
-- [~] Some admin analytics/performance sections still contain mock data in the UI
 - [~] Some admin remarks/rating-related data is stored locally in the browser
 - [ ] Replace remaining mock analytics with fully API-backed data
 
@@ -100,9 +103,8 @@ Use this file as a living tracker while we stabilize and complete the codebase.
 - [x] Faculty DPP creation and management exist
 - [x] Faculty test access/management exists
 - [x] Faculty question bank upload/list/delete flow is backend-backed
-- [~] Some faculty analytics/performance sections still contain mock data in the UI
-- [~] Some faculty attendance/remarks state is stored in `localStorage`
-- [ ] Move faculty analytics, attendance, and remarks to durable backend storage
+- [~] Some faculty attendance/remarks state may still be stored locally depending on batch setup
+- [ ] Move any remaining attendance/remarks to durable backend storage
 
 ## Tests And Exam Attempts
 - [x] Test CRUD exists in backend services/routes

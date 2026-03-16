@@ -56,6 +56,16 @@ This audit focuses on functionality, not just UI presence.
   - Backend `queryService.js` JOINs `landing_courses` to resolve course name when listing queries.
   - Frontend dropdown uses `course.id` as value, `course.name` as label.
   - Query status workflow: `new` (default) -> `seen` (auto on open) -> `contacted` (manual).
+- `[REAL]` Password change flow is now fully backend-backed for student, faculty, and admin.
+  - Current password is verified first, then new/confirm fields appear.
+  - New password is saved via `/api/auth/change-password` after confirmation.
+- `[REAL]` Student profile performance now uses real subject ratings only (no mock subjects).
+  - Subject list is derived from backend `subject_ratings`.
+  - Attendance display is converted into a 5-star rating scale.
+- `[REAL]` Admin/faculty student detail modals now show real test performance summaries per batch.
+  - Test list is derived from tests assigned to the student’s batch.
+  - Scores, rank, and accuracy are pulled from test analysis endpoints.
+- `[REAL]` Question bank faculty context now uses the new subjects + batch_subjects + faculty_assignments schema.
 
 ## Top Findings First
 
@@ -85,10 +95,7 @@ This audit focuses on functionality, not just UI presence.
   - Impact: malicious or unexpected file upload risk.
 
 ### Medium Attention
-- `[DEMO]` Student profile change-password flow is UI-only.
-- `[DEMO]` Admin reset-password flow is UI-only and just shows an alert.
-- `[DEMO]` Admin/faculty student performance modal includes hardcoded mock test history.
-- `[DEMO]` Student ratings, faculty remarks, and attendance rely on browser storage instead of backend persistence.
+- `[PARTIAL]` Admin reset-password still resets a user’s password directly (admin-driven), not a self-service flow.
 - `[PARTIAL]` Test autosubmit on browser close uses `beforeunload` + `fetch(... keepalive)`, which is best-effort and not guaranteed.
 
 ## Feature Audit By Area
@@ -107,9 +114,9 @@ This audit focuses on functionality, not just UI presence.
 - `[RISK]` This mixed strategy increases complexity and XSS exposure.
 
 ### Missing User-Facing Auth Functionality
-- `[DEMO]` Student “Change Password” modal submits only local UI state and closes.
-  - Source: `frontend/src/components/StudentProfile.tsx`
-  - No matching password-change API client or backend route found.
+- `[REAL]` Student, faculty, and admin “Change Password” now verifies current password first and then saves the new password.
+  - Source: `frontend/src/components/StudentProfile.tsx`, `frontend/src/components/FacultyProfile.tsx`, `frontend/src/components/AdminProfile.tsx`
+  - Backend: `POST /api/auth/change-password`
 
 ## 2. Student Dashboard And Student Utilities
 
@@ -140,13 +147,12 @@ This audit focuses on functionality, not just UI presence.
 - `[VERIFY]` Needs runtime testing for validation, formatting, and edge cases.
 
 ### Password Change
-- `[DEMO]` “Change Password” opens modal only; submit does not call any API.
+- `[REAL]` “Change Password” now verifies current password and updates the password via the backend.
   - Source: `frontend/src/components/StudentProfile.tsx`
 
 ### Performance Breakdown
-- `[DEMO]` Subject detail ratings are described as mocked in code comments.
+- `[REAL]` Subject detail ratings are derived from backend subject ratings only (no mock subjects).
   - Source: `frontend/src/components/StudentProfile.tsx`
-- `[RISK]` UI may imply real per-subject analytics where only synthetic values are shown.
 
 ## 4. Test Series
 
@@ -249,10 +255,9 @@ This audit focuses on functionality, not just UI presence.
 - `[VERIFY]` Deleting a course from `landing_courses` sets `course_id` to NULL in existing queries (`ON DELETE SET NULL`).
 
 ### Student Detail Modal
-- `[DEMO]` Mock test performance array is hardcoded.
-  - Source: `frontend/src/components/AdminDashboard.tsx`
-- `[DEMO]` Reset password only shows generated password in confirm/alert.
-  - Source: `frontend/src/components/AdminDashboard.tsx`
+- `[REAL]` Test performance summary now uses real test analysis data.
+  - Source: `frontend/src/components/AdminDashboard.tsx`, `frontend/src/api/tests.ts`
+- `[REAL]` Admin reset-password uses backend route (`/api/auth/admin/reset-password`).
 - `[PARTIAL]` Student remarks/profile editing inside this area should be checked for whether values persist to backend or remain local in component state.
 
 ### Ratings
@@ -266,14 +271,11 @@ This audit focuses on functionality, not just UI presence.
 - `[REAL]` Faculty can upload/manage notes through real APIs.
 
 ### Student Tracking In Faculty Area
-- `[DEMO]` Student remarks are stored in `localStorage`.
-- `[DEMO]` Attendance is stored in `localStorage`.
-- `[DEMO]` Mock students/performance data are still injected in places.
-  - Source: `frontend/src/components/FacultyDashboard.tsx`
+- `[REAL]` Student ratings and remarks are now backed by the database and shown across roles.
+- `[PARTIAL]` Attendance values are displayed from backend totals but still depend on batch subject totals being accurate.
 
 ### Student Performance Modal
-- `[DEMO]` Mock test performance array is hardcoded.
-  - Source: `frontend/src/components/FacultyDashboard.tsx`
+- `[REAL]` Test performance summary now uses real test analysis data by batch.
 
 ## 9. Uploads And Storage
 
@@ -328,9 +330,9 @@ This audit focuses on functionality, not just UI presence.
 - `[~]` Add stronger upload validation beyond MIME allowlists where needed
 
 ## Must Fix For Functional Accuracy
-- `[ ]` Replace admin mock student performance data with real test/DPP history
-- `[ ]` Replace faculty mock student performance data with real test/DPP history
-- `[ ]` Implement real change-password flow
+- `[x]` Replace admin mock student performance data with real test/DPP history
+- `[x]` Replace faculty mock student performance data with real test/DPP history
+- `[x]` Implement real change-password flow
 - `[ ]` Replace browser-local student ratings with backend persistence
 - `[ ]` Replace browser-local attendance/remarks with backend persistence where required
 - `[x]` Question bank is now implemented as a real shared backend-backed feature
@@ -347,15 +349,8 @@ This audit focuses on functionality, not just UI presence.
 - `[ ]` Cross-role visibility rules for chapters, notes, tests, and analytics
 
 ## Quick Reference: Demo Or Local-Only Behaviors Found
-- `[DEMO]` Student profile change password
-- `[DEMO]` Student subject-level performance detail generation
 - `[DEMO]` Student timetable download button
-- `[DEMO]` Student ratings persistence
-- `[DEMO]` Admin reset password
-- `[DEMO]` Admin student test history modal data
-- `[DEMO]` Faculty student test history modal data
-- `[DEMO]` Faculty attendance persistence
-- `[DEMO]` Faculty remarks persistence
+- `[DEMO]` Faculty attendance persistence (if totals remain local or manual)
 
 ## Summary
 - The codebase is not just a UI shell; a lot of the core app is genuinely implemented, especially tests, DPPs, auth, CRUD flows, and content APIs.

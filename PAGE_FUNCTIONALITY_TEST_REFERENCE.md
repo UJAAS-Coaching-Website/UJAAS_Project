@@ -33,6 +33,10 @@
 - Prospect query form course dropdown now uses `course.id` as the submitted value (FK to `landing_courses`) instead of plain text.
   - `prospect_queries.course` column replaced by `prospect_queries.course_id` (UUID FK).
   - Backend JOINs `landing_courses` to resolve course name for admin display.
+- Change-password flow is now backend-backed for student, faculty, and admin.
+  - Current password is verified first; new/confirm inputs appear only after verification.
+- Student profile performance uses real subject ratings only (assigned subjects).
+- Admin/faculty student detail test performance summary uses real test analysis per batch.
 
 ## 2. Public Pages
 
@@ -244,13 +248,13 @@
   - change password modal
 - Expected behavior:
   - overview shows backend user data
-  - performance uses ratings plus generated fallback detail
+  - performance uses backend subject ratings only (no mock subjects)
   - logout works
-  - change password closes locally without backend update
+  - change password verifies current password, then updates via backend
 - QA checks:
   - verify profile refresh uses `/api/auth/me`
   - verify overall rating calculation
-  - verify change password is logged as UI-only behavior
+  - verify change password uses `/api/auth/change-password`
 
 ### 3.11 Student Question Bank
 - Entry condition: student opens `Question Bank`.
@@ -337,11 +341,11 @@
   - close button
 - Expected behavior:
   - faculty can edit only ratings/remarks tied to matching subject specialty
-  - save actions persist locally
+  - save actions persist to backend
 - QA checks:
   - verify invalid rating values outside 0-5 are blocked
   - verify subject mismatch disables editing
-  - verify remarks persist after refresh
+  - verify remarks persist after refresh (backend)
 
 ### 4.6 Faculty Test Series Management
 - Entry condition: faculty opens `Test Series`.
@@ -482,7 +486,7 @@
 - QA checks:
   - verify overview is populated from backend `me()`
   - verify logout works
-  - verify change password remains UI-only
+  - verify change password verifies current password and updates via backend
 
 ## 5. Admin Pages
 
@@ -617,7 +621,8 @@
 - Expected behavior:
   - detail edits update student backend record
   - admin remark persists in localStorage
-  - reset password is UI-only confirm/alert behavior
+  - test performance table loads from backend test analysis
+  - reset password calls backend admin reset endpoint
   - print opens print preview behavior
 - QA checks:
   - verify edited details survive refresh
@@ -832,7 +837,7 @@
 - QA checks:
   - verify profile identity is loaded from backend `me()`
   - verify logout clears session
-  - verify change password is UI-only
+  - verify change password verifies current password and updates via backend
 
 ## 6. Shared and Cross-Cutting QA Checks
 
@@ -868,6 +873,5 @@
 ### 6.5 Known Test Notes
 - Current code contains several UI-complete but backend-incomplete areas:
   - DPP creation/publishing
-  - profile change password
-  - faculty dashboard student/rating data
+  - faculty attendance persistence (if not yet backend-backed)
 - These should be logged as current implementation characteristics unless intended requirements explicitly say otherwise.
