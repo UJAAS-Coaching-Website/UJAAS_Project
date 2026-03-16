@@ -5,7 +5,7 @@ import { signJwt, verifyJwt } from "../utils/jwt.js";
 import { parseCookies } from "../utils/cookies.js";
 import { getTokenFromRequest } from "../middleware/auth.js";
 import { hashToken, issueAuthTokens } from "../services/authService.js";
-import { fetchUserProfileById } from "../services/userService.js";
+import { fetchUserProfileById, resetUserPassword } from "../services/userService.js";
 import { setAccessCookie, setRefreshCookie, clearAuthCookies } from "../middleware/cookies.js";
 import {
     jwtSecret,
@@ -179,4 +179,35 @@ export async function logout(req, res) {
 
     clearAuthCookies(res);
     return res.status(200).json({ message: "logged out" });
+}
+
+export async function adminResetPassword(req, res) {
+    const { userId, newPassword } = req.body || {};
+
+    if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ message: "userId is required" });
+    }
+
+    if (!newPassword || typeof newPassword !== "string" || !newPassword.trim()) {
+        return res.status(400).json({ message: "newPassword is required" });
+    }
+
+    try {
+        const updated = await resetUserPassword(userId, newPassword.trim());
+        if (!updated) {
+            return res.status(404).json({ message: "user not found" });
+        }
+        return res.status(200).json({
+            message: "password reset",
+            user: {
+                id: updated.id,
+                name: updated.name,
+                loginId: updated.login_id,
+                role: updated.role,
+            },
+        });
+    } catch (error) {
+        console.error("admin reset password failed:", error.stack || error.message);
+        return res.status(500).json({ message: "reset failed", error: error.message });
+    }
 }

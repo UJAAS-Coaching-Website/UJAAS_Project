@@ -49,6 +49,7 @@ import logo from '../assets/logo.svg';
 import demotimetable from '../assets/demotimetable.jpg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { uploadLandingImage, deleteLandingImage } from '../api/landing';
+import { adminResetUserPassword } from '../api/auth';
 
 interface AdminDashboardProps {
   user: User;
@@ -2929,10 +2930,16 @@ function AddFacultyModal({
             {isEditing && initialData?.id && (
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const newPass = generateInitialPassword(formState.name);
-                  if (window.confirm(`Are you sure you want to reset the password for ${formState.name}?\n\nThe new password will be: ${newPass}`)) {
+                  if (!window.confirm(`Are you sure you want to reset the password for ${formState.name}?\n\nThe new password will be: ${newPass}`)) {
+                    return;
+                  }
+                  try {
+                    await adminResetUserPassword(formState.id as string, newPass);
                     window.alert(`Password for ${formState.name} has been reset to: ${newPass}`);
+                  } catch (error: any) {
+                    window.alert(error?.message || 'Unable to reset password. Please try again.');
                   }
                 }}
                 className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition shadow-sm sm:mr-auto"
@@ -3502,11 +3509,16 @@ function StudentRatingsModal({
     { title: 'Full Length Mock 01', date: '2025-10-05', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
   ];
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     const newPass = generateInitialPassword(student.name);
-    if (window.confirm(`Are you sure you want to reset the password for ${student.name}?\n\nThe new password will be: ${newPass}`)) {
-      // In a real app, this would be an API call
+    if (!window.confirm(`Are you sure you want to reset the password for ${student.name}?\n\nThe new password will be: ${newPass}`)) {
+      return;
+    }
+    try {
+      await adminResetUserPassword(student.id, newPass);
       window.alert(`Password for ${student.name} has been reset to: ${newPass}`);
+    } catch (error: any) {
+      window.alert(error?.message || 'Unable to reset password. Please try again.');
     }
   };
 

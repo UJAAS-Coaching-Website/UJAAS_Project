@@ -170,3 +170,10 @@ export async function logout(): Promise<void> {
     localStorage.removeItem("ujaasToken");
   }
 }
+
+export async function adminResetUserPassword(userId: string, newPassword: string): Promise<void> {
+  await request("/api/auth/admin/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ userId, newPassword }),
+  });
+}

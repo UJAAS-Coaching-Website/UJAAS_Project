@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy,
@@ -21,72 +21,12 @@ type FilterLevel = 'all' | 'excellent' | 'good' | 'average' | 'needs-improvement
 type FilterCourse = 'all' | 'JEE Advanced' | 'JEE Mains' | 'NEET';
 
 export function StudentRankingsEnhanced() {
-  const [rankings, setRankings] = useState<StudentRating[]>([]);
+  const [rankings] = useState<StudentRating[]>([]);
   const [sortBy, setSortBy] = useState<SortBy>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterLevel, setFilterLevel] = useState<FilterLevel>('all');
   const [filterCourse, setFilterCourse] = useState<FilterCourse>('all');
   const [showFilters, setShowFilters] = useState(false);
-
-  useEffect(() => {
-    loadAndFilterRankings();
-  }, [sortBy, sortOrder, filterLevel, filterCourse]);
-
-  // Refresh rankings every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadAndFilterRankings();
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [sortBy, sortOrder, filterLevel, filterCourse]);
-
-  const loadAndFilterRankings = () => {
-    const savedRatings = localStorage.getItem('student_ratings');
-    if (savedRatings) {
-      let ratings: StudentRating[] = JSON.parse(savedRatings);
-
-      // Apply performance level filter
-      if (filterLevel !== 'all') {
-        ratings = ratings.filter(r => {
-          if (filterLevel === 'excellent') return r.overallScore >= 90;
-          if (filterLevel === 'good') return r.overallScore >= 75 && r.overallScore < 90;
-          if (filterLevel === 'average') return r.overallScore >= 60 && r.overallScore < 75;
-          if (filterLevel === 'needs-improvement') return r.overallScore > 0 && r.overallScore < 60;
-          return true;
-        });
-      }
-
-      // Apply course filter (this would need to be stored in ratings)
-      // For now, we'll keep all courses visible
-
-      // Apply sorting
-      ratings.sort((a, b) => {
-        let compareValue = 0;
-        
-        switch (sortBy) {
-          case 'score':
-            compareValue = b.overallScore - a.overallScore;
-            break;
-          case 'attendance':
-            compareValue = b.attendance - a.attendance;
-            break;
-          case 'tests':
-            compareValue = b.tests - a.tests;
-            break;
-          case 'assignments':
-            compareValue = b.assignments - a.assignments;
-            break;
-          case 'name':
-            compareValue = a.studentName.localeCompare(b.studentName);
-            break;
-        }
-
-        return sortOrder === 'asc' ? -compareValue : compareValue;
-      });
-
-      setRankings(ratings);
-    }
-  };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -502,15 +442,17 @@ export function StudentRankingsEnhanced() {
               <Trophy className="w-10 h-10 text-gray-400" />
             </motion.div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Students Match Your Filters</h3>
-            <p className="text-gray-600 mb-4">Try adjusting your filters or clear them to see all rankings</p>
+            <p className="text-gray-600 mb-4">Ranking data will appear here once it is connected to backend results.</p>
             <motion.button
               onClick={() => {
                 setFilterLevel('all');
                 setFilterCourse('all');
+                setSortBy('score');
+                setSortOrder('desc');
               }}
               className="px-6 py-2 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
             >
-              Clear Filters
+              Reset View
             </motion.button>
           </div>
         )}

@@ -1402,14 +1402,6 @@ function StudentRatingsModal({
   }, [open, student]);
   if (!open || !student) return null;
 
-  const mockTestPerformance = [
-    { title: 'Unit Test 1: Physics Basics', date: '2025-08-15', score: '85/100', rank: '12/150', accuracy: '88%', status: 'Attempted' },
-    { title: 'Monthly Mock: JEE Main Pattern', date: '2025-09-01', score: '245/300', rank: '45/1200', accuracy: '82%', status: 'Attempted' },
-    { title: 'Surprise Quiz: Organic Chemistry', date: '2025-09-10', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
-    { title: 'Unit Test 2: Calculus I', date: '2025-09-20', score: '92/100', rank: '5/160', accuracy: '95%', status: 'Attempted' },
-    { title: 'Full Length Mock 01', date: '2025-10-05', score: '-', rank: '-', accuracy: '-', status: 'Not Attempted' },
-  ];
-
   const calculateSubjectRating = (r: { attendance: number; total_classes?: number; tests: number; dppPerformance: number; behavior: number }) => {
     const attendanceRating = (r.attendance / (r.total_classes || 1)) * 5;
     return (attendanceRating + r.tests + r.dppPerformance + r.behavior) / 4;
@@ -1508,48 +1500,11 @@ function StudentRatingsModal({
                 <h4 className="text-xl font-bold text-gray-900">Test Performance Summary</h4>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Test Name</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Score</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Rank</th>
-                      <th className="px-4 py-3 text-[10px] font-black text-gray-500 uppercase tracking-wider text-center">Accuracy</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100/50">
-                    {mockTestPerformance.map((perf, idx) => {
-                      const isAttempted = perf.status === 'Attempted';
-                      return (
-                        <tr
-                          key={idx}
-                          className={`transition-colors ${isAttempted ? 'bg-emerald-50/40 hover:bg-emerald-50/70' : 'bg-red-50/40 hover:bg-red-50/70'
-                            }`}
-                        >
-                          <td className="px-4 py-3 font-bold text-gray-900 text-xs sm:text-sm w-48 min-w-[12rem] break-words" title={perf.title}>
-                            {perf.title}
-                          </td>
-                          <td className="px-4 py-3 text-[10px] font-medium text-gray-500 whitespace-nowrap">
-                            {perf.date}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono font-bold text-gray-700 text-center">
-                            {perf.score}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-black text-blue-600 text-center">
-                            {perf.rank}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-black text-teal-600 text-center">
-                            {perf.accuracy}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center shadow-sm">
+                <BarChart3 className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+                <p className="font-semibold text-gray-700">No backend test ranking data available</p>
+                <p className="mt-2 text-sm text-gray-500">This view no longer shows mock rank values. Connect it to real test analytics when that API is ready.</p>
               </div>
-              <p className="text-xs text-gray-400 italic">* This table is for review only.</p>
             </div>
           ) : (
             <div className="space-y-8">

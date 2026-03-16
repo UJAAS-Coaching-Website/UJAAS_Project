@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { hashPassword } from "../utils/password.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 
 async function tableExists(tableName, client = pool) {
@@ -377,6 +378,43 @@ export async function updateStudentProfile(userId, { name, phone, address, dateO
 
         await client.query("COMMIT");
         return fetchUserProfileById(userId);
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+export async function resetUserPassword(userId, newPassword, { revokeRefreshTokens = true } = {}) {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const updateResult = await client.query(
+            `UPDATE users
+             SET password_hash = $1
+             WHERE id = $2
+             RETURNING id, name, login_id, role`,
+            [hashPassword(newPassword), userId]
+        );
+
+        if (updateResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        if (revokeRefreshTokens && (await tableExists("refresh_tokens", client))) {
+            await client.query(
+                `UPDATE refresh_tokens
+                 SET revoked_at = now(), last_used_at = now()
+                 WHERE user_id = $1 AND revoked_at IS NULL`,
+                [userId]
+            );
+        }
+
+        await client.query("COMMIT");
+        return updateResult.rows[0];
     } catch (error) {
         await client.query("ROLLBACK");
         throw error;
