@@ -7,7 +7,8 @@ async function ensureActiveBatchForChapter(chapterId, client = pool) {
     const result = await client.query(`
         SELECT c.id, b.is_active
         FROM chapters c
-        JOIN batches b ON b.id = c.batch_id
+        JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+        JOIN batches b ON b.id = bs.batch_id
         WHERE c.id = $1
         LIMIT 1
     `, [chapterId]);
@@ -180,8 +181,8 @@ async function getDppRowById(id, client = pool) {
             d.created_by,
             d.created_at,
             c.name AS chapter_name,
-            c.subject_name,
-            c.batch_id,
+            sub.name AS subject_name,
+            bs.batch_id,
             b.name AS batch_name,
             (
                 SELECT COUNT(*)
@@ -190,7 +191,9 @@ async function getDppRowById(id, client = pool) {
             )::int AS question_count
         FROM dpps d
         JOIN chapters c ON c.id = d.chapter_id
-        JOIN batches b ON b.id = c.batch_id
+        JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+        JOIN batches b ON b.id = bs.batch_id
+        JOIN subjects sub ON sub.id = bs.subject_id
         WHERE d.id = $1
         LIMIT 1
     `, [id]);
@@ -209,8 +212,8 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
             d.created_by,
             d.created_at,
             c.name AS chapter_name,
-            c.subject_name,
-            c.batch_id,
+            sub.name AS subject_name,
+            bs.batch_id,
             b.name AS batch_name,
             (
                 SELECT COUNT(*)
@@ -219,7 +222,9 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
             )::int AS question_count
         FROM dpps d
         JOIN chapters c ON c.id = d.chapter_id
-        JOIN batches b ON b.id = c.batch_id
+        JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+        JOIN batches b ON b.id = bs.batch_id
+        JOIN subjects sub ON sub.id = bs.subject_id
         JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
         JOIN students s ON s.assigned_batch_id = dtb.batch_id
         WHERE d.id = $1
@@ -234,8 +239,8 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
             d.created_by,
             d.created_at,
             c.name AS chapter_name,
-            c.subject_name,
-            c.batch_id,
+            sub.name AS subject_name,
+            bs.batch_id,
             b.name AS batch_name,
             (
                 SELECT COUNT(*)
@@ -244,7 +249,9 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
             )::int AS question_count
         FROM dpps d
         JOIN chapters c ON c.id = d.chapter_id
-        JOIN batches b ON b.id = c.batch_id
+        JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+        JOIN batches b ON b.id = bs.batch_id
+        JOIN subjects sub ON sub.id = bs.subject_id
         JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
         JOIN student_batches sb ON sb.batch_id = dtb.batch_id
         WHERE d.id = $1
@@ -293,8 +300,8 @@ export async function listDpps({ chapterId, user }) {
                 d.created_by,
                 d.created_at,
                 c.name AS chapter_name,
-                c.subject_name,
-                c.batch_id,
+                sub.name AS subject_name,
+                bs.batch_id,
                 b.name AS batch_name,
                 (
                     SELECT COUNT(*)
@@ -309,12 +316,14 @@ export async function listDpps({ chapterId, user }) {
                 )::int AS submitted_attempt_count
             FROM dpps d
             JOIN chapters c ON c.id = d.chapter_id
-            JOIN batches b ON b.id = c.batch_id
+            JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+            JOIN batches b ON b.id = bs.batch_id
+            JOIN subjects sub ON sub.id = bs.subject_id
             JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
             JOIN students s ON s.assigned_batch_id = dtb.batch_id
             WHERE s.user_id = $${params.length}
             ${chapterFilter}
-            GROUP BY d.id, c.id, b.id
+            GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
         ` : `
             SELECT
@@ -325,8 +334,8 @@ export async function listDpps({ chapterId, user }) {
                 d.created_by,
                 d.created_at,
                 c.name AS chapter_name,
-                c.subject_name,
-                c.batch_id,
+                sub.name AS subject_name,
+                bs.batch_id,
                 b.name AS batch_name,
                 (
                     SELECT COUNT(*)
@@ -341,12 +350,14 @@ export async function listDpps({ chapterId, user }) {
                 )::int AS submitted_attempt_count
             FROM dpps d
             JOIN chapters c ON c.id = d.chapter_id
-            JOIN batches b ON b.id = c.batch_id
+            JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+            JOIN batches b ON b.id = bs.batch_id
+            JOIN subjects sub ON sub.id = bs.subject_id
             JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
             JOIN student_batches sb ON sb.batch_id = dtb.batch_id
             WHERE sb.student_id = $${params.length}
             ${chapterFilter}
-            GROUP BY d.id, c.id, b.id
+            GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
         `;
     } else {
@@ -359,8 +370,8 @@ export async function listDpps({ chapterId, user }) {
                 d.created_by,
                 d.created_at,
                 c.name AS chapter_name,
-                c.subject_name,
-                c.batch_id,
+                sub.name AS subject_name,
+                bs.batch_id,
                 b.name AS batch_name,
                 (
                     SELECT COUNT(*)
@@ -369,7 +380,9 @@ export async function listDpps({ chapterId, user }) {
                 )::int AS question_count
             FROM dpps d
             JOIN chapters c ON c.id = d.chapter_id
-            JOIN batches b ON b.id = c.batch_id
+            JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+            JOIN batches b ON b.id = bs.batch_id
+            JOIN subjects sub ON sub.id = bs.subject_id
             WHERE 1=1
             ${chapterFilter}
             ORDER BY d.created_at DESC, d.title
@@ -480,12 +493,14 @@ async function buildDppAttemptResult(attemptId) {
             d.instructions,
             d.chapter_id,
             c.name AS chapter_name,
-            c.subject_name,
+            sub.name AS subject_name,
             b.name AS batch_name
         FROM dpp_attempts da
         JOIN dpps d ON d.id = da.dpp_id
         JOIN chapters c ON c.id = d.chapter_id
-        JOIN batches b ON b.id = c.batch_id
+        JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+        JOIN subjects sub ON sub.id = bs.subject_id
+        JOIN batches b ON b.id = bs.batch_id
         WHERE da.id = $1
     `, [attemptId]);
 
@@ -721,9 +736,14 @@ export async function createDpp({ title, instructions, chapterId, createdBy, que
         await ensureActiveBatchForChapter(chapterId, client);
 
         const chapterResult = await client.query(`
-            SELECT id, batch_id, subject_name
-            FROM chapters
-            WHERE id = $1
+            SELECT
+                c.id,
+                bs.batch_id,
+                sub.name AS subject_name
+            FROM chapters c
+            JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+            JOIN subjects sub ON sub.id = bs.subject_id
+            WHERE c.id = $1
         `, [chapterId]);
 
         if (chapterResult.rowCount === 0) {
@@ -812,9 +832,13 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
         `, [dppId, title, instructions || null, chapterId]);
 
         const chapterResult = await client.query(`
-            SELECT batch_id, subject_name
-            FROM chapters
-            WHERE id = $1
+            SELECT
+                bs.batch_id,
+                sub.name AS subject_name
+            FROM chapters c
+            JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+            JOIN subjects sub ON sub.id = bs.subject_id
+            WHERE c.id = $1
         `, [chapterId]);
         if (chapterResult.rowCount === 0) {
             throw new Error("chapter not found");

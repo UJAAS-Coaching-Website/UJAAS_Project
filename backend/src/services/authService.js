@@ -8,12 +8,28 @@ import {
     refreshTtlSeconds,
 } from "../config/index.js";
 
+async function tableExists(tableName, client = pool) {
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = $1
+        ) AS exists`,
+        [tableName]
+    );
+    return result.rows[0]?.exists === true;
+}
+
 export function hashToken(token) {
     return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 export async function isTokenBlacklisted(jti) {
     if (!jti) return false;
+    if (!(await tableExists("token_blacklist"))) {
+        return false;
+    }
     const result = await pool.query(
         "SELECT 1 FROM token_blacklist WHERE jti = $1 AND expires_at > now()",
         [jti]
@@ -37,13 +53,15 @@ export async function issueAuthTokens({ userId, role, res, familyId = crypto.ran
         refreshTtlSeconds
     );
 
-    await pool.query(
-        `
-    INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
-    VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval)
-    `,
-        [userId, hashToken(refreshToken), familyId, refreshTtlSeconds]
-    );
+    if (await tableExists("refresh_tokens")) {
+        await pool.query(
+            `
+        INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
+        VALUES ($1, $2, $3, now() + ($4 || ' seconds')::interval)
+        `,
+            [userId, hashToken(refreshToken), familyId, refreshTtlSeconds]
+        );
+    }
 
     setAccessCookie(res, accessToken);
     setRefreshCookie(res, refreshToken);

@@ -15,6 +15,20 @@ async function tableExists(tableName, client = pool) {
     return result.rows[0]?.exists === true;
 }
 
+async function columnExists(tableName, columnName, client = pool) {
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = $1
+              AND column_name = $2
+        ) AS exists`,
+        [tableName, columnName]
+    );
+    return result.rows[0]?.exists === true;
+}
+
 /**
  * Generate initial password from student name: firstname@123
  */
@@ -342,22 +356,55 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         
         const batchModel = await getStudentBatchModel();
         const hasBatchSubjects = await tableExists("batch_subjects", client);
+        const hasBatchSubjectId = await columnExists("student_ratings", "batch_subject_id", client);
+        const hasLegacySubjectColumn = await columnExists("student_ratings", "subject", client);
+        const hasLegacyTotalClassesColumn = await columnExists("student_ratings", "total_classes", client);
 
-        if (!hasBatchSubjects) {
+        if (!subjectName || !String(subjectName).trim()) {
+            throw new Error("Subject is required to update student rating");
+        }
+
+        const normalizedSubjectName = String(subjectName).trim();
+
+        if (!hasBatchSubjects || !hasBatchSubjectId) {
+            if (!hasLegacySubjectColumn) {
+                throw new Error("student_ratings schema is missing both batch_subject_id and subject columns");
+            }
+
             // Legacy schema update
             const result = await client.query(
-                `INSERT INTO student_ratings (student_id, subject, attendance, total_classes, test_performance, dpp_performance, behavior, remarks, updated_at)
-                 VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), COALESCE($7, 0), $8, NOW())
+                `INSERT INTO student_ratings (
+                    student_id,
+                    subject,
+                    attendance,
+                    ${hasLegacyTotalClassesColumn ? "total_classes," : ""}
+                    test_performance,
+                    dpp_performance,
+                    behavior,
+                    remarks,
+                    updated_at
+                )
+                 VALUES (
+                    $1,
+                    $2,
+                    COALESCE($3, 0),
+                    ${hasLegacyTotalClassesColumn ? "COALESCE($4, 0)," : ""}
+                    COALESCE($5, 0),
+                    COALESCE($6, 0),
+                    COALESCE($7, 0),
+                    $8,
+                    NOW()
+                 )
                  ON CONFLICT (student_id, subject) DO UPDATE SET
                     attendance = COALESCE($3, student_ratings.attendance),
-                    total_classes = COALESCE($4, student_ratings.total_classes),
+                    ${hasLegacyTotalClassesColumn ? "total_classes = COALESCE($4, student_ratings.total_classes)," : ""}
                     test_performance = COALESCE($5, student_ratings.test_performance),
                     dpp_performance = COALESCE($6, student_ratings.dpp_performance),
                     behavior = COALESCE($7, student_ratings.behavior),
                     remarks = COALESCE($8, student_ratings.remarks),
                     updated_at = NOW()
                  RETURNING *`,
-                [studentId, subjectName, attendance, total_classes, tests, dppPerformance, behavior, remarks]
+                [studentId, normalizedSubjectName, attendance, total_classes, tests, dppPerformance, behavior, remarks]
             );
             await client.query("COMMIT");
             return result.rows[0];
@@ -381,20 +428,23 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
             FROM batch_subjects bs
             JOIN subjects sub ON sub.id = bs.subject_id
             WHERE bs.batch_id = $1 AND sub.name = $2
-        `, [batchId, subjectName]);
+        `, [batchId, normalizedSubjectName]);
         
         let batchSubjectId = bsRes.rows[0]?.id;
         if (!batchSubjectId) {
             // Create subject if missing globally
-            let sRes = await client.query("SELECT id FROM subjects WHERE name = $1", [subjectName]);
+            let sRes = await client.query("SELECT id FROM subjects WHERE name = $1", [normalizedSubjectName]);
             let sId = sRes.rows[0]?.id;
             if (!sId) {
-                sRes = await client.query("INSERT INTO subjects (name) VALUES ($1) RETURNING id", [subjectName]);
+                sRes = await client.query("INSERT INTO subjects (name) VALUES ($1) RETURNING id", [normalizedSubjectName]);
                 sId = sRes.rows[0].id;
             }
-            // Link to batch
+            // Link the subject to the student's batch and reuse it if it already exists.
             const bsNew = await client.query(
-                "INSERT INTO batch_subjects (batch_id, subject_id) VALUES ($1, $2) RETURNING id",
+                `INSERT INTO batch_subjects (batch_id, subject_id)
+                 VALUES ($1, $2)
+                 ON CONFLICT (batch_id, subject_id) DO UPDATE SET batch_id = EXCLUDED.batch_id
+                 RETURNING id`,
                 [batchId, sId]
             );
             batchSubjectId = bsNew.rows[0].id;

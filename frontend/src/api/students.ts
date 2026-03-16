@@ -77,9 +77,10 @@ export interface UpdateStudentRatingPayload {
     subject: string;
     attendance?: number;
     total_classes?: number;
-    assignments?: number;
-    participation?: number;
+    tests?: number;
+    dppPerformance?: number;
     behavior?: number;
+    remarks?: string;
 }
 
 // ── API functions ──────────────────────────────────────

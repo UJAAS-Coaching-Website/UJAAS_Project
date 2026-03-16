@@ -43,6 +43,7 @@ export async function login(req, res) {
 
         return res.status(200).json({ token: accessToken, user });
     } catch (error) {
+        console.error("login failed:", error.stack || error.message);
         return res.status(500).json({ message: "login failed", error: error.message });
     }
 }

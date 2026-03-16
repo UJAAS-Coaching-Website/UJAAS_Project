@@ -1,8 +1,14 @@
+import dns from "node:dns";
 import { Pool } from "pg";
 import { databaseUrl } from "../config/index.js";
 
+// Prefer IPv4 when a host resolves to both families. This avoids local IPv6
+// connectivity issues that can surface as database login 500s on Windows.
+dns.setDefaultResultOrder("ipv4first");
+
 export const pool = new Pool({
     connectionString: databaseUrl,
+    family: 4,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,

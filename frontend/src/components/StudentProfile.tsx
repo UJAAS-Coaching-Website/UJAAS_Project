@@ -31,6 +31,15 @@ interface StudentProfileProps {
     role?: 'student' | 'faculty' | 'admin';
     enrolledCourses?: string[];
     studentDetails?: StudentDetails | null;
+    subjectRatings?: Record<string, {
+      attendance: number;
+      total_classes?: number;
+      attendanceRating?: number;
+      tests: number;
+      dppPerformance: number;
+      behavior: number;
+    }>;
+    subjectRemarks?: Record<string, string>;
   };
   onLogout: () => void;
   initialSection?: 'overview' | 'performance' | 'settings';
@@ -82,6 +91,20 @@ function formatDateForDisplay(value?: string | null): string {
   });
 }
 
+function getAttendanceRatingValue(attendance?: number, totalClasses?: number, attendanceRating?: number): number {
+  if (typeof attendanceRating === 'number' && Number.isFinite(attendanceRating)) {
+    return Math.max(0, Math.min(5, attendanceRating));
+  }
+
+  const attendanceCount = Number(attendance ?? 0);
+  const classCount = Number(totalClasses ?? 0);
+  if (classCount > 0) {
+    return Math.max(0, Math.min(5, (attendanceCount / classCount) * 5));
+  }
+
+  return Math.max(0, Math.min(5, attendanceCount));
+}
+
 export function StudentProfile({ user, onLogout, initialSection = 'overview' }: StudentProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
   const [activeSection, setActiveSection] = useState<'overview' | 'performance' | 'settings'>(initialSection);
@@ -93,36 +116,24 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
   const normalizeDetails = (details?: StudentDetails | null): StudentDetails => {
     if (!details) {
       return {
-        rollNumber: 'UG2025001',
-        batch: '2025-26',
-        joinDate: '2025-09-01',
-        phone: '+91 98765 43210',
-        address: 'Mumbai, Maharashtra',
-        dateOfBirth: '2005-05-15',
-        parentContact: '+91 98765 43211',
+        rollNumber: '',
+        batch: '',
+        joinDate: '',
+        phone: '',
+        address: '',
+        dateOfBirth: '',
+        parentContact: '',
         ratings: {
-          attendance: 4,
-          assignments: 4,
-          tests: 4,
-          participation: 4,
-          behavior: 4,
-          engagement: 4,
-          dppPerformance: 4
+          attendance: 0,
+          assignments: 0,
+          tests: 0,
+          participation: 0,
+          behavior: 0,
+          engagement: 0,
+          dppPerformance: 0
         }
       };
     }
-
-    const fallbackRatings = {
-      attendance: 4,
-      assignments: 4,
-      tests: 4,
-      participation: 4,
-      behavior: 4,
-      engagement: 4,
-      dppPerformance: 4
-    };
-
-    const hasMeaningfulRatings = !!details.ratings && Object.values(details.ratings).some((value) => value > 0);
 
     return {
       rollNumber: details.rollNumber || '',
@@ -132,17 +143,15 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       address: details.address || '',
       dateOfBirth: normalizeDateForInput(details.dateOfBirth),
       parentContact: details.parentContact || '',
-      ratings: hasMeaningfulRatings
-        ? {
-            attendance: details.ratings?.attendance ?? 0,
-            assignments: details.ratings?.assignments ?? 0,
-            tests: details.ratings?.tests ?? 0,
-            participation: details.ratings?.participation ?? 0,
-            behavior: details.ratings?.behavior ?? 0,
-            engagement: details.ratings?.engagement ?? 0,
-            dppPerformance: details.ratings?.dppPerformance ?? 0
-          }
-        : fallbackRatings
+      ratings: {
+        attendance: details.ratings?.attendance ?? 0,
+        assignments: details.ratings?.assignments ?? 0,
+        tests: details.ratings?.tests ?? 0,
+        participation: details.ratings?.participation ?? 0,
+        behavior: details.ratings?.behavior ?? 0,
+        engagement: details.ratings?.engagement ?? 0,
+        dppPerformance: details.ratings?.dppPerformance ?? 0
+      }
     };
   };
   
@@ -415,7 +424,14 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
   const getDetailedRatings = (subject: string) => {
     // In a real app, this would come from user.studentDetails.subjectRatings[subject]
     const sr = (user as any).subjectRatings?.[subject];
-    if (sr) return sr;
+    if (sr) {
+      return {
+        attendance: getAttendanceRatingValue(sr.attendance, sr.total_classes, sr.attendanceRating),
+        tests: Number(sr.tests || 0),
+        dppPerformance: Number(sr.dppPerformance || 0),
+        behavior: Number(sr.behavior || 0),
+      };
+    }
 
     // Create unique mock data for each subject based on its name
     const hash = subject.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);

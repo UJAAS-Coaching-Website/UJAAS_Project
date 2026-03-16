@@ -10,10 +10,22 @@ export interface StudentDetails {
     attendance: number;
     assignments: number;
     tests: number;
+    testPerformance?: number;
     participation: number;
     behavior: number;
     engagement: number;
+    dppPerformance?: number;
   };
+}
+
+export interface SubjectRating {
+  attendance: number;
+  total_classes?: number;
+  attendanceRating?: number;
+  tests: number;
+  dppPerformance: number;
+  behavior: number;
+  remarks?: string;
 }
 
 export interface FacultyDetails {
@@ -38,6 +50,8 @@ export interface AuthUser {
   role: "student" | "faculty" | "admin";
   enrolledCourses?: string[];
   studentDetails?: StudentDetails | null;
+  subjectRatings?: Record<string, SubjectRating>;
+  subjectRemarks?: Record<string, string>;
   facultyDetails?: FacultyDetails | null;
 }
 
@@ -49,9 +63,19 @@ interface AuthResponse {
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
 let refreshInFlight: Promise<boolean> | null = null;
 
+function isLikelyJwt(token: string | null): token is string {
+  if (!token || token === "null" || token === "undefined") {
+    return false;
+  }
+  return token.split(".").length === 3;
+}
+
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("ujaasToken");
-  if (!token || token === "null" || token === "undefined") {
+  if (!isLikelyJwt(token)) {
+    if (token) {
+      localStorage.removeItem("ujaasToken");
+    }
     return {};
   }
   return { Authorization: `Bearer ${token}` };
@@ -123,7 +147,10 @@ export async function login(loginId: string, password: string): Promise<AuthResp
 
 export async function me(): Promise<{ user: AuthUser }> {
   const token = localStorage.getItem("ujaasToken");
-  if (!token || token === "null" || token === "undefined") {
+  if (!isLikelyJwt(token)) {
+    if (token) {
+      localStorage.removeItem("ujaasToken");
+    }
     throw new Error("No auth token");
   }
   return request<{ user: AuthUser }>("/api/auth/me");
