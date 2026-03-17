@@ -26,19 +26,19 @@ export async function getAllStudents() {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', r.attendance,
-                    'total_classes', bs.total_classes,
-                    'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
+                    'attendance', COALESCE(r.attendance, 0),
+                    'total_classes', COALESCE(bs.total_classes, 0),
+                    'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
                     'tests', COALESCE(r.test_performance, 0),
                     'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', r.behavior,
+                    'behavior', COALESCE(r.behavior, 0),
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
-            FROM student_ratings r
-            JOIN batch_subjects bs ON bs.id = r.batch_subject_id
+            FROM batch_subjects bs
             JOIN subjects sub ON sub.id = bs.subject_id
-            WHERE r.student_id = u.id
+            LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = u.id
+            WHERE bs.batch_id = ${batchJoinSubquery}
         ),
         '{}'
     )`;
@@ -103,19 +103,19 @@ export async function getStudentById(id) {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', r.attendance,
-                    'total_classes', bs.total_classes,
-                    'attendance_rating', CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END,
+                    'attendance', COALESCE(r.attendance, 0),
+                    'total_classes', COALESCE(bs.total_classes, 0),
+                    'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
                     'tests', COALESCE(r.test_performance, 0),
                     'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', r.behavior,
+                    'behavior', COALESCE(r.behavior, 0),
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
-            FROM student_ratings r
-            JOIN batch_subjects bs ON bs.id = r.batch_subject_id
+            FROM batch_subjects bs
             JOIN subjects sub ON sub.id = bs.subject_id
-            WHERE r.student_id = u.id
+            LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = u.id
+            WHERE bs.batch_id = ${batchJoinSubquery}
         ),
         '{}'
     )`;

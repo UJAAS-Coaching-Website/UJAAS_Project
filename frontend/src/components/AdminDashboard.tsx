@@ -4305,7 +4305,7 @@ function StudentRatingsModal({
                         </div>
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                           {[
-                            { label: 'Attendance', val: r.attendance },
+                            { label: 'Attendance', val: Number(((r.attendance / (r.total_classes || 1)) * 5).toFixed(1)) },
                             { label: 'Test Performance', val: r.tests },
                             { label: 'DPP Performance', val: r.dppPerformance },
                             { label: 'Class Behaviour', val: r.behavior }

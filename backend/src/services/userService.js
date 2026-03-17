@@ -119,6 +119,27 @@ async function getStudentEnrollment(userId, client = pool) {
 }
 
 async function getStudentSubjectRatings(userId, client = pool) {
+    const batchModel = await getStudentBatchModel();
+    let batchId = null;
+
+    if (batchModel === "single") {
+        const batchResult = await client.query(
+            `SELECT assigned_batch_id FROM students WHERE user_id = $1 LIMIT 1`,
+            [userId]
+        );
+        batchId = batchResult.rows[0]?.assigned_batch_id || null;
+    } else {
+        const batchResult = await client.query(
+            `SELECT batch_id FROM student_batches WHERE student_id = $1 LIMIT 1`,
+            [userId]
+        );
+        batchId = batchResult.rows[0]?.batch_id || null;
+    }
+
+    if (!batchId) {
+        return {};
+    }
+
     const result = await client.query(
         `SELECT
             sub.name AS subject_name,
@@ -133,11 +154,11 @@ async function getStudentSubjectRatings(userId, client = pool) {
             COALESCE(r.dpp_performance, 0) AS dpp_performance,
             COALESCE(r.behavior, 0) AS behavior,
             COALESCE(r.remarks, '') AS remarks
-         FROM student_ratings r
-         JOIN batch_subjects bs ON bs.id = r.batch_subject_id
+         FROM batch_subjects bs
          JOIN subjects sub ON sub.id = bs.subject_id
-         WHERE r.student_id = $1`,
-        [userId]
+         LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = $1
+         WHERE bs.batch_id = $2`,
+        [userId, batchId]
     );
 
     return Object.fromEntries(
