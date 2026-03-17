@@ -1,4 +1,4 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Megaphone, X, Loader2, Check } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
@@ -17,6 +17,15 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
   const [noticeMessage, setNoticeMessage] = useState('');
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -57,7 +66,6 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
       setNoticeTitle('');
       setNoticeMessage('');
       setSelectedBatchIds([]);
-      setImage(null);
       onClose();
     } catch (error: any) {
       console.error('Failed to send notices:', error);
@@ -68,7 +76,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4 sm:p-6 overscroll-none">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -102,7 +110,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
           {/* Batch Selection */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
@@ -115,7 +123,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
                 {selectedBatchIds.length === batches.length ? 'Deselect All' : 'Select All'}
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar outline-none focus:ring-2 focus:ring-indigo-500 rounded-xl" tabIndex={0}>
               {batches.map(batch => (
                 <button
                   key={batch.id}
@@ -165,18 +173,18 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
         </form>
 
         {/* Footer */}
-        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex gap-3 shrink-0">
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm"
+            className="px-10 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition shadow-sm min-w-[160px]"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSending || selectedBatchIds.length === 0}
-            className="flex-2 px-10 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:translate-y-[-1px] transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2 min-w-[160px]"
+            className="px-10 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:translate-y-[-1px] transition-all disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2 min-w-[160px]"
           >
             {isSending ? (
               <>

@@ -43,7 +43,7 @@ export function FacultyReviewModal({ faculties, onClose, onSubmitSuccess }: Facu
   };
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

@@ -1055,7 +1055,7 @@ export function AdminDashboard({
       {activeTab !== 'preview-test' && <Footer />}
 
       {/* Modals */}
-      <div className="relative isolate">
+      <div className="relative z-layer-modal">
         <AddStudentModal
           open={studentModal.open}
           onClose={closeStudentModal}
