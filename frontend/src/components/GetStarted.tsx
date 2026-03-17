@@ -183,7 +183,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                           style={{
                             borderRadius: isMobile ? '1rem' : '1.5rem',
                             display: 'flex',
-                            flexDirection: isMobile ? 'column' : 'row',
+                            flexDirection: 'row',
                             minHeight: isMobile ? undefined : '350px',
                           }}
                         >
@@ -194,16 +194,15 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               display: 'flex',
                               flexDirection: 'column',
                               flexShrink: 0,
-                              width: isMobile ? undefined : '25%',
-                              maxWidth: isMobile ? undefined : '25%',
-                              borderBottom: isMobile ? '1px solid rgb(204 251 241)' : 'none',
-                              borderRight: isMobile ? 'none' : '1px solid rgb(204 251 241)',
+                              width: isMobile ? '35%' : '25%',
+                              maxWidth: isMobile ? '35%' : '25%',
+                              borderRight: '1px solid rgb(204 251 241)',
                             }}
                           >
                             <div 
                               className="w-full bg-white/30 overflow-hidden"
                               style={{
-                                height: isMobile ? '10rem' : undefined,
+                                height: isMobile ? '8rem' : undefined,
                                 flex: isMobile ? undefined : '1 1 0%',
                                 flexShrink: 0,
                               }}
@@ -212,28 +211,28 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 src={vision.image} 
                                 alt={vision.name} 
                                 className="w-full h-full object-cover"
-                                style={{ objectPosition: isMobile ? 'top' : 'top' }}
+                                style={{ objectPosition: 'top' }}
                               />
                             </div>
                             <div 
                               className="text-center flex flex-col justify-center"
                               style={{
-                                padding: isMobile ? '0.75rem' : '0.75rem',
-                                flexGrow: isMobile ? 1 : 0,
+                                padding: isMobile ? '0.5rem 0.25rem' : '0.75rem',
+                                flexGrow: 0,
                                 flexShrink: 0,
-                                marginTop: isMobile ? undefined : 'auto',
+                                marginTop: 'auto',
                               }}
                             >
                               <h3 
                                 className="font-bold text-gray-900 leading-tight"
                                 style={{
-                                  fontSize: isMobile ? '0.875rem' : '0.875rem',
+                                  fontSize: isMobile ? '0.7rem' : '0.875rem',
                                   marginBottom: '0.125rem',
                                 }}
                               >{vision.name}</h3>
                               <p 
                                 className="text-teal-600 font-semibold"
-                                style={{ fontSize: isMobile ? '10px' : '0.6875rem' }}
+                                style={{ fontSize: isMobile ? '9px' : '0.6875rem' }}
                               >{vision.designation}</p>
                             </div>
                           </div>
@@ -242,21 +241,21 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                           <div 
                             className="flex flex-col justify-center relative overflow-hidden"
                             style={{
-                              width: isMobile ? undefined : '75%',
-                              padding: isMobile ? '1.25rem' : '2.5rem',
+                              width: isMobile ? '65%' : '75%',
+                              padding: isMobile ? '0.75rem' : '2.5rem',
                               minWidth: 0,
                             }}
                           >
                             <div 
                               className="relative z-10 text-gray-700 italic font-serif"
                               style={{
-                                fontSize: isMobile ? '13px' : '1.25rem',
-                                lineHeight: isMobile ? '1.375' : '1.75',
-                                textAlign: isMobile ? 'center' : 'left',
-                                paddingLeft: isMobile ? '0.75rem' : '1.25rem',
-                                paddingRight: isMobile ? '0.75rem' : '1.25rem',
-                                paddingTop: isMobile ? '0.5rem' : '0.75rem',
-                                paddingBottom: isMobile ? '0.5rem' : '0.75rem',
+                                fontSize: isMobile ? '11px' : '1.25rem',
+                                lineHeight: isMobile ? '1.5' : '1.75',
+                                textAlign: isMobile ? 'left' : 'left',
+                                paddingLeft: isMobile ? '0.25rem' : '1.25rem',
+                                paddingRight: isMobile ? '0.25rem' : '1.25rem',
+                                paddingTop: isMobile ? '0.25rem' : '0.75rem',
+                                paddingBottom: isMobile ? '0.25rem' : '0.75rem',
                               }}
                             >
                               {/* Inline Opening Quote */}
@@ -264,10 +263,10 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 className="inline-block align-top"
                                 style={{ 
                                   color: 'rgb(0 138 225 / 0.4)',
-                                  width: isMobile ? '1rem' : '2rem',
-                                  height: isMobile ? '0.5rem' : '1rem',
-                                  marginRight: isMobile ? '0.375rem' : '0.375rem',
-                                  marginTop: isMobile ? '-0.25rem' : '-0.25rem',
+                                  width: isMobile ? '0.75rem' : '2rem',
+                                  height: isMobile ? '0.4rem' : '1rem',
+                                  marginRight: isMobile ? '0.25rem' : '0.375rem',
+                                  marginTop: isMobile ? '-0.125rem' : '-0.25rem',
                                 }}
                               >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
@@ -282,10 +281,10 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 className="inline-block align-bottom"
                                 style={{ 
                                   color: 'rgb(0 138 225 / 0.4)',
-                                  width: isMobile ? '1rem' : '2rem',
-                                  height: isMobile ? '0.5rem' : '1rem',
-                                  marginLeft: isMobile ? '0.375rem' : '0.375rem',
-                                  marginBottom: isMobile ? '-0.25rem' : '-0.25rem',
+                                  width: isMobile ? '0.75rem' : '2rem',
+                                  height: isMobile ? '0.4rem' : '1rem',
+                                  marginLeft: isMobile ? '0.25rem' : '0.375rem',
+                                  marginBottom: isMobile ? '-0.125rem' : '-0.25rem',
                                 }}
                               >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
