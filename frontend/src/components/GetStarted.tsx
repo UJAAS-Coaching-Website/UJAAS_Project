@@ -264,7 +264,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 style={{ 
                                   color: 'rgb(0 138 225 / 0.4)',
                                   width: isMobile ? '0.75rem' : '2rem',
-                                  height: isMobile ? '0.4rem' : '1rem',
+                                  height: isMobile ? '0.8rem' : '1rem',
                                   marginRight: isMobile ? '0.25rem' : '0.375rem',
                                   marginTop: isMobile ? '-0.125rem' : '-0.25rem',
                                 }}
@@ -282,7 +282,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 style={{ 
                                   color: 'rgb(0 138 225 / 0.4)',
                                   width: isMobile ? '0.75rem' : '2rem',
-                                  height: isMobile ? '0.4rem' : '1rem',
+                                  height: isMobile ? '0.8rem' : '1rem',
                                   marginLeft: isMobile ? '0.25rem' : '0.375rem',
                                   marginBottom: isMobile ? '-0.125rem' : '-0.25rem',
                                 }}
@@ -549,10 +549,10 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             <p className="text-sm md:text-lg text-gray-600">Fill the form below and we'll contact you soon</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-6 md:p-8 shadow-lg">
-            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-4 md:p-8 shadow-lg">
+            <div className="grid grid-cols-2 gap-3 md:gap-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
                   Full Name *
                 </label>
                 <input
@@ -560,13 +560,13 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                  className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                   placeholder="Enter your name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
                   Email Address *
                 </label>
                 <input
@@ -574,13 +574,13 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                  className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                   placeholder="your@email.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
                   Phone Number *
                 </label>
                 <input
@@ -588,20 +588,20 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   required
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                  className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                   placeholder="+91 98765 43210"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
                   Course Interested In *
                 </label>
                 <select
                   required
                   value={formData.courseId}
                   onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                  className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                 >
                   <option value="">Select a course</option>
                   {courses.map((course) => (
@@ -609,25 +609,25 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   ))}
                 </select>
               </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Message (Optional)
-                </label>
-                <textarea
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
-                  placeholder="Tell us more about your requirements..."
-                />
-              </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-3 md:mt-6">
+              <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
+                Message (Optional)
+              </label>
+              <textarea
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                rows={isMobile ? 3 : 4}
+                className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+                placeholder="Tell us more about your requirements..."
+              />
+            </div>
+
+            <div className="mt-3 md:mt-6">
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-3 md:py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center justify-center gap-2"
               >
                 <Send className="w-5 h-5" />
                 Submit Interest
