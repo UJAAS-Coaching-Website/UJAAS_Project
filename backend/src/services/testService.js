@@ -1378,8 +1378,17 @@ export async function syncScheduledTestStatuses() {
         RETURNING t.id
     `);
 
+    const liveTests = [];
+    for (const row of liveResult.rows) {
+        const test = await getTestById(row.id);
+        if (test) {
+            liveTests.push(test);
+        }
+    }
+
     return {
         liveCount: liveResult.rowCount,
+        liveTests,
     };
 }
 

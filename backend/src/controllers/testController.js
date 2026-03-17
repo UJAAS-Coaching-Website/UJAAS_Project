@@ -101,8 +101,10 @@ export async function handleCreateTest(req, res) {
             createMultiBatchNotification(batchIds, {
                 senderId: req.user.sub,
                 type: 'test',
-                title: 'New Test Scheduled',
-                message: `New test "${test.title}" scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
+                title: test.status === 'live' ? 'Test is now LIVE' : 'New Test Scheduled',
+                message: test.status === 'live'
+                    ? `The test "${test.title}" is now LIVE. Good luck!`
+                    : `New test "${test.title}" scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
                 metadata: { testId: test.id }
             }).catch(err => console.error("Auto-notification failed:", err));
         }
@@ -188,12 +190,15 @@ export async function handleUpdateTestStatus(req, res) {
         }
 
         // Trigger Notification if transitioning out of draft
-        if (test.status !== 'draft' && test.batchIds && test.batchIds.length > 0) {
-            createMultiBatchNotification(test.batchIds, {
+        const batchIds = (test.batches || []).map(b => b.id);
+        if (test.status !== 'draft' && batchIds.length > 0) {
+            createMultiBatchNotification(batchIds, {
                 senderId: req.user.sub,
                 type: 'test',
                 title: test.status === 'live' ? 'Test is now LIVE' : 'Test Scheduled',
-                message: `The test "${test.title}" is ${test.status}. Scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
+                message: test.status === 'live' 
+                    ? `The test "${test.title}" is now LIVE. Good luck!`
+                    : `The test "${test.title}" is scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
                 metadata: { testId: test.id }
             }).catch(err => console.error("Auto-notification failed:", err));
         }
