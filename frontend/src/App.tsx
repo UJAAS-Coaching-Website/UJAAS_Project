@@ -57,6 +57,12 @@ import {
   deleteTestApi as apiDeleteTest,
   type ApiTest,
 } from './api/tests';
+import { formatTimeAgo } from './utils/time';
+import { 
+  fetchStudentNotifications, 
+  markNotificationAsRead as apiMarkRead, 
+  deleteNotification as apiDeleteNotification 
+} from './api/facultyReviews';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
 import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
@@ -1326,45 +1332,6 @@ function App() {
       setLoading(false);
     };
 
-    // Load notifications from localStorage
-    const savedNotifications = localStorage.getItem('ujaasNotifications');
-    if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications));
-    } else {
-      // Initialize with some default notifications
-      const defaultNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'announcement',
-          title: 'Welcome to UJAAS!',
-          message: 'Start your learning journey with our comprehensive study materials and practice tests.',
-          time: '2 hours ago',
-          read: false,
-          icon: 'award'
-        },
-        {
-          id: '2',
-          type: 'info',
-          title: 'New Notes Available',
-          message: 'Physics Wave Optics notes have been uploaded. Download now!',
-          time: '5 hours ago',
-          read: false,
-          icon: 'notes'
-        },
-        {
-          id: '3',
-          type: 'warning',
-          title: 'DPP Deadline Approaching',
-          message: 'Chemistry DPP #8 is due in 2 days. Complete it soon!',
-          time: '1 day ago',
-          read: false,
-          icon: 'dpp'
-        },
-      ];
-      setNotifications(defaultNotifications);
-      safeSetLocalStorage('ujaasNotifications', JSON.stringify(defaultNotifications));
-    }
-
     initializeSession();
   }, []);
 
@@ -1511,18 +1478,60 @@ function App() {
     window.history.pushState({ view: 'get-started' }, '', '/get-started');
   };
 
-  const handleMarkAsRead = (id: string) => {
+  const refreshNotifications = useCallback(async () => {
+    if (!user || user.role !== 'student') return;
+    try {
+      const data = await fetchStudentNotifications();
+      const mapped = data.map(n => ({
+        id: n.id,
+        type: n.type as any,
+        title: n.title,
+        message: n.message,
+        time: formatTimeAgo(n.created_at),
+        read: n.is_read,
+        isSticky: n.is_sticky,
+        // Map types to icons if needed
+        icon: n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes'
+      }));
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshNotifications();
+    const timer = setInterval(refreshNotifications, 60000); // Refresh every minute
+    return () => clearInterval(timer);
+  }, [refreshNotifications]);
+
+  const handleMarkAsRead = async (id: string) => {
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read: true } : n))
     );
+    if (user?.role === 'student') {
+      try {
+        await apiMarkRead(id);
+      } catch (err) {
+        console.error("Failed to mark read:", err);
+      }
+    }
   };
 
   const handleMarkAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // We could add an API for this too if needed
   };
 
-  const handleDeleteNotification = (id: string) => {
+  const handleDeleteNotification = async (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+    if (user?.role === 'student') {
+      try {
+        await apiDeleteNotification(id);
+      } catch (err) {
+        console.error("Failed to delete notification:", err);
+      }
+    }
   };
 
   const handleGetStarted = () => {

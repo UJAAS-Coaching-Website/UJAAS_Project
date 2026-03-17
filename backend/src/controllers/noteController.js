@@ -1,6 +1,7 @@
 import * as noteService from "../services/noteService.js";
 import { deleteNoteFromStorage, uploadNoteToStorage } from "../services/storageService.js";
 import { getFacultyManagedChapter, getFacultyManagedNote } from "../services/contentAccessService.js";
+import { createMultiBatchNotification } from "../services/notificationService.js";
 import crypto from "crypto";
 
 export const handleGetNotes = async (req, res) => {
@@ -39,6 +40,18 @@ export const handleCreateNote = async (req, res) => {
             return res.status(403).json({ message: "forbidden" });
         }
         const note = await noteService.createNote(req.body);
+
+        // Trigger Notification
+        if (chapter && chapter.batch_id) {
+            createMultiBatchNotification([chapter.batch_id], {
+                senderId: req.user.sub,
+                type: 'notes',
+                title: 'New Notes Available',
+                message: `New notes "${note.title}" uploaded for chapter "${chapter.name}" (${chapter.subject_name}).`,
+                metadata: { noteId: note.id, chapterId: chapter.id }
+            }).catch(err => console.error("Notes Auto-notification failed:", err));
+        }
+
         res.status(201).json(note);
     } catch (error) {
         console.error("Error creating note:", error);
@@ -78,6 +91,17 @@ export const handleUploadNote = async (req, res) => {
             title: title.trim(),
             file_url: fileUrl,
         });
+
+        // Trigger Notification
+        if (chapter && chapter.batch_id) {
+            createMultiBatchNotification([chapter.batch_id], {
+                senderId: req.user.sub,
+                type: 'notes',
+                title: 'New Notes Available',
+                message: `New notes "${note.title}" uploaded for chapter "${chapter.name}" (${chapter.subject_name}).`,
+                metadata: { noteId: note.id, chapterId: chapter.id }
+            }).catch(err => console.error("Notes Auto-notification failed:", err));
+        }
 
         res.status(201).json(note);
     } catch (error) {

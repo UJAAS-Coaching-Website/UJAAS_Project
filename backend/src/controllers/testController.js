@@ -17,6 +17,7 @@ import {
     deleteTest
 } from "../services/testService.js";
 import { deleteAllImagesForContext } from "../services/storageService.js";
+import { createMultiBatchNotification } from "../services/notificationService.js";
 
 function isPositiveNumber(value) {
     return Number.isFinite(Number(value)) && Number(value) > 0;
@@ -95,6 +96,17 @@ export async function handleCreateTest(req, res) {
             createdBy: req.user?.id || null,
         });
 
+        // Trigger Notification if not a draft
+        if (test.status !== 'draft' && batchIds && batchIds.length > 0) {
+            createMultiBatchNotification(batchIds, {
+                senderId: req.user.sub,
+                type: 'test',
+                title: 'New Test Scheduled',
+                message: `New test "${test.title}" scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
+                metadata: { testId: test.id }
+            }).catch(err => console.error("Auto-notification failed:", err));
+        }
+
         return res.status(201).json(test);
     } catch (error) {
         if (error?.code === "INVALID_BATCH_ASSIGNMENT") {
@@ -141,6 +153,17 @@ export async function handleUpdateTest(req, res) {
             return res.status(404).json({ message: "test not found" });
         }
 
+        // Trigger Notification if not a draft
+        if (test.status !== 'draft' && batchIds && batchIds.length > 0) {
+            createMultiBatchNotification(batchIds, {
+                senderId: req.user.sub,
+                type: 'test',
+                title: 'Test Updated',
+                message: `Test "${test.title}" details updated. Scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
+                metadata: { testId: test.id }
+            }).catch(err => console.error("Auto-notification failed:", err));
+        }
+
         return res.status(200).json(test);
     } catch (error) {
         if (error?.code === "INVALID_BATCH_ASSIGNMENT") {
@@ -163,6 +186,18 @@ export async function handleUpdateTestStatus(req, res) {
         if (!test) {
             return res.status(404).json({ message: "test not found" });
         }
+
+        // Trigger Notification if transitioning out of draft
+        if (test.status !== 'draft' && test.batchIds && test.batchIds.length > 0) {
+            createMultiBatchNotification(test.batchIds, {
+                senderId: req.user.sub,
+                type: 'test',
+                title: test.status === 'live' ? 'Test is now LIVE' : 'Test Scheduled',
+                message: `The test "${test.title}" is ${test.status}. Scheduled for ${test.schedule_date} at ${test.schedule_time}.`,
+                metadata: { testId: test.id }
+            }).catch(err => console.error("Auto-notification failed:", err));
+        }
+
         return res.status(200).json(test);
     } catch (error) {
         if (error?.code === "FORCE_LIVE_DRAFT_NOT_ALLOWED") {

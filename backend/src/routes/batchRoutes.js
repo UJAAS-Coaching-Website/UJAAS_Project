@@ -18,7 +18,7 @@ import {
     handleUploadBatchTimetable,
     handleDeleteBatchTimetable,
 } from "../controllers/batchController.js";
-import { authenticate, requireRole } from "../middleware/auth.js";
+import { authenticate, requireRole, requireAnyRole } from "../middleware/auth.js";
 
 const router = Router();
 const ALLOWED_TIMETABLE_MIME_TYPES = new Set([
@@ -63,8 +63,8 @@ router.get("/:id/faculty", requireRole("admin"), handleGetBatchFaculty);
 router.post("/:id/faculty", requireRole("admin"), handleAssignFaculty);
 router.delete("/:id/faculty/:facultyId", requireRole("admin"), handleRemoveFaculty);
 
-// Batch Notifications (Admin only)
-router.post("/:id/notifications", requireRole("admin"), handleCreateBatchNotification);
+// Batch Notifications (Admin and Faculty)
+router.post("/:id/notifications", requireAnyRole("admin", "faculty"), handleCreateBatchNotification);
 
 // Batch subject removal (Admin only)
 router.delete("/:id/subjects/:subjectId", requireRole("admin"), handleRemoveBatchSubject);

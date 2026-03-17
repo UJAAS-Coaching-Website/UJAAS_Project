@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { createMultiBatchNotification } from "./notificationService.js";
 
 /**
  * Admin triggers a new review session.
@@ -28,6 +29,20 @@ export async function startReviewSession(adminId) {
              RETURNING *`,
             [adminId, expiryTime]
         );
+
+        // 5. Fetch all batches to broadcast the sticky notification
+        const batchResult = await client.query("SELECT id FROM batches");
+        const allBatchIds = batchResult.rows.map(r => r.id);
+
+        if (allBatchIds.length > 0) {
+            await createMultiBatchNotification(allBatchIds, {
+                senderId: adminId,
+                type: 'review',
+                title: '🌟 Faculty Review Live',
+                message: 'Your feedback matters! Please rate your teachers to help us improve your learning experience.',
+                isSticky: true
+            });
+        }
 
         await client.query("COMMIT");
         return result.rows[0];

@@ -27,8 +27,10 @@ import {
   X,
   Bell,
   Save,
-  Check
+  Check,
+  Megaphone
 } from 'lucide-react';
+import UploadNoticeModal from './UploadNoticeModal';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { FacultyProfile } from './FacultyProfile';
@@ -334,6 +336,7 @@ export function FacultyDashboard({
     batch: null
   });
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   const generateMockPerformances = (testId: string): StudentPerformance[] => {
     const test = publishedTests.find(t => t.id === testId);
@@ -775,6 +778,7 @@ export function FacultyDashboard({
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   facultyName={user.name}
+                  onUploadNotice={() => setIsNoticeModalOpen(true)}
                 />
               )}
               {adminSection === 'test-series' && (
@@ -864,6 +868,21 @@ export function FacultyDashboard({
           )}
         </AnimatePresence>
 
+        <UploadNoticeModal
+          isOpen={isNoticeModalOpen}
+          onClose={() => setIsNoticeModalOpen(false)}
+          batches={batches
+            .filter(b => b.facultyAssigned?.includes(user.name))
+            .map(b => ({
+              id: b.id || '',
+              name: b.label,
+              slug: b.slug,
+              is_active: b.is_active !== false
+            }))
+          }
+          userRole="faculty"
+        />
+
         {/* Timetable Modal */}
         <AnimatePresence>
           {showFullTimetable && (
@@ -922,7 +941,7 @@ export function FacultyDashboard({
 
 // SUB-COMPONENTS
 
-function BatchSelectionTab({ batches, onSelectBatch, facultyName }: { batches: BatchInfo[]; onSelectBatch: (batch: Batch) => void; facultyName: string }) {
+function BatchSelectionTab({ batches, onSelectBatch, facultyName, onUploadNotice }: { batches: BatchInfo[]; onSelectBatch: (batch: Batch) => void; facultyName: string; onUploadNotice: () => void }) {
   // Only show batches where faculty is assigned
   const facultyBatches = batches.filter(b => b.facultyAssigned?.includes(facultyName));
   const sortedBatches = [...facultyBatches].sort((a, b) => {
@@ -933,9 +952,18 @@ function BatchSelectionTab({ batches, onSelectBatch, facultyName }: { batches: B
   return (
     <div className="space-y-6">
       <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
-          <p className="text-gray-600">Open one of your assigned batches to review students, attendance, and academic content.</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
+            <p className="text-gray-600">Open one of your assigned batches to review students, attendance, and academic content.</p>
+          </div>
+          <button
+            onClick={onUploadNotice}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
+          >
+            <Megaphone className="w-5 h-5" />
+            Upload Notice
+          </button>
         </div>
       </div>
 

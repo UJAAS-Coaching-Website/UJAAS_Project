@@ -18,6 +18,7 @@ import questionBankRoutes from "./routes/questionBankRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import subjectRoutes from "./routes/subjectRoutes.js";
 import facultyReviewRoutes from "./routes/facultyReviewRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/api/question-bank", questionBankRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/faculty-reviews", facultyReviewRoutes);
+app.use("/api/notification-center", notificationRoutes);
 app.use(healthRoutes);
 
 export default app;

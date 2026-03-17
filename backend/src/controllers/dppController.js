@@ -12,6 +12,7 @@ import {
     deleteDpp,
 } from "../services/dppService.js";
 import { getFacultyManagedChapter, getFacultyManagedDpp } from "../services/contentAccessService.js";
+import { createMultiBatchNotification } from "../services/notificationService.js";
 
 export async function handleListDpps(req, res) {
     try {
@@ -145,6 +146,18 @@ export async function handleCreateDpp(req, res) {
             createdBy: req.user.sub,
             questions: Array.isArray(questions) ? questions : [],
         });
+
+        // Trigger Notification
+        if (chapter && chapter.batch_id) {
+            createMultiBatchNotification([chapter.batch_id], {
+                senderId: req.user.sub,
+                type: 'dpp',
+                title: 'New DPP Uploaded',
+                message: `New DPP "${dpp.title}" uploaded for chapter "${chapter.name}" (${chapter.subject_name}).`,
+                metadata: { dppId: dpp.id, chapterId: chapter.id }
+            }).catch(err => console.error("DPP Auto-notification failed:", err));
+        }
+
         return res.status(201).json(dpp);
     } catch (error) {
         if (error?.code === "BATCH_INACTIVE" || error?.code === "CHAPTER_NOT_FOUND") {
@@ -174,6 +187,17 @@ export async function handleUpdateDpp(req, res) {
             chapterId,
             questions: Array.isArray(req.body?.questions) ? req.body.questions : [],
         });
+
+        // Trigger Notification
+        if (chapter && chapter.batch_id) {
+            createMultiBatchNotification([chapter.batch_id], {
+                senderId: req.user.sub,
+                type: 'dpp',
+                title: 'DPP Updated',
+                message: `DPP "${updated.title}" updated for chapter "${chapter.name}" (${chapter.subject_name}).`,
+                metadata: { dppId: updated.id, chapterId: chapter.id }
+            }).catch(err => console.error("DPP Auto-notification failed:", err));
+        }
 
         return res.status(200).json(updated);
     } catch (error) {

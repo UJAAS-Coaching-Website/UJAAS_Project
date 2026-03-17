@@ -29,3 +29,24 @@ export async function submitFacultyRatings(ratings: { facultyId: string, rating:
         body: JSON.stringify({ ratings })
     });
 }
+
+// Student Notification APIs
+export async function fetchStudentNotifications(): Promise<any[]> {
+    const res = await request<{ status: string, notifications: any[] }>("/api/notification-center/");
+    return res.notifications;
+}
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+    await request(`/api/notification-center/${id}/read`, { method: "PUT" });
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+    await request(`/api/notification-center/${id}`, { method: "DELETE" });
+}
+
+export async function broadcastNotice(payload: { batchIds: string[], title: string, message: string }): Promise<void> {
+    await request("/api/notification-center/broadcast", {
+        method: "POST",
+        body: JSON.stringify(payload)
+    });
+}

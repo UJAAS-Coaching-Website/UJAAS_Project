@@ -12,6 +12,7 @@ import {
     getBatchStudents,
     getBatchFaculty,
     createBatchNotification,
+    isFacultyAssignedToBatch,
 } from "../services/batchService.js";
 import { removeSubjectFromBatch } from "../services/subjectService.js";
 import { uploadTimetableToStorage, deleteTimetableFromStorage } from "../services/storageService.js";
@@ -199,10 +200,21 @@ export async function handleGetBatchFaculty(req, res) {
 export async function handleCreateBatchNotification(req, res) {
     try {
         const { title, message, type } = req.body;
+        const batchId = req.params.id;
+
         if (!title || !message) {
             return res.status(400).json({ message: "notice title and message are required" });
         }
-        await createBatchNotification(req.params.id, { title, message, type });
+
+        // Security check for faculty
+        if (req.user.role === 'faculty') {
+            const assigned = await isFacultyAssignedToBatch(req.user.sub, batchId);
+            if (!assigned) {
+                return res.status(403).json({ message: "you are not assigned to this batch" });
+            }
+        }
+
+        await createBatchNotification(batchId, { title, message, type });
         return res.status(201).json({ message: "notice sent successfully" });
     } catch (error) {
         console.error("createBatchNotification error:", error.message);

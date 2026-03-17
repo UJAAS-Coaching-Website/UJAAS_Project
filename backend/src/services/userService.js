@@ -80,11 +80,6 @@ function buildStudentPayload(baseUser, studentRow, enrolledCourses, batchName, b
 
 async function getStudentEnrollment(userId, client = pool) {
     const batchModel = await getStudentBatchModel();
-    const hasBatches = await tableExists("batches", client);
-
-    if (!hasBatches) {
-        return { enrolledCourses: [], batchName: "" };
-    }
 
     if (batchModel === "single") {
         const result = await client.query(
@@ -97,40 +92,12 @@ async function getStudentEnrollment(userId, client = pool) {
         );
         const batchName = result.rows[0]?.name || "";
         const batchId = result.rows[0]?.id || null;
-        if (batchId) {
-            return {
-                enrolledCourses: batchName ? [batchName] : [],
-                batchName,
-                batchId,
-            };
-        }
-
-        const hasStudentBatches = await tableExists("student_batches", client);
-        if (hasStudentBatches) {
-            const fallback = await client.query(
-                `SELECT b.id, b.name
-                 FROM student_batches sb
-                 JOIN batches b ON b.id = sb.batch_id
-                 WHERE sb.student_id = $1
-                 ORDER BY b.name
-                 LIMIT 1`,
-                [userId]
-            );
-            const fallbackName = fallback.rows[0]?.name || "";
-            const fallbackId = fallback.rows[0]?.id || null;
-            return {
-                enrolledCourses: fallbackName ? [fallbackName] : [],
-                batchName: fallbackName,
-                batchId: fallbackId,
-            };
-        }
-
-        return { enrolledCourses: [], batchName: "", batchId: null };
-    }
-
-    const hasStudentBatches = await tableExists("student_batches", client);
-    if (!hasStudentBatches) {
-        return { enrolledCourses: [], batchName: "" };
+        
+        return {
+            enrolledCourses: batchName ? [batchName] : [],
+            batchName,
+            batchId,
+        };
     }
 
     const result = await client.query(
@@ -152,153 +119,52 @@ async function getStudentEnrollment(userId, client = pool) {
 }
 
 async function getStudentSubjectRatings(userId, client = pool) {
-    const hasRatingsTable = await tableExists("student_ratings", client);
-    if (!hasRatingsTable) {
-        return {};
-    }
+    const result = await client.query(
+        `SELECT
+            sub.name AS subject_name,
+            COALESCE(r.attendance, 0) AS attendance,
+            COALESCE(bs.total_classes, 0) AS total_classes,
+            CASE
+                WHEN COALESCE(bs.total_classes, 0) > 0
+                    THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5)
+                ELSE 0
+            END AS attendance_rating,
+            COALESCE(r.test_performance, 0) AS tests,
+            COALESCE(r.dpp_performance, 0) AS dpp_performance,
+            COALESCE(r.behavior, 0) AS behavior,
+            COALESCE(r.remarks, '') AS remarks
+         FROM student_ratings r
+         JOIN batch_subjects bs ON bs.id = r.batch_subject_id
+         JOIN subjects sub ON sub.id = bs.subject_id
+         WHERE r.student_id = $1`,
+        [userId]
+    );
 
-    const hasBatchSubjects = await tableExists("batch_subjects", client);
-    const hasSubjectsTable = await tableExists("subjects", client);
-    const hasBatchSubjectId = await columnExists("student_ratings", "batch_subject_id", client);
-    const hasLegacySubject = await columnExists("student_ratings", "subject", client);
-    const hasTestPerformance = await columnExists("student_ratings", "test_performance", client);
-    const hasAssignments = await columnExists("student_ratings", "assignments", client);
-    const hasDppPerformance = await columnExists("student_ratings", "dpp_performance", client);
-    const hasParticipation = await columnExists("student_ratings", "participation", client);
-    const hasRemarks = await columnExists("student_ratings", "remarks", client);
-    const hasTotalClasses = await columnExists("student_ratings", "total_classes", client);
-
-    const testColumn = hasTestPerformance ? "r.test_performance" : hasAssignments ? "r.assignments" : "0";
-    const dppColumn = hasDppPerformance ? "r.dpp_performance" : hasParticipation ? "r.participation" : "0";
-    const remarksColumn = hasRemarks ? "COALESCE(r.remarks, '')" : "''";
-
-    if (hasBatchSubjects && hasSubjectsTable && hasBatchSubjectId) {
-        const result = await client.query(
-            `SELECT
-                sub.name AS subject_name,
-                COALESCE(r.attendance, 0) AS attendance,
-                COALESCE(bs.total_classes, 0) AS total_classes,
-                CASE
-                    WHEN COALESCE(bs.total_classes, 0) > 0
-                        THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5)
-                    ELSE 0
-                END AS attendance_rating,
-                COALESCE(${testColumn}, 0) AS tests,
-                COALESCE(${dppColumn}, 0) AS dpp_performance,
-                COALESCE(r.behavior, 0) AS behavior,
-                ${remarksColumn} AS remarks
-             FROM student_ratings r
-             JOIN batch_subjects bs ON bs.id = r.batch_subject_id
-             JOIN subjects sub ON sub.id = bs.subject_id
-             WHERE r.student_id = $1`,
-            [userId]
-        );
-
-        return Object.fromEntries(
-            result.rows.map((row) => [
-                row.subject_name,
-                {
-                    attendance: Number(row.attendance || 0),
-                    total_classes: Number(row.total_classes || 0),
-                    attendanceRating: Number(row.attendance_rating || 0),
-                    tests: Number(row.tests || 0),
-                    dppPerformance: Number(row.dpp_performance || 0),
-                    behavior: Number(row.behavior || 0),
-                    remarks: row.remarks || "",
-                },
-            ])
-        );
-    }
-
-    if (hasLegacySubject) {
-        const result = await client.query(
-            `SELECT
-                COALESCE(r.subject, 'General') AS subject_name,
-                COALESCE(r.attendance, 0) AS attendance,
-                COALESCE(${hasTotalClasses ? "r.total_classes" : "0"}, 0) AS total_classes,
-                CASE
-                    WHEN COALESCE(${hasTotalClasses ? "r.total_classes" : "0"}, 0) > 0
-                        THEN LEAST(5, (COALESCE(r.attendance, 0)::float / NULLIF(r.total_classes, 0)::float) * 5)
-                    ELSE 0
-                END AS attendance_rating,
-                COALESCE(${testColumn}, 0) AS tests,
-                COALESCE(${dppColumn}, 0) AS dpp_performance,
-                COALESCE(r.behavior, 0) AS behavior,
-                ${remarksColumn} AS remarks
-             FROM student_ratings r
-             WHERE r.student_id = $1`,
-            [userId]
-        );
-
-        return Object.fromEntries(
-            result.rows.map((row) => [
-                row.subject_name,
-                {
-                    attendance: Number(row.attendance || 0),
-                    total_classes: Number(row.total_classes || 0),
-                    attendanceRating: Number(row.attendance_rating || 0),
-                    tests: Number(row.tests || 0),
-                    dppPerformance: Number(row.dpp_performance || 0),
-                    behavior: Number(row.behavior || 0),
-                    remarks: row.remarks || "",
-                },
-            ])
-        );
-    }
-
-    return {};
-}
-
-async function getFacultySubjectName(client = pool) {
-    const hasSubjectsTable = await tableExists("subjects", client);
-    const hasSubjectId = await columnExists("faculties", "subject_id", client);
-    const hasLegacySubject = await columnExists("faculties", "subject", client);
-
-    if (hasSubjectsTable && hasSubjectId) {
-        return {
-            joinClause: `LEFT JOIN subjects sub ON sub.id = f.subject_id`,
-            selectClause: `sub.name AS faculty_subject`,
-        };
-    }
-
-    if (hasLegacySubject) {
-        return {
-            joinClause: ``,
-            selectClause: `f.subject AS faculty_subject`,
-        };
-    }
-
-    return {
-        joinClause: ``,
-        selectClause: `NULL::text AS faculty_subject`,
-    };
+    return Object.fromEntries(
+        result.rows.map((row) => [
+            row.subject_name,
+            {
+                attendance: Number(row.attendance || 0),
+                total_classes: Number(row.total_classes || 0),
+                attendanceRating: Number(row.attendance_rating || 0),
+                tests: Number(row.tests || 0),
+                dppPerformance: Number(row.dpp_performance || 0),
+                behavior: Number(row.behavior || 0),
+                remarks: row.remarks || "",
+            },
+        ])
+    );
 }
 
 async function getFacultyDetails(userId, client = pool) {
-    const hasFaculties = await tableExists("faculties", client);
-    if (!hasFaculties) {
-        return null;
-    }
-
-    const hasDesignation = await columnExists("faculties", "designation", client);
-    const hasJoiningDateColumn = await columnExists("faculties", "joining-date", client);
-    const hasJoinDateColumn = await columnExists("faculties", "join_date", client);
-    const subjectSql = await getFacultySubjectName(client);
-
     const result = await client.query(
         `SELECT
             f.phone AS faculty_phone,
-            ${subjectSql.selectClause},
-            ${hasDesignation ? "f.designation" : "NULL::text"} AS faculty_designation,
-            ${
-                hasJoiningDateColumn
-                    ? `TO_CHAR(f."joining-date", 'YYYY-MM-DD')`
-                    : hasJoinDateColumn
-                        ? `TO_CHAR(f.join_date, 'YYYY-MM-DD')`
-                        : `NULL::text`
-            } AS faculty_join_date
+            sub.name AS faculty_subject,
+            f.designation AS faculty_designation,
+            TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS faculty_join_date
          FROM faculties f
-         ${subjectSql.joinClause}
+         LEFT JOIN subjects sub ON sub.id = f.subject_id
          WHERE f.user_id = $1
          LIMIT 1`,
         [userId]

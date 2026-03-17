@@ -33,8 +33,11 @@ import {
   Mail,
   Phone,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  Megaphone
 } from 'lucide-react';
+import { ApiBatch } from '../api/batches';
+import UploadNoticeModal from './UploadNoticeModal';
 import { triggerReviewSession } from '../api/facultyReviews';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -106,8 +109,8 @@ interface AdminDashboardProps {
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }
 
-export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
@@ -421,6 +424,7 @@ export function AdminDashboard({
     query: null
   });
 
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
 
   const fallbackForceTestLiveNow = async (testId: string): Promise<import('../App').PublishedTest> => {
@@ -960,6 +964,7 @@ export function AdminDashboard({
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   onAddBatch={openAddBatch}
+                  onUploadNotice={() => setIsNoticeModalOpen(true)}
                 />
               )}
               {adminSection === 'students' && (
@@ -1036,10 +1041,8 @@ export function AdminDashboard({
               )}
               {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
-              {activeTab === 'upload-notice' && (
-                <NoticeUploadForm onNavigate={onNavigate} />
-              )}
-            </>
+              </>
+
           )}
         </motion.div>
       </main>
@@ -1096,6 +1099,18 @@ export function AdminDashboard({
           students={students}
           onClose={closeBatchStudentPicker}
           onAssign={handleAssignExistingStudentToBatch}
+        />
+
+        <UploadNoticeModal
+          isOpen={isNoticeModalOpen}
+          onClose={() => setIsNoticeModalOpen(false)}
+          batches={batches.map(b => ({
+            id: b.id || '',
+            name: b.label,
+            slug: b.slug,
+            is_active: b.isActive !== false
+          }))}
+          userRole="admin"
         />
         <AnimatePresence>
           {ratingModal.open && (
@@ -1318,65 +1333,6 @@ export function AdminDashboard({
 }
 
 // SUB-COMPONENTS
-
-function NoticeUploadForm({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
-  return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
-          <Bell className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Upload Batch Notice</h2>
-          <p className="text-gray-600">Post a text update with an accompanying image</p>
-        </div>
-      </div>
-
-      <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onNavigate('content'); }}>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">Notice</label>
-          <input
-            type="text"
-            required
-            placeholder="Type the notice message here..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition outline-none"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">Upload Image</label>
-          <div className="p-8 bg-orange-50 border-2 border-dashed border-orange-200 rounded-2xl text-center group hover:bg-orange-100 transition-colors cursor-pointer relative">
-            <input
-              type="file"
-              accept="image/*"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={() => { }}
-            />
-            <ImageIcon className="w-10 h-10 text-orange-400 mx-auto mb-3 group-hover:scale-110 transition-transform" />
-            <p className="text-sm text-gray-600 font-medium">Click or drag to upload notice image</p>
-            <p className="text-xs text-gray-400 mt-1">Supports JPG, PNG, WEBP</p>
-          </div>
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onNavigate('content')}
-            className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-          >
-            Post Notice
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
 
 function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate: (data: LandingData) => void | Promise<void> }) {
   const [activeSubSection, setActiveSubSection] = useState<'overview' | 'courses' | 'faculty' | 'achievers' | 'visions'>('overview');
@@ -1919,7 +1875,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   );
 }
 
-function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: BatchInfo[]; onSelectBatch: (b: Batch) => void; onAddBatch: () => void }) {
+function BatchSelectionTab({ batches, onSelectBatch, onAddBatch, onUploadNotice }: { batches: BatchInfo[]; onSelectBatch: (b: Batch) => void; onAddBatch: () => void; onUploadNotice: () => void }) {
   const sortedBatches = [...batches].sort((a, b) => {
     if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
     return a.is_active === false ? 1 : -1;
@@ -1933,7 +1889,14 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch }: { batches: Ba
           <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
           <p className="text-gray-600">Open a batch dashboard, review assigned groups, and manage new batches.</p>
           </div>
-          <div className="flex lg:justify-end lg:pl-6">
+          <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
+            <button
+              onClick={onUploadNotice}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
+            >
+              <Megaphone className="w-5 h-5" />
+              Upload Notice
+            </button>
             <button
               onClick={onAddBatch}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
