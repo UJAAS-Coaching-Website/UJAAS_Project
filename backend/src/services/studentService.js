@@ -314,7 +314,7 @@ export async function removeStudentFromBatch(studentId, batchId) {
  * Update student rating for a specific subject.
  */
 export async function updateStudentRating(studentId, subjectName, ratings) {
-    const { total_classes, tests, dppPerformance, behavior, remarks } = ratings;
+    const { attendance, total_classes, tests, dppPerformance, behavior, remarks } = ratings;
     const client = await pool.connect();
     
     try {
@@ -323,7 +323,7 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
         const batchModel = await getStudentBatchModel();
         const normalizedSubjectName = String(subjectName).trim();
 
-        const attendanceValue = null; // Attendance not updated here by design
+        const attendanceValue = attendance !== undefined ? attendance : null;
         
         const batchIdSubquery = batchModel === 'single'
             ? `(SELECT assigned_batch_id FROM students WHERE user_id = $1)`
