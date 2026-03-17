@@ -337,20 +337,21 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
         </div>
       </section>
 
-      <section className="py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500">
+      <section className="py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500" style={isMobile ? { paddingTop: '1.5rem', paddingBottom: '1.5rem' } : undefined}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-4 md:mb-6">
-            <h2 className="text-2xl md:text-4xl font-bold text-white">Admissions Open</h2>
+          <div className="text-center mb-4 md:mb-6" style={isMobile ? { marginBottom: '0.75rem' } : undefined}>
+            <h2 className="text-2xl md:text-4xl font-bold text-white">{isMobile ? 'Admissions Open' : 'Admissions Open'}</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6" style={isMobile ? { gap: '0.75rem' } : undefined}>
             {courses.map((course, idx) => (
               <div
                 key={course.id || idx}
                 className="bg-white rounded-xl p-4 md:p-6 text-center shadow-lg"
+                style={isMobile ? { padding: '0.625rem' } : undefined}
               >
-                <BookOpen className="w-6 h-6 md:w-5 md:h-5 text-teal-600 mx-auto mb-2 md:mb-3" />
-                <h3 className="font-bold text-gray-900 text-base md:text-xl leading-tight">{course.name}</h3>
+                <BookOpen className="w-6 h-6 md:w-5 md:h-5 text-teal-600 mx-auto mb-2 md:mb-3" style={isMobile ? { width: '1rem', height: '1rem', marginBottom: '0.25rem' } : undefined} />
+                <h3 className="font-bold text-gray-900 text-base md:text-xl leading-tight" style={isMobile ? { fontSize: '0.875rem', lineHeight: '1.4' } : undefined}>{course.name}</h3>
               </div>
             ))}
           </div>

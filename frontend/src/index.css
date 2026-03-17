@@ -230,6 +230,10 @@
   }
 }
 
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
 @layer base {
   *, :after, :before, ::backdrop {
     box-sizing: border-box;
