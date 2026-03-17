@@ -90,19 +90,19 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
 
   const shouldPaginateFaculty = faculty.length > facultyItemsPerView;
 
-  // Autoplay functionality - Achievers (0.5s transition + 3s gap = 3.5s total)
+  // Autoplay functionality - Achievers (0.5s transition + 2s gap = 2.5s total)
   useEffect(() => {
     const timer = setInterval(() => {
       if (shouldPaginateAchievers) nextAchiever();
-    }, 3500); 
+    }, 2500); 
     return () => clearInterval(timer);
   }, [shouldPaginateAchievers, achievers.length, achieversItemsPerView]);
 
-  // Autoplay functionality - Faculty (0.5s transition + 4s gap = 4.5s total)
+  // Autoplay functionality - Faculty (0.5s transition + 3s gap = 3.5s total)
   useEffect(() => {
     const timer = setInterval(() => {
       if (shouldPaginateFaculty) nextFaculty();
-    }, 4500); 
+    }, 3500); 
     return () => clearInterval(timer);
   }, [shouldPaginateFaculty, faculty.length, facultyItemsPerView]);
 
@@ -178,27 +178,27 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   >
                     {landingData.visions.map((vision) => (
                       <div key={vision.id} className="w-full flex-shrink-0 px-4">
-                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[350px]">
+                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl max-md:rounded-2xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[350px] max-md:min-h-0">
                           {/* Left Section - 1/4 Width */}
                           <div className="md:w-1/4 flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-teal-100 bg-white/50 overflow-hidden">
-                            <div className="w-full h-64 md:h-48 flex-shrink-0 bg-white/30 overflow-hidden">
+                            <div className="w-full h-48 max-md:h-32 md:h-48 flex-shrink-0 bg-white/30 overflow-hidden">
                               <img 
                                 src={vision.image} 
                                 alt={vision.name} 
-                                className="w-full h-full object-cover" 
+                                className="w-full h-full object-cover max-md:object-top" 
                               />
                             </div>
-                            <div className="p-4 text-center flex-grow flex flex-col justify-center">
-                              <h3 className="text-lg font-bold text-gray-900 mb-0.5">{vision.name}</h3>
-                              <p className="text-teal-600 font-semibold text-xs">{vision.designation}</p>
+                            <div className="p-4 max-md:p-2 text-center flex-grow flex flex-col justify-center">
+                              <h3 className="text-lg max-md:text-sm font-bold text-gray-900 mb-0.5 max-md:mb-0 leading-tight">{vision.name}</h3>
+                              <p className="text-teal-600 font-semibold text-xs max-md:text-[10px]">{vision.designation}</p>
                             </div>
                           </div>
                           
                           {/* Right Section - 3/4 Width */}
-                          <div className="md:w-3/4 p-8 md:p-14 flex flex-col justify-center relative overflow-hidden">
-                            <div className="relative z-10 text-xl md:text-3xl text-gray-700 leading-relaxed italic text-center md:text-left px-6 py-4 font-serif">
+                          <div className="md:w-3/4 p-8 md:p-14 max-md:p-4 flex flex-col justify-center relative overflow-hidden">
+                            <div className="relative z-10 text-xl md:text-3xl max-md:text-xs text-gray-700 leading-relaxed max-md:leading-snug italic text-center md:text-left px-6 py-4 max-md:px-2 max-md:py-2 font-serif">
                               {/* Inline Opening Quote */}
-                              <span className="inline-block w-12 h-6 align-top mr-2 -mt-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span className="inline-block w-12 h-6 max-md:w-4 max-md:h-2 align-top mr-2 -mt-2 max-md:mr-1 max-md:-mt-1" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z"></path>
                                 </svg>
@@ -207,7 +207,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               {vision.vision}
                               
                               {/* Inline Closing Quote */}
-                              <span className="inline-block w-12 h-6 align-bottom ml-2 -mb-2" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span className="inline-block w-12 h-6 max-md:w-4 max-md:h-2 align-bottom ml-2 -mb-2 max-md:ml-1 max-md:-mb-1" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M19.417 6.679C20.447 7.773 21 9 21 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311-1.804-.167-3.226-1.648-3.226-3.489a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179zm-10 0C10.447 7.773 11 9 11 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311C4.591 12.322 3.17 10.841 3.17 9a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179z"></path>
                                 </svg>
@@ -224,15 +224,15 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   <>
                     <button
                       onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 max-md:-translate-x-1 p-3 max-md:p-1.5 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                     >
-                      <ChevronLeft className="w-6 h-6" />
+                      <ChevronLeft className="w-6 h-6 max-md:w-3 max-md:h-3" />
                     </button>
                     <button
                       onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 max-md:translate-x-1 p-3 max-md:p-1.5 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                     >
-                      <ChevronRight className="w-6 h-6" />
+                      <ChevronRight className="w-6 h-6 max-md:w-3 max-md:h-3" />
                     </button>
                     
                     <div className="flex justify-center gap-2 mt-3 mb-3">
