@@ -24,8 +24,10 @@ router.get("/to-rate", authenticate, requireRole("student"), async (req, res) =>
     try {
         const faculties = await getFacultiesToRate(req.user.sub);
         const session = await getActiveSession();
+        console.log(`[Review] Student ${req.user.sub} requested to-rate. Found ${faculties.length} faculties. Session active: ${!!session}`);
         res.status(200).json({ status: "success", faculties, session });
     } catch (error) {
+        console.error("[Review] to-rate error:", error);
         res.status(500).json({ status: "error", message: error.message });
     }
 });

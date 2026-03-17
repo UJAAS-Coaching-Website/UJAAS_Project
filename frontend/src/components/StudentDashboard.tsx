@@ -40,7 +40,7 @@ interface StudentDashboardProps {
   onMarkAllAsRead: () => void;
   onDeleteNotification: (id: string) => void;
   publishedTests: import('../App').PublishedTest[];
-  showReviewModal?: boolean;
+  reviewModalTrigger?: number;
   onCloseReview?: () => void;
 }
 
@@ -59,7 +59,7 @@ export function StudentDashboard({
   onMarkAllAsRead,
   onDeleteNotification,
   publishedTests,
-  showReviewModal,
+  reviewModalTrigger,
   onCloseReview
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
@@ -97,17 +97,39 @@ export function StudentDashboard({
     loadReviewInfo();
   }, [hasDismissedReview]);
 
-  // Sync with parent force-open prop
+  // Sync with parent force-open prop (Numeric counter)
   useEffect(() => {
-    if (showReviewModal) {
-      setShowReviewModalInternal(true);
+    if (reviewModalTrigger && reviewModalTrigger > 0) {
+      const loadInfo = async () => {
+        try {
+          const { faculties } = await getFacultiesToRate();
+          if (faculties.length > 0) {
+            setShowReviewModalInternal(true);
+          } else {
+            import('sonner').then(({ toast }) => {
+              toast.info("You've already rated all available faculties.");
+            });
+            if (onCloseReview) onCloseReview();
+          }
+        } catch (error) {
+          console.error('Failed to check faculties to rate:', error);
+        }
+      };
+      loadInfo();
     }
-  }, [showReviewModal]);
+  }, [reviewModalTrigger]);
 
   const handleReviewSubmitSuccess = () => {
     setShowReviewModalInternal(false);
     if (onCloseReview) onCloseReview();
-    setToRateFaculties([]); // Assume all rated for immediate UI feedback
+    
+    // Find the review notification and delete it locally
+    const reviewNotif = notifications.find(n => n.type === 'review');
+    if (reviewNotif) {
+      onDeleteNotification(reviewNotif.id);
+    }
+
+    setToRateFaculties([]); 
     localStorage.removeItem('ujaas_dismissed_review_session');
   };
 

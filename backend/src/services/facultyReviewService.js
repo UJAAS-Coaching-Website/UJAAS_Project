@@ -1,5 +1,5 @@
 import { pool } from "../db/index.js";
-import { createMultiBatchNotification, deleteNotificationsByType } from "./notificationService.js";
+import { createMultiBatchNotification, deleteNotificationsByType, deleteNotificationForStudent } from "./notificationService.js";
 
 /**
  * Admin triggers a new review session.
@@ -106,6 +106,12 @@ export async function submitFacultyRatings(studentId, ratings) {
                  WHERE user_id = $1`,
                 [facultyId]
             );
+        }
+
+        // 3. Delete the "review" notifications for this specific student
+        const reviewNotifs = await client.query("SELECT id FROM notifications WHERE type = 'review'");
+        for (const row of reviewNotifs.rows) {
+            await deleteNotificationForStudent(studentId, row.id);
         }
 
         await client.query("COMMIT");

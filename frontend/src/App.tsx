@@ -281,7 +281,7 @@ function App() {
   });
 
   const [user, setUser] = useState<User | null>(null);
-  const [forceOpenReviewModal, setForceOpenReviewModal] = useState(false);
+  const [reviewModalTrigger, setReviewModalTrigger] = useState(0);
   const hasShownStorageWarning = useRef(false);
 
   const safeSetLocalStorage = (key: string, value: string) => {
@@ -1496,7 +1496,8 @@ function App() {
         icon: n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes',
         // Click handler logic
         onClick: n.metadata?.openReview ? () => {
-          setForceOpenReviewModal(prev => !prev); // Toggle to trigger useEffect in dashboard
+          console.log("🌟 Review Notification Clicked! Triggering modal...");
+          setReviewModalTrigger(prev => prev + 1);
         } : undefined
       }));
       setNotifications(mapped);
@@ -1647,8 +1648,8 @@ function App() {
               onMarkAllAsRead={handleMarkAllAsRead}
               onDeleteNotification={handleDeleteNotification}
               publishedTests={publishedTests}
-              showReviewModal={forceOpenReviewModal}
-              onCloseReview={() => setForceOpenReviewModal(false)}
+              reviewModalTrigger={reviewModalTrigger}
+              onCloseReview={() => setReviewModalTrigger(0)}
             />
           </motion.div>
         ) : user.role === 'faculty' ? (

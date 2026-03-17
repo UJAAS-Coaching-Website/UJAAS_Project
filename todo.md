@@ -8,4 +8,4 @@
 . student will be allowed to fill the rating only once. if the rating is filled, the form will be submitted and will be removed from the notification section.
 . after the form will be inaccessible from the students, the rating calculation will be performed and the total updated rating will be shown to the admin.
 . the new calculated ratings will overwrite the old ratings. there will be no rating history.
-
+. if a new trigger is applied, it will delete old notifications also. only new notification will be shown.

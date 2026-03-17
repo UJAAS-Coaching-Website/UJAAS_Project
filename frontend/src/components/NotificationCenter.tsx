@@ -141,6 +141,7 @@ export function NotificationCenter({
                         onClick={() => {
                           if (notification.onClick) {
                             notification.onClick();
+                            setIsOpen(false);
                           } else {
                             onMarkAsRead(notification.id);
                           }
