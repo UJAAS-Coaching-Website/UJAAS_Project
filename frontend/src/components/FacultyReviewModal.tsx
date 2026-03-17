@@ -86,11 +86,9 @@ export function FacultyReviewModal({ faculties, onClose, onSubmitSuccess }: Facu
                       className="p-1 transition-transform hover:scale-125"
                     >
                       <Star
-                        className={`w-8 h-8 ${
-                          (ratings[faculty.id] || 0) >= star
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
+                        size={32}
+                        color={(ratings[faculty.id] || 0) >= star ? '#f59e0b' : '#d1d5db'}
+                        fill={(ratings[faculty.id] || 0) >= star ? '#f59e0b' : 'none'}
                       />
                     </button>
                   ))}
