@@ -2,9 +2,6 @@
  * Chapter API client
  */
 
-const API_BASE_URL =
-    (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
-
 function getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem("ujaasToken");
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -82,3 +79,4 @@ export async function apiDeleteChapter(id: string): Promise<void> {
         method: "DELETE",
     });
 }
+import { API_BASE_URL } from "./base";

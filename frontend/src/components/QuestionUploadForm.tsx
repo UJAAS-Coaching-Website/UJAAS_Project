@@ -7,6 +7,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { API_BASE_URL } from '../api/base';
 
 export interface Question {
   id: string;
@@ -109,8 +110,6 @@ export function QuestionUploadForm({
       formData.append('contextId', contextId);
       formData.append('itemRole', type);
 
-      const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
-      
       const response = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         credentials: 'include',
@@ -147,7 +146,6 @@ export function QuestionUploadForm({
 
   // Delete an image from S3 and clear it from state
   const handleImageRemove = async (type: 'question' | 'option' | 'explanation', index?: number) => {
-    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
     let imageUrl: string | undefined;
 
     if (type === 'question') imageUrl = currentQuestion.questionImage;

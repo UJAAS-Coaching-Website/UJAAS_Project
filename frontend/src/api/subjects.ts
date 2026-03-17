@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
+import { API_BASE_URL } from "./base";
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("ujaasToken");

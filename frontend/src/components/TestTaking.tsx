@@ -19,6 +19,7 @@ import {
   Settings,
   Users
 } from 'lucide-react';
+import { API_BASE_URL } from '../api/base';
 
 interface Question {
   id: string;
@@ -255,8 +256,6 @@ export function TestTaking({
       formData.append('contextId', testId);
       formData.append('itemRole', type);
 
-      const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
-      
       const response = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         credentials: 'include', // Important for HTTP-only cookie auth
@@ -295,7 +294,6 @@ export function TestTaking({
 
   // Delete an image from S3 and clear it from editForm state
   const handleImageRemove = async (type: 'question' | 'option' | 'explanation', index?: number) => {
-    const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000";
     let imageUrl: string | undefined;
 
     if (type === 'question') imageUrl = editForm.questionImage;

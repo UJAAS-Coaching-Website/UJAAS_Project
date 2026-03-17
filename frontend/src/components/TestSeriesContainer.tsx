@@ -4,6 +4,7 @@ import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
 import { User, PublishedTest } from '../App';
+import { API_BASE_URL } from '../api/base';
 import {
   fetchAttemptResult,
   fetchMyAttemptResults,
@@ -64,8 +65,6 @@ type TestState =
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
 const LAST_RESULT_STORAGE_KEY = 'ujaasLastAttemptResultId';
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000';
-
 const slugify = (text: string) => {
   return text
     .toLowerCase()
