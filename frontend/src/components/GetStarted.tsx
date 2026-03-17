@@ -178,27 +178,98 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   >
                     {landingData.visions.map((vision) => (
                       <div key={vision.id} className="w-full flex-shrink-0 px-4">
-                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl max-md:rounded-2xl overflow-hidden shadow-xl border border-white flex flex-col md:flex-row min-h-[350px] max-md:min-h-0">
-                          {/* Left Section - 1/4 Width */}
-                          <div className="md:w-1/4 flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-teal-100 bg-white/50 overflow-hidden">
-                            <div className="w-full h-48 max-md:h-32 md:h-48 flex-shrink-0 bg-white/30 overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden shadow-xl border border-white"
+                          style={{
+                            borderRadius: isMobile ? '1rem' : '1.5rem',
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            minHeight: isMobile ? undefined : '350px',
+                          }}
+                        >
+                          {/* Left Section - Image & Name */}
+                          <div 
+                            className="bg-white/50 overflow-hidden"
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              flexShrink: 0,
+                              width: isMobile ? undefined : '25%',
+                              maxWidth: isMobile ? undefined : '25%',
+                              borderBottom: isMobile ? '1px solid rgb(204 251 241)' : 'none',
+                              borderRight: isMobile ? 'none' : '1px solid rgb(204 251 241)',
+                            }}
+                          >
+                            <div 
+                              className="w-full bg-white/30 overflow-hidden"
+                              style={{
+                                height: isMobile ? '10rem' : undefined,
+                                flex: isMobile ? undefined : '1 1 0%',
+                                flexShrink: 0,
+                              }}
+                            >
                               <img 
                                 src={vision.image} 
                                 alt={vision.name} 
-                                className="w-full h-full object-cover max-md:object-top" 
+                                className="w-full h-full object-cover"
+                                style={{ objectPosition: isMobile ? 'top' : 'top' }}
                               />
                             </div>
-                            <div className="p-4 max-md:p-2 text-center flex-grow flex flex-col justify-center">
-                              <h3 className="text-lg max-md:text-sm font-bold text-gray-900 mb-0.5 max-md:mb-0 leading-tight">{vision.name}</h3>
-                              <p className="text-teal-600 font-semibold text-xs max-md:text-[10px]">{vision.designation}</p>
+                            <div 
+                              className="text-center flex flex-col justify-center"
+                              style={{
+                                padding: isMobile ? '0.75rem' : '0.75rem',
+                                flexGrow: isMobile ? 1 : 0,
+                                flexShrink: 0,
+                                marginTop: isMobile ? undefined : 'auto',
+                              }}
+                            >
+                              <h3 
+                                className="font-bold text-gray-900 leading-tight"
+                                style={{
+                                  fontSize: isMobile ? '0.875rem' : '0.875rem',
+                                  marginBottom: '0.125rem',
+                                }}
+                              >{vision.name}</h3>
+                              <p 
+                                className="text-teal-600 font-semibold"
+                                style={{ fontSize: isMobile ? '10px' : '0.6875rem' }}
+                              >{vision.designation}</p>
                             </div>
                           </div>
                           
-                          {/* Right Section - 3/4 Width */}
-                          <div className="md:w-3/4 p-8 md:p-14 max-md:p-4 flex flex-col justify-center relative overflow-hidden">
-                            <div className="relative z-10 text-xl md:text-3xl max-md:text-xs text-gray-700 leading-relaxed max-md:leading-snug italic text-center md:text-left px-6 py-4 max-md:px-2 max-md:py-2 font-serif">
+                          {/* Right Section - Quote */}
+                          <div 
+                            className="flex flex-col justify-center relative overflow-hidden"
+                            style={{
+                              width: isMobile ? undefined : '75%',
+                              padding: isMobile ? '1.25rem' : '2.5rem',
+                              minWidth: 0,
+                            }}
+                          >
+                            <div 
+                              className="relative z-10 text-gray-700 italic font-serif"
+                              style={{
+                                fontSize: isMobile ? '13px' : '1.25rem',
+                                lineHeight: isMobile ? '1.375' : '1.75',
+                                textAlign: isMobile ? 'center' : 'left',
+                                paddingLeft: isMobile ? '0.75rem' : '1.25rem',
+                                paddingRight: isMobile ? '0.75rem' : '1.25rem',
+                                paddingTop: isMobile ? '0.5rem' : '0.75rem',
+                                paddingBottom: isMobile ? '0.5rem' : '0.75rem',
+                              }}
+                            >
                               {/* Inline Opening Quote */}
-                              <span className="inline-block w-12 h-6 max-md:w-4 max-md:h-2 align-top mr-2 -mt-2 max-md:mr-1 max-md:-mt-1" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span 
+                                className="inline-block align-top"
+                                style={{ 
+                                  color: 'rgb(0 138 225 / 0.4)',
+                                  width: isMobile ? '1rem' : '2rem',
+                                  height: isMobile ? '0.5rem' : '1rem',
+                                  marginRight: isMobile ? '0.375rem' : '0.375rem',
+                                  marginTop: isMobile ? '-0.25rem' : '-0.25rem',
+                                }}
+                              >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M4.583 17.321C3.553 16.227 3 15 3 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179zm10 0C13.553 16.227 13 15 13 13.011c0-3.5 2.457-6.637 6.03-8.188l.893 1.378c-3.335 1.804-3.987 4.145-4.247 5.621.537-.278 1.24-.375 1.929-.311 1.804.167 3.226 1.648 3.226 3.489a3.5 3.5 0 0 1-3.5 3.5c-1.073 0-2.099-.49-2.748-1.179z"></path>
                                 </svg>
@@ -207,7 +278,16 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               {vision.vision}
                               
                               {/* Inline Closing Quote */}
-                              <span className="inline-block w-12 h-6 max-md:w-4 max-md:h-2 align-bottom ml-2 -mb-2 max-md:ml-1 max-md:-mb-1" style={{ color: 'rgb(0 138 225 / 0.4)' }}>
+                              <span 
+                                className="inline-block align-bottom"
+                                style={{ 
+                                  color: 'rgb(0 138 225 / 0.4)',
+                                  width: isMobile ? '1rem' : '2rem',
+                                  height: isMobile ? '0.5rem' : '1rem',
+                                  marginLeft: isMobile ? '0.375rem' : '0.375rem',
+                                  marginBottom: isMobile ? '-0.25rem' : '-0.25rem',
+                                }}
+                              >
                                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
                                   <path d="M19.417 6.679C20.447 7.773 21 9 21 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311-1.804-.167-3.226-1.648-3.226-3.489a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179zm-10 0C10.447 7.773 11 9 11 10.989c0 3.5-2.457 6.637-6.03 8.188l-.893-1.378c3.335-1.804 3.987-4.145 4.247-5.621-.537.278-1.24.375-1.929.311C4.591 12.322 3.17 10.841 3.17 9a3.5 3.5 0 0 1 3.5-3.5c1.073 0 2.099.49 2.748 1.179z"></path>
                                 </svg>
@@ -224,15 +304,15 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   <>
                     <button
                       onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 max-md:-translate-x-1 p-3 max-md:p-1.5 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 md:-translate-x-12 p-1.5 md:p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                     >
-                      <ChevronLeft className="w-6 h-6 max-md:w-3 max-md:h-3" />
+                      <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
                     </button>
                     <button
                       onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 max-md:translate-x-1 p-3 max-md:p-1.5 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 md:translate-x-12 p-1.5 md:p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                     >
-                      <ChevronRight className="w-6 h-6 max-md:w-3 max-md:h-3" />
+                      <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
                     </button>
                     
                     <div className="flex justify-center gap-2 mt-3 mb-3">
