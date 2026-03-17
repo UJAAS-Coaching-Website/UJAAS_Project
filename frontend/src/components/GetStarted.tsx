@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Award,
   BookOpen,
@@ -9,6 +9,7 @@ import {
   Star,
   Calendar,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Footer } from './Footer';
 import logo from '../assets/logo.svg';
 import { LandingData } from '../App';
@@ -24,6 +25,30 @@ interface GetStartedProps {
 export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onSubmitQuery }: GetStartedProps) {
   const [currentAchiever, setCurrentAchiever] = useState(0);
   const [activeVisionIndex, setActiveVisionIndex] = useState(0);
+  const [currentFaculty, setCurrentFaculty] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const getItemsPerView = (section: 'faculty' | 'achievers') => {
+    if (typeof window === 'undefined') return section === 'faculty' ? 4 : 3;
+    if (window.innerWidth < 768) return 2; // mobile: 2 tiles
+    if (window.innerWidth < 1024) return section === 'faculty' ? 3 : 2; // tablet: 3 faculty, 2 achievers
+    return section === 'faculty' ? 4 : 3; // desktop: 4 faculty, 3 achievers
+  };
+
+  const [facultyItemsPerView, setFacultyItemsPerView] = useState(() => getItemsPerView('faculty'));
+  const [achieversItemsPerView, setAchieversItemsPerView] = useState(() => getItemsPerView('achievers'));
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setFacultyItemsPerView(getItemsPerView('faculty'));
+      setAchieversItemsPerView(getItemsPerView('achievers'));
+    };
+    handleResize(); // initialize on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -42,20 +67,44 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   };
 
   const nextAchiever = () => {
-    setCurrentAchiever((prev) => (prev + 1) % achievers.length);
+    const limit = Math.max(1, achievers.length - achieversItemsPerView + 1);
+    setCurrentAchiever((prev) => (prev + 1) % limit);
   };
 
   const prevAchiever = () => {
-    setCurrentAchiever((prev) => (prev - 1 + achievers.length) % achievers.length);
+    const limit = Math.max(1, achievers.length - achieversItemsPerView + 1);
+    setCurrentAchiever((prev) => (prev - 1 + limit) % limit);
   };
 
-  const visibleAchievers = achievers.length <= 3
-    ? achievers.map((achiever, idx) => ({ achiever, idx }))
-    : Array.from({ length: 3 }, (_, offset) => {
-        const idx = (currentAchiever + offset) % achievers.length;
-        return { achiever: achievers[idx], idx };
-      });
-  const shouldPaginateAchievers = achievers.length > 3;
+  const shouldPaginateAchievers = achievers.length > achieversItemsPerView;
+
+  const nextFaculty = () => {
+    const limit = Math.max(1, faculty.length - facultyItemsPerView + 1);
+    setCurrentFaculty((prev) => (prev + 1) % limit);
+  };
+
+  const prevFaculty = () => {
+    const limit = Math.max(1, faculty.length - facultyItemsPerView + 1);
+    setCurrentFaculty((prev) => (prev - 1 + limit) % limit);
+  };
+
+  const shouldPaginateFaculty = faculty.length > facultyItemsPerView;
+
+  // Autoplay functionality - Achievers (0.5s transition + 3s gap = 3.5s total)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (shouldPaginateAchievers) nextAchiever();
+    }, 3500); 
+    return () => clearInterval(timer);
+  }, [shouldPaginateAchievers, achievers.length, achieversItemsPerView]);
+
+  // Autoplay functionality - Faculty (0.5s transition + 4s gap = 4.5s total)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (shouldPaginateFaculty) nextFaculty();
+    }, 4500); 
+    return () => clearInterval(timer);
+  }, [shouldPaginateFaculty, faculty.length, facultyItemsPerView]);
 
   return (
     <div className="footer-reveal-page min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
@@ -82,12 +131,12 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       <div className="footer-reveal-main">
       <section className="py-16 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="absolute top-6 right-6">
+          <div className="absolute top-4 right-4 md:top-6 md:right-6">
             <button
               onClick={onGetStarted}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm md:text-base md:gap-2 md:px-6 md:py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
             >
-              <LogIn className="w-5 h-5" />
+              <LogIn className="w-4 h-4 md:w-5 md:h-5 text-white" />
               Login
             </button>
           </div>
@@ -95,14 +144,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           <img
             src={logo}
             alt="UJAAS Logo"
-            className="w-32 h-32 mx-auto mb-6 object-contain"
+            className="w-20 h-20 md:w-32 md:h-32 mx-auto mb-4 md:mb-6 object-contain"
           />
-          <h1 className="text-5xl md:text-6xl font-bold mb-4">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4">
             <span style={{ color: 'rgb(159, 28, 13)' }}>
               UJAAS Career Institute
             </span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto px-4 md:px-0">
             We Believe in Excellence, Because It's All About a Bright Future
           </p>
         </div>
@@ -112,7 +161,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       <section className="pb-8 pt-0 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h2 className="text-4xl font-bold mb-2">
+            <h2 className="text-2xl md:text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 The Vision
               </span>
@@ -211,18 +260,18 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
 
       <section className="py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-6">
-            <h2 className="text-4xl font-bold text-white">Admissions Open</h2>
+          <div className="text-center mb-4 md:mb-6">
+            <h2 className="text-2xl md:text-4xl font-bold text-white">Admissions Open</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {courses.map((course, idx) => (
               <div
                 key={course.id || idx}
-                className="bg-white rounded-xl p-6 text-center shadow-lg"
+                className="bg-white rounded-xl p-4 md:p-6 text-center shadow-lg"
               >
-                <BookOpen className="w-5 h-5 text-teal-600 mx-auto mb-3" />
-                <h3 className="font-bold text-gray-900 text-xl leading-tight">{course.name}</h3>
+                <BookOpen className="w-6 h-6 md:w-5 md:h-5 text-teal-600 mx-auto mb-2 md:mb-3" />
+                <h3 className="font-bold text-gray-900 text-base md:text-xl leading-tight">{course.name}</h3>
               </div>
             ))}
           </div>
@@ -232,38 +281,85 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       <section className="py-8 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h2 className="text-4xl font-bold mb-2">
+            <h2 className="text-2xl md:text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Our Expert Faculty
               </span>
             </h2>
-            <p className="text-gray-600 text-lg">Learn from the Best in the Field</p>
+            <p className="text-sm md:text-lg text-gray-600">Learn from the Best in the Field</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {faculty.map((member, idx) => (
-              <div
-                key={idx}
-                className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition"
-              >
-                <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 overflow-hidden">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
-                  <p className="text-teal-600 font-semibold mb-2">{member.subject}</p>
-                  <p className="text-sm text-gray-600 mb-2">{member.designation}</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Award className="w-4 h-4 text-cyan-600" />
-                    <span>{member.experience}</span>
-                  </div>
+          <div className="relative max-w-7xl mx-auto">
+            {shouldPaginateFaculty && (
+              <>
+                <button
+                  onClick={prevFaculty}
+                  className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition"
+                >
+                  <ChevronLeft className="w-6 h-6 text-teal-600" />
+                </button>
+
+                <button
+                  onClick={nextFaculty}
+                  className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition"
+                >
+                  <ChevronRight className="w-6 h-6 text-teal-600" />
+                </button>
+              </>
+            )}
+
+            {/* Unified Viewports Carousel - Faculty */}
+            {faculty.length > 0 && (
+              <div className="overflow-hidden w-full px-2">
+                <div 
+                  className="flex"
+                  style={{ 
+                    transition: 'transform 0.5s linear',
+                    width: `${(faculty.length / facultyItemsPerView) * 100}%`,
+                    transform: `translateX(-${currentFaculty * (100 / faculty.length)}%)` 
+                  }}
+                >
+                  {faculty.map((member, idx) => (
+                    <div key={`${member.name}-${idx}`} className="px-2 md:px-3 lg:px-4" style={{ width: `${100 / faculty.length}%` }}>
+                      <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition flex flex-col h-full bg-white">
+                        <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 overflow-hidden shrink-0">
+                          <img
+                            src={member.image}
+                            alt={member.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="p-3 md:p-6 flex-grow flex flex-col justify-center text-center md:text-left">
+                          <h3 className="text-sm md:text-xl font-bold text-gray-900 mb-0.5 md:mb-1">{member.name}</h3>
+                          <p className="text-teal-600 text-xs md:text-base font-semibold mb-1 md:mb-2">{member.subject}</p>
+                          <p className="text-xs md:text-sm text-gray-600 mb-1 md:mb-2">{member.designation}</p>
+                          <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-700 mt-auto justify-center md:justify-start">
+                            <Award className="w-3 h-3 md:w-4 md:h-4 text-cyan-600 shrink-0" />
+                            <span className="truncate">{member.experience}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Pagination Dots */}
+            {shouldPaginateFaculty && (
+              <div className="flex justify-center gap-2 mt-4">
+                {Array.from({ length: Math.max(1, faculty.length - facultyItemsPerView + 1) }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentFaculty(idx)}
+                    className={`h-2 rounded-full ${
+                      currentFaculty === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
+                    }`}
+                    style={{ transition: 'all 0.5s linear' }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -271,12 +367,12 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       <section className="py-8 bg-gradient-to-br from-teal-50 to-cyan-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h2 className="text-4xl font-bold mb-2">
+            <h2 className="text-2xl md:text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Our Achievers
               </span>
             </h2>
-            <p className="text-gray-600 text-lg">Success Stories from UJAAS</p>
+            <p className="text-sm md:text-lg text-gray-600">Success Stories from UJAAS</p>
           </div>
 
           <div className="relative max-w-4xl mx-auto">
@@ -284,14 +380,14 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
               <>
                 <button
                   onClick={prevAchiever}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
+                  className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition"
                 >
                   <ChevronLeft className="w-6 h-6 text-teal-600" />
                 </button>
 
                 <button
                   onClick={nextAchiever}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition"
+                  className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-12 z-10 w-12 h-12 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition"
                 >
                   <ChevronRight className="w-6 h-6 text-teal-600" />
                 </button>
@@ -300,46 +396,58 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
 
             {achievers.length > 0 ? (
               <>
-                <div className="grid md:grid-cols-3 gap-6">
-                  {visibleAchievers.map(({ achiever, idx }) => (
-                    <div
-                      key={`${achiever.name}-${idx}`}
-                      className="bg-white rounded-2xl shadow-xl overflow-hidden"
-                    >
-                      <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200">
-                        <img
-                          src={achiever.image}
-                          alt={achiever.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="p-5">
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">{achiever.name}</h3>
-                        <p className="text-teal-600 font-semibold mb-2">{achiever.achievement}</p>
-                        {achiever.year?.trim() ? (
-                          <div className="inline-flex items-center gap-2 text-base font-bold text-cyan-600">
-                            <Calendar className="w-5 h-5" />
-                            Year: {achiever.year}
-                          </div>
-                        ) : null}
+            {/* Unified Viewports Carousel - Achievers */}
+            {achievers.length > 0 && (
+              <div className="overflow-hidden w-full px-2">
+                <div 
+                  className="flex"
+                  style={{ 
+                    transition: 'transform 0.5s linear',
+                    width: `${(achievers.length / achieversItemsPerView) * 100}%`,
+                    transform: `translateX(-${currentAchiever * (100 / achievers.length)}%)` 
+                  }}
+                >
+                  {achievers.map((achiever, idx) => (
+                    <div key={`${achiever.name}-${idx}`} className="px-2 md:px-3" style={{ width: `${100 / achievers.length}%` }}>
+                      <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-full bg-white">
+                        <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 shrink-0">
+                          <img
+                            src={achiever.image}
+                            alt={achiever.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="p-3 md:p-5 flex-grow flex flex-col justify-center text-center md:text-left">
+                          <h3 className="text-sm md:text-xl font-bold text-gray-900 mb-0.5 md:mb-1">{achiever.name}</h3>
+                          <p className="text-teal-600 text-xs md:text-base font-semibold mb-1 md:mb-2">{achiever.achievement}</p>
+                          {achiever.year?.trim() ? (
+                            <div className="inline-flex items-center gap-1 md:gap-2 text-xs md:text-base font-bold text-cyan-600 mt-auto justify-center md:justify-start">
+                              <Calendar className="w-3 h-3 md:w-5 md:h-5 shrink-0" />
+                              <span className="truncate">Year: {achiever.year}</span>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
 
-                {shouldPaginateAchievers && (
-                  <div className="flex justify-center gap-2 mt-4">
-                    {achievers.map((_, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCurrentAchiever(idx)}
-                        className={`h-2 rounded-full transition-all ${
-                          currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
+            {shouldPaginateAchievers && (
+              <div className="flex justify-center gap-2 mt-4">
+                {Array.from({ length: Math.max(1, achievers.length - achieversItemsPerView + 1) }).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentAchiever(idx)}
+                    className={`h-2 rounded-full ${
+                      currentAchiever === idx ? 'w-8 bg-teal-600' : 'w-2 bg-gray-300'
+                    }`}
+                    style={{ transition: 'all 0.5s linear' }}
+                  />
+                ))}
+              </div>
+            )}
               </>
             ) : (
               <div className="text-center py-8 bg-white rounded-2xl shadow-xl">
@@ -353,16 +461,16 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       <section className="py-8 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h2 className="text-4xl font-bold mb-2">
+            <h2 className="text-2xl md:text-4xl font-bold mb-2">
               <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                 Register Your Interest
               </span>
             </h2>
-            <p className="text-gray-600 text-lg">Fill the form below and we'll contact you soon</p>
+            <p className="text-sm md:text-lg text-gray-600">Fill the form below and we'll contact you soon</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-8 shadow-lg">
-            <div className="grid md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-6 md:p-8 shadow-lg">
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Full Name *
