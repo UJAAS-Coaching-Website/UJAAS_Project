@@ -1,5 +1,5 @@
 import { pool } from "../db/index.js";
-import { createMultiBatchNotification } from "./notificationService.js";
+import { createMultiBatchNotification, deleteNotificationsByType } from "./notificationService.js";
 
 /**
  * Admin triggers a new review session.
@@ -35,12 +35,16 @@ export async function startReviewSession(adminId) {
         const allBatchIds = batchResult.rows.map(r => r.id);
 
         if (allBatchIds.length > 0) {
+            // 5a. DELETE previous faculty review notifications to keep only the latest one
+            await deleteNotificationsByType('review');
+
             await createMultiBatchNotification(allBatchIds, {
                 senderId: adminId,
                 type: 'review',
                 title: '🌟 Faculty Review Live',
                 message: 'Your feedback matters! Please rate your teachers to help us improve your learning experience.',
-                isSticky: true
+                isSticky: true,
+                metadata: { openReview: true } // Add metadata flag
             });
         }
 

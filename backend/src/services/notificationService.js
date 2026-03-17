@@ -69,6 +69,13 @@ export async function getStudentNotifications(studentId) {
 }
 
 /**
+ * Delete notifications of a specific type.
+ */
+export async function deleteNotificationsByType(type) {
+    await pool.query("DELETE FROM notifications WHERE type = $1", [type]);
+}
+
+/**
  * Mark a notification as read for a specific student.
  */
 export async function markNotificationRead(studentId, notificationId) {

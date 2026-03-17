@@ -34,7 +34,8 @@ import {
   Phone,
   AlertTriangle,
   AlertCircle,
-  Megaphone
+  Megaphone,
+  Loader2
 } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
 import UploadNoticeModal from './UploadNoticeModal';
@@ -107,6 +108,7 @@ interface AdminDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
   subjectCatalog: import('../api/subjects').ApiSubject[];
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
+  onRefreshFaculties: () => void;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -334,6 +336,7 @@ export function AdminDashboard({
   selectedPreviewTest,
   subjectCatalog,
   onRemoveSubjectFromBatch,
+  onRefreshFaculties,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
@@ -984,6 +987,7 @@ export function AdminDashboard({
                   onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
                   onEditFaculty={openEditFaculty}
                   onDeleteFaculty={handleDeleteFaculty}
+                  onRefreshFaculty={onRefreshFaculties}
                 />
               )}
               {adminSection === 'test-series' && (

@@ -40,6 +40,8 @@ interface StudentDashboardProps {
   onMarkAllAsRead: () => void;
   onDeleteNotification: (id: string) => void;
   publishedTests: import('../App').PublishedTest[];
+  showReviewModal?: boolean;
+  onCloseReview?: () => void;
 }
 
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
@@ -56,7 +58,9 @@ export function StudentDashboard({
   onMarkAsRead,
   onMarkAllAsRead,
   onDeleteNotification,
-  publishedTests
+  publishedTests,
+  showReviewModal,
+  onCloseReview
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
@@ -69,7 +73,7 @@ export function StudentDashboard({
   const [batchMatchInfo, setBatchMatchInfo] = useState<string | null>(null);
   const [toRateFaculties, setToRateFaculties] = useState<FacultyToRate[]>([]);
   const [reviewSession, setReviewSession] = useState<ReviewSession | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewModalInternal, setShowReviewModalInternal] = useState(false);
   const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
     return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
   });
@@ -84,7 +88,7 @@ export function StudentDashboard({
         // Show modal automatically if session is active, student has teachers to rate, 
         // and hasn't dismissed it in this session yet
         if (session && faculties.length > 0 && !hasDismissedReview) {
-          setShowReviewModal(true);
+          setShowReviewModalInternal(true);
         }
       } catch (error) {
         console.error('Failed to load review session info:', error);
@@ -93,36 +97,26 @@ export function StudentDashboard({
     loadReviewInfo();
   }, [hasDismissedReview]);
 
+  // Sync with parent force-open prop
+  useEffect(() => {
+    if (showReviewModal) {
+      setShowReviewModalInternal(true);
+    }
+  }, [showReviewModal]);
+
   const handleReviewSubmitSuccess = () => {
-    setShowReviewModal(false);
+    setShowReviewModalInternal(false);
+    if (onCloseReview) onCloseReview();
     setToRateFaculties([]); // Assume all rated for immediate UI feedback
     localStorage.removeItem('ujaas_dismissed_review_session');
   };
 
   const handleCloseReview = () => {
-    setShowReviewModal(false);
+    setShowReviewModalInternal(false);
+    if (onCloseReview) onCloseReview();
     setHasReviewDismissed(true);
     localStorage.setItem('ujaas_dismissed_review_session', 'true');
   };
-
-  // Inject special sticky notification
-  const enhancedNotifications = [...notifications];
-  if (reviewSession && toRateFaculties.length > 0) {
-    const expiryDate = new Date(reviewSession.expiry_time);
-    const now = new Date();
-    const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-    enhancedNotifications.unshift({
-      id: 'faculty-review-sticky',
-      title: '🌟 Faculty Review Live',
-      message: `Rate your teachers to help us improve. Window ends in ${diffDays} days.`,
-      type: 'info',
-      timestamp: reviewSession.start_time,
-      isRead: false,
-      isSticky: true, // Special flag for UI
-      onClick: () => setShowReviewModal(true)
-    } as any);
-  }
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -340,7 +334,7 @@ export function StudentDashboard({
               {/* Profile Button */}
               <div className="flex items-center gap-4">
                 <NotificationCenter 
-                  notifications={enhancedNotifications}
+                  notifications={notifications}
                   onMarkAsRead={onMarkAsRead}
                   onMarkAllAsRead={onMarkAllAsRead}
                   onDelete={onDeleteNotification}
@@ -429,7 +423,7 @@ export function StudentDashboard({
 
       {/* Faculty Review Modal */}
       <AnimatePresence>
-        {showReviewModal && toRateFaculties.length > 0 && (
+        {showReviewModalInternal && toRateFaculties.length > 0 && (
           <FacultyReviewModal 
             faculties={toRateFaculties}
             onClose={handleCloseReview}

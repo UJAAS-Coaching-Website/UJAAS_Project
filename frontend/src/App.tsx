@@ -281,6 +281,7 @@ function App() {
   });
 
   const [user, setUser] = useState<User | null>(null);
+  const [forceOpenReviewModal, setForceOpenReviewModal] = useState(false);
   const hasShownStorageWarning = useRef(false);
 
   const safeSetLocalStorage = (key: string, value: string) => {
@@ -1490,8 +1491,13 @@ function App() {
         time: formatTimeAgo(n.created_at),
         read: n.is_read,
         isSticky: n.is_sticky,
+        metadata: n.metadata,
         // Map types to icons if needed
-        icon: n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes'
+        icon: n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes',
+        // Click handler logic
+        onClick: n.metadata?.openReview ? () => {
+          setForceOpenReviewModal(prev => !prev); // Toggle to trigger useEffect in dashboard
+        } : undefined
       }));
       setNotifications(mapped);
     } catch (err) {
@@ -1641,6 +1647,8 @@ function App() {
               onMarkAllAsRead={handleMarkAllAsRead}
               onDeleteNotification={handleDeleteNotification}
               publishedTests={publishedTests}
+              showReviewModal={forceOpenReviewModal}
+              onCloseReview={() => setForceOpenReviewModal(false)}
             />
           </motion.div>
         ) : user.role === 'faculty' ? (
@@ -1731,7 +1739,7 @@ function App() {
               }}
               onRefreshFaculties={async () => {
                 try {
-                  const refreshed = await apiFetchFaculties();
+                  const refreshed = await fetchFaculties();
                   setAdminFaculties(refreshed);
                 } catch (err) {
                   console.error("Failed to refresh faculties:", err);
