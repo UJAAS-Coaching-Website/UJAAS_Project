@@ -131,7 +131,7 @@ export async function getFacultiesToRate(studentId) {
     const session = await getActiveSession();
     if (!session) return [];
 
-    // Find student's batch(es) and get assigned faculty
+    // Find student's assigned batch and get the faculty assigned to the subjects in that batch
     const result = await pool.query(
         `SELECT DISTINCT u.id, u.name, s.name as subject
          FROM users u
@@ -139,9 +139,7 @@ export async function getFacultiesToRate(studentId) {
          JOIN subjects s ON s.id = f.subject_id
          JOIN faculty_assignments fa ON fa.faculty_id = f.user_id
          JOIN batch_subjects bs ON bs.id = fa.batch_subject_id
-         JOIN students st ON (st.assigned_batch_id = bs.batch_id OR EXISTS (
-             SELECT 1 FROM student_batches sb WHERE sb.batch_id = bs.batch_id AND sb.student_id = $1
-         ))
+         JOIN students st ON st.assigned_batch_id = bs.batch_id
          WHERE st.user_id = $1
          AND NOT EXISTS (
              SELECT 1 FROM faculty_reviews fr 

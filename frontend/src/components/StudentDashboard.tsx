@@ -102,8 +102,10 @@ export function StudentDashboard({
     if (reviewModalTrigger && reviewModalTrigger > 0) {
       const loadInfo = async () => {
         try {
-          const { faculties } = await getFacultiesToRate();
+          const { faculties, session } = await getFacultiesToRate();
           if (faculties.length > 0) {
+            setToRateFaculties(faculties);
+            setReviewSession(session);
             setShowReviewModalInternal(true);
           } else {
             import('sonner').then(({ toast }) => {
