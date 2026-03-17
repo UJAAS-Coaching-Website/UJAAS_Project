@@ -78,7 +78,8 @@ export function Footer() {
               </div>
 
               <p className="mt-3 text-sm leading-6 text-gray-200">
-                Empowering students through quality education.
+                We Belive In Excellence <br/>
+                Because It's All About A Bright Future
               </p>
             </div>
 
@@ -100,19 +101,27 @@ export function Footer() {
             <div className="mt-6 space-y-3 text-sm text-gray-200">
               <div className="flex items-center justify-center gap-2">
                 <MapPin className="h-4 w-4 flex-shrink-0 text-blue-400" />
-                <span>Delhi</span>
+                <span>Navsari</span>
               </div>
-              <a href="tel:+919876543210" className="flex items-center justify-center gap-2 transition hover:text-white">
+              <a href="tel:+919904562526" className="flex items-center justify-center gap-2 transition hover:text-white">
                 <Phone className="h-4 w-4 flex-shrink-0 text-cyan-400" />
-                <span>+91 9876543210</span>
+                <span>VP Sir : +91 9904562526</span>
               </a>
-              <a href="mailto:info@ugas.com" className="flex items-center justify-center gap-2 transition hover:text-white">
+              <a href="tel:+917983184044" className="flex items-center justify-center gap-2 transition hover:text-white">
+                <Phone className="h-4 w-4 flex-shrink-0 text-cyan-400" />
+                <span>AK Sir : +91 7983184044</span>
+              </a>
+              <a href="tel:+918630370169" className="flex items-center justify-center gap-2 transition hover:text-white">
+                <Phone className="h-4 w-4 flex-shrink-0 text-cyan-400" />
+                <span>KA Sir : +91 8630370169</span>
+              </a>
+              <a href="mailto:ujas2.0.nvs@gmail.com" className="flex items-center justify-center gap-2 transition hover:text-white">
                 <Mail className="h-4 w-4 flex-shrink-0 text-teal-400" />
-                <span>info@ugas.com</span>
+                <span>ujas2.0.nvs@gmail.com</span>
               </a>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 mb-4">
               <button
                 type="button"
                 onClick={() => setShowMoreInfo((value) => !value)}
@@ -120,7 +129,7 @@ export function Footer() {
                 className="mx-auto flex min-h-9 w-auto min-w-36 items-center justify-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-xs font-medium text-white transition-all hover:bg-white/14 focus:outline-none focus:ring-1 focus:ring-cyan-400"
               >
                 <span>{showMoreInfo ? 'Less Info' : 'More Info'}</span>
-                {showMoreInfo ? <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} /> : <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />}
+                {showMoreInfo ? <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.0} /> : <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />}
               </button>
             </div>
 
@@ -135,7 +144,7 @@ export function Footer() {
                     <h4 className="mb-3 text-center text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">
                       Our Courses
                     </h4>
-                    <ul className="space-y-2 text-sm text-gray-200">
+                    <ul className="space-y-2 text-sm text-gray-200 grid grid-cols-2">
                       {courses.map((course) => (
                         <li key={course} className="flex items-center justify-center gap-2">
                           <div className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-teal-400 to-cyan-400" />
@@ -162,7 +171,7 @@ export function Footer() {
               </motion.div>
             )}
 
-            <div className="mt-6 border-t border-white/10 pt-5">
+            <div className="mt-6 border-t border-white/10 pt-4">
               <p className="text-xs text-gray-400">
                 © {currentYear} UJAAS. All rights reserved.
               </p>
@@ -198,11 +207,9 @@ export function Footer() {
                 UJAAS CAREER INSTITUTE
               </p>
               <p className="mb-4 text-sm leading-relaxed text-gray-300">
-                We Believe In Excellence
+                We Believe In Excellence <br/>Because It&apos;s All About A Bright Future
               </p>
-              <p className="mb-4 text-sm leading-relaxed text-gray-300">
-                Because It&apos;s All About A Bright Future
-              </p>
+              
               <div className="flex gap-3">
                 {socialLinks.map((social) => (
                   <motion.a

@@ -152,7 +152,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
               </span>
             </h1>
             <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto px-4 md:px-0">
-              We Believe in Excellence, Because It's All About a Bright Future
+              We Believe in Excellence, <br/> Because It's All About a Bright Future
             </p>
           </div>
         </section>
