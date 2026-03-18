@@ -68,7 +68,7 @@ export function Footer() {
         <div className="rounded-t-[2rem] bg-[linear-gradient(180deg,rgba(13,69,76,0.98)_0%,rgba(12,95,100,0.98)_100%)] px-5 py-8">
           <div className="text-center">
             <div className="mx-auto flex max-w-xs flex-col items-center">
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/12 ring-1 ring-white/15">
                   <img src={logo} alt="Logo" className="h-6 w-6 object-contain" />
                 </div>

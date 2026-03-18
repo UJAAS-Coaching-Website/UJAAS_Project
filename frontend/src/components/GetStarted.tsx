@@ -129,38 +129,53 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
       )}
 
       <div className="footer-reveal-main">
-        <section className="py-16 bg-white relative">
+        <section className="pt-13 pb-8 bg-white relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="absolute top-4 right-4 md:top-6 md:right-6">
-              <button
-                onClick={onGetStarted}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm md:text-base md:gap-2 md:px-6 md:py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-              >
-                <LogIn className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                Login
-              </button>
-            </div>
+            {!isMobile && (
+              <div className="absolute top-4 right-6">
+                <button
+                  onClick={onGetStarted}
+                  className="inline-flex items-center gap-2 px-6 py-3 text-base bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                >
+                  <LogIn className="w-5 h-5 text-white" />
+                  Login
+                </button>
+              </div>
+            )}
 
             <img
               src={logo}
               alt="UJAAS Logo"
-              className="w-20 h-20 md:w-32 md:h-32 mx-auto mb-4 md:mb-6 object-contain"
+              className="w-20 h-20 mx-auto mb-4 object-contain"
+              style={!isMobile ? { width: '8rem', height: '8rem', marginBottom: '1.5rem' } : undefined}
             />
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4">
+            <h1 className="text-3xl font-bold mb-4" style={!isMobile ? { fontSize: '3rem' } : undefined}>
               <span style={{ color: 'rgb(159, 28, 13)' }}>
-                UJAAS Career Institute
+                UJAAS <span style={{ whiteSpace: 'nowrap' }}>Career Institute</span>
               </span>
             </h1>
-            <p className="text-base md:text-xl text-gray-600 max-w-2xl mx-auto px-4 md:px-0">
+            <p className="text-base text-gray-600 max-w-2xl mx-auto px-4" style={!isMobile ? { fontSize: '1.25rem', paddingLeft: 0, paddingRight: 0 } : undefined}>
               We Believe in Excellence, <br/> Because It's All About a Bright Future
             </p>
+
+            {isMobile && (
+              <div className="mt-8">
+                <button
+                  onClick={onGetStarted}
+                  className="inline-flex items-center gap-1 px-4 py-2 text-sm bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                >
+                  <LogIn className="w-8 h-6 text-white" />
+                  Login
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
         {/* The Vision Section */}
         <section className="pb-8 pt-0 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-6">
+            <div className="text-center">
               <h2 className="text-2xl md:text-4xl font-bold mb-2">
                 <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                   The Vision
@@ -171,9 +186,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             <div className="relative">
               {landingData.visions && landingData.visions.length > 0 ? (
                 <>
-                  <div className="overflow-hidden pt-10 -mt-10 pb-8"
+                  <div className="overflow-hidden pb-8"
                   style={
-                    {paddingBottom: isMobile?'1rem':'2rem'}
+                    {paddingBottom:'2rem'}
                   }>
                     <div
                       className="flex transition-transform duration-500 ease-in-out"
@@ -306,13 +321,13 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                     <>
                       <button
                         onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 md:-translate-x-12 p-1.5 md:p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 md:-translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                       >
                         <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
                       </button>
                       <button
                         onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 md:translate-x-12 p-1.5 md:p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 md:translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
                       >
                         <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
                       </button>
