@@ -111,8 +111,8 @@ interface AdminDashboardProps {
   onRefreshFaculties: () => void;
 }
 
-export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';

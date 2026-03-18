@@ -303,6 +303,13 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
   const [queries, setQueries] = useState<LandingQuery[]>([]);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleAddQuery = async (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => {
     try {
@@ -1483,18 +1490,16 @@ function App() {
     if (!user || user.role !== 'student') return;
     try {
       const data = await fetchStudentNotifications();
-      const mapped = data.map(n => ({
+      const mapped: Notification[] = data.map(n => ({
         id: n.id,
-        type: n.type as any,
+        type: (['info', 'success', 'warning', 'announcement'].includes(n.type) ? n.type : 'info') as Notification['type'],
         title: n.title,
         message: n.message,
         time: formatTimeAgo(n.created_at),
         read: n.is_read,
         isSticky: n.is_sticky,
         metadata: n.metadata,
-        // Map types to icons if needed
-        icon: n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes',
-        // Click handler logic
+        icon: (n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes') as Notification['icon'],
         onClick: n.metadata?.openReview ? () => {
           console.log("🌟 Review Notification Clicked! Triggering modal...");
           setReviewModalTrigger(prev => prev + 1);
@@ -1562,7 +1567,7 @@ function App() {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-200/20 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
 
-        <div className="text-center relative z-10">
+        <div className="text-center relative z-10" style={isMobile ? { marginTop: '-15vh' } : {}}>
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -1581,7 +1586,7 @@ function App() {
             transition={{ delay: 0.2, duration: 0.5 }}
           >
             <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-              UJAAS Career Institute
+              UJAAS <span style={{ whiteSpace: 'nowrap' }}>Career Institute</span>
             </h2>
             <p className="text-gray-500 font-medium">Empowering Your Success</p>
           </motion.div>
