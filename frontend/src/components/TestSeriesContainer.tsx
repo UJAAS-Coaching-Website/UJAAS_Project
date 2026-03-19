@@ -123,6 +123,7 @@ function mapAttemptResultToAnalytics(result: ApiAttemptResult) {
       correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
       subject: question.subject,
       marks: question.marks,
+      negativeMarks: question.neg_marks,
       type: question.type,
       metadata: { section: question.section || undefined },
       explanation: question.explanation || undefined,
@@ -491,6 +492,7 @@ export function TestSeriesContainer({
         testId={testState.test.id}
         testTitle={testState.test.title}
         duration={testState.test.duration}
+        format={testState.test.format}
         questions={testState.test.questions}
         onSubmit={handleCompleteTest}
         onExit={handleBackToList}

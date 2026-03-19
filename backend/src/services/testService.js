@@ -73,15 +73,48 @@ function parseStoredAnswer(value, questionType) {
     return Number.isFinite(parsed) ? parsed : String(value).trim();
 }
 
-function scoreAttempt(questions, answers) {
+function buildJeeMainScorableSet(questions, answers) {
+    const scorable = new Set();
+    const sectionBCounts = new Map();
+    const normalizedAnswers = answers && typeof answers === "object" ? answers : {};
+
+    for (const question of questions) {
+        const section = question.section || null;
+        if (section === "Section B") {
+            const submittedAnswer = parseStoredAnswer(normalizedAnswers[question.id], question.type);
+            if (submittedAnswer === null) {
+                continue;
+            }
+            const subjectKey = question.subject || "General";
+            const currentCount = sectionBCounts.get(subjectKey) || 0;
+            if (currentCount >= 5) {
+                continue;
+            }
+            sectionBCounts.set(subjectKey, currentCount + 1);
+            scorable.add(question.id);
+            continue;
+        }
+
+        scorable.add(question.id);
+    }
+
+    return scorable;
+}
+
+function scoreAttempt(questions, answers, options = {}) {
     let score = 0;
     let correctAnswers = 0;
     let wrongAnswers = 0;
     let unattempted = 0;
 
     const normalizedAnswers = answers && typeof answers === "object" ? answers : {};
+    const isJeeMain = options?.format === "JEE MAIN";
+    const scorableIds = isJeeMain ? buildJeeMainScorableSet(questions, normalizedAnswers) : null;
 
     for (const question of questions) {
+        if (scorableIds && !scorableIds.has(question.id)) {
+            continue;
+        }
         const submittedAnswer = parseStoredAnswer(normalizedAnswers[question.id], question.type);
         const correctAnswerRaw = question.correct_answer ?? question.correct_ans ?? "";
 
@@ -851,6 +884,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
         const attemptResult = await client.query(`
             SELECT
                 ta.*,
+                t.format,
                 COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes
             FROM test_attempts ta
             JOIN tests t ON t.id = ta.test_id
@@ -873,16 +907,19 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
         const questionsResult = await client.query(`
             SELECT
                 id,
+                subject,
+                section,
                 type,
                 COALESCE(correct_ans, correct_answer) AS correct_answer,
                 marks,
-                neg_marks
+                neg_marks,
+                order_index
             FROM questions
             WHERE test_id = $1
             ORDER BY order_index, subject
         `, [attempt.test_id]);
 
-        const metrics = scoreAttempt(questionsResult.rows, mergedAnswers);
+        const metrics = scoreAttempt(questionsResult.rows, mergedAnswers, { format: attempt.format });
         const durationSeconds = Number(attempt.duration_minutes || 0) * 60;
         const timingResult = await client.query(`
             SELECT GREATEST(
