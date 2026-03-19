@@ -48,12 +48,12 @@ type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank'
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
 
-export function StudentDashboard({ 
-  user, 
+export function StudentDashboard({
+  user,
   activeTab,
   subTab,
   onNavigate,
-  onLogout, 
+  onLogout,
   notifications,
   onMarkAsRead,
   onMarkAllAsRead,
@@ -84,7 +84,7 @@ export function StudentDashboard({
         const { faculties, session } = await getFacultiesToRate();
         setToRateFaculties(faculties);
         setReviewSession(session);
-        
+
         // Show modal automatically if session is active, student has teachers to rate, 
         // and hasn't dismissed it in this session yet
         if (session && faculties.length > 0 && !hasDismissedReview) {
@@ -124,14 +124,14 @@ export function StudentDashboard({
   const handleReviewSubmitSuccess = () => {
     setShowReviewModalInternal(false);
     if (onCloseReview) onCloseReview();
-    
+
     // Find the review notification and delete it locally
     const reviewNotif = notifications.find(n => n.type === 'review');
     if (reviewNotif) {
       onDeleteNotification(reviewNotif.id);
     }
 
-    setToRateFaculties([]); 
+    setToRateFaculties([]);
     localStorage.removeItem('ujaas_dismissed_review_session');
   };
 
@@ -343,11 +343,10 @@ export function StudentDashboard({
                       if (tab.id === 'home') setProfileSection('overview');
                       onNavigate(tab.id as Tab);
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
-                      (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${(activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
                         ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <tab.icon className="w-5 h-5" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -357,7 +356,7 @@ export function StudentDashboard({
 
               {/* Profile Button */}
               <div className="flex items-center gap-4">
-                <NotificationCenter 
+                <NotificationCenter
                   notifications={notifications}
                   onMarkAsRead={onMarkAsRead}
                   onMarkAllAsRead={onMarkAllAsRead}
@@ -380,7 +379,7 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8 flex-grow">
         {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
@@ -414,29 +413,29 @@ export function StudentDashboard({
             <HomeTab {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
-            <TestSeriesContainer 
-              user={user} 
-              publishedTests={publishedTests} 
+            <TestSeriesContainer
+              user={user}
+              publishedTests={publishedTests}
               onStateChange={(mode) => setIsNavbarInternalHidden(mode !== 'list')}
               subTab={subTab}
               onNavigateSubTab={handleSubTabNavigate}
             />
           )}
           {activeTab === 'profile' && (
-            <StudentProfile 
-              user={user} 
-              onLogout={onLogout} 
-              initialSection={profileSection} 
+            <StudentProfile
+              user={user}
+              onLogout={onLogout}
+              initialSection={profileSection}
             />
           )}
           {activeTab === 'batch-detail' && (
             <HomeTab {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
-            <QuestionBank 
-              userRole="student" 
-              userBatch={user.studentDetails?.batch} 
-              onBack={() => onNavigate('home')} 
+            <QuestionBank
+              userRole="student"
+              userBatch={user.studentDetails?.batch}
+              onBack={() => onNavigate('home')}
             />
           )}
         </motion.div>
@@ -448,7 +447,7 @@ export function StudentDashboard({
       {/* Faculty Review Modal */}
       <AnimatePresence>
         {showReviewModalInternal && toRateFaculties.length > 0 && (
-          <FacultyReviewModal 
+          <FacultyReviewModal
             faculties={toRateFaculties}
             onClose={handleCloseReview}
             onSubmitSuccess={handleReviewSubmitSuccess}
@@ -475,10 +474,10 @@ export function StudentDashboard({
               className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
               onClick={e => e.stopPropagation()}
             >
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                  <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
-                  <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
-               </div>
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
+                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
+                <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
+              </div>
               <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
                 {batchDetails?.timetable_url ? (
                   <div className="w-full h-full flex items-center justify-center">
@@ -525,21 +524,21 @@ function renderPerformanceStars(rating: number) {
         }
 
         return (
-          <div 
-            key={star} 
+          <div
+            key={star}
             className="relative inline-block select-none"
             style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
           >
             {/* Background star (Gray) */}
             <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
             {/* Fill star (Gold) */}
-            <div 
-              style={{ 
-                width: `${fillPercentage}%`, 
-                overflow: 'hidden', 
-                position: 'absolute', 
-                left: 0, 
-                top: 0, 
+            <div
+              style={{
+                width: `${fillPercentage}%`,
+                overflow: 'hidden',
+                position: 'absolute',
+                left: 0,
+                top: 0,
                 whiteSpace: 'nowrap',
                 color: '#f59e0b',
                 transition: 'width 0.3s ease'
@@ -555,9 +554,9 @@ function renderPerformanceStars(rating: number) {
   );
 }
 
-function HomeTab({ 
-  user, 
-  onNavigate, 
+function HomeTab({
+  user,
+  onNavigate,
   onOpenPerformance,
   activeTab,
   onViewTimetable,
@@ -566,8 +565,8 @@ function HomeTab({
   batchDetailsError,
   batchListCount,
   batchMatchInfo
-}: { 
-  user: User; 
+}: {
+  user: User;
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
   activeTab: Tab;
@@ -669,20 +668,20 @@ function HomeTab({
   const dppPercentage = totalDpps > 0 ? (completedCount / totalDpps) * 100 : 0;
 
   const stats = [
-    { 
-      label: 'DPP Completed', 
+    {
+      label: 'DPP Completed',
       value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`,
-      icon: ClipboardList, 
+      icon: ClipboardList,
       gradient: 'from-green-500 to-emerald-500',
       bgGradient: 'from-green-50 to-emerald-50',
       percentage: dppPercentage,
       clickable: false,
       onClick: undefined
     },
-    { 
-      label: 'My Performance Rating', 
-      value: `${currentRating.toFixed(1)}/5.0`, 
-      icon: Star, 
+    {
+      label: 'My Performance Rating',
+      value: `${currentRating.toFixed(1)}/5.0`,
+      icon: Star,
       gradient: 'from-yellow-500 to-orange-500',
       bgGradient: 'from-yellow-50 to-orange-50',
       percentage: (currentRating / 5) * 100,
@@ -692,35 +691,35 @@ function HomeTab({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Welcome Card */}
       <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
-        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-2xl md:rounded-3xl p-5 md:p-8 text-white shadow-2xl relative overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
-        
-        <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <MiniAvatar user={user} className="w-24 h-24 text-4xl border-4 border-white/30 shadow-2xl" />
-          
+        <div className="absolute top-0 right-0 w-32 h-32 md:w-64 md:h-64 bg-white/10 rounded-full -mr-16 md:-mr-32 -mt-16 md:-mt-32" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 md:w-48 md:h-48 bg-white/10 rounded-full -ml-12 md:-ml-24 -mb-12 md:-mb-24" />
+
+        <div className="relative flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-6">
+          <MiniAvatar user={user} className="w-16 h-16 md:w-24 md:h-24 text-2xl md:text-4xl border-2 md:border-4 border-white/30 shadow-2xl" />
+
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <motion.h2 
+                <motion.h2
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-3xl font-bold mb-2"
+                  className="text-xl md:text-3xl font-bold mb-1 md:mb-2"
                 >
                   {user.name}
                 </motion.h2>
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="flex flex-wrap gap-4 text-teal-50/90"
+                  className="flex flex-wrap gap-2 md:gap-4 text-xs md:text-base text-teal-50/90"
                 >
                   {user.email && (
                     <div className="flex items-center gap-2">
@@ -744,7 +743,7 @@ function HomeTab({
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
@@ -752,20 +751,20 @@ function HomeTab({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             onClick={stat.clickable ? stat.onClick : undefined}
-            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
+            className={`bg-gradient-to-br ${stat.bgGradient} rounded-xl md:rounded-2xl p-4 md:p-6 shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2 md:mb-3">
                 <motion.div
-                  className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
+                  className={`w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br ${stat.gradient} rounded-lg md:rounded-xl flex items-center justify-center shadow-lg`}
                 >
-                  <stat.icon className="w-6 h-6 text-white" />
+                  <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                 </motion.div>
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-              <p className="text-sm text-gray-600 font-medium mb-3">{stat.label}</p>
-              
+              <p className="text-2xl md:text-3xl font-bold text-gray-900 mb-0.5 md:mb-1">{stat.value}</p>
+              <p className="text-xs md:text-sm text-gray-600 font-medium mb-2 md:mb-3">{stat.label}</p>
+
               {stat.label === 'My Performance Rating' ? (
                 <div className="mt-2">
                   {renderPerformanceStars(currentRating)}
@@ -801,8 +800,8 @@ function HomeTab({
   );
 }
 
-function AssignedBatchContent({ 
-  user, 
+function AssignedBatchContent({
+  user,
   onNavigate,
   currentTab,
   onViewTimetable,
@@ -811,8 +810,8 @@ function AssignedBatchContent({
   batchDetailsError,
   batchListCount,
   batchMatchInfo
-}: { 
-  user: User; 
+}: {
+  user: User;
   onNavigate: (tab: Tab, subTab?: string) => void;
   currentTab: Tab;
   onViewTimetable: () => void;
@@ -858,14 +857,14 @@ function AssignedBatchContent({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-8 rounded-3xl shadow-lg border border-white relative overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border border-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
           <div className="flex flex-col gap-1">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
+            <h2 className="text-xl md:text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
           </div>
         </div>
-        <button 
+        <button
           onClick={onViewTimetable}
           className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50 self-start md:self-auto md:ml-auto"
         >
@@ -881,9 +880,9 @@ function AssignedBatchContent({
           </div>
           <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
         </div>
-        
+
         <div className="p-1">
-          <NotesManagementTab 
+          <NotesManagementTab
             onNavigate={onNavigate}
             currentTab={currentTab}
             selectedBatch={batchDetails?.name || user.studentDetails?.batch || null}
