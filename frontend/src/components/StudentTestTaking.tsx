@@ -28,6 +28,7 @@ interface Question {
   correctAnswer: number | number[] | string;
   subject: string;
   marks: number;
+  negativeMarks?: number;
   type: 'MCQ' | 'MSQ' | 'Numerical';
   explanation?: string;
   explanationImage?: string;
@@ -520,9 +521,14 @@ export function StudentTestTaking({
                           </span>
                         )}
                         {showMarksMeta && (
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                            {question.marks} marks
-                          </span>
+                          <>
+                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                              +{question.marks} marks
+                            </span>
+                            <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                              -{question.negativeMarks ?? 0} neg
+                            </span>
+                          </>
                         )}
                         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
                           {question.type}

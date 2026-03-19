@@ -538,11 +538,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           issues.push(`${subject}: ${actual}/${limit}`);
         }
       });
-    } else {
-      const required = getRequiredCount();
-      if (questions.length < required) {
-        issues.push(`Total: ${questions.length}/${required}`);
-      }
     }
     return issues;
   }, [testData.format, countStats, questions.length, currentSubjects]);
@@ -1044,7 +1039,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                     </motion.button>
                   </div>
                   <p className="w-full text-right text-xs text-gray-500 font-medium">
-                    Total: {questions.length} / {getRequiredCount()} questions added • Max Attemptable Marks: {maxAttemptableMarks}/{testData.totalMarks}
+                    {testData.format === 'Custom'
+                      ? `Total: ${questions.length} questions added`
+                      : `Total: ${questions.length} / ${getRequiredCount()} questions added`}
+                    {' '}• Max Attemptable Marks: {maxAttemptableMarks}/{testData.totalMarks}
                   </p>
                 </div>
               </div>

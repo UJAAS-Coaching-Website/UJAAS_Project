@@ -19,10 +19,27 @@ export interface Question {
   correctAnswer: number | number[] | string;
   marks?: number;
   negativeMarks?: number;
+  marksDisplay?: string;
+  negativeMarksDisplay?: string;
   subject?: string;
   explanation?: string;
   explanationImage?: string;
   difficulty?: string;
+}
+
+function parseMarkInput(rawValue: string): number {
+  const cleaned = rawValue.trim();
+  if (!cleaned) return 0;
+  if (cleaned.includes('/')) {
+    const [numeratorRaw, denominatorRaw] = cleaned.split('/');
+    const numerator = Number(numeratorRaw);
+    const denominator = Number(denominatorRaw);
+    if (Number.isFinite(numerator) && Number.isFinite(denominator) && denominator !== 0) {
+      return numerator / denominator;
+    }
+  }
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 interface QuestionUploadFormProps {
@@ -70,11 +87,15 @@ export function QuestionUploadForm({
   });
   
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [marksInput, setMarksInput] = useState<string>(String(defaultMarks));
+  const [negativeMarksInput, setNegativeMarksInput] = useState<string>(String(defaultNegativeMarks));
 
   // Update effect if fixed props change or editingQuestion changes
   useEffect(() => {
     if (editingQuestion) {
       setCurrentQuestion(editingQuestion);
+      setMarksInput(editingQuestion.marksDisplay ?? String(editingQuestion.marks ?? defaultMarks));
+      setNegativeMarksInput(editingQuestion.negativeMarksDisplay ?? String(editingQuestion.negativeMarks ?? defaultNegativeMarks));
     } else {
       setCurrentQuestion(prev => ({
         ...prev,
@@ -90,6 +111,8 @@ export function QuestionUploadForm({
         explanation: '',
         explanationImage: undefined
       }));
+      setMarksInput(String(defaultMarks));
+      setNegativeMarksInput(String(defaultNegativeMarks));
     }
   }, [fixedType, defaultMarks, defaultNegativeMarks, fixedSubject, editingQuestion]);
 
@@ -214,7 +237,11 @@ export function QuestionUploadForm({
     const isValid = hasQuestionContent && hasValidOptions && hasValidAnswer;
 
     if (isValid) {
-      onAddQuestion(currentQuestion);
+      onAddQuestion({
+        ...currentQuestion,
+        marksDisplay: marksInput,
+        negativeMarksDisplay: negativeMarksInput,
+      });
       if (editingQuestion) {
         onCancelEdit?.();
       } else {
@@ -275,15 +302,18 @@ export function QuestionUploadForm({
                     Positive Marks
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     min={0}
-                    value={currentQuestion.marks ?? 0}
-                    onChange={(e) =>
+                    value={marksInput}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setMarksInput(nextValue);
                       setCurrentQuestion({
                         ...currentQuestion,
-                        marks: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0
-                      })
-                    }
+                        marks: parseMarkInput(nextValue)
+                      });
+                    }}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
@@ -292,15 +322,18 @@ export function QuestionUploadForm({
                     Negative Marks
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     min={0}
-                    value={currentQuestion.negativeMarks ?? 0}
-                    onChange={(e) =>
+                    value={negativeMarksInput}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setNegativeMarksInput(nextValue);
                       setCurrentQuestion({
                         ...currentQuestion,
-                        negativeMarks: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : 0
-                      })
-                    }
+                        negativeMarks: parseMarkInput(nextValue)
+                      });
+                    }}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
