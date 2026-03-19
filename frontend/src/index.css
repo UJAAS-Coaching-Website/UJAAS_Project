@@ -3865,6 +3865,15 @@ body {
   background: #ffffff80;
 }
 
+.student-notification-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.student-notification-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

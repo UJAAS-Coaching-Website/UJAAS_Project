@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, BookOpen, ClipboardList, Award, AlertCircle, CheckCheck, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,6 +21,8 @@ export function StudentNotificationSheet({
 }: StudentNotificationSheetProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [desktopPosition, setDesktopPosition] = useState({ top: 64, left: 16 });
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
   useBodyScrollLock(open);
@@ -37,6 +39,35 @@ export function StudentNotificationSheet({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || isMobile) return;
+
+    const updateDesktopPosition = () => {
+      if (!triggerRef.current) return;
+
+      const rect = triggerRef.current.getBoundingClientRect();
+      const panelWidth = Math.min(416, Math.max(320, window.innerWidth - 64));
+      const nextLeft = Math.min(
+        window.innerWidth - panelWidth - 16,
+        Math.max(16, rect.right - panelWidth)
+      );
+
+      setDesktopPosition({
+        top: rect.bottom + 12,
+        left: nextLeft,
+      });
+    };
+
+    updateDesktopPosition();
+    window.addEventListener('resize', updateDesktopPosition);
+    window.addEventListener('scroll', updateDesktopPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updateDesktopPosition);
+      window.removeEventListener('scroll', updateDesktopPosition, true);
+    };
+  }, [open, isMobile]);
 
   const getNotificationIcon = (icon?: string) => {
     switch (icon) {
@@ -69,6 +100,7 @@ export function StudentNotificationSheet({
   return (
     <>
       <motion.button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open notifications"
@@ -100,16 +132,33 @@ export function StudentNotificationSheet({
               />
 
               <motion.aside
-                initial={isMobile ? { x: '100%' } : { x: 420 }}
-                animate={{ x: 0 }}
-                exit={isMobile ? { x: '100%' } : { x: 420 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                initial={{ opacity: 0, y: -28 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -28 }}
+                transition={{ type: 'spring', stiffness: 340, damping: 30 }}
                 style={{
-                  width: isMobile ? '100vw' : 'min(26rem, calc(100vw - 1rem))',
+                  width: isMobile ? '100vw' : 'min(26rem, calc(100vw - 4rem))',
+                  left: isMobile ? 'auto' : `${desktopPosition.left}px`,
+                  right: isMobile ? '0' : 'auto',
+                  top: isMobile ? '0' : `${desktopPosition.top}px`,
+                  height: isMobile ? '100dvh' : 'auto',
+                  maxHeight: isMobile ? '100dvh' : 'calc(100dvh - 5rem)',
                 }}
-                className="fixed right-8 md:right-0 top-16 z-layer-modal flex h-[100dvh] flex-col border-l border-white/60 bg-white shadow-2xl"
+                className={`student-notification-scroll fixed z-layer-modal flex min-h-0 flex-col bg-white shadow-2xl ${
+                  isMobile ? 'overflow-y-auto overscroll-contain rounded-none border-0' : 'overflow-hidden rounded-3xl'
+                }`}
               >
-                <div className="shrink-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-5 pb-5 pt-5 text-white">
+                <div
+                  style={{
+                    paddingLeft: isMobile ? '2rem' : '1.75rem',
+                    paddingRight: '1.25rem',
+                    paddingTop: isMobile ? '1.5rem' : '1rem',
+                    paddingBottom: '1rem',
+                  }}
+                  className={`shrink-0 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white ${
+                    isMobile ? 'sticky top-0 z-10' : ''
+                  }`}
+                >
                   <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
                       <h2 className="text-xl font-semibold">Notifications</h2>
@@ -140,14 +189,6 @@ export function StudentNotificationSheet({
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col bg-white">
-                  <div className="shrink-0 border-b border-gray-100 px-5 py-3">
-                    <p className="text-sm font-medium text-gray-700">
-                      {notifications.length === 0
-                        ? 'No notifications available'
-                        : 'Only the notification list scrolls here'}
-                    </p>
-                  </div>
-
                   <div
                     style={
                       isMobile
@@ -155,10 +196,13 @@ export function StudentNotificationSheet({
                         : {
                             height: '22.5rem',
                             maxHeight: '22.5rem',
+                            overflowY: 'auto',
+                            WebkitOverflowScrolling: 'touch',
+                            touchAction: 'pan-y',
                           }
                     }
-                    className={`min-h-0 overflow-y-auto overscroll-contain ${
-                      isMobile ? 'flex-1' : 'flex-none'
+                    className={`student-notification-scroll min-h-0 overflow-y-auto overscroll-contain ${
+                      isMobile ? 'flex-none pb-4' : 'flex-none'
                     }`}
                   >
                     {notifications.length === 0 ? (
