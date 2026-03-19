@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle,
@@ -42,6 +42,8 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
     instructions: DEFAULT_DPP_INSTRUCTIONS
   });
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
   useBodyScrollLock(showSuccess);
@@ -61,11 +63,28 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
   const subjectLabel = useMemo(() => chapter?.subject_name || '', [chapter?.subject_name]);
 
   const handleAddQuestion = (question: Question) => {
-    setQuestions((prev) => [...prev, question]);
+    setQuestions((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === question.id);
+      if (existingIndex > -1) {
+        const next = [...prev];
+        next[existingIndex] = question;
+        return next;
+      }
+      return [...prev, question];
+    });
+    setEditingQuestion(null);
   };
 
   const handleRemoveQuestion = (id: string) => {
     setQuestions((prev) => prev.filter((question) => question.id !== id));
+    if (editingQuestion?.id === id) {
+      setEditingQuestion(null);
+    }
+  };
+
+  const handleEditQuestion = (question: Question) => {
+    setEditingQuestion(question);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleSubmit = async () => {
@@ -248,12 +267,16 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <QuestionUploadForm
-                onAddQuestion={handleAddQuestion}
-                buttonLabel="Add Question to DPP"
-                fixedSubject={subjectLabel}
-                showMarks={false}
-              />
+              <div ref={formRef} className="scroll-mt-8">
+                <QuestionUploadForm
+                  onAddQuestion={handleAddQuestion}
+                  buttonLabel="Add Question to DPP"
+                  fixedSubject={subjectLabel}
+                  showMarks={false}
+                  editingQuestion={editingQuestion}
+                  onCancelEdit={() => setEditingQuestion(null)}
+                />
+              </div>
 
               {questions.length > 0 && (
                 <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg">
@@ -264,7 +287,11 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                         key={question.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-4 rounded-xl border border-cyan-100 bg-cyan-50 p-4"
+                        onClick={() => handleEditQuestion(question)}
+                        className={`flex items-start gap-4 rounded-xl border transition-all cursor-pointer ${editingQuestion?.id === question.id
+                          ? 'border-amber-300 bg-amber-50 ring-2 ring-amber-200'
+                          : 'border-cyan-100 bg-cyan-50 hover:border-cyan-300 hover:shadow-md'
+                        } p-4`}
                       >
                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-600 font-semibold text-white">
                           {index + 1}
@@ -275,10 +302,18 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
                               {question.type}
                             </span>
+                            {editingQuestion?.id === question.id && (
+                              <span className="rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                EDITING
+                              </span>
+                            )}
                           </div>
                         </div>
                         <button
-                          onClick={() => handleRemoveQuestion(question.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveQuestion(question.id);
+                          }}
                           className="rounded-lg p-2 text-red-600 transition hover:bg-red-100"
                         >
                           <Trash2 className="w-5 h-5" />
