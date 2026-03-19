@@ -318,27 +318,6 @@ export function UploadNotes({ onBack }: UploadNotesProps) {
             )}
           </div>
 
-          {/* Upload Progress */}
-          {uploading && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
-            >
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Uploading...
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Please wait while your note is stored in the bucket and saved to the database.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {/* Validation Warning */}
           {(!isFormValid && notesData.title) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
