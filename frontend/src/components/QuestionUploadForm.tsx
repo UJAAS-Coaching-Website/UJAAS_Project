@@ -56,6 +56,8 @@ interface QuestionUploadFormProps {
   onCancelEdit?: () => void;
   addDisabled?: boolean;
   addDisabledReason?: string;
+  uploadContext?: 'tests' | 'dpps' | 'landing';
+  uploadContextId?: string;
 }
 
 export function QuestionUploadForm({ 
@@ -71,7 +73,9 @@ export function QuestionUploadForm({
   editingQuestion,
   onCancelEdit,
   addDisabled = false,
-  addDisabledReason
+  addDisabledReason,
+  uploadContext,
+  uploadContextId
 }: QuestionUploadFormProps) {
   const [currentQuestion, setCurrentQuestion] = useState<Question>({
     id: crypto.randomUUID(),
@@ -127,13 +131,13 @@ export function QuestionUploadForm({
       formData.append('image', file);
       
       const currentPath = window.location.pathname.toLowerCase();
-      const context = currentPath.includes('dpps') || currentPath.includes('create-dpp') ? 'dpps' : 'tests';
+      const context = uploadContext || (currentPath.includes('dpps') || currentPath.includes('create-dpp') ? 'dpps' : 'tests');
       formData.append('context', context);
       
       // QuestionUploadForm is often used during creation.
       // If we don't have a testId in the URL, provide a temporary collision-resistant one
       const pathSegments = window.location.pathname.split('/');
-      const contextId = pathSegments[pathSegments.length - 1] || Date.now().toString();
+      const contextId = uploadContextId || pathSegments[pathSegments.length - 1] || Date.now().toString();
       formData.append('contextId', contextId);
       formData.append('itemRole', type);
 

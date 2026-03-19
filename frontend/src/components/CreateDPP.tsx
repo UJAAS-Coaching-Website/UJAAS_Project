@@ -275,6 +275,8 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                   showMarks={false}
                   editingQuestion={editingQuestion}
                   onCancelEdit={() => setEditingQuestion(null)}
+                  uploadContext="dpps"
+                  uploadContextId={chapter.id}
                 />
               </div>
 
