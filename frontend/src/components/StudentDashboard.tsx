@@ -18,7 +18,8 @@ import { MiniAvatar } from './MiniAvatar';
 import { FacultyReviewModal } from './FacultyReviewModal';
 import { getFacultiesToRate, type FacultyToRate, type ReviewSession } from '../api/facultyReviews';
 import { QuestionBank } from './QuestionBank';
-import { NotificationCenter, Notification } from './NotificationCenter';
+import { Notification } from './NotificationCenter';
+import { StudentNotificationSheet } from './StudentNotificationSheet';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
@@ -355,8 +356,8 @@ export function StudentDashboard({
               </div>
 
               {/* Profile Button */}
-              <div className="flex items-center gap-4">
-                <NotificationCenter
+                <div className="flex items-center gap-4">
+                <StudentNotificationSheet
                   notifications={notifications}
                   onMarkAsRead={onMarkAsRead}
                   onMarkAllAsRead={onMarkAllAsRead}
