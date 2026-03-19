@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User as UserType } from '../App';
 import { login } from '../api/auth';
 import { 
@@ -19,6 +19,14 @@ export function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +44,14 @@ export function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div
+      className="bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center relative overflow-hidden"
+      style={{
+        minHeight: isMobile ? undefined : '100vh',
+        height: isMobile ? '100dvh' : undefined,
+        padding: isMobile ? '1rem' : '1rem',
+      }}
+    >
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -68,62 +83,110 @@ export function Login({ onLogin }: LoginProps) {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/50">
+        <div
+          className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50"
+          style={{ padding: isMobile ? '1.25rem 1.5rem' : '2rem' }}
+        >
           {/* Logo and Header */}
-          <div className="text-center mb-8">
+          <div className="text-center" style={{ marginBottom: isMobile ? '1rem' : '2rem' }}>
             <motion.img
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
               src={logo}
               alt="UJAAS Logo"
-              className="w-24 h-24 object-contain mx-auto mb-4"
+              className="object-contain mx-auto"
+              style={{
+                width: isMobile ? '3.5rem' : '6rem',
+                height: isMobile ? '3.5rem' : '6rem',
+                marginBottom: isMobile ? '0.5rem' : '1rem',
+              }}
             />
-            <h1 className="text-3xl font-bold mb-2" style={{ color: 'rgb(159, 29, 14)' }}>
+            <h1
+              className="font-bold"
+              style={{
+                color: 'rgb(159, 29, 14)',
+                fontSize: isMobile ? '1.5rem' : '1.875rem',
+                marginBottom: isMobile ? '0.25rem' : '0.5rem',
+              }}
+            >
               UJAAS
             </h1>
           </div>
 
-          <div className="mb-6 text-center">
-            <p className="text-sm text-gray-600">Sign in to continue</p>
+          <div className="text-center" style={{ marginBottom: isMobile ? '0.75rem' : '1.5rem' }}>
+            <p
+              className="text-gray-600"
+              style={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}
+            >
+              Sign in to continue
+            </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
             {/* Login ID Input */}
             <div>
-              <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label
+                htmlFor="loginId"
+                className="block font-medium text-gray-700"
+                style={{ fontSize: isMobile ? '0.8rem' : '0.875rem', marginBottom: isMobile ? '0.25rem' : '0.375rem' }}
+              >
                 Login ID
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <User
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }}
+                />
                 <input
                   id="loginId"
                   type="text"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                  className="w-full border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
                   placeholder="Enter Login ID"
                   required
+                  style={{
+                    paddingLeft: isMobile ? '2.25rem' : '2.75rem',
+                    paddingRight: '1rem',
+                    paddingTop: isMobile ? '0.5rem' : '0.75rem',
+                    paddingBottom: isMobile ? '0.5rem' : '0.75rem',
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                  }}
                 />
               </div>
             </div>
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label
+                htmlFor="password"
+                className="block font-medium text-gray-700"
+                style={{ fontSize: isMobile ? '0.8rem' : '0.875rem', marginBottom: isMobile ? '0.25rem' : '0.375rem' }}
+              >
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  style={{ width: isMobile ? '1rem' : '1.25rem', height: isMobile ? '1rem' : '1.25rem' }}
+                />
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
+                  className="w-full border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition bg-white"
                   placeholder="••••••••"
                   required
+                  style={{
+                    paddingLeft: isMobile ? '2.25rem' : '2.75rem',
+                    paddingRight: '1rem',
+                    paddingTop: isMobile ? '0.5rem' : '0.75rem',
+                    paddingBottom: isMobile ? '0.5rem' : '0.75rem',
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                  }}
                 />
               </div>
             </div>
@@ -133,7 +196,11 @@ export function Login({ onLogin }: LoginProps) {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 p-3 bg-red-50 border-2 border-red-200 rounded-xl text-red-700 text-sm"
+                className="flex items-center gap-2 bg-red-50 border-2 border-red-200 rounded-xl text-red-700"
+                style={{
+                  padding: isMobile ? '0.5rem 0.75rem' : '0.75rem',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                }}
               >
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
@@ -144,7 +211,13 @@ export function Login({ onLogin }: LoginProps) {
             <motion.button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              style={{
+                paddingTop: isMobile ? '0.625rem' : '0.75rem',
+                paddingBottom: isMobile ? '0.625rem' : '0.75rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
+                marginTop: isMobile ? '0.25rem' : '0',
+              }}
             >
               {isSubmitting ? 'Please wait...' : 'Sign In'}
             </motion.button>
