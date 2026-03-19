@@ -491,6 +491,7 @@ export function TestSeriesContainer({
         testId={testState.test.id}
         testTitle={testState.test.title}
         duration={testState.test.duration}
+        format={testState.test.format}
         questions={testState.test.questions}
         onSubmit={handleCompleteTest}
         onExit={handleBackToList}

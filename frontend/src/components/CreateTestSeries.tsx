@@ -111,6 +111,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showStep2Validation, setShowStep2Validation] = useState(false);
   const latestSavePromiseRef = useRef<Promise<string | undefined> | null>(null);
   const isDraftDirtyRef = useRef(isDraftDirty);
 
@@ -188,6 +189,16 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const formats = ['JEE MAIN', 'NEET', 'Custom'];
 
+  const JEE_SECTION_LIMITS: Record<'Section A' | 'Section B', number> = {
+    'Section A': 20,
+    'Section B': 10,
+  };
+  const NEET_SUBJECT_LIMITS: Record<string, number> = {
+    Physics: 45,
+    Chemistry: 45,
+    Biology: 90,
+  };
+
   const hasValidDuration = Number.isFinite(testData.duration) && testData.duration > 0;
   const hasValidTotalMarks = Number.isFinite(testData.totalMarks) && testData.totalMarks > 0;
 
@@ -200,6 +211,9 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const currentSubjects = getSubjects();
 
   const handleAddQuestion = (question: Question) => {
+    if (!editingQuestion && addDisabled) {
+      return;
+    }
     const enrichedQuestion = {
       ...question,
       subject: activeSubject,
@@ -449,7 +463,116 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     });
   };
 
-  const isStep2Valid = questions.length >= getRequiredCount();
+  const totalQuestionMarks = useMemo(() => {
+    return questions.reduce((sum, q) => {
+      const marks = Number(q.marks ?? 0);
+      return sum + (Number.isFinite(marks) ? marks : 0);
+    }, 0);
+  }, [questions]);
+  const maxAttemptableMarks = useMemo(() => {
+    if (testData.format !== 'JEE MAIN') {
+      return totalQuestionMarks;
+    }
+
+    const bySubject: Record<string, { sectionA: number; sectionBMarks: number[] }> = {};
+    questions.forEach((q) => {
+      const subject = q.subject || 'General';
+      const section = (q as any).metadata?.section || 'Section A';
+      if (!bySubject[subject]) {
+        bySubject[subject] = { sectionA: 0, sectionBMarks: [] };
+      }
+      const marks = Number(q.marks ?? 0);
+      if (section === 'Section B') {
+        bySubject[subject].sectionBMarks.push(Number.isFinite(marks) ? marks : 0);
+      } else {
+        bySubject[subject].sectionA += Number.isFinite(marks) ? marks : 0;
+      }
+    });
+
+    return Object.values(bySubject).reduce((sum, subjectData) => {
+      const sectionBTop5 = subjectData.sectionBMarks
+        .sort((a, b) => b - a)
+        .slice(0, 5)
+        .reduce((acc, value) => acc + value, 0);
+      return sum + subjectData.sectionA + sectionBTop5;
+    }, 0);
+  }, [questions, testData.format, totalQuestionMarks]);
+
+  const marksDelta = testData.totalMarks - maxAttemptableMarks;
+  const isMarksMatched = marksDelta === 0 && hasValidTotalMarks;
+  const isMarksOver = marksDelta < 0;
+  const marksWarningMessage = !isMarksMatched
+    ? `Total marks mentioned: ${testData.totalMarks}. Max attemptable marks from questions: ${maxAttemptableMarks}. ${isMarksOver ? `You have exceeded by ${Math.abs(marksDelta)} marks.` : `Please add ${marksDelta} more marks worth of questions.`}`
+    : '';
+
+  const countStats = useMemo(() => {
+    const stats: Record<string, Record<string, number>> = {};
+    questions.forEach((q) => {
+      const subject = q.subject || 'General';
+      const section = testData.format === 'JEE MAIN'
+        ? ((q as any).metadata?.section || 'Section A')
+        : 'All';
+      if (!stats[subject]) stats[subject] = {};
+      stats[subject][section] = (stats[subject][section] || 0) + 1;
+    });
+    return stats;
+  }, [questions, testData.format]);
+
+  const countIssues = useMemo(() => {
+    const issues: string[] = [];
+    if (testData.format === 'JEE MAIN') {
+      currentSubjects.forEach((subject) => {
+        (['Section A', 'Section B'] as const).forEach((section) => {
+          const actual = countStats[subject]?.[section] || 0;
+          const limit = JEE_SECTION_LIMITS[section];
+          if (actual !== limit) {
+            issues.push(`${subject} ${section}: ${actual}/${limit}`);
+          }
+        });
+      });
+    } else if (testData.format === 'NEET') {
+      currentSubjects.forEach((subject) => {
+        const actual = countStats[subject]?.All || 0;
+        const limit = NEET_SUBJECT_LIMITS[subject] ?? 0;
+        if (actual !== limit) {
+          issues.push(`${subject}: ${actual}/${limit}`);
+        }
+      });
+    } else {
+      const required = getRequiredCount();
+      if (questions.length < required) {
+        issues.push(`Total: ${questions.length}/${required}`);
+      }
+    }
+    return issues;
+  }, [testData.format, countStats, questions.length, currentSubjects]);
+
+  const isStep2Valid = countIssues.length === 0;
+
+  const activeLimit = testData.format === 'JEE MAIN'
+    ? JEE_SECTION_LIMITS[activeSection]
+    : testData.format === 'NEET'
+    ? (NEET_SUBJECT_LIMITS[activeSubject] ?? null)
+    : null;
+  const activeCount = testData.format === 'JEE MAIN'
+    ? (countStats[activeSubject]?.[activeSection] || 0)
+    : testData.format === 'NEET'
+    ? (countStats[activeSubject]?.All || 0)
+    : filteredQuestions.length;
+  const addDisabled = activeLimit !== null && activeLimit !== undefined && activeCount >= activeLimit;
+  const addDisabledReason = testData.format === 'JEE MAIN'
+    ? `${activeSubject} ${activeSection} limit ${activeLimit} reached.`
+    : testData.format === 'NEET'
+    ? `${activeSubject} limit ${activeLimit} reached.`
+    : 'Question limit reached.';
+
+  const handleReviewPublishClick = () => {
+    if (!isStep2Valid) {
+      setShowStep2Validation(true);
+      return;
+    }
+    setStep(3);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 py-8">
@@ -550,7 +673,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                         <button
                           key={f}
                           onClick={() => {
-                            const duration = f === 'JEE MAIN' ? 180 : f === 'NEET' ? 180 : 180;
+                            const duration = f === 'JEE MAIN' ? 180 : f === 'NEET' ? 200 : 180;
                             const marks = f === 'JEE MAIN' ? 300 : f === 'NEET' ? 720 : 300;
                             setTestData({ ...testData, format: f as any, duration, totalMarks: marks });
                           }}
@@ -807,8 +930,28 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                   fixedSubject={activeSubject}
                   editingQuestion={editingQuestion}
                   onCancelEdit={() => setEditingQuestion(null)}
+                  addDisabled={addDisabled}
+                  addDisabledReason={addDisabledReason}
                 />
               </div>
+
+              {showStep2Validation && countIssues.length > 0 && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5" />
+                  <div className="text-sm text-rose-800 font-semibold">
+                    Counts must match the template: {countIssues.join(' • ')}.
+                  </div>
+                </div>
+              )}
+
+              {showStep2Validation && !isMarksMatched && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div className="text-sm text-amber-800 font-semibold">
+                    {marksWarningMessage}
+                  </div>
+                </div>
+              )}
 
               {filteredQuestions.length > 0 && (
                 <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
@@ -894,15 +1037,14 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                       </motion.button>
                     )}
                     <motion.button
-                      onClick={() => isStep2Valid && setStep(3)}
-                      disabled={!isStep2Valid}
-                      className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleReviewPublishClick}
+                      className="px-8 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                     >
                       Review & Publish
                     </motion.button>
                   </div>
                   <p className="w-full text-right text-xs text-gray-500 font-medium">
-                    Total: {questions.length} / {getRequiredCount()} questions added
+                    Total: {questions.length} / {getRequiredCount()} questions added • Max Attemptable Marks: {maxAttemptableMarks}/{testData.totalMarks}
                   </p>
                 </div>
               </div>
@@ -944,6 +1086,10 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                   <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                     <p className="text-sm text-gray-600 mb-1 font-bold">Total Marks</p>
                     <p className="font-semibold text-gray-900">{testData.totalMarks}</p>
+                  </div>
+                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <p className="text-sm text-gray-600 mb-1 font-bold">Max Attemptable Marks</p>
+                    <p className={`font-semibold ${isMarksMatched ? 'text-emerald-700' : 'text-rose-700'}`}>{maxAttemptableMarks}</p>
                   </div>
                   {testData.instructions && (
                     <div className="md:col-span-2 p-4 bg-amber-50 rounded-xl border border-amber-100">

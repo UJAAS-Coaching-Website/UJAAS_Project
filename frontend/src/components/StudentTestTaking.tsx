@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
@@ -31,6 +31,7 @@ interface Question {
   type: 'MCQ' | 'MSQ' | 'Numerical';
   explanation?: string;
   explanationImage?: string;
+  metadata?: { section?: string };
 }
 
 type StudentAnswer = string | number | number[] | null;
@@ -40,6 +41,7 @@ interface StudentTestTakingProps {
   testTitle: string;
   duration: number; // in minutes
   questions: Question[];
+  format?: string;
   onSubmit: (answers: Record<string, StudentAnswer>, options?: { autoSubmitted?: boolean }) => void | Promise<void>;
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
@@ -61,6 +63,7 @@ export function StudentTestTaking({
   testTitle: initialTitle,
   duration,
   questions: initialQuestions,
+  format,
   onSubmit,
   onExit,
   onSave,
@@ -99,9 +102,11 @@ export function StudentTestTaking({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
+  const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const isJeeMain = format === 'JEE MAIN';
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
 
@@ -236,12 +241,51 @@ export function StudentTestTaking({
   const isAnsweredValue = (value: StudentAnswer | undefined) =>
     Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '';
 
+  const isSectionBQuestion = (q?: Question) =>
+    Boolean(q && isJeeMain && q.metadata?.section === 'Section B');
+
+  const sectionBAnsweredBySubject = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!isJeeMain) return counts;
+    questions.forEach((q) => {
+      if (!isSectionBQuestion(q)) return;
+      if (isAnsweredValue(answers[q.id])) {
+        counts[q.subject] = (counts[q.subject] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [answers, questions, isJeeMain]);
+
+  const isSectionBLocked = !isAnyPreview
+    && isSectionBQuestion(question)
+    && !isAnsweredValue(answers[question?.id])
+    && (sectionBAnsweredBySubject[question?.subject || ''] || 0) >= 5;
+
+  useEffect(() => {
+    if (!isSectionBLocked) {
+      setSectionBLimitMessage(null);
+    }
+  }, [isSectionBLocked]);
+
   const isOptionSelected = (questionId: string, optionIndex: number) => {
     const answer = answers[questionId];
     return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
   };
 
   const selectAnswer = (questionId: string, value: StudentAnswer) => {
+    const targetQuestion = questions.find(q => q.id === questionId);
+    const isClearing = value === null || value === '';
+    const alreadyAnswered = isAnsweredValue(answers[questionId]);
+    if (!isClearing && !alreadyAnswered && isSectionBQuestion(targetQuestion)) {
+      const currentCount = sectionBAnsweredBySubject[targetQuestion?.subject || ''] || 0;
+      if (currentCount >= 5) {
+        setSectionBLimitMessage(
+          `Section B allows only 5 attempts in ${targetQuestion?.subject}. Clear an earlier answer to attempt this question.`
+        );
+        return;
+      }
+    }
+    setSectionBLimitMessage(null);
     setAnswers({ ...answers, [questionId]: value });
   };
 
@@ -504,6 +548,11 @@ export function StudentTestTaking({
                   </div>
 
                   {/* Options */}
+                  {!isAnyPreview && isSectionBQuestion(question) && (sectionBLimitMessage || isSectionBLocked) && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                      {sectionBLimitMessage || `Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`}
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
@@ -520,13 +569,17 @@ export function StudentTestTaking({
                             <button
                               onClick={() => {
                                 if (isAnyPreview) return;
+                                if (isSectionBLocked) {
+                                  setSectionBLimitMessage(`Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`);
+                                  return;
+                                }
                                 if (isMsq) {
                                   toggleMsqAnswer(question.id, index);
                                   return;
                                 }
                                 selectAnswer(question.id, index);
                               }}
-                              disabled={isAnyPreview}
+                              disabled={isAnyPreview || isSectionBLocked}
                               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                                 isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
                                 isSelected
@@ -578,6 +631,7 @@ export function StudentTestTaking({
                             value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
                             onChange={(nextValue) => selectAnswer(question.id, nextValue)}
                             placeholder="Enter numerical value"
+                            disabled={isSectionBLocked}
                           />
                         )}
                       </div>
@@ -778,7 +832,7 @@ export function StudentTestTaking({
                   {!isAnyPreview && (
                     <>
                       <button
-                        onClick={() => setAnswers({ ...answers, [question.id]: null })}
+                        onClick={() => selectAnswer(question.id, null)}
                         className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
                       >
                         Clear

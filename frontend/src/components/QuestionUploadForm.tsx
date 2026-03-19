@@ -37,6 +37,8 @@ interface QuestionUploadFormProps {
   fixedSubject?: string;
   editingQuestion?: Question | null;
   onCancelEdit?: () => void;
+  addDisabled?: boolean;
+  addDisabledReason?: string;
 }
 
 export function QuestionUploadForm({ 
@@ -50,7 +52,9 @@ export function QuestionUploadForm({
   defaultNegativeMarks = 0,
   fixedSubject,
   editingQuestion,
-  onCancelEdit
+  onCancelEdit,
+  addDisabled = false,
+  addDisabledReason
 }: QuestionUploadFormProps) {
   const [currentQuestion, setCurrentQuestion] = useState<Question>({
     id: crypto.randomUUID(),
@@ -494,11 +498,17 @@ export function QuestionUploadForm({
           )}
         </div>
 
-        <div className="pt-4 flex items-center gap-3">
+        <div className="pt-4 flex flex-col items-start gap-2">
+          {addDisabled && !editingQuestion && addDisabledReason && (
+            <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {addDisabledReason}
+            </div>
+          )}
+          <div className="flex items-center gap-3">
           <motion.button
             onClick={handleAdd}
-            disabled={isUploadingImage}
-            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-orange-500 to-red-500' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${isUploadingImage ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
+            disabled={isUploadingImage || (addDisabled && !editingQuestion)}
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-orange-500 to-red-500' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${(isUploadingImage || (addDisabled && !editingQuestion)) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
           >
             {editingQuestion ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             {editingQuestion ? 'Update Question' : buttonLabel}
@@ -512,6 +522,7 @@ export function QuestionUploadForm({
               Cancel Edit
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>
