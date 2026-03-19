@@ -121,3 +121,30 @@ table {
     min-height: calc(100svh - var(--app-top-chrome) + var(--footer-reveal-offset));
   }
 }
+
+/* Vision section — mobile horizontal swipe scroll */
+.vision-mobile-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE / Edge */
+}
+
+.vision-mobile-scroll::-webkit-scrollbar {
+  display: none;                  /* Chrome / Safari */
+}
+
+.vision-mobile-track {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.vision-mobile-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}

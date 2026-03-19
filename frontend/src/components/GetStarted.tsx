@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Award,
   BookOpen,
@@ -27,6 +27,22 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const [activeVisionIndex, setActiveVisionIndex] = useState(0);
   const [currentFaculty, setCurrentFaculty] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const visionScrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync activeVisionIndex from scroll position on mobile
+  const handleVisionScroll = useCallback(() => {
+    const el = visionScrollRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setActiveVisionIndex(idx);
+  }, []);
+
+  useEffect(() => {
+    const el = visionScrollRef.current;
+    if (!el || !isMobile) return;
+    el.addEventListener('scroll', handleVisionScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleVisionScroll);
+  }, [isMobile, handleVisionScroll]);
 
   const getItemsPerView = (section: 'faculty' | 'achievers') => {
     if (typeof window === 'undefined') return section === 'faculty' ? 4 : 3;
@@ -186,23 +202,26 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             <div className="relative">
               {landingData.visions && landingData.visions.length > 0 ? (
                 <>
-                  <div className="overflow-hidden pb-8"
-                  style={
-                    {paddingBottom:'2rem'}
-                  }>
+                  {/* Mobile: native horizontal scroll with snap; Desktop: translateX carousel */}
+                  <div
+                    ref={isMobile ? visionScrollRef : undefined}
+                    className={isMobile ? 'vision-mobile-scroll' : 'overflow-hidden'}
+                    style={{ paddingBottom: '2rem' }}
+                  >
                     <div
-                      className="flex transition-transform duration-500 ease-in-out"
-                      style={{ transform: `translateX(-${activeVisionIndex * 100}%)` }}
+                      className={isMobile ? 'vision-mobile-track' : 'flex transition-transform duration-500 ease-in-out'}
+                      style={isMobile ? undefined : { transform: `translateX(-${activeVisionIndex * 100}%)` }}
                     >
                       {landingData.visions.map((vision) => (
-                        <div key={vision.id} className="w-full flex-shrink-0 px-4">
+                        <div key={vision.id} className={isMobile ? 'vision-mobile-slide' : 'w-full flex-shrink-0 px-4'}>
                           <div
                             className="bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden shadow-xl border border-white"
                             style={{
                               borderRadius: isMobile ? '1rem' : '1.5rem',
                               display: 'flex',
                               flexDirection: 'row',
-                              minHeight: isMobile ? undefined : '350px',
+                              minHeight: isMobile ? '200px' : '350px',
+                              height: isMobile ? '200px' : undefined,
                             }}
                           >
                             {/* Left Section - Image & Name */}
@@ -220,9 +239,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               <div
                                 className="w-full bg-white/30 overflow-hidden"
                                 style={{
-                                  height: isMobile ? '8rem' : undefined,
-                                  flex: isMobile ? undefined : '1 1 0%',
+                                  flex: '1 1 0%',
                                   flexShrink: 0,
+                                  overflow: 'hidden',
                                 }}
                               >
                                 <img
@@ -269,11 +288,12 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                                 style={{
                                   fontSize: isMobile ? '11px' : '1.25rem',
                                   lineHeight: isMobile ? '1.5' : '1.75',
-                                  textAlign: isMobile ? 'left' : 'left',
+                                  textAlign: 'left',
                                   paddingLeft: isMobile ? '0.25rem' : '1.25rem',
                                   paddingRight: isMobile ? '0.25rem' : '1.25rem',
                                   paddingTop: isMobile ? '0.25rem' : '0.75rem',
                                   paddingBottom: isMobile ? '0.25rem' : '0.75rem',
+                                  overflow: 'hidden',
                                 }}
                               >
                                 {/* Inline Opening Quote */}
@@ -317,26 +337,39 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                     </div>
                   </div>
 
+                  {/* Carousel dots — shown for both mobile & desktop when >1 vision */}
                   {landingData.visions.length > 1 && (
                     <>
-                      <button
-                        onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 md:-translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
-                      >
-                        <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
-                      </button>
-                      <button
-                        onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 md:translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
-                      >
-                        <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
-                      </button>
+                      {/* Desktop only: arrow buttons */}
+                      {!isMobile && (
+                        <>
+                          <button
+                            onClick={() => setActiveVisionIndex(prev => prev === 0 ? landingData.visions.length - 1 : prev - 1)}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </button>
+                          <button
+                            onClick={() => setActiveVisionIndex(prev => prev === landingData.visions.length - 1 ? 0 : prev + 1)}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 p-3 bg-white rounded-full shadow-lg border border-gray-100 text-teal-600 hover:text-teal-700 transition-all z-20"
+                          >
+                            <ChevronRight className="w-6 h-6" />
+                          </button>
+                        </>
+                      )}
 
+                      {/* Dot indicators — both mobile and desktop */}
                       <div className="flex justify-center gap-2 bg-transparent">
                         {landingData.visions.map((_, idx) => (
                           <button
                             key={idx}
-                            onClick={() => setActiveVisionIndex(idx)}
+                            onClick={() => {
+                              setActiveVisionIndex(idx);
+                              // On mobile, programmatically scroll to the tapped dot's slide
+                              if (isMobile && visionScrollRef.current) {
+                                visionScrollRef.current.scrollTo({ left: idx * visionScrollRef.current.clientWidth, behavior: 'smooth' });
+                              }
+                            }}
                             className={`h-2 rounded-full transition-all ${activeVisionIndex === idx ? 'bg-teal-600 w-8' : 'bg-gray-300 w-2'
                               }`}
                           />
