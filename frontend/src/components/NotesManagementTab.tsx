@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { apiFetchChapters, apiCreateChapter, apiDeleteChapter, ApiChapter } from '../api/chapters';
 import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
-import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDppById, fetchMyDppAttemptSummary, startMyDppAttempt, type ApiDpp, type ApiDppAnalysis } from '../api/dpps';
+import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDppById, fetchMyDppAttemptSummary, startMyDppAttempt, updateDpp, type ApiDpp, type ApiDppAnalysis } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
 import { DppPerformanceInsights } from './DppPerformanceInsights';
 import { TestTaking } from './TestTaking';
@@ -500,6 +500,7 @@ export function NotesManagementTab({
           correctAnswer: parseDppCorrectAnswer(question.type, question.correct_answer),
           subject: question.subject,
           marks: question.marks,
+          negativeMarks: question.neg_marks,
           type: question.type,
           explanation: question.explanation || undefined,
           explanationImage: question.explanation_img || undefined,
@@ -507,11 +508,32 @@ export function NotesManagementTab({
         })) as any}
         onSubmit={() => {}}
         onExit={() => setPreviewDpp(null)}
+        onSave={async (_dppId, updatedQuestions, updatedTitle) => {
+          const updated = await updateDpp(previewDpp.id, {
+            title: updatedTitle,
+            instructions: previewDpp.instructions || undefined,
+            chapter_id: previewDpp.chapter_id,
+            questions: updatedQuestions,
+          });
+
+          setPreviewDpp(updated);
+          setApiDpps((prev) => prev.map((item) => (
+            item.id === updated.id
+              ? {
+                  ...item,
+                  title: updated.title,
+                  instructions: updated.instructions,
+                  question_count: updated.question_count,
+                  questions: updated.questions,
+                }
+              : item
+          )));
+          toast.success('DPP preview changes saved.');
+        }}
         initialAnswers={{}}
         initialTimeSpent={0}
         isPreview={variant === 'admin'}
         isFacultyPreview={variant === 'faculty'}
-        disableEditing={true}
         hideExplanations={false}
       />
     );

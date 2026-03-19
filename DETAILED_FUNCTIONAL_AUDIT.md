@@ -74,6 +74,12 @@ This audit focuses on functionality, not just UI presence.
   - Avatars are compressed via `sharp` (WebP, <50kb) and stored in Supabase S3.
   - All profile details (Phone, Address, DOB, etc.) for all roles are fetched from the database.
   - `EditableAvatar` (with camera upload button) and `MiniAvatar` components are used.
+- `[REAL]` Test and DPP creation wizards now seamlessly auto-save progress as drafts.
+- `[REAL]` Automated notifications are globally broadcasted when testing schedules or testing statuses change (e.g., test scheduled or forced live).
+- `[REAL]` Notes grid features improved, intuitive interaction: clicking the tile opens the file inline, while clicking download directly triggers file download via Blob/Fetch.
+- `[REAL]` Fixed Chapter creation duplication constraint errors due to database schema mismatches and role-based permissions context.
+- `[REAL]` General layout robustness: Footer responsiveness, Vision card exact sizing (desktop & mobile constraints), and Query detail modal dimensions stabilized.
+- `[PARTIAL]` Notification center click handling is wired for opening distinct contextual popups (like faculty reviews), though the notification delivery logic for students maintains some frontend-local characteristics.
 
 ## Top Findings First
 

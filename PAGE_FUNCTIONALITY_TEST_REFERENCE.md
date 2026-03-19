@@ -59,6 +59,12 @@
 - Admin Remarks for students are now fully persisted in the `students.admin_remark` database column.
 - DPP creation and publishing are now fully backend-backed through the `CreateDPP` component and `dppService.js`.
 - Batch Notifications are now backend-backed for creation, though a dedicated fetch/read-tracking endpoint for students is still pending.
+- Form drafts (e.g., test authoring) seamlessly auto-save so user progress is uninterrupted.
+- Fully-automated push notifications (broadcasting test scheduled or LIVE test status) accurately dispatch to batch participants.
+- Notification entries properly execute respective actions (like invoking the faculty review popup) upon click functionality.
+- Vision tiles dynamically resize correctly to preserve aspect ratio between mobile constraint contexts and broad desktop layouts.
+- Secondary interactions expanded: Footer wrapping structure fixed, Query modal styling properly centralized, exact image sizing maintained.
+- Study Notes and Document resources directly download to the client device using Blob/Fetch methods, while clicking a grid tile initiates an inline open action.
 
 ## 2. Public Pages
 
@@ -428,6 +434,7 @@
   - verify subject access respects faculty subject when edit permissions apply
   - verify note delete removes item after API success
   - verify placeholder remains in DPP tab
+  - verify note tile opens the content, while the download button triggers direct file retrieval
 
 ### 4.10 Faculty Upload Notes Page
 - Entry condition: faculty navigates from chapter view to upload notes.
@@ -737,6 +744,7 @@
 - QA checks:
   - verify required validation in step 1
   - verify default editable instructions are prefilled for new tests
+  - verify test creation implicitly records as an auto-saved draft when fields populate
   - verify question thresholds by format:
     - JEE Main: 90
     - NEET: 180
@@ -798,6 +806,8 @@
   - chapters and notes use backend APIs
   - DPP tab remains placeholder
 - QA checks:
+  - verify chapter constraints/unique naming handles error codes and roles efficiently
+  - verify note tile click inline-opens content, while download action triggers direct download behavior
   - verify subject add rejects duplicates
   - verify subject delete shows a blocking alert listing linked content
   - verify notice requires title and message

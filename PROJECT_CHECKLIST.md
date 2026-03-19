@@ -58,6 +58,12 @@ Use this file as a living tracker while we stabilize and complete the codebase.
   - All profile details (Roll Number, Phone, DOB, Address, Parent Contact, Admin Remarks) are fully fetched from the database for all roles
   - Dashboard navigation and welcome cards use `MiniAvatar` component
   - Profile pages use `EditableAvatar` with floating camera upload button
+- [x] Auto-save draft functionality added to test authoring forms
+- [x] Automated notifications feature triggers when tests are scheduled or pushed LIVE
+- [x] Interaction improvements for study notes (click tile to view, click download to save)
+- [x] Fixed chapter creation schema/unique constraints and UI role access errors
+- [x] Fixed notification center click-handling to properly open relevant popups
+- [x] UI refinements for Footer layout, Vision desktop/mobile layouts, and Query details modal sizing
 
 ## Core Platform
 - [x] Frontend app scaffolded with React + Vite + TypeScript
