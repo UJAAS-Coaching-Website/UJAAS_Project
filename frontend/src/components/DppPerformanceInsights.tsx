@@ -9,24 +9,8 @@ import {
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
 import { fetchDppAnalysis, type ApiDppAnalysis } from '../api/dpps';
+import { mapApiDppQuestionsToAnalytics } from '../utils/testMappings';
 import { TableRowsSkeleton } from './ui/content-skeletons';
-
-function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
-  if (type === 'MCQ') {
-    return Number(correctAnswer);
-  }
-
-  if (type === 'MSQ') {
-    try {
-      const parsed = JSON.parse(correctAnswer);
-      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return correctAnswer;
-}
 
 interface DppPerformanceInsightsProps {
   dppTitle: string;
@@ -53,22 +37,7 @@ export function DppPerformanceInsights({
         ...perf,
         attempts: perf.attempts.map((attempt) => ({
           ...attempt,
-          questions: attempt.questions.map((question) => ({
-            id: question.id,
-            text: question.question_text,
-            question: question.question_text,
-            questionImage: question.question_img || undefined,
-            options: question.options || undefined,
-            optionImages: question.option_imgs || undefined,
-            correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-            subject: question.subject,
-            marks: question.marks,
-            type: question.type,
-            metadata: { section: question.section || undefined },
-            explanation: question.explanation || undefined,
-            explanationImage: question.explanation_img || undefined,
-            userAnswer: question.user_answer,
-          })),
+          questions: mapApiDppQuestionsToAnalytics(attempt.questions),
         })),
       }))
     );

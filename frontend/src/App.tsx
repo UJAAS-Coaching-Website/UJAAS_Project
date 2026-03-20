@@ -58,6 +58,7 @@ import {
   type ApiTest,
 } from './api/tests';
 import { formatTimeAgo } from './utils/time';
+import { mapApiTestToPublished as apiTestToPublished } from './utils/testMappings';
 import { 
   fetchStudentNotifications, 
   markNotificationAsRead as apiMarkRead, 
@@ -67,23 +68,6 @@ import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
 import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
 import { Skeleton } from './components/ui/skeleton';
-
-function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
-  if (type === 'MCQ') {
-    return Number(correctAnswer);
-  }
-
-  if (type === 'MSQ') {
-    try {
-      const parsed = JSON.parse(correctAnswer);
-      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return correctAnswer;
-}
 
 export interface User {
   id: string;
@@ -420,44 +404,6 @@ function App() {
   }, []);
 
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>([]);
-
-  const apiTestToPublished = (t: ApiTest): PublishedTest => ({
-    id: t.id,
-    title: t.title,
-    format: t.format || 'Custom',
-    batches: t.batches.map(b => b.name),
-    duration: t.duration_minutes,
-    totalMarks: t.total_marks,
-    questionCount: t.question_count,
-    enrolledCount: t.enrolled_count,
-    scheduleDate: t.schedule_date || '',
-    scheduleTime: t.schedule_time || '',
-    instructions: t.instructions || undefined,
-    status: t.status,
-    submittedAttemptCount: t.submitted_attempt_count,
-    maxAttempts: t.submitted_attempt_count !== undefined ? 3 : undefined,
-    hasActiveAttempt: t.has_active_attempt,
-    activeAttemptId: t.active_attempt_id ?? null,
-    latestAttemptId: t.latest_attempt_id ?? null,
-    latestAttemptSubmittedAt: t.latest_attempt_submitted_at ?? null,
-    latestAttemptTimeSpent: t.latest_attempt_time_spent ?? null,
-    questions: (t.questions || []).map((q, i) => ({
-      id: q.id,
-      type: q.type,
-      subject: q.subject,
-      question: q.question_text,
-      questionImage: q.question_img || undefined,
-      options: q.options || undefined,
-      optionImages: q.option_imgs || undefined,
-      correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
-      marks: q.marks,
-      negativeMarks: q.neg_marks,
-      explanation: q.explanation || undefined,
-      explanationImage: q.explanation_img || undefined,
-      difficulty: q.difficulty || undefined,
-      metadata: { section: q.section || undefined },
-    })),
-  });
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 

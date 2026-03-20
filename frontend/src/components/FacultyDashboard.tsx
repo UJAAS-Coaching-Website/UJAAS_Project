@@ -49,6 +49,8 @@ import logo from '../assets/logo.svg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
 import { generateInitialPassword } from '../utils/passwords';
+import { getAttendanceRatingValue } from '../utils/profile';
+import { withStoredRemarks } from '../utils/studentRemarks';
 
 interface FacultyDashboardProps {
   user: User;
@@ -168,72 +170,6 @@ function renderPerformanceStars(rating: number) {
     </div>
   );
 }
-
-function getAttendanceRatingValue(attendance?: number, totalClasses?: number, attendanceRating?: number): number {
-  if (typeof attendanceRating === 'number' && Number.isFinite(attendanceRating)) {
-    return Math.max(0, Math.min(5, attendanceRating));
-  }
-  const attendanceCount = Number(attendance ?? 0);
-  const classCount = Number(totalClasses ?? 0);
-  if (classCount > 0) {
-    return Math.max(0, Math.min(5, (attendanceCount / classCount) * 5));
-  }
-  return Math.max(0, Math.min(5, attendanceCount));
-}
-
-const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
-
-type StoredStudentRemarks = Record<
-  string,
-  {
-    subjectRemarks?: Record<string, string>;
-    adminRemark?: string;
-  }
->;
-
-const readStoredRemarks = (): StoredStudentRemarks => {
-  try {
-    const raw = localStorage.getItem(STUDENT_REMARKS_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as StoredStudentRemarks;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
-const writeStoredRemarks = (
-  studentId: string,
-  updates: { subjectRemarks?: Record<string, string>; adminRemark?: string }
-) => {
-  const current = readStoredRemarks();
-  const prevEntry = current[studentId] ?? {};
-  current[studentId] = {
-    ...prevEntry,
-    ...updates,
-    subjectRemarks: {
-      ...(prevEntry.subjectRemarks ?? {}),
-      ...(updates.subjectRemarks ?? {}),
-    },
-  };
-  localStorage.setItem(STUDENT_REMARKS_STORAGE_KEY, JSON.stringify(current));
-};
-
-const withStoredRemarks = (list: Student[]): Student[] => {
-  const stored = readStoredRemarks();
-  return list.map((student) => {
-    const entry = stored[student.id];
-    if (!entry) return student;
-    return {
-      ...student,
-      subjectRemarks: {
-        ...(student.subjectRemarks ?? {}),
-        ...(entry.subjectRemarks ?? {}),
-      },
-      adminRemark: entry.adminRemark ?? student.adminRemark,
-    };
-  });
-};
 
 export function FacultyDashboard({
   user,

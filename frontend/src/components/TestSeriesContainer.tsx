@@ -17,9 +17,12 @@ import {
   type ApiAttemptResult,
   type ApiAttemptHistoryEntry,
   type ApiStudentAttemptResultListItem,
-  type ApiTest,
 } from '../api/tests';
 import { motion } from 'motion/react';
+import {
+  mapApiAttemptResultToAnalytics,
+  mapApiTestToPublished as apiTestToPublished,
+} from '../utils/testMappings';
 import {
   Clock,
   FileText,
@@ -31,23 +34,6 @@ import {
 } from 'lucide-react';
 
 type StudentAnswer = string | number | number[] | null;
-
-function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
-  if (type === 'MCQ') {
-    return Number(correctAnswer);
-  }
-
-  if (type === 'MSQ') {
-    try {
-      const parsed = JSON.parse(correctAnswer);
-      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return correctAnswer;
-}
 
 type TestState =
   | { mode: 'list' }
@@ -71,67 +57,6 @@ const slugify = (text: string) => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '');
 };
-
-const apiTestToPublished = (t: ApiTest): PublishedTest => ({
-  id: t.id,
-  title: t.title,
-  format: t.format || 'Custom',
-  batches: t.batches.map(b => b.name),
-  duration: t.duration_minutes,
-  totalMarks: t.total_marks,
-  questionCount: t.question_count,
-  enrolledCount: t.enrolled_count,
-  scheduleDate: t.schedule_date || '',
-  scheduleTime: t.schedule_time || '',
-  instructions: t.instructions || undefined,
-  status: t.status,
-  submittedAttemptCount: t.submitted_attempt_count,
-  maxAttempts: t.submitted_attempt_count !== undefined ? 3 : undefined,
-  hasActiveAttempt: t.has_active_attempt,
-  activeAttemptId: t.active_attempt_id ?? null,
-  latestAttemptId: t.latest_attempt_id ?? null,
-  latestAttemptSubmittedAt: t.latest_attempt_submitted_at ?? null,
-  latestAttemptTimeSpent: t.latest_attempt_time_spent ?? null,
-  questions: (t.questions || []).map((q) => ({
-    id: q.id,
-    type: q.type,
-    subject: q.subject,
-    question: q.question_text,
-    questionImage: q.question_img || undefined,
-    options: q.options || undefined,
-    optionImages: q.option_imgs || undefined,
-    correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
-    marks: q.marks,
-    negativeMarks: q.neg_marks,
-    explanation: q.explanation || undefined,
-    explanationImage: q.explanation_img || undefined,
-    difficulty: q.difficulty || undefined,
-    metadata: { section: q.section || undefined },
-  })),
-});
-
-function mapAttemptResultToAnalytics(result: ApiAttemptResult) {
-  return {
-    ...result,
-    questions: result.questions.map((question) => ({
-      id: question.id,
-      text: question.question_text,
-      question: question.question_text,
-      questionImage: question.question_img || undefined,
-      options: question.options || undefined,
-      optionImages: question.option_imgs || undefined,
-      correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-      subject: question.subject,
-      marks: question.marks,
-      negativeMarks: question.neg_marks,
-      type: question.type,
-      metadata: { section: question.section || undefined },
-      explanation: question.explanation || undefined,
-      explanationImage: question.explanation_img || undefined,
-      userAnswer: question.user_answer,
-    })),
-  };
-}
 
 async function preloadTestAssets(questions: PublishedTest['questions']) {
   const imageSources = questions.flatMap((question) => [
@@ -507,7 +432,7 @@ export function TestSeriesContainer({
   if (testState.mode === 'analytics' && testState.result) {
     return (
       <StudentAnalytics
-        result={mapAttemptResultToAnalytics(testState.result)}
+        result={mapApiAttemptResultToAnalytics(testState.result)}
         attemptHistory={testState.history || []}
         onSelectAttempt={(attemptId) => {
           void openAttemptAnalytics(attemptId);

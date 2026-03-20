@@ -14,24 +14,11 @@ import { StudentAnalytics } from './StudentAnalytics';
 import { fetchTestAnalysis, fetchTestById } from '../api/tests';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
+import {
+  mapApiAttemptQuestionsToAnalytics,
+  mapApiQuestionToPublishedQuestion,
+} from '../utils/testMappings';
 import { TableRowsSkeleton } from './ui/content-skeletons';
-
-function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
-  if (type === 'MCQ') {
-    return Number(correctAnswer);
-  }
-
-  if (type === 'MSQ') {
-    try {
-      const parsed = JSON.parse(correctAnswer);
-      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return correctAnswer;
-}
 
 export interface StudentPerformance {
   studentId: string;
@@ -90,22 +77,7 @@ export function TestPerformanceInsights({
             timeSpent: perf.timeSpent,
             attempts: perf.attempts.map((attempt) => ({
               ...attempt,
-              questions: attempt.questions.map((question) => ({
-                id: question.id,
-                text: question.question_text,
-                question: question.question_text,
-                questionImage: question.question_img || undefined,
-                options: question.options || undefined,
-                optionImages: question.option_imgs || undefined,
-                correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-                subject: question.subject,
-                marks: question.marks,
-                type: question.type,
-                metadata: { section: question.section || undefined },
-                explanation: question.explanation || undefined,
-                explanationImage: question.explanation_img || undefined,
-                userAnswer: question.user_answer,
-              })),
+              questions: mapApiAttemptQuestionsToAnalytics(attempt.questions),
             })),
           }))
         );
@@ -161,22 +133,7 @@ export function TestPerformanceInsights({
     try {
       const resolvedQuestions = testQuestions?.length
         ? testQuestions
-        : (await fetchTestById(testId)).questions?.map((question) => ({
-            id: question.id,
-            type: question.type,
-            subject: question.subject,
-            question: question.question_text,
-            questionImage: question.question_img || undefined,
-            options: question.options || undefined,
-            optionImages: question.option_imgs || undefined,
-            correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-            marks: question.marks,
-            negativeMarks: question.neg_marks,
-            explanation: question.explanation || undefined,
-            explanationImage: question.explanation_img || undefined,
-            difficulty: question.difficulty || undefined,
-            metadata: { section: question.section || undefined },
-          })) || [];
+        : (await fetchTestById(testId)).questions?.map(mapApiQuestionToPublishedQuestion) || [];
 
       if (!resolvedQuestions.length) {
         window.alert('No test paper questions were found for this test.');

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { changeMyPassword, me, verifyMyPassword, type FacultyDetails } from '../api/auth';
 import { motion } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { formatDateForDisplay, normalizeDateForInput } from '../utils/profile';
 import {
   User,
   Mail,
@@ -28,33 +29,6 @@ interface FacultyProfileProps {
   };
   onLogout: () => void;
 }
-function normalizeDateForInput(value?: string | null): string {
-  if (!value) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  if (typeof value === 'string' && value.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-    return value.slice(0, 10);
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateForDisplay(value?: string | null): string {
-  if (!value) return 'N/A';
-  const normalized = normalizeDateForInput(value);
-  if (!normalized) return 'N/A';
-  const [year, month, day] = normalized.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
-
 export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
   const [activeSection, setActiveSection] = useState<'overview' | 'settings'>('overview');
