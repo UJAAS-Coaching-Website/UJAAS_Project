@@ -64,6 +64,10 @@ export function StudentDashboard({
   onCloseReview
 }: StudentDashboardProps) {
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
+  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
@@ -142,6 +146,48 @@ export function StudentDashboard({
     setHasReviewDismissed(true);
     localStorage.setItem('ujaas_dismissed_review_session', 'true');
   };
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setIsMobileNavVisible(true);
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY <= 8) {
+        setIsMobileNavVisible(true);
+      } else if (currentScrollY > lastScrollY + 4) {
+        setIsMobileNavVisible(false);
+      } else if (currentScrollY < lastScrollY - 4) {
+        setIsMobileNavVisible(true);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isMobileViewport]);
 
   useEffect(() => {
     if (showFullTimetable) {
@@ -311,8 +357,77 @@ export function StudentDashboard({
     <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
       {/* Navigation */}
       {!isNavbarHidden && (
-        <nav className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar">
+        <nav
+          className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar transition-transform duration-300"
+          style={{
+            transform: isMobileViewport && !isMobileNavVisible ? 'translateY(-100%)' : 'translateY(0)',
+          }}
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {isMobileViewport ? (
+              <>
+            <div className="flex items-center justify-between h-16">
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => {
+                  setProfileSection('overview');
+                  onNavigate('home');
+                }}
+                title="Go to Dashboard"
+              >
+                <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
+              </motion.button>
+
+              <div className="flex items-center gap-4">
+                <StudentNotificationSheet
+                  notifications={notifications}
+                  onMarkAsRead={onMarkAsRead}
+                  onMarkAllAsRead={onMarkAllAsRead}
+                  onDelete={onDeleteNotification}
+                />
+                <motion.button
+                  onClick={() => {
+                    setProfileSection('overview');
+                    onNavigate('profile');
+                  }}
+                  className="p-0 border-none bg-transparent"
+                  title="View Profile"
+                >
+                  <MiniAvatar user={user} className="w-10 h-10" />
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200">
+            <div className="flex items-center justify-center gap-2 px-1 py-3">
+              {[
+                { id: 'home', label: 'Dashboard', icon: GraduationCap },
+                { id: 'test-series', label: 'Test Series', icon: FileText },
+                { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
+              ].map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.id === 'home') setProfileSection('overview');
+                    onNavigate(tab.id as Tab);
+                  }}
+                  className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
+                    (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
+                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                      : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                    }`}
+                  style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
+                >
+                  <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </motion.button>
+              ))}
+            </div>
+            </div>
+              </>
+            ) : (
             <div className="flex items-center justify-between h-16">
               {/* Logo */}
               <motion.button
@@ -376,13 +491,16 @@ export function StudentDashboard({
                 </motion.button>
               </div>
             </div>
+            )}
           </div>
         </nav>
       )}
 
       {/* Main Content */}
       <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
-        {!isNavbarHidden && <div className="h-16" />} {/* Spacer for fixed navbar */}
+        {!isNavbarHidden && (
+          <div className={isMobileViewport ? 'h-[116px]' : 'h-16'} />
+        )} {/* Spacer for fixed navbar */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
