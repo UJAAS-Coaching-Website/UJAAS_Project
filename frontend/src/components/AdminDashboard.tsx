@@ -48,7 +48,7 @@ import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
-import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
+import { TestPerformanceInsights } from './TestPerformanceInsights';
 import { TestTaking } from './TestTaking';
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
@@ -465,52 +465,6 @@ export function AdminDashboard({
         };
 
     return fallbackUpdatedTest;
-  };
-
-  const generateMockPerformances = (testId: string): StudentPerformance[] => {
-    const test = publishedTests.find(t => t.id === testId);
-    if (!test) return [];
-
-    return students.slice(0, 5).map((student, index) => {
-      const obtainedMarks = Math.floor(Math.random() * test.totalMarks);
-      const accuracy = Math.floor(Math.random() * 40) + 60;
-      const correctAnswers = Math.floor((accuracy / 100) * test.questions.length);
-
-      return {
-        studentId: student.id,
-        studentName: student.name,
-        attemptCount: 1,
-        latestSubmittedAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-        score: obtainedMarks,
-        totalMarks: test.totalMarks,
-        accuracy,
-        rank: index + 1,
-        timeSpent: Math.floor(Math.random() * test.duration * 60),
-        attempts: [{
-          attempt_id: `mock-attempt-${index}`,
-          attempt_no: 1,
-          auto_submitted: false,
-          testId: test.id,
-          testTitle: test.title,
-          totalMarks: test.totalMarks,
-          obtainedMarks,
-          totalQuestions: test.questions.length,
-          correctAnswers,
-          wrongAnswers: test.questions.length - correctAnswers,
-          unattempted: 0,
-          timeSpent: Math.floor(Math.random() * test.duration * 60),
-          duration: test.duration,
-          rank: index + 1,
-          totalStudents: 5,
-          submittedAt: new Date().toISOString(),
-          instructions: test.instructions,
-          questions: test.questions.map(q => ({
-            ...q,
-            user_answer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0 // Mocking correct answers
-          }))
-        }]
-      };
-    });
   };
 
   // Remarks are stored locally; load from localStorage
@@ -1415,9 +1369,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     }
   };
 
-  const conditionallyDeleteImage = async (url: string, fallbackUrl: string) => {
-    // Only delete if it's an S3 url and not a fallback/demo URL
-    if (url && url.includes('landing-page') && url !== fallbackUrl) {
+  const conditionallyDeleteImage = async (url: string) => {
+    if (url && url.includes('landing-page')) {
       try {
         await deleteLandingImage(url);
       } catch (e) {
@@ -1450,11 +1403,10 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     await runLandingAction('add-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
       const file = formData.get('imageFile') as File;
-      
-      const fallback = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
-      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'faculty') : fallback;
-      
-      if (url === null && file && file.size > 0) return false;
+
+      if (!file || file.size === 0) return false;
+      const url = await uploadAndGetUrl(file, 'faculty');
+      if (url === null) return false;
       
       const saved = await safeUpdate({
         ...data,
@@ -1463,7 +1415,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           subject: formData.get('subject') as string,
           designation: formData.get('designation') as string,
           experience: formData.get('experience') as string,
-          image: url || fallback
+          image: url
         }]
       });
       if (saved) {
@@ -1486,7 +1438,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         const uploaded = await uploadAndGetUrl(file, 'faculty');
         if (uploaded === null) return false;
         url = uploaded;
-        await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop');
+        await conditionallyDeleteImage(existing);
       }
 
       const next = [...data.faculty];
@@ -1510,11 +1462,10 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     await runLandingAction('add-achiever', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
       const file = formData.get('imageFile') as File;
-      
-      const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
-      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'achiever') : fallback;
-      
-      if (url === null && file && file.size > 0) return false;
+
+      if (!file || file.size === 0) return false;
+      const url = await uploadAndGetUrl(file, 'achiever');
+      if (url === null) return false;
       
       const saved = await safeUpdate({
         ...data,
@@ -1522,7 +1473,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           name: formData.get('name') as string,
           achievement: formData.get('achievement') as string,
           year: formData.get('year') as string,
-          image: url || fallback
+          image: url
         }]
       });
       if (saved) {
@@ -1538,10 +1489,9 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       const formData = new FormData(e.currentTarget as HTMLFormElement);
       const file = formData.get('imageFile') as File;
 
-      const fallback = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop';
-      const url = file && file.size > 0 ? await uploadAndGetUrl(file, 'vision') : fallback;
-      
-      if (url === null && file && file.size > 0) return false;
+      if (!file || file.size === 0) return false;
+      const url = await uploadAndGetUrl(file, 'vision');
+      if (url === null) return false;
 
       const saved = await safeUpdate({
         ...data,
@@ -1550,7 +1500,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
           name: formData.get('name') as string,
           designation: formData.get('designation') as string,
           vision: formData.get('vision') as string,
-          image: url || fallback
+          image: url
         }]
       });
       if (saved) {
@@ -1573,7 +1523,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         const uploaded = await uploadAndGetUrl(file, 'vision');
         if (uploaded === null) return false;
         url = uploaded;
-        await conditionallyDeleteImage(existing, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop');
+        await conditionallyDeleteImage(existing);
       }
 
       const next = [...data.visions];
@@ -1648,7 +1598,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               </select>
               <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
               <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <input name="imageFile" type="file" accept="image/*" required className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
               <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
             </form>
           )}
@@ -1783,7 +1733,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image (Optional)</label>
-              <input name="imageFile" type="file" accept="image/*" className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-vision') ? 'Updating Vision Tile...' : 'Update Vision Tile'}</button>

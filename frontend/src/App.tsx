@@ -370,93 +370,9 @@ function App() {
         { id: 'fallback-7', name: '7TH TO 10TH FOUNDATION' },
         { id: 'fallback-8', name: 'DROPPER BATCH' }
       ],
-      faculty: [
-        {
-          name: 'Dr. Rajesh Kumar',
-          subject: 'Physics',
-          designation: 'Demo Designation',
-          experience: '15+ Years',
-          image: 'https://images.unsplash.com/photo-1659353887617-8cf154b312c5?w=400&h=400&fit=crop'
-        },
-        {
-          name: 'Prof. Priya Sharma',
-          subject: 'Mathematics',
-          designation: 'Demo Designation',
-          experience: '12+ Years',
-          image: 'https://images.unsplash.com/photo-1593442808882-775dfcd90699?w=400&h=400&fit=crop'
-        },
-        {
-          name: 'Dr. Anand Verma',
-          subject: 'Chemistry',
-          designation: 'Demo Designation',
-          experience: '18+ Years',
-          image: 'https://images.unsplash.com/photo-1758685734511-4f49ce9a382b?w=400&h=400&fit=crop'
-        },
-        {
-          name: 'Dr. Sneha Patel',
-          subject: 'Biology',
-          designation: 'Demo Designation',
-          experience: '10+ Years',
-          image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop'
-        },
-        {
-          name: 'Prof. Arun Singh',
-          subject: 'Mathematics',
-          designation: 'Demo Designation',
-          experience: '14+ Years',
-          image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop'
-        },
-        {
-          name: 'Dr. Meera Reddy',
-          subject: 'Physics',
-          designation: 'Demo Designation',
-          experience: '16+ Years',
-          image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop'
-        }
-      ],
-      achievers: [
-        {
-          name: 'Rahul Kumar',
-          achievement: 'JEE Advanced AIR 234',
-          year: '2025',
-          image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop'
-        },
-        {
-          name: 'Priya Sharma',
-          achievement: 'NEET AIR 567',
-          year: '2025',
-          image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop'
-        },
-        {
-          name: 'Amit Patel',
-          achievement: 'JEE Mains 99.8%ile',
-          year: '2025',
-          image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop'
-        }
-      ],
-      visions: [
-        {
-          id: 'v1',
-          name: 'Shri G.S. Sharma',
-          designation: 'Founder & Director',
-          vision: 'Our vision is to provide quality education and guidance to every student, empowering them to achieve their dreams and build a better future for themselves and the nation.',
-          image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop'
-        },
-        {
-          id: 'v2',
-          name: 'Dr. A.K. Singh',
-          designation: 'Academic Head',
-          vision: 'We believe in nurturing raw talent into brilliant minds. Our focus is on holistic development, critical thinking, and instilling a lifelong passion for learning.',
-          image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop'
-        },
-        {
-          id: 'v3',
-          name: 'Mrs. R. Desai',
-          designation: 'Chief Administrator',
-          vision: 'Education is the most powerful weapon to change the world. We ensure an environment where students feel supported, motivated, and challenged to exceed their own expectations.',
-          image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop'
-        }
-      ],
+      faculty: [],
+      achievers: [],
+      visions: [],
       contact: {
         phone: '+91 98765 43210',
         email: 'info@ujaas.com',

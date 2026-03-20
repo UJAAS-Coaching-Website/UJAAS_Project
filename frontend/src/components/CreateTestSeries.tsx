@@ -255,11 +255,9 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const fillDemoQuestions = () => {
     const demoQuestions: any[] = [];
     const subjects = getSubjects();
-    const timestamp = Date.now();
 
     if (testData.format === 'JEE MAIN') {
       subjects.forEach(subject => {
-        // 20 MCQ (Section A)
         for (let i = 1; i <= 20; i++) {
           demoQuestions.push({
             id: crypto.randomUUID(),
@@ -270,11 +268,11 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
             difficulty: 'Medium',
             marks: 4,
             negativeMarks: 1,
-            subject: subject,
+            subject,
             metadata: { section: 'Section A' }
           });
         }
-        // 10 Numerical (Section B)
+
         for (let i = 1; i <= 10; i++) {
           demoQuestions.push({
             id: crypto.randomUUID(),
@@ -284,7 +282,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
             difficulty: 'Medium',
             marks: 4,
             negativeMarks: 0,
-            subject: subject,
+            subject,
             metadata: { section: 'Section B' }
           });
         }
@@ -295,6 +293,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         Chemistry: 45,
         Biology: 90
       };
+
       subjects.forEach(subject => {
         const count = neetSubjectCounts[subject] ?? 0;
         for (let i = 1; i <= count; i++) {
@@ -307,7 +306,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
             difficulty: 'Medium',
             marks: 4,
             negativeMarks: 1,
-            subject: subject
+            subject
           });
         }
       });
@@ -323,12 +322,15 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
             difficulty: 'Medium',
             marks: 4,
             negativeMarks: 0,
-            subject: subject
+            subject
           });
         }
       });
     }
+
     setQuestions(demoQuestions);
+    setIsDraftDirty(true);
+    handleSaveDraftClick(undefined, demoQuestions);
   };
 
   const toggleBatch = (label: string) => {

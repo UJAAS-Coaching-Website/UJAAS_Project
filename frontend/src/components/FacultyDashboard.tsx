@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -338,108 +338,13 @@ export function FacultyDashboard({
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
   const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
-  const generateMockPerformances = (testId: string): StudentPerformance[] => {
-    const test = publishedTests.find(t => t.id === testId);
-    if (!test) return [];
-
-    return students.slice(0, 5).map((student, index) => {
-      const obtainedMarks = Math.floor(Math.random() * test.totalMarks);
-      const accuracy = Math.floor(Math.random() * 40) + 60;
-      const correctAnswers = Math.floor((accuracy / 100) * test.questions.length);
-
-      return {
-        studentId: student.id,
-        studentName: student.name,
-        submittedAt: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-        score: obtainedMarks,
-        totalMarks: test.totalMarks,
-        accuracy,
-        rank: index + 1,
-        timeSpent: Math.floor(Math.random() * test.duration * 60),
-        result: {
-          testId: test.id,
-          testTitle: test.title,
-          totalMarks: test.totalMarks,
-          obtainedMarks,
-          totalQuestions: test.questions.length,
-          correctAnswers,
-          wrongAnswers: test.questions.length - correctAnswers,
-          unattempted: 0,
-          timeSpent: Math.floor(Math.random() * test.duration * 60),
-          duration: test.duration,
-          rank: index + 1,
-          totalStudents: 5,
-          submittedAt: new Date().toISOString(),
-          questions: test.questions.map(q => ({
-            ...q,
-            userAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0
-          }))
-        }
-      };
-    });
-  };
-
-  // Content Management State (Keeping it internal as requested)
-  const [subjects, setSubjects] = useState([
-    { id: 's1', name: 'Physics', color: '#3b82f6' },
-    { id: 's2', name: 'Chemistry', color: '#10b981' },
-    { id: 's3', name: 'Mathematics', color: '#f59e0b' },
-    { id: 's4', name: 'Biology', color: '#f43f5e' },
-  ]);
-
-  const [chapters, setChapters] = useState<Record<string, string[]>>({
-    'Physics': ['Kinematics', 'Laws of Motion'],
-    'Chemistry': ['Atomic Structure', 'Chemical Bonding'],
-  });
-
-  const [notes, setNotes] = useState([
-    { id: 'n1', chapter: 'Kinematics', title: 'Kinematics Theory Notes', size: '2.4 MB', date: '2025-09-20' },
-  ]);
-
-  const [dpps, setDpps] = useState([
-    { id: 'd1', chapter: 'Kinematics', title: 'Kinematics DPP 01 - Basics', questions: 15, date: '2025-09-22' },
-  ]);
-
-  const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
-  const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newChapterName, setNewChapterName] = useState('');
-  const [activeSubjectForChapter, setActiveSubjectForChapter] = useState<string | null>(null);
-
   useBodyScrollLock(
     studentModal.open ||
     batchModal.open ||
     ratingModal.open ||
     showFullTimetable ||
-    batchStudentPicker.open ||
-    isAddSubjectModalOpen ||
-    isAddChapterModalOpen
+    batchStudentPicker.open
   );
-
-  const handleAddSubject = (e: FormEvent) => {
-    e.preventDefault();
-    if (newSubjectName.trim()) {
-      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
-      const randomColor = colors[Math.floor(Math.random() * colors.length)];
-      setSubjects([...subjects, { id: `s${Date.now()}`, name: newSubjectName.trim(), color: randomColor }]);
-      setChapters({ ...chapters, [newSubjectName.trim()]: [] });
-      setNewSubjectName('');
-      setIsAddSubjectModalOpen(false);
-    }
-  };
-
-  const handleAddChapter = (e: FormEvent) => {
-    e.preventDefault();
-    if (!activeSubjectForChapter) return;
-    if (newChapterName.trim()) {
-      setChapters({
-        ...chapters,
-        [activeSubjectForChapter]: [...(chapters[activeSubjectForChapter] || []), newChapterName.trim()]
-      });
-      setNewChapterName('');
-      setIsAddChapterModalOpen(false);
-    }
-  };
 
   const openAddStudent = (batch: Batch | null = null) => setStudentModal({ open: true, initialData: undefined, defaultBatch: batch, title: 'Add Student' });
   const openEditStudent = (student: Student) => setStudentModal({
