@@ -301,6 +301,7 @@ export function StudentDashboard({
       setProfileSection('performance');
       onNavigate('profile');
     },
+    isMobileViewport,
     activeTab,
     onViewTimetable: () => setShowFullTimetable(true),
     batchDetails,
@@ -685,6 +686,7 @@ function HomeTab({
   user,
   onNavigate,
   onOpenPerformance,
+  isMobileViewport,
   activeTab,
   onViewTimetable,
   batchDetails,
@@ -696,6 +698,7 @@ function HomeTab({
   user: User;
   onNavigate: (t: Tab) => void;
   onOpenPerformance: () => void;
+  isMobileViewport: boolean;
   activeTab: Tab;
   onViewTimetable: () => void;
   batchDetails: ApiBatch | null;
@@ -793,6 +796,7 @@ function HomeTab({
   const completedCount = dppProgress.completed;
   const totalDpps = dppProgress.total;
   const dppPercentage = totalDpps > 0 ? (completedCount / totalDpps) * 100 : 0;
+  const firstName = user.name?.trim().split(/\s+/)[0] || 'Student';
 
   const stats = [
     {
@@ -823,13 +827,13 @@ function HomeTab({
       <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
-        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className={`${isMobileViewport ? 'p-5' : 'p-8'} bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl text-white shadow-2xl relative overflow-hidden`}
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
         
-        <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
-          <MiniAvatar user={user} className="w-24 h-24 text-4xl border-4 border-white/30 shadow-2xl" />
+        <div className={`relative flex ${isMobileViewport ? 'flex-row items-center' : 'flex-col md:flex-row items-start md:items-center'} gap-4 md:gap-6`}>
+          <MiniAvatar user={user} className={`${isMobileViewport ? 'w-16 h-16 text-2xl' : 'w-24 h-24 text-4xl'} border-4 border-white/30 shadow-2xl`} />
           
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4">
@@ -838,30 +842,19 @@ function HomeTab({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="text-3xl font-bold mb-2"
+                  className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold leading-tight mb-2`}
                 >
-                  {user.name}
+                  Welcome {firstName}!
                 </motion.h2>
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="flex flex-wrap gap-4 text-teal-50/90"
+                  className="space-y-3"
                 >
-                  {user.email && (
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{user.email}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>Roll: {user.studentDetails?.rollNumber || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    <span>Batch: {user.studentDetails?.batch || 'N/A'}</span>
-                  </div>
+                  <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} max-w-xl text-teal-50/90`}>
+                    Pick up where you left off.
+                  </p>
                 </motion.div>
               </div>
             </div>
@@ -889,8 +882,8 @@ function HomeTab({
                   <stat.icon className="w-6 h-6 text-white" />
                 </motion.div>
               </div>
-              <p className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</p>
-              <p className="text-sm text-gray-600 font-medium mb-3">{stat.label}</p>
+              <p className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold text-gray-900 mb-1`}>{stat.value}</p>
+              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
               
               {stat.label === 'My Performance Rating' ? (
                 <div className="mt-2">
@@ -914,6 +907,7 @@ function HomeTab({
       <AssignedBatchContent
         user={user}
         onNavigate={onNavigate}
+        isMobileViewport={isMobileViewport}
         currentTab={activeTab}
         onViewTimetable={onViewTimetable}
         batchDetails={batchDetails}
@@ -930,6 +924,7 @@ function HomeTab({
 function AssignedBatchContent({
   user,
   onNavigate,
+  isMobileViewport,
   currentTab,
   onViewTimetable,
   batchDetails,
@@ -940,6 +935,7 @@ function AssignedBatchContent({
 }: {
   user: User;
   onNavigate: (tab: Tab, subTab?: string) => void;
+  isMobileViewport: boolean;
   currentTab: Tab;
   onViewTimetable: () => void;
   batchDetails: ApiBatch | null;
@@ -988,7 +984,7 @@ function AssignedBatchContent({
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
           <div className="flex flex-col gap-1">
-            <h2 className="text-xl md:text-3xl font-bold tracking-tight text-slate-900">{user.studentDetails?.batch}</h2>
+            <h2 className={`${isMobileViewport ? 'text-lg' : 'text-3xl'} font-bold tracking-tight text-slate-900`}>{user.studentDetails?.batch}</h2>
           </div>
         </div>
         <button
@@ -1005,7 +1001,7 @@ function AssignedBatchContent({
           <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
             <BookOpen className="w-6 h-6 text-emerald-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Batch Academic Content</h3>
+          <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Batch Academic Content</h3>
         </div>
 
         <div className="p-1">
