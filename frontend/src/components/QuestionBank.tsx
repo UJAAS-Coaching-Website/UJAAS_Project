@@ -288,10 +288,10 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
           <div className="flex items-start gap-4 min-w-0">
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-teal-600 text-sm font-semibold hover:underline shrink-0 mt-1"
+              className="flex items-center text-teal-600 text-sm font-semibold hover:underline shrink-0 mt-1"
+              aria-label="Go back"
             >
               <ChevronLeft className="w-4 h-4" />
-              Back
             </button>
             <div className="min-w-0">
               <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 break-words`}>{listTitle}</h3>
@@ -304,14 +304,17 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
               className="relative min-w-0 flex-1"
               style={isMobileViewport ? { flex: '1 1 0%' } : undefined}
             >
-              <Search className={`${isMobileViewport ? 'left-3 h-4 w-4' : 'left-3 w-4 h-4'} absolute top-1/2 -translate-y-1/2 text-gray-400`} />
+              <Search
+                className={`${isMobileViewport ? 'h-4 w-4' : 'left-3 w-4 h-4'} absolute top-1/2 -translate-y-1/2 text-gray-400`}
+                style={isMobileViewport ? { left: '0.95rem' } : undefined}
+              />
               <input
                 type="text"
                 placeholder={isMobileViewport ? 'Search' : 'Search by name...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`${isMobileViewport ? 'h-14 rounded-2xl pl-10 pr-3 text-sm placeholder:text-gray-400' : 'rounded-xl pl-11 pr-4 py-3'} w-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white`}
-                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2' } : undefined}
+                className={`${isMobileViewport ? 'h-14 rounded-2xl pr-3 text-sm placeholder:text-gray-400' : 'rounded-xl pl-11 pr-4 py-3'} w-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white`}
+                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2', letterSpacing: '0em', paddingLeft: '2.2rem', textAlign: 'left' } : undefined}
               />
             </div>
             <div
@@ -322,13 +325,16 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className={`${isMobileViewport ? 'h-14 rounded-2xl px-4 pr-10 text-sm' : 'px-4 pr-12 py-3 rounded-xl'} border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white w-full appearance-none`}
-                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2' } : undefined}
+                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2', paddingLeft: '1.9rem', paddingRight: '1.2rem' } : undefined}
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
-              <ChevronDown className={`${isMobileViewport ? 'right-3 h-4 w-4' : 'right-4 h-4 w-4'} pointer-events-none absolute top-1/2 -translate-y-1/2 text-gray-500`} />
+              <ChevronDown
+                className={`${isMobileViewport ? 'h-4 w-4' : 'right-4 h-4 w-4'} pointer-events-none absolute top-1/2 -translate-y-1/2 text-gray-500`}
+                style={isMobileViewport ? { left: '0.7rem' } : undefined}
+              />
             </div>
           </div>
         </div>
