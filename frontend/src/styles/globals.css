@@ -123,6 +123,7 @@ table {
     --footer-reveal-offset: clamp(72px, 10vh, 120px);
   }
 
+
   .footer-reveal-main {
     min-height: calc(100svh - var(--app-top-chrome) + var(--footer-reveal-offset));
   }
@@ -153,4 +154,13 @@ table {
   scroll-snap-align: start;
   padding: 0 1rem;
   box-sizing: border-box;
+}
+
+/* Hide scrollbar completely while keeping scroll functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
 }

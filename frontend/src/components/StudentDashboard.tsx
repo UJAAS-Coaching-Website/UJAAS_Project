@@ -163,6 +163,15 @@ export function StudentDashboard({
   }, []);
 
   useEffect(() => {
+    document.documentElement.classList.add('scrollbar-hide');
+    document.body.classList.add('scrollbar-hide');
+    return () => {
+      document.documentElement.classList.remove('scrollbar-hide');
+      document.body.classList.remove('scrollbar-hide');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!isMobileViewport) {
       setMobileNavOffset(0);
       return;
