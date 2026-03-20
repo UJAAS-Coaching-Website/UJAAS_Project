@@ -270,6 +270,15 @@ export function FacultyDashboard({
       )?.subject) ?? null;
 
   useEffect(() => {
+    document.documentElement.classList.add('scrollbar-hide');
+    document.body.classList.add('scrollbar-hide');
+    return () => {
+      document.documentElement.classList.remove('scrollbar-hide');
+      document.body.classList.remove('scrollbar-hide');
+    };
+  }, []);
+
+  useEffect(() => {
     if (adminStudents && adminStudents.length > 0) {
       const mappedStudents: Student[] = adminStudents.map(api => {
         const subRatings = (api as any).subject_ratings || {};
@@ -630,7 +639,7 @@ export function FacultyDashboard({
               onBack={() => onNavigate('home')}
             />
           ) : performanceInsightsTestId ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
+            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
               {(() => {
                 const test = publishedTests.find(t => t.id === performanceInsightsTestId);
                 const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
@@ -648,7 +657,7 @@ export function FacultyDashboard({
               })()}
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
+            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
               <TestPreviewAndReview
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
@@ -1248,7 +1257,7 @@ function AddStudentModal({ open, onClose, defaultBatch, batches, initialData, ti
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white">
+      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto scrollbar-hide shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">{title}</h2>
         <form onSubmit={(e) => { e.preventDefault(); const f = new FormData(e.currentTarget); onSubmit({ id: initialData?.id, name: f.get('name'), rollNumber: f.get('roll'), batch: f.get('batch') }); onClose(); }} className="space-y-4">
           <input name="name" defaultValue={initialData?.name} placeholder="Student Name" required className="w-full px-4 py-3 rounded-xl border border-gray-200" />
@@ -1268,7 +1277,7 @@ function BatchFormModal({ open, batchLabel, onClose, onUpdateBatch }: any) {
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-2000">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white">
+      <div className="relative bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto scrollbar-hide shadow-2xl border border-white">
         <h2 className="text-2xl font-bold mb-6">Edit Batch</h2>
         <form onSubmit={async (e) => {
           e.preventDefault();
@@ -1328,7 +1337,7 @@ function BatchStudentPickerModal({
           <h3 className="text-xl font-semibold">Add Existing Student</h3>
           <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
         </div>
-        <div className="p-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-3">
+        <div className="p-6 flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3">
           {availableStudents.length === 0 ? (
             <p className="text-sm text-gray-500">No students available to add.</p>
           ) : (
@@ -1529,7 +1538,7 @@ function StudentRatingsModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto scrollbar-hide p-8">
           {activeView === 'profile' ? (
             <div className="space-y-8">
               {/* Basic Info Grid */}

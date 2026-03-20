@@ -57,9 +57,11 @@ export async function getStudentNotifications(studentId) {
          FROM notifications n
          JOIN notification_batches nb ON nb.notification_id = n.id
          JOIN students st ON st.assigned_batch_id = nb.batch_id
+         JOIN users su ON su.id = st.user_id
          LEFT JOIN users u ON u.id = n.sender_id
          LEFT JOIN notification_deliveries nd ON (nd.notification_id = n.id AND nd.student_id = $1)
          WHERE st.user_id = $1
+         AND n.created_at >= su.created_at
          AND (nd.is_deleted IS NULL OR nd.is_deleted = false)
          ORDER BY n.is_sticky DESC, n.created_at DESC`,
         [studentId]

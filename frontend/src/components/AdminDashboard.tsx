@@ -390,6 +390,14 @@ export function AdminDashboard({
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(null);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    document.documentElement.classList.add('scrollbar-hide');
+    document.body.classList.add('scrollbar-hide');
+    return () => {
+      document.documentElement.classList.remove('scrollbar-hide');
+      document.body.classList.remove('scrollbar-hide');
+    };
+  }, []);
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; defaultBatch: Batch | null; initialData?: Student; title: string }>({
     open: false,
@@ -867,7 +875,7 @@ export function AdminDashboard({
               resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
             />
           ) : performanceInsightsTestId ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
+            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
               {(() => {
                 const test = publishedTests.find(t => t.id === performanceInsightsTestId);
                 const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
@@ -885,7 +893,7 @@ export function AdminDashboard({
               })()}
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
+            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
               <TestPreviewAndReview
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
@@ -1114,7 +1122,7 @@ export function AdminDashboard({
                 </div>
 
                 {/* Body */}
-                <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh]">
+                <div className="p-8 space-y-8 overflow-y-auto scrollbar-hide max-h-[70vh]">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</p>
@@ -1131,7 +1139,7 @@ export function AdminDashboard({
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</p>
                       <p className="text-gray-900 font-semibold flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-purple-600" /> {queryModal.query.email}
+                        <Mail className="w-4 h-4 text-cyan-600" /> {queryModal.query.email}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -1227,7 +1235,7 @@ export function AdminDashboard({
                       <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
                       <button
                         onClick={() => timeTableInputRef.current?.click()}
-                        className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+                        className="mt-4 px-6 py-2 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition"
                       >
                         Upload Now
                       </button>
@@ -1247,7 +1255,7 @@ export function AdminDashboard({
                     />
                     <button
                       onClick={() => timeTableInputRef.current?.click()}
-                      className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition text-sm"
+                      className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-bold hover:bg-teal-100 transition text-sm"
                     >
                       {timeTableImage ? 'Change Image' : 'Upload Image'}
                     </button>
@@ -1267,7 +1275,7 @@ export function AdminDashboard({
                         download
                         target="_blank"
                         rel="noreferrer"
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition flex items-center gap-2"
+                        className="px-6 py-2 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition flex items-center gap-2"
                       >
                         <Download className="w-4 h-4" />
                         Download
@@ -1846,7 +1854,7 @@ function BatchSelectionTab({ batches, onSelectBatch, onAddBatch, onUploadNotice 
           <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
             <button
               onClick={onUploadNotice}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
             >
               <Megaphone className="w-5 h-5" />
               Upload Notice
@@ -2055,8 +2063,8 @@ function OverviewTab({
       <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-indigo-600" />
+            <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-teal-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900">Batch Faculty</h3>
           </div>
@@ -2621,7 +2629,7 @@ function AddStudentModal({
           <p className="text-sm text-white/80">Fields marked with * are mandatory.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto scrollbar-hide">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Name {requiredMark}</span>
@@ -2819,7 +2827,7 @@ function AddFacultyModal({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto scrollbar-hide">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="space-y-2 text-sm font-medium text-gray-700 block">
                 <span className="block">Subject {isEditing && requiredMark}</span>
@@ -2996,7 +3004,7 @@ function BatchStudentPickerModal({
           <h3 className="text-xl font-semibold">Add Existing Student</h3>
           <p className="text-sm text-white/80">Select a student to assign to {selectedBatch}.</p>
         </div>
-        <div className="p-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-3">
+        <div className="p-6 flex-1 min-h-0 overflow-y-auto scrollbar-hide space-y-3">
           {availableStudents.length === 0 ? (
             <p className="text-sm text-gray-500">No students available to add.</p>
           ) : (
@@ -3316,7 +3324,7 @@ function BatchFormModal({
           <p className="text-sm text-white/80">Add batch details and faculty assignment.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto scrollbar-hide">
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
             <span className="block">Batch Name *</span>
             <input
@@ -3362,7 +3370,7 @@ function BatchFormModal({
                   {!formState.subject ? (
                     <span className="text-sm text-gray-400">Select subject first</span>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide pr-1">
                       {facultyOptions.length === 0 && (
                         <span className="text-sm text-gray-500">No faculty found for this subject.</span>
                       )}
@@ -4014,7 +4022,7 @@ function StudentRatingsModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto scrollbar-hide p-8">
           {activeView === 'profile' ? (
             <div className="space-y-4">
               <div className="flex justify-end">
@@ -4066,7 +4074,7 @@ function StudentRatingsModal({
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (
-                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-indigo-600" /> {student.name}</p>
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Users className="w-4 h-4 text-teal-600" /> {student.name}</p>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -4096,7 +4104,7 @@ function StudentRatingsModal({
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (
-                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-purple-600" /> {student.dateOfBirth || 'Not provided'}</p>
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4 text-cyan-600" /> {student.dateOfBirth || 'Not provided'}</p>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -4150,7 +4158,7 @@ function StudentRatingsModal({
                 </button>
                 <button
                   onClick={() => setActiveView('performance')}
-                  className="py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                  className="py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                 >
                   <BarChart3 className="w-5 h-5" /> View Test Performance
                 </button>
@@ -4159,7 +4167,7 @@ function StudentRatingsModal({
           ) : activeView === 'performance' ? (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <button onClick={() => setActiveView('profile')} className="text-purple-600 font-bold flex items-center gap-1 hover:underline">
+                <button onClick={() => setActiveView('profile')} className="text-teal-600 font-bold flex items-center gap-1 hover:underline">
                   <ChevronLeft className="w-4 h-4" /> Back to Profile
                 </button>
                 <h4 className="text-xl font-bold text-gray-900">Test Performance Summary</h4>
