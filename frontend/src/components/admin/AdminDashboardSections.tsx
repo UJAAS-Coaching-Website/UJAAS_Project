@@ -173,8 +173,10 @@ export function AdminStudentsDirectoryTab({
   onViewStudent: (student: StudentDirectoryStudent) => void;
   renderStars: (rating: number) => React.ReactNode;
 }) {
+  const STUDENTS_PER_PAGE = 20;
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filtered = students
     .filter((student) => student.name.toLowerCase().includes(query.toLowerCase()) || student.rollNumber.toLowerCase().includes(query.toLowerCase()))
@@ -193,17 +195,42 @@ export function AdminStudentsDirectoryTab({
       }
     });
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENTS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedStudents = filtered.slice(
+    (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
+    safeCurrentPage * STUDENTS_PER_PAGE
+  );
+  const rangeStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, filtered.length);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(totalPages, page)));
+  };
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
         <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <input type="text" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search students..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search students..."
+              className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64"
+            />
           </div>
           <select
             value={sortBy}
-            onChange={(event) => setSortBy(event.target.value as 'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc')}
+            onChange={(event) => {
+              setSortBy(event.target.value as 'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc');
+              setCurrentPage(1);
+            }}
             className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none"
             style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
           >
@@ -226,7 +253,7 @@ export function AdminStudentsDirectoryTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {filtered.map((student) => (
+            {paginatedStudents.map((student) => (
               <tr key={student.id} onClick={() => onViewStudent(student)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{student.name}</div>
@@ -248,6 +275,32 @@ export function AdminStudentsDirectoryTab({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm font-medium text-gray-500">
+          Showing {rangeStart}-{rangeEnd} of {filtered.length} students
+        </p>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => goToPage(safeCurrentPage - 1)}
+            disabled={safeCurrentPage === 1}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="min-w-20 text-center text-sm font-semibold text-gray-600">
+            Page {safeCurrentPage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => goToPage(safeCurrentPage + 1)}
+            disabled={safeCurrentPage === totalPages}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

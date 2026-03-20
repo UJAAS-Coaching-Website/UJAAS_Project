@@ -803,7 +803,17 @@ function StudentsTab({
   onUpdateRating: (studentId: string, data: any) => Promise<void>;
   isBatchActive?: boolean;
 }) {
+  const STUDENTS_PER_PAGE = 20;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(batchStudents.length / STUDENTS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedStudents = batchStudents.slice(
+    (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
+    safeCurrentPage * STUDENTS_PER_PAGE
+  );
+  const rangeStart = batchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, batchStudents.length);
   
   // Local state for batch-level total classes
   const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
@@ -821,6 +831,10 @@ function StudentsTab({
     setLocalAttendance(att);
     setBatchTotalClasses(batchStudents.length > 0 ? batchStudents[0].totalClasses : 0);
   }, [students, selectedBatch]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedBatch, students.length]);
 
   const handleSaveTotalClasses = () => {
     setIsEditingTotal(false);
@@ -921,7 +935,7 @@ function StudentsTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {batchStudents.map((s) => (
+            {paginatedStudents.map((s) => (
               <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
@@ -961,6 +975,32 @@ function StudentsTab({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm font-medium text-gray-500">
+          Showing {rangeStart}-{rangeEnd} of {batchStudents.length} students
+        </p>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={safeCurrentPage === 1}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="min-w-20 text-center text-sm font-semibold text-gray-600">
+            Page {safeCurrentPage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={safeCurrentPage === totalPages}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
