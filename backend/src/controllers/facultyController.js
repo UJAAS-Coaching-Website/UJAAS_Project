@@ -12,17 +12,20 @@ export async function listFaculties(req, res) {
 
 export async function handleCreateFaculty(req, res) {
     try {
-        const { name, email, subject, phone, designation, joinDate } = req.body;
+        const { name, email, subject, phone, designation, joinDate, password } = req.body;
         if (!name || !name.trim()) {
             return res.status(400).json({ message: "faculty name is required" });
         }
         if (!email || !email.trim()) {
             return res.status(400).json({ message: "email/login ID is required" });
         }
+        if (!password || !password.trim()) {
+            return res.status(400).json({ message: "password is required" });
+        }
         const faculty = await createFaculty({
             name: name.trim(),
             email: email.trim(),
-            subject, phone, designation, joinDate,
+            subject, phone, designation, joinDate, password: password.trim()
         });
         return res.status(201).json(faculty);
     } catch (error) {

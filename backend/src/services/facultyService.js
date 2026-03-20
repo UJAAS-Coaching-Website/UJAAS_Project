@@ -16,13 +16,7 @@ async function getOrCreateSubjectId(name, client = pool) {
     return created.rows[0].id;
 }
 
-/**
- * Generate initial password from faculty name: firstname@123
- */
-function generateInitialPassword(name) {
-    const firstName = name.split(" ")[0].toLowerCase();
-    return `${firstName}@123`;
-}
+
 
 /**
  * Fetch all faculties by joining users, faculties and subjects.
@@ -57,19 +51,19 @@ export async function getAllFaculties() {
 /**
  * Create a new faculty: inserts into users + faculties.
  */
-export async function createFaculty({ name, email, subject, phone, designation, joinDate }) {
+export async function createFaculty({ name, email, subject, phone, designation, joinDate, password }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
 
         const subjectId = await getOrCreateSubjectId(subject, client);
-        const password = hashPassword(generateInitialPassword(name));
+        const passwordHash = hashPassword(password);
 
         const userResult = await client.query(
             `INSERT INTO users (name, login_id, role, password_hash, created_at)
              VALUES ($1, $2, 'faculty', $3, NOW())
              RETURNING id`,
-            [name, email, password]
+            [name, email, passwordHash]
         );
         const userId = userResult.rows[0].id;
 

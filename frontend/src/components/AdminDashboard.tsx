@@ -177,6 +177,7 @@ type FacultyFormState = {
   joinDate: string;
   rating: number;
   reviewCount: number;
+  password?: string;
 };
 
 type SubjectActionResult = {
@@ -664,10 +665,10 @@ export function AdminDashboard({
           designation: data.designation,
           phone: data.phone,
           joinDate: data.joinDate,
-        });
-        const initialPassword = generateInitialPassword(data.name);
+          password: data.password
+        } as any);
         const loginId = data.email || 'Not provided';
-        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
+        window.alert(`New Faculty added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nPassword: ${data.password}`);
       }
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save faculty'}`);
@@ -2767,6 +2768,7 @@ function AddFacultyModal({
     joinDate: initialData?.joinDate ?? '',
     rating: initialData?.rating ?? 0,
     reviewCount: initialData?.reviewCount ?? 0,
+    password: '',
   });
 
   useEffect(() => {
@@ -2782,6 +2784,7 @@ function AddFacultyModal({
       joinDate: initialData?.joinDate ?? '',
       rating: initialData?.rating ?? 0,
       reviewCount: initialData?.reviewCount ?? 0,
+      password: '',
     });
   }, [open, initialData, isInitialEditing]);
 
@@ -2896,6 +2899,21 @@ function AddFacultyModal({
               />
             </label>
 
+            {!initialData?.id && (
+              <label className="space-y-2 text-sm font-medium text-gray-700 block">
+                <span className="block">Password {isEditing && requiredMark}</span>
+                <input
+                  type="text"
+                  required={isEditing && !initialData?.id}
+                  readOnly={!isEditing}
+                  value={formState.password || ''}
+                  onChange={handleChange('password')}
+                  className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+                  placeholder="Enter temporary password"
+                />
+              </label>
+            )}
+
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Join Date</span>
               <input
@@ -2933,13 +2951,14 @@ function AddFacultyModal({
               <button
                 type="button"
                 onClick={async () => {
-                  const newPass = generateInitialPassword(formState.name);
+                  const newPass = prompt(`Enter new manual password for ${formState.name}:`);
+                  if (!newPass) return;
                   if (!window.confirm(`Are you sure you want to reset the password for ${formState.name}?\n\nThe new password will be: ${newPass}`)) {
                     return;
                   }
                   try {
                     await adminResetUserPassword(formState.id as string, newPass);
-                    window.alert(`Password for ${formState.name} has been reset to: ${newPass}`);
+                    window.alert(`Password for ${formState.name} has been reset successfully!`);
                   } catch (error: any) {
                     window.alert(error?.message || 'Unable to reset password. Please try again.');
                   }
