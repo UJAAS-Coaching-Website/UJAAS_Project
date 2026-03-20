@@ -49,7 +49,7 @@ import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { CreateTestSeries } from './CreateTestSeries';
 import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { TestTaking } from './TestTaking';
+import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
@@ -932,7 +932,7 @@ export function AdminDashboard({
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestTaking
+              <TestPreviewAndReview
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
                 duration={selectedPreviewTest.duration}

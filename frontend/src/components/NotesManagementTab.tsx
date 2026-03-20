@@ -11,7 +11,7 @@ import { apiFetchNotes, apiDeleteNote, ApiNote } from '../api/notes';
 import { fetchDpps, deleteDpp, fetchDppAttemptResult, fetchDppAnalysis, fetchDppById, fetchMyDppAttemptSummary, startMyDppAttempt, updateDpp, type ApiDpp, type ApiDppAnalysis } from '../api/dpps';
 import { createBatchNotification } from '../api/batches';
 import { DppPerformanceInsights } from './DppPerformanceInsights';
-import { TestTaking } from './TestTaking';
+import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { ChapterCardSkeleton, DppCardSkeleton, NoteCardSkeleton, TableRowsSkeleton } from './ui/content-skeletons';
 import { formatLinkSummary } from '../utils/subjectAlerts';
 
@@ -487,7 +487,7 @@ export function NotesManagementTab({
 
   if (previewDpp) {
     return (
-      <TestTaking
+      <TestPreviewAndReview
         testId={previewDpp.id}
         testTitle={previewDpp.title}
         duration={0}

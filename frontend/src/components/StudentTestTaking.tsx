@@ -192,7 +192,7 @@ export function StudentTestTaking({
 
   useEffect(() => {
     if (isAnyPreview || !enableTimer) return;
-    
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -335,10 +335,10 @@ export function StudentTestTaking({
       stats[subject] = {};
       const subjectQuestions = questions.filter(q => q.subject === subject);
       const subjectSections = Array.from(new Set(subjectQuestions.map(q => (q as any).metadata?.section || 'Default'))).sort();
-      
+
       subjectSections.forEach(section => {
         const sectionQuestions = subjectQuestions.filter(q => ((q as any).metadata?.section || 'Default') === section);
-        
+
         const answered = sectionQuestions.filter(q => isAnsweredValue(answers[q.id]) && !flaggedQuestions.has(q.id)).length;
         const marked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && !isAnsweredValue(answers[q.id])).length;
         const answeredAndMarked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && isAnsweredValue(answers[q.id])).length;
@@ -399,9 +399,8 @@ export function StudentTestTaking({
                       <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                       {selectedBatches.join(', ') || 'No batches assigned'}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                      isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
-                    }`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                      }`}>
                       {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
                     </span>
                   </>
@@ -412,23 +411,20 @@ export function StudentTestTaking({
             <div className="flex items-center gap-3">
               {/* Timer - only for students */}
               {!isAnyPreview && enableTimer && (
-                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${
-                  timeLeft <= 300 ? 'bg-red-50 border-red-300' : 
-                  timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
-                  'bg-blue-50 border-blue-300'
-                }`}>
-                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                    timeLeft <= 300 ? 'text-red-600' :
-                    timeLeft <= 600 ? 'text-yellow-600' :
-                    'text-blue-600'
-                  }`} />
+                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
+                    timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
+                      'bg-blue-50 border-blue-300'
+                  }`}>
+                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${timeLeft <= 300 ? 'text-red-600' :
+                      timeLeft <= 600 ? 'text-yellow-600' :
+                        'text-blue-600'
+                    }`} />
                   <div>
                     <p className="text-xs text-gray-600">Time Left</p>
-                    <p className={`text-lg sm:text-2xl font-bold ${
-                      timeLeft <= 300 ? 'text-red-600' :
-                      timeLeft <= 600 ? 'text-yellow-600' :
-                      'text-blue-600'
-                    }`}>
+                    <p className={`text-lg sm:text-2xl font-bold ${timeLeft <= 300 ? 'text-red-600' :
+                        timeLeft <= 600 ? 'text-yellow-600' :
+                          'text-blue-600'
+                      }`}>
                       {formatTime(timeLeft)}
                     </p>
                   </div>
@@ -459,11 +455,10 @@ export function StudentTestTaking({
                     const firstIdx = questions.findIndex(q => q.subject === s);
                     if (firstIdx > -1) setCurrentQuestion(firstIdx);
                   }}
-                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                    currentSubject === s
+                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {s}
                 </button>
@@ -480,13 +475,12 @@ export function StudentTestTaking({
                       const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
-                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${
-                      currentSection === sec
+                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${currentSection === sec
                         ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                         : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
-                    }`}
+                      }`}
                   >
-                    {sec} 
+                    {sec}
                     <span className="ml-2 text-xs opacity-60">
                       ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
                     </span>
@@ -569,7 +563,7 @@ export function StudentTestTaking({
                         );
                         const isSelected = isOptionSelected(question.id, index);
                         const isMsq = question.type === 'MSQ';
-                        
+
                         return (
                           <div key={index} className="space-y-2">
                             <button
@@ -586,22 +580,19 @@ export function StudentTestTaking({
                                 selectAnswer(question.id, index);
                               }}
                               disabled={isAnyPreview || isSectionBLocked}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                                isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
-                                isSelected
-                                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
-                              }`}
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                                }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${
-                                  isMsq ? 'rounded-md' : 'rounded-full'
-                                } ${
-                                  isCorrect ? 'border-green-500 bg-green-500' :
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-500'
-                                    : 'border-gray-300'
-                                }`}>
+                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'
+                                  } ${isCorrect ? 'border-green-500 bg-green-500' :
+                                    isSelected
+                                      ? 'border-blue-500 bg-blue-500'
+                                      : 'border-gray-300'
+                                  }`}>
                                   {(isSelected || isCorrect) && (
                                     isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
@@ -710,8 +701,8 @@ export function StudentTestTaking({
                             {editForm.options?.map((opt, idx) => (
                               <div key={idx} className="flex gap-3">
                                 <div className="pt-3">
-                                  <input 
-                                    type={editForm.type === 'MCQ' ? 'radio' : 'checkbox'} 
+                                  <input
+                                    type={editForm.type === 'MCQ' ? 'radio' : 'checkbox'}
                                     checked={editForm.type === 'MCQ' ? editForm.correctAnswer === idx : Array.isArray(editForm.correctAnswer) && editForm.correctAnswer.includes(idx)}
                                     onChange={() => {
                                       if (editForm.type === 'MCQ') {
@@ -815,11 +806,10 @@ export function StudentTestTaking({
               <motion.button
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                  currentQuestion === 0
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${currentQuestion === 0
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
-                }`}
+                  }`}
               >
                 <ChevronLeft className="w-5 h-5" />
                 Previous
@@ -845,11 +835,10 @@ export function StudentTestTaking({
                       </button>
                       <button
                         onClick={() => toggleFlag(question.id)}
-                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${
-                          flaggedQuestions.has(question.id)
+                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${flaggedQuestions.has(question.id)
                             ? 'bg-purple-100 border-purple-300 text-purple-700'
                             : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         Mark for Review
                       </button>
@@ -891,21 +880,20 @@ export function StudentTestTaking({
                       <motion.button
                         key={q.id}
                         onClick={() => setCurrentQuestion(q.globalIndex)}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${
-                          currentQuestion === q.globalIndex
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
                             ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
                             : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
-                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : isAnyPreview && hasExplanationContent(q)
-                            ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                            : !isAnyPreview && flaggedQuestions.has(q.id)
-                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                            : !isAnyPreview && visitedQuestions.has(q.id)
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                              : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : isAnyPreview && hasExplanationContent(q)
+                                  ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                  : !isAnyPreview && flaggedQuestions.has(q.id)
+                                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                    : !isAnyPreview && visitedQuestions.has(q.id)
+                                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
                       >
                         {q.globalIndex + 1}
                         {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
@@ -991,9 +979,9 @@ export function StudentTestTaking({
                     <tr>
                       <th rowSpan={2} className="px-4 py-4 border-b border-r border-gray-200">Status</th>
                       {subjects.map(subject => (
-                        <th 
-                          key={subject} 
-                          colSpan={Object.keys(groupedStats[subject]).length} 
+                        <th
+                          key={subject}
+                          colSpan={Object.keys(groupedStats[subject]).length}
                           className="px-4 py-2 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-700"
                         >
                           {subject}
@@ -1002,7 +990,7 @@ export function StudentTestTaking({
                       <th rowSpan={2} className="px-4 py-4 border-b border-gray-200 text-center bg-indigo-50 text-indigo-700">Grand Total</th>
                     </tr>
                     <tr>
-                      {subjects.map(subject => 
+                      {subjects.map(subject =>
                         Object.keys(groupedStats[subject]).map(section => (
                           <th key={`${subject}-${section}`} className="px-4 py-2 border-b border-r border-gray-200 text-center font-semibold text-[10px]">
                             {section}
@@ -1023,7 +1011,7 @@ export function StudentTestTaking({
                       return (
                         <tr key={row.key} className="hover:bg-gray-50/50 transition-colors">
                           <td className={`px-4 py-3 font-bold border-r border-gray-100 ${row.color}`}>{row.label}</td>
-                          {subjects.map(subject => 
+                          {subjects.map(subject =>
                             Object.keys(groupedStats[subject]).map(section => {
                               const val = (groupedStats[subject][section] as any)[row.key];
                               grandTotal += val;
@@ -1042,7 +1030,7 @@ export function StudentTestTaking({
                   <tfoot className="bg-gray-50/50 font-bold">
                     <tr>
                       <td className="px-4 py-3 border-r border-gray-100">Total Questions</td>
-                      {subjects.map(subject => 
+                      {subjects.map(subject =>
                         Object.keys(groupedStats[subject]).map(section => (
                           <td key={`${subject}-${section}-total`} className="px-4 py-3 text-center border-r border-gray-100">
                             {groupedStats[subject][section].total}
@@ -1096,7 +1084,7 @@ export function StudentTestTaking({
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{isAnyPreview ? 'Save Changes?' : 'Exit & Submit?'}</h3>
                 <p className="text-gray-600 mt-2">
-                  {isAnyPreview 
+                  {isAnyPreview
                     ? 'You have made edits to this test. Would you like to keep these changes?'
                     : 'Tests cannot be paused. If you exit now, your current answers will be submitted and the test will end.'}
                 </p>
@@ -1180,11 +1168,10 @@ export function StudentTestTaking({
                           setSelectedBatches(next);
                           setHasChanges(true);
                         }}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                          selectedBatches.includes(batch.label)
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${selectedBatches.includes(batch.label)
                             ? 'bg-blue-50 border-blue-500 text-blue-700'
                             : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
-                        }`}
+                          }`}
                       >
                         {batch.label}
                       </button>

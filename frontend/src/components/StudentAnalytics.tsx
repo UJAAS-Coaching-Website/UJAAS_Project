@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { TestTaking } from './TestTaking';
+import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
 import {
   Trophy,
@@ -270,7 +270,7 @@ export function StudentAnalytics({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <TestTaking
+          <TestPreviewAndReview
             testId={result.testId}
             testTitle={`${result.testTitle} - Review`}
             duration={result.duration}

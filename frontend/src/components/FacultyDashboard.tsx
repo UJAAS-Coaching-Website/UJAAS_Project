@@ -43,7 +43,7 @@ import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceIn
 import { CreateDPP } from './CreateDPP';
 import { UploadNotes } from './UploadNotes';
 import { QuestionBank } from './QuestionBank';
-import { TestTaking } from './TestTaking';
+import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import { NotesManagementTab } from './NotesManagementTab';
@@ -744,7 +744,7 @@ export function FacultyDashboard({
             </div>
           ) : activeTab === 'preview-test' && selectedPreviewTest ? (
             <div className="fixed inset-0 bg-white overflow-y-auto z-layer-10002">
-              <TestTaking
+              <TestPreviewAndReview
                 testId={selectedPreviewTest.id}
                 testTitle={selectedPreviewTest.title}
                 duration={selectedPreviewTest.duration}

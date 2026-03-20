@@ -53,7 +53,7 @@ interface QuestionExplanationState {
   explanationImage?: string;
 }
 
-interface TestTakingProps {
+interface TestPreviewAndReviewProps {
   testId: string;
   testTitle: string;
   duration: number; // in minutes
@@ -137,7 +137,7 @@ const getCorrectOptionIndices = (question: Question) => {
   return [];
 };
 
-export function TestTaking({
+export function TestPreviewAndReview({
   testId,
   testTitle: initialTitle,
   duration,
@@ -155,7 +155,7 @@ export function TestTaking({
   initialBatches = [],
   reviewAttemptId,
   loadQuestionExplanation
-}: TestTakingProps) {
+}: TestPreviewAndReviewProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [testTitle, setTestTitle] = useState(initialTitle);
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
@@ -246,11 +246,11 @@ export function TestTaking({
     if (!file) return;
 
     setIsUploadingImage(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('image', file);
-      
+
       // Use 'dpps' if the URL implies a DPP flow, otherwise 'tests'
       const context = window.location.pathname.includes('dpps') ? 'dpps' : 'tests';
       formData.append('context', context);
@@ -264,7 +264,7 @@ export function TestTaking({
       });
 
       const data = await response.json();
-      
+
       if (!response.ok || data.status === 'error') {
         throw new Error(data.message || 'Image upload failed');
       }
@@ -662,8 +662,8 @@ export function TestTaking({
                           : false;
                         const isAllCorrectMsq = question.type === 'MSQ'
                           ? !hasWrongMsqSelection
-                            && selectedMsqValues.length === correctOptionIndices.length
-                            && correctOptionIndices.every((value, valueIndex) => selectedMsqValues[valueIndex] === value)
+                          && selectedMsqValues.length === correctOptionIndices.length
+                          && correctOptionIndices.every((value, valueIndex) => selectedMsqValues[valueIndex] === value)
                           : false;
 
                         let optionToneClasses = 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50';
@@ -715,26 +715,24 @@ export function TestTaking({
                                 selectAnswer(question.id, index);
                               }}
                               disabled={isAnyPreview}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                                isStudentReviewMode
+                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isStudentReviewMode
                                   ? optionToneClasses
                                   : correctOptionIndices.includes(index)
                                     ? optionToneClasses
                                     : isSelected
                                       ? 'border-blue-500 bg-blue-50 shadow-md'
                                       : optionToneClasses
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center gap-4">
-                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${
-                                  isStudentReviewMode
+                                <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isStudentReviewMode
                                     ? controlToneClasses
                                     : correctOptionIndices.includes(index)
                                       ? controlToneClasses
                                       : isSelected
                                         ? 'border-blue-500 bg-blue-500'
                                         : controlToneClasses
-                                }`}>
+                                  }`}>
                                   {(isSelected || correctOptionIndices.includes(index)) && (
                                     isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
                                   )}
@@ -769,14 +767,12 @@ export function TestTaking({
                                 {!isUnattempted && (
                                   <div className="flex flex-wrap items-center gap-3">
                                     <span className="text-sm font-semibold text-slate-700">Your Answer</span>
-                                    <div className={`px-6 py-3 bg-white rounded-xl border-2 font-bold text-xl ${
-                                      isCorrect ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'
-                                    }`}>
+                                    <div className={`px-6 py-3 bg-white rounded-xl border-2 font-bold text-xl ${isCorrect ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'
+                                      }`}>
                                       {String(normalizedAnswer)}
                                     </div>
-                                    <span className={`text-xs font-bold px-2 py-1 rounded ${
-                                      isCorrect ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-                                    }`}>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${isCorrect ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                                      }`}>
                                       {isCorrect ? 'Your Answer Is Right' : 'Your Answer Is Wrong'}
                                     </span>
                                   </div>
@@ -906,7 +902,7 @@ export function TestTaking({
                           <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
                             <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'question')} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
                             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-sm">
-                              {isUploadingImage ? <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                              {isUploadingImage ? <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                               {isUploadingImage ? 'Uploading...' : editForm.questionImage ? 'Change Image' : 'Add Image'}
                             </div>
                           </label>
@@ -952,7 +948,7 @@ export function TestTaking({
                                     <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
                                       <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'option', idx)} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
                                       <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg border border-gray-200 font-bold text-xs hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors">
-                                        {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-3.5 h-3.5" />}
+                                        {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
                                         {isUploadingImage ? 'Uploading...' : editForm.optionImages?.[idx] ? 'Change' : 'Image'}
                                       </div>
                                     </label>
@@ -998,7 +994,7 @@ export function TestTaking({
                           <label className={`relative cursor-pointer transition ${isUploadingImage ? 'opacity-50 pointer-events-none' : ''}`}>
                             <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'explanation')} className="absolute inset-0 opacity-0 cursor-pointer" disabled={isUploadingImage} />
                             <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-bold text-xs">
-                              {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-3.5 h-3.5" />}
+                              {isUploadingImage ? <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
                               {isUploadingImage ? 'Uploading...' : editForm.explanationImage ? 'Change Solution Image' : 'Add Solution Image'}
                             </div>
                           </label>

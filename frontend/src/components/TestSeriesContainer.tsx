@@ -53,13 +53,13 @@ type TestState =
   | { mode: 'list' }
   | { mode: 'overview'; test: PublishedTest }
   | {
-      mode: 'taking';
-      test: PublishedTest;
-      attemptId: string;
-      initialAnswers: Record<string, StudentAnswer>;
-      deadlineAt: string;
-      serverNow: string;
-    }
+    mode: 'taking';
+    test: PublishedTest;
+    attemptId: string;
+    initialAnswers: Record<string, StudentAnswer>;
+    deadlineAt: string;
+    serverNow: string;
+  }
   | { mode: 'analytics'; result?: ApiAttemptResult; history?: ApiAttemptHistoryEntry[] }
   | { mode: 'viewResults' };
 
@@ -191,15 +191,15 @@ export function TestSeriesContainer({
     setStudentTests((prev) => prev.map((test) => (
       test.id === testId
         ? {
-            ...test,
-            submittedAttemptCount: summary.submittedAttemptCount,
-            maxAttempts: summary.maxAttempts,
-            hasActiveAttempt: summary.hasActiveAttempt,
-            activeAttemptId: summary.activeAttempt?.id ?? null,
-            latestAttemptId: summary.history[0]?.id ?? null,
-            latestAttemptSubmittedAt: summary.history[0]?.submitted_at ?? null,
-            latestAttemptTimeSpent: summary.history[0]?.time_spent ?? null,
-          }
+          ...test,
+          submittedAttemptCount: summary.submittedAttemptCount,
+          maxAttempts: summary.maxAttempts,
+          hasActiveAttempt: summary.hasActiveAttempt,
+          activeAttemptId: summary.activeAttempt?.id ?? null,
+          latestAttemptId: summary.history[0]?.id ?? null,
+          latestAttemptSubmittedAt: summary.history[0]?.submitted_at ?? null,
+          latestAttemptTimeSpent: summary.history[0]?.time_spent ?? null,
+        }
         : test
     )));
     return summary;
@@ -245,13 +245,13 @@ export function TestSeriesContainer({
       const nextState = mode === 'overview'
         ? { mode: 'overview' as const, test: fullTest }
         : {
-            mode: 'taking' as const,
-            test: fullTest,
-            attemptId: payload.attempt.id,
-            initialAnswers: payload.attempt.answers || {},
-            deadlineAt: payload.attempt.deadline_at,
-            serverNow: payload.serverNow,
-          };
+          mode: 'taking' as const,
+          test: fullTest,
+          attemptId: payload.attempt.id,
+          initialAnswers: payload.attempt.answers || {},
+          deadlineAt: payload.attempt.deadline_at,
+          serverNow: payload.serverNow,
+        };
 
       setTestState(nextState);
     } catch {
@@ -370,9 +370,9 @@ export function TestSeriesContainer({
       setStudentTests((prev) => prev.map((item) => (
         item.id === fullTest.id
           ? {
-              ...item,
-              ...fullTest,
-            }
+            ...item,
+            ...fullTest,
+          }
           : item
       )));
 
@@ -406,14 +406,14 @@ export function TestSeriesContainer({
       setStudentTests((prev) => prev.map((test) => (
         test.id === fullTest.id
           ? {
-              ...test,
-              questions: fullTest.questions,
-              questionCount: fullTest.questionCount,
-              hasActiveAttempt: true,
-              activeAttemptId: payload.attempt.id,
-              submittedAttemptCount: payload.submittedAttemptCount,
-              maxAttempts: payload.maxAttempts,
-            }
+            ...test,
+            questions: fullTest.questions,
+            questionCount: fullTest.questionCount,
+            hasActiveAttempt: true,
+            activeAttemptId: payload.attempt.id,
+            submittedAttemptCount: payload.submittedAttemptCount,
+            maxAttempts: payload.maxAttempts,
+          }
           : test
       )));
 
@@ -568,6 +568,10 @@ function TestOverview({
   isStarting?: boolean;
   isLoadingOverview?: boolean;
 }) {
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
+
   const questions = Array.isArray(test.questions) ? test.questions : [];
 
   const breakdown = useMemo(() => {
@@ -588,12 +592,29 @@ function TestOverview({
     return stats;
   }, [questions]);
 
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-y-auto w-full scrollbar-hide">
+    <div
+      className={isMobileViewport
+        ? 'fixed inset-0 z-50 bg-white overflow-y-auto w-full scrollbar-hide'
+        : 'w-full bg-transparent px-4'}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="min-h-screen w-full bg-white"
+        className={isMobileViewport
+          ? 'min-h-screen w-full bg-white'
+          : 'bg-white max-w-4xl mx-auto rounded-3xl shadow-2xl border border-gray-100 overflow-hidden'}
       >
         <div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 px-4 py-5 sm:px-8 sm:py-8 text-white">
           <button

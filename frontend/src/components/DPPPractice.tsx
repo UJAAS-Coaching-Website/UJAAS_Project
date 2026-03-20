@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, CheckCircle, ChevronRight, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StudentTestTaking } from './StudentTestTaking';
-import { TestTaking } from './TestTaking';
+import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { StudentAnalytics } from './StudentAnalytics';
 import {
   fetchDppAttemptResult,
@@ -163,7 +163,7 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
 
   if (result && reviewOpen) {
     return (
-      <TestTaking
+      <TestPreviewAndReview
         testId={result.dppId}
         testTitle={`${result.dppTitle} - Review`}
         duration={0}
