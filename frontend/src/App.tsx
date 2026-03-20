@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Login } from './components/Login';
-import { StudentDashboard } from './components/StudentDashboard';
-import { AdminDashboard, type AdminTab, type AdminSection } from './components/AdminDashboard';
-import { FacultyDashboard, type FacultyTab, type FacultySection } from './components/FacultyDashboard';
-import { GetStarted } from './components/GetStarted';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import type { AdminTab, AdminSection } from './components/AdminDashboard';
+import type { FacultyTab, FacultySection } from './components/FacultyDashboard';
 import { Notification } from './components/NotificationCenter';
 import { me, logout as logoutRequest, StudentDetails } from './api/auth';
 import {
@@ -68,6 +65,12 @@ import logo from './assets/logo.svg';
 import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
 import { Skeleton } from './components/ui/skeleton';
 import { BatchSaveToast } from './components/BatchSaveToast';
+
+const Login = lazy(() => import('./components/Login').then((module) => ({ default: module.Login })));
+const StudentDashboard = lazy(() => import('./components/StudentDashboard').then((module) => ({ default: module.StudentDashboard })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
+const FacultyDashboard = lazy(() => import('./components/FacultyDashboard').then((module) => ({ default: module.FacultyDashboard })));
+const GetStarted = lazy(() => import('./components/GetStarted').then((module) => ({ default: module.GetStarted })));
 
 export interface User {
   id: string;
@@ -232,6 +235,54 @@ function DashboardLoadingShell({ role }: { role: User['role'] }) {
         </div>
       </main>
     </div>
+  );
+}
+
+function AuthLoadingShell({ isMobile }: { isMobile: boolean }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative overflow-hidden"
+    >
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-200/20 rounded-full blur-[120px] animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+      <div className="text-center relative z-10" style={isMobile ? { marginTop: '-15vh' } : {}}>
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mb-8 relative"
+        >
+          <div className="w-24 h-24 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mx-auto"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img src={logo} alt="UJAAS Logo" className="w-12 h-12 object-contain animate-pulse" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+            UJAAS <span style={{ whiteSpace: 'nowrap' }}>Career Institute</span>
+          </h2>
+          <p className="text-gray-500 font-medium">Empowering Your Success</p>
+        </motion.div>
+
+        <div className="mt-8 w-64 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+            className="w-full h-full bg-gradient-to-r from-teal-400 to-blue-500"
+          ></motion.div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -1230,53 +1281,7 @@ function App() {
       return <DashboardLoadingShell role={user.role} />;
     }
 
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative overflow-hidden"
-      >
-        {/* Decorative background elements */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-200/20 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
-
-        <div className="text-center relative z-10" style={isMobile ? { marginTop: '-15vh' } : {}}>
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="mb-8 relative"
-          >
-            <div className="w-24 h-24 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mx-auto"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img src={logo} alt="UJAAS Logo" className="w-12 h-12 object-contain animate-pulse" />
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-              UJAAS <span style={{ whiteSpace: 'nowrap' }}>Career Institute</span>
-            </h2>
-            <p className="text-gray-500 font-medium">Empowering Your Success</p>
-          </motion.div>
-
-          {/* Progress bar simulation */}
-          <div className="mt-8 w-64 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: "100%" }}
-              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-              className="w-full h-full bg-gradient-to-r from-teal-400 to-blue-500"
-            ></motion.div>
-          </div>
-        </div>
-      </motion.div>
-    );
+    return <AuthLoadingShell isMobile={isMobile} />;
   }
 
   return (<>
@@ -1290,13 +1295,15 @@ function App() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 }}
           >
-            <GetStarted
-              onGetStarted={handleGetStarted}
-              isNewUser={false}
-              userName=""
-              landingData={landingData}
-              onSubmitQuery={handleAddQuery}
-            />
+            <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+              <GetStarted
+                onGetStarted={handleGetStarted}
+                isNewUser={false}
+                userName=""
+                landingData={landingData}
+                onSubmitQuery={handleAddQuery}
+              />
+            </Suspense>
           </motion.div>
         ) : !user ? (
           <motion.div
@@ -1306,7 +1313,9 @@ function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
           >
-            <Login onLogin={handleLogin} />
+            <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+              <Login onLogin={handleLogin} />
+            </Suspense>
           </motion.div>
         ) : user.role === 'student' ? (
           <motion.div
@@ -1316,20 +1325,22 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <StudentDashboard
-              user={user}
-              activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
-              subTab={studentSubTab}
-              onNavigate={navigateTab}
-              onLogout={handleLogout}
-              notifications={notifications}
-              onMarkAsRead={handleMarkAsRead}
-              onMarkAllAsRead={handleMarkAllAsRead}
-              onDeleteNotification={handleDeleteNotification}
-              publishedTests={publishedTests}
-              reviewModalTrigger={reviewModalTrigger}
-              onCloseReview={() => setReviewModalTrigger(0)}
-            />
+            <Suspense fallback={<DashboardLoadingShell role="student" />}>
+              <StudentDashboard
+                user={user}
+                activeTab={(isStudentTab(activeTab) ? activeTab : 'home')}
+                subTab={studentSubTab}
+                onNavigate={navigateTab}
+                onLogout={handleLogout}
+                notifications={notifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                onDeleteNotification={handleDeleteNotification}
+                publishedTests={publishedTests}
+                reviewModalTrigger={reviewModalTrigger}
+                onCloseReview={() => setReviewModalTrigger(0)}
+              />
+            </Suspense>
           </motion.div>
         ) : user.role === 'faculty' ? (
           <motion.div
@@ -1339,29 +1350,31 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <FacultyDashboard
-              user={user}
-              activeTab={(isAdminTab(activeTab) ? activeTab : 'home') as import('./components/FacultyDashboard').FacultyTab}
-              onNavigate={navigateTab}
-              adminSection={adminLandingSection as import('./components/FacultyDashboard').FacultySection}
-              onNavigateSection={handleAdminNavigateSection}
-              selectedBatch={adminBatch}
-              onSelectBatch={handleAdminSelectBatch}
-              onClearBatch={handleAdminClearBatch}
-              batches={adminBatches}
-              onUpdateBatch={updateAdminBatch}
-              onLogout={handleLogout}
-              notifications={notifications}
-              onMarkAsRead={handleMarkAsRead}
-              onMarkAllAsRead={handleMarkAllAsRead}
-              onDeleteNotification={handleDeleteNotification}
-              publishedTests={publishedTests}
-              onPreviewTest={handlePreviewTest}
-              onUpdatePublishedTest={updatePublishedTest}
-              selectedPreviewTest={selectedPreviewTest}
-              adminStudents={adminStudents}
-              onUpdateStudentRating={handleUpdateStudentRating}
-            />
+            <Suspense fallback={<DashboardLoadingShell role="faculty" />}>
+              <FacultyDashboard
+                user={user}
+                activeTab={(isAdminTab(activeTab) ? activeTab : 'home') as import('./components/FacultyDashboard').FacultyTab}
+                onNavigate={navigateTab}
+                adminSection={adminLandingSection as import('./components/FacultyDashboard').FacultySection}
+                onNavigateSection={handleAdminNavigateSection}
+                selectedBatch={adminBatch}
+                onSelectBatch={handleAdminSelectBatch}
+                onClearBatch={handleAdminClearBatch}
+                batches={adminBatches}
+                onUpdateBatch={updateAdminBatch}
+                onLogout={handleLogout}
+                notifications={notifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                onDeleteNotification={handleDeleteNotification}
+                publishedTests={publishedTests}
+                onPreviewTest={handlePreviewTest}
+                onUpdatePublishedTest={updatePublishedTest}
+                selectedPreviewTest={selectedPreviewTest}
+                adminStudents={adminStudents}
+                onUpdateStudentRating={handleUpdateStudentRating}
+              />
+            </Suspense>
           </motion.div>
         ) : (
           <motion.div
@@ -1371,6 +1384,7 @@ function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
+            <Suspense fallback={<DashboardLoadingShell role="admin" />}>
             <AdminDashboard
               user={user}
               activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
@@ -1520,6 +1534,7 @@ function App() {
               subjectCatalog={adminSubjects}
               onRemoveSubjectFromBatch={handleRemoveSubjectFromBatch}
             />
+            </Suspense>
           </motion.div>
         )}
       </AnimatePresence>

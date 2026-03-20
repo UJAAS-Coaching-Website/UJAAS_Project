@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from '../App';
 import {
   GraduationCap,
@@ -296,9 +296,13 @@ export function StudentDashboard({
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
 
-  const handleSubTabNavigate = (newSubTab?: string) => {
+  const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
-  };
+  }, [activeTab, onNavigate]);
+
+  const handleTestSeriesStateChange = useCallback((mode: 'list' | 'overview' | 'taking' | 'analytics' | 'viewResults') => {
+    setIsNavbarInternalHidden(mode !== 'list');
+  }, []);
 
   const handleExitDpp = () => {
     sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
@@ -515,7 +519,7 @@ export function StudentDashboard({
             <TestSeriesContainer
               user={user}
               publishedTests={publishedTests}
-              onStateChange={(mode) => setIsNavbarInternalHidden(mode !== 'list')}
+              onStateChange={handleTestSeriesStateChange}
               subTab={subTab}
               onNavigateSubTab={handleSubTabNavigate}
             />

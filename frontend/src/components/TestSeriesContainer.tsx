@@ -191,6 +191,10 @@ export function TestSeriesContainer({
           return;
         }
 
+        if (testState.mode === 'analytics' && testState.result?.attempt_id === attemptId) {
+          return;
+        }
+
         await openAttemptAnalytics(attemptId);
         return;
       }
@@ -213,10 +217,12 @@ export function TestSeriesContainer({
       }
 
       if (subTab === 'Results') {
-        await loadAttemptResults();
-        if (testState.mode !== 'viewResults') {
-          setTestState({ mode: 'viewResults' });
+        if (testState.mode === 'viewResults') {
+          return;
         }
+
+        await loadAttemptResults();
+        setTestState({ mode: 'viewResults' });
       }
     };
 
