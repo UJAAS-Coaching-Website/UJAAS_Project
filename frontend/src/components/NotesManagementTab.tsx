@@ -152,6 +152,7 @@ export function NotesManagementTab({
 
   // Modals
   const [isAddChapterModalOpen, setIsAddChapterModalOpen] = useState(false);
+  const [isAddingChapter, setIsAddingChapter] = useState(false);
   const [newChapterName, setNewChapterName] = useState('');
   const [isAddSubjectModalOpen, setIsAddSubjectModalOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -246,6 +247,7 @@ export function NotesManagementTab({
     if (!selectedSubject || !canManageContent || !currentBatch?.id) return;
     if (newChapterName.trim()) {
       try {
+        setIsAddingChapter(true);
         const newChapter = await apiCreateChapter({
           batch_id: currentBatch.id,
           subject_name: selectedSubject,
@@ -258,6 +260,8 @@ export function NotesManagementTab({
       } catch (err: any) {
         console.error(err);
         alert(err?.message || 'Failed to create chapter.');
+      } finally {
+        setIsAddingChapter(false);
       }
     }
   };
@@ -1068,15 +1072,24 @@ export function NotesManagementTab({
                   <button
                     type="button"
                     onClick={() => setIsAddChapterModalOpen(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
+                    disabled={isAddingChapter}
+                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+                    disabled={isAddingChapter}
+                    className="flex-1 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-70 flex items-center justify-center gap-2"
                   >
-                    Create Folder
+                    {isAddingChapter ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add Chapter'
+                    )}
                   </button>
                 </div>
               </form>
