@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   FileText,
@@ -55,7 +55,23 @@ export function TestSeriesSection({
   isLoadingResults = false,
   attemptResults = []
 }: TestSeriesProps) {
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
+
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
 
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';
@@ -160,26 +176,50 @@ export function TestSeriesSection({
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+        className={`${isMobileViewport ? 'rounded-3xl p-5' : 'rounded-2xl p-6'} bg-white shadow-lg border border-gray-100`}
       >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Test Series</h1>
-            <p className="text-gray-600">Practice with comprehensive test series to excel in your exams</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <motion.button
-              className={`px-6 py-3 rounded-xl font-semibold shadow-lg transition-all ${
-                isLoadingResults
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
-                  : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
-              }`}
-              onClick={onViewResults}
-              disabled={isLoadingResults}
-            >
-              {isLoadingResults ? 'Loading Results...' : 'View Results'}
-            </motion.button>
-          </div>
+        <div className={isMobileViewport ? '' : 'flex flex-col md:flex-row md:items-center md:justify-between gap-4'}>
+          {isMobileViewport ? (
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[2rem] font-bold text-gray-900">Test Series</h1>
+                <p className="mt-2 text-sm text-gray-600">Start practicing and track your improvement</p>
+              </div>
+              <div className="flex shrink-0 items-center">
+                <motion.button
+                  className={`${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
+                    isLoadingResults
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
+                      : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
+                  }`}
+                  onClick={onViewResults}
+                  disabled={isLoadingResults}
+                >
+                  {isLoadingResults ? 'Loading...' : 'Results'}
+                </motion.button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="">
+                <h1 className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold text-gray-900 mb-2`}>Test Series</h1>
+                <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} text-gray-600`}>Start practicing and track your improvement</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <motion.button
+                  className={`${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
+                    isLoadingResults
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
+                      : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
+                }`}
+                onClick={onViewResults}
+                disabled={isLoadingResults}
+              >
+                {isLoadingResults ? 'Loading Results...' : 'View Results'}
+              </motion.button>
+            </div>
+            </>
+          )}
         </div>
       </motion.div>
 
@@ -201,8 +241,8 @@ export function TestSeriesSection({
             <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-lg flex items-center justify-center mb-3`}>
               <stat.icon className="w-6 h-6 text-white" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-            <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
+            <p className={`${isMobileViewport ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900`}>{stat.value}</p>
+            <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 mt-1`}>{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -266,10 +306,10 @@ export function TestSeriesSection({
             }`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                  <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 group-hover:text-indigo-600 transition-colors`}>
                     {test.title}
                   </h3>
-                  <p className="mt-2 text-sm font-semibold text-gray-600">{getStatusLabel(test.status)}</p>
+                  <p className={`mt-2 ${isMobileViewport ? 'text-xs' : 'text-sm'} font-semibold text-gray-600`}>{getStatusLabel(test.status)}</p>
                 </div>
                 {test.status === 'completed' && (
                   <div className="flex items-center gap-2">
@@ -296,15 +336,15 @@ export function TestSeriesSection({
               <div className="grid grid-cols-3 gap-4">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700 font-medium">{test.duration} min</span>
+                  <span className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-700 font-medium`}>{test.duration} min</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700 font-medium">{test.questions} Qs</span>
+                  <span className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-700 font-medium`}>{test.questions} Qs</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700 font-medium">{test.totalMarks} marks</span>
+                  <span className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-700 font-medium`}>{test.totalMarks} marks</span>
                 </div>
               </div>
             </div>

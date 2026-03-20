@@ -110,6 +110,9 @@ async function forceDownload(url: string, filename: string) {
 }
 
 export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedBatch, setSelectedBatch] = useState<ApiQuestionBankBatchSummary | null>(null);
@@ -179,6 +182,19 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
   };
 
   useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
     void loadFolders();
   }, [userRole]);
 
@@ -246,11 +262,11 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 p-8 rounded-3xl shadow-xl text-white relative overflow-hidden">
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 ${isMobileViewport ? 'p-5' : 'p-8'} rounded-3xl shadow-xl text-white relative overflow-hidden`}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10">
-          <h2 className="text-3xl font-bold tracking-tight">Question Bank</h2>
-          <p className="text-teal-50/90 font-medium">
+          <h2 className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold tracking-tight`}>Question Bank</h2>
+          <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} text-teal-50/90 font-medium`}>
             {userRole === 'faculty'
               ? 'Publish subject-wise question sheets batch by batch'
               : 'Browse subject-wise question sheets for your batch'}
@@ -259,7 +275,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
         {userRole === 'faculty' && (
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-6 py-3 bg-white text-teal-600 rounded-2xl font-bold shadow-lg hover:bg-teal-50 transition flex items-center gap-2 relative z-10"
+            className={`${isMobileViewport ? 'px-4 py-2 text-sm rounded-xl' : 'px-6 py-3 rounded-2xl'} bg-white text-teal-600 font-bold shadow-lg hover:bg-teal-50 transition flex items-center gap-2 relative z-10`}
           >
             <Plus className="w-5 h-5" />
             Add to Question Bank
@@ -278,8 +294,8 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
               Back
             </button>
             <div className="min-w-0">
-              <h3 className="text-xl font-bold text-gray-900 break-words">{listTitle}</h3>
-              <p className="text-sm text-gray-500">{listSubtitle}</p>
+              <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 break-words`}>{listTitle}</h3>
+              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-500`}>{listSubtitle}</p>
             </div>
           </div>
 
@@ -340,8 +356,8 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
               <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner">
                 <Folder className="w-10 h-10" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{batch.name}</h3>
-              <p className="text-sm text-gray-500">{facultyCounts.get(batch.id) || 0} Files</p>
+              <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-2`}>{batch.name}</h3>
+              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-500`}>{facultyCounts.get(batch.id) || 0} Files</p>
             </motion.button>
           ))}
 
@@ -359,8 +375,8 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
               <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner">
                 <BookOpen className="w-10 h-10" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{subject}</h3>
-              <p className="text-sm text-gray-500">{items.filter((item) => item.subject_name === subject).length} Files</p>
+              <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-2`}>{subject}</h3>
+              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-500`}>{items.filter((item) => item.subject_name === subject).length} Files</p>
             </motion.button>
           ))}
         </div>
@@ -415,7 +431,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2 mb-2">
-                      <h4 className="font-bold text-gray-900 truncate text-lg">{item.title}</h4>
+                      <h4 className={`font-bold text-gray-900 truncate ${isMobileViewport ? 'text-base' : 'text-lg'}`}>{item.title}</h4>
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getDifficultyClasses(item.difficulty)}`}>
                         {formatDifficulty(item.difficulty)}
                       </span>

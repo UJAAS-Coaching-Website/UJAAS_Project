@@ -429,7 +429,9 @@ export function StudentDashboard({
                   style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
                 >
                   <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{tab.label}</span>
+                  <span className="truncate">
+                    {isMobileViewport && tab.id === 'question-bank' ? 'QB' : tab.label}
+                  </span>
                 </motion.button>
               ))}
             </div>
@@ -855,7 +857,7 @@ function HomeTab({
                   className="space-y-3"
                 >
                   <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} max-w-xl text-teal-50/90`}>
-                    Pick up where you left off.
+                    Pick up where you left off
                   </p>
                 </motion.div>
               </div>
@@ -883,7 +885,12 @@ function HomeTab({
                 >
                   <stat.icon className={`${isMobileViewport ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
                 </motion.div>
-                <p className={`${isMobileViewport ? 'text-2xl mb-0' : 'text-3xl mb-1'} font-bold text-gray-900`}>{stat.value}</p>
+                <p
+                  className={`${isMobileViewport ? 'mb-0 text-2xl' : 'mb-1 text-3xl'} font-bold text-gray-900`}
+                  style={isMobileViewport && stat.value === 'Loading...' ? { fontSize: '1.1rem', lineHeight: '1.2' } : undefined}
+                >
+                  {stat.value}
+                </p>
               </div>
               <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
               
