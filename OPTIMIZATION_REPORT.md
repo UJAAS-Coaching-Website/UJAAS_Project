@@ -79,6 +79,11 @@ Deliverable:
 
 - a concrete candidate map of what was safe to remove, extract, or keep for compatibility
 
+Recommended testing after this phase:
+
+- no dedicated feature testing required because this phase was audit-only
+- optional sanity build to confirm no accidental file movement occurred
+
 ## Plan 2: Frontend Dead Code And Dependency Pruning
 This phase removed verified unused frontend runtime and source-tree clutter.
 
@@ -101,6 +106,14 @@ Value added:
 Validation:
 
 - frontend production build passed
+
+Recommended testing after this phase:
+
+- launch the frontend normally
+- verify the landing page still loads
+- verify login still loads
+- verify no missing-style or missing-component errors appear in the browser console
+- verify question bank, dashboards, and shared skeleton/loading states still render
 
 ## Plan 3: Shared Frontend Utilities
 This phase extracted duplicated logic into shared modules.
@@ -146,6 +159,16 @@ Value added:
 - lower risk of behavior drift across screens
 - better readability in the largest files
 
+Recommended testing after this phase:
+
+- login persistence and role-based data loading
+- student test list, overview, start, submit, analysis, and history
+- faculty analytics and review flows
+- admin preview/publish/edit test flows
+- student profile performance and settings sections
+- faculty profile data rendering
+- admin/faculty student remarks and rating flows
+
 ## Plan 4: Shared Frontend Hooks And Viewport Logic
 This phase standardized repeated viewport and scroll-lock behavior.
 
@@ -172,6 +195,18 @@ Value added:
 - fewer low-level event handlers spread across the app
 - more consistent responsive logic
 - reduced chance of modal scroll bugs
+
+Recommended testing after this phase:
+
+- responsive behavior around mobile/desktop breakpoints
+- get started page layout at different widths
+- login page layout at different widths
+- footer mobile/desktop behavior
+- question bank mobile layout
+- student dashboard mobile layout
+- student timetable modal scroll lock
+- faculty timetable modal scroll lock
+- upload notice modal scroll lock
 
 ## Plan 5: Timetable And Shared Dashboard Behavior
 This phase consolidated repeated timetable behavior across roles.
@@ -200,6 +235,14 @@ Value added:
 - timetable behavior centralized
 - lower maintenance cost for future timetable changes
 
+Recommended testing after this phase:
+
+- student timetable open, close, and download
+- faculty timetable open, close, and download
+- admin timetable open, upload, change, delete, and download
+- repeated open/close behavior to verify scroll lock recovery
+- timetable modal behavior on mobile and desktop widths
+
 ## Plan 6: Break Up App.tsx
 This phase reduced orchestration crowding inside `App.tsx`.
 
@@ -222,6 +265,17 @@ Value added:
 - state concerns were grouped by responsibility
 - app shell code became easier to reason about
 
+Recommended testing after this phase:
+
+- student, faculty, and admin login
+- session restore on refresh
+- logout behavior
+- landing query submit flow
+- admin landing content update flow
+- admin query update and delete flow
+- student notifications load, mark read, mark all read, delete, and review-open behavior
+- batch save toast visibility on save/error flows
+
 ## Plan 7: Admin And Faculty Dashboard Modularization
 This phase started splitting repeated and bulky dashboard sections.
 
@@ -242,6 +296,15 @@ Value added:
 - dashboard files became smaller
 - repeated presentation logic moved out of primary orchestration files
 - clearer ownership of dashboard subsections
+
+Recommended testing after this phase:
+
+- admin batch list screen
+- admin global students directory
+- admin interest queries list and query detail actions
+- faculty batch list screen
+- opening a batch from admin and faculty batch cards
+- admin student view/edit/delete from the directory
 
 ## Plan 8: Student Dashboard And Question/Test Flow Cleanup
 This phase modularized student-side and question/test flow code.
@@ -277,6 +340,20 @@ Value added:
 - easier-to-maintain test flow structure
 - cleaner question bank component boundaries
 
+Recommended testing after this phase:
+
+- student dashboard home and assigned batch content
+- student timetable entry from the dashboard
+- student test list
+- student test overview
+- student test start flow
+- student test submit flow
+- student result analysis
+- student attempt history and view details
+- student and faculty question bank navigation
+- faculty question bank upload modal
+- faculty question bank upload and delete-from-batch flow
+
 ## Plan 9: Frontend Code-Splitting And Bundle Optimization
 This phase added major top-level lazy loading.
 
@@ -305,6 +382,16 @@ Value added:
 - significantly better initial bundle shape
 - reduced first-load cost
 - better caching boundaries between major app areas
+
+Recommended testing after this phase:
+
+- first load of get started
+- get started to login transition
+- login into student, faculty, and admin
+- direct refresh on student, faculty, and admin routes after login
+- first open of heavy dashboard sections
+- test preview/review/analytics screens after lazy loading
+- question bank first open after lazy loading
 
 ## Plan 10: Backend Shared Assessment Core
 This phase extracted duplicated assessment logic from test and DPP services.
@@ -335,6 +422,15 @@ Value added:
 - removed duplicated scoring logic across assessment types
 - reduced risk of inconsistent grading behavior
 - improved maintainability of the core evaluation flow
+
+Recommended testing after this phase:
+
+- student test start, submit, result, and analysis
+- student attempt history
+- student DPP attempt, result, review, and analytics
+- faculty/admin test analytics and attempt review
+- question explanation loading during review mode
+- JEE Main section-B scoring behavior
 
 ## Plan 11: Backend Compatibility And Service Modularization
 This phase narrowed student-batch compatibility handling.
@@ -367,6 +463,14 @@ Value added:
 - service code is less cluttered by schema branching
 - legacy support remains intact
 
+Recommended testing after this phase:
+
+- student visibility of tests by assigned batch
+- student visibility of DPPs by assigned batch
+- student access restrictions when not assigned to a target batch
+- admin/faculty test list/count behavior
+- any environment that still relies on legacy `student_batches`
+
 ## Plan 12: Final Verification And Cleanup Pass
 This phase validated final state and updated project tracking.
 
@@ -379,6 +483,15 @@ Final checks:
   - `backend/src/services/testService.js`
   - `backend/src/services/dppService.js`
 - roadmap status was updated in `OPTIMIZATION_ROADMAP.md`
+
+Recommended testing after this phase:
+
+- full role smoke test:
+  - student login, dashboard, question bank, test flow, DPP flow, profile
+  - faculty login, batch view, students tab, attendance flow, question bank, test review, analytics
+  - admin login, landing management, batches, students, faculty, queries, test management, timetable actions
+- final refresh test on deep-linked routes
+- final browser-console sanity pass on major screens
 
 ## Pagination Work Added During Stabilization
 Beyond the original roadmap, pagination was also added to student-heavy views.
@@ -400,6 +513,16 @@ Value added:
 
 - lower UI rendering cost on large cohorts
 - improved usability for large student lists
+
+Recommended testing after pagination work:
+
+- admin global student directory with more than 20 students
+- admin batch student list with more than 20 students
+- faculty batch student list with more than 20 students
+- switching pages
+- switching batch while on a later page
+- admin row actions from page 2+
+- faculty attendance edit/save while not on the first page
 
 ## Regressions Encountered And Resolved
 Because this was an aggressive refactor, several runtime issues surfaced and were fixed during the rollout.
