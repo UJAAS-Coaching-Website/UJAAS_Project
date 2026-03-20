@@ -243,6 +243,15 @@ export async function deleteImageFromStorage(imageUrl) {
   }
 }
 
+export async function deleteAvatarFromStorage(imageUrl) {
+  try {
+    await deleteFileFromStorageByUrl(imageUrl, AVATARS_BUCKET_NAME);
+  } catch (error) {
+    console.error('Avatar storage delete error:', error);
+    throw new Error('Failed to delete avatar from storage.');
+  }
+}
+
 export async function deleteLandingPageImageFromStorage(imageUrl) {
   try {
     await deleteFileFromStorageByUrl(imageUrl, LANDING_PAGE_BUCKET_NAME);

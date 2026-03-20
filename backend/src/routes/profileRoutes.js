@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from 'multer';
-import { updateProfile, uploadAvatar } from "../controllers/profileController.js";
+import { updateProfile, uploadAvatar, deleteAvatar } from "../controllers/profileController.js";
 import { authenticate, requireAnyRole } from "../middleware/auth.js";
 
 const router = Router();
@@ -27,5 +27,6 @@ const upload = multer({
 
 router.put("/me", authenticate, requireAnyRole("student", "faculty", "admin"), updateProfile);
 router.post("/avatar", authenticate, upload.single('avatar'), uploadAvatar);
+router.delete("/avatar", authenticate, deleteAvatar);
 
 export default router;

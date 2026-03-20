@@ -23,6 +23,23 @@ export async function uploadAvatar(req, res) {
     }
 }
 
+export async function deleteAvatar(req, res) {
+    try {
+        const user = await fetchUserProfileById(req.user.sub);
+        if (user && user.avatar_url) {
+            const { deleteAvatarFromStorage } = await import("../services/storageService.js");
+            await deleteAvatarFromStorage(user.avatar_url);
+        }
+
+        await updateUserAvatar(req.user.sub, null);
+
+        return res.status(200).json({ status: 'success' });
+    } catch (error) {
+        console.error('Avatar delete error:', error);
+        return res.status(500).json({ message: "failed to delete avatar", error: error.message });
+    }
+}
+
 export async function updateProfile(req, res) {
     const { name, phone, address, dateOfBirth, parentContact } = req.body || {};
     const normalizedName = String(name ?? "").trim();

@@ -185,6 +185,10 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
   return data;
 }
 
+export async function deleteAvatar(): Promise<void> {
+  await request("/api/profile/avatar", { method: "DELETE" });
+}
+
 export async function logout(): Promise<void> {
   try {
     await request("/api/auth/logout", { method: "POST" });

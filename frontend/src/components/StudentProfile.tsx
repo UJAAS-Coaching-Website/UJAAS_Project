@@ -203,8 +203,8 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
     return Number((total / ratingsList.length).toFixed(1));
   };
 
-  const handleAvatarUpdate = (newAvatarUrl: string) => {
-    setProfileUser(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
+  const handleAvatarUpdate = (newAvatarUrl: string | null) => {
+    setProfileUser(prev => ({ ...prev, avatarUrl: newAvatarUrl || undefined }));
   };
 
   const overallPerformance = calculateOverallPerformance();
@@ -278,9 +278,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       {/* Content Sections */}
       {activeSection === 'overview' && (
         <OverviewSection
-          user={profileUser}
           details={studentDetails}
-          overallPerformance={overallPerformance}
         />
       )}
 
@@ -340,30 +338,12 @@ function renderPerformanceStars(rating: number) {
 }
 
 function OverviewSection({ 
-  details, 
-  overallPerformance
+  details
 }: { 
   details: StudentDetails; 
-  overallPerformance: number;
 }) {
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6 shadow-lg border border-white"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Star className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <div className="mb-2">{renderPerformanceStars(overallPerformance)}</div>
-          <p className="text-sm text-gray-600">Overall Rating</p>
-        </motion.div>
-      </div>
 
       {/* Personal Information */}
       <motion.div
@@ -494,7 +474,7 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
               {/* Body */}
               <div className="p-6 sm:p-8 space-y-6 overflow-y-auto">
                 {(() => {
-                  const detailed = getDetailedRatings(selectedSubject);
+                  const detailed = getDetailedRatings(selectedSubject) || { attendance: 0, tests: 0, dppPerformance: 0, behavior: 0 };
                   const items = [
                     { label: 'Attendance', val: detailed.attendance },
                     { label: 'Test Performance', val: detailed.tests },
@@ -521,17 +501,17 @@ function PerformanceSection({ details, user }: { details: StudentDetails; user: 
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Subject Average</p>
                       <p className="text-2xl font-black text-gray-900">
-                        {((getDetailedRatings(selectedSubject).attendance + 
-                           getDetailedRatings(selectedSubject).tests + 
-                           getDetailedRatings(selectedSubject).dppPerformance + 
-                           getDetailedRatings(selectedSubject).behavior) / 4).toFixed(1)}
+                        {(() => {
+                          const detailed = getDetailedRatings(selectedSubject) || { attendance: 0, tests: 0, dppPerformance: 0, behavior: 0 };
+                          return ((detailed.attendance + detailed.tests + detailed.dppPerformance + detailed.behavior) / 4).toFixed(1);
+                        })()}
                         <span className="text-sm text-gray-400">/5.0</span>
                       </p>
                     </div>
-                    {renderPerformanceStars(((getDetailedRatings(selectedSubject).attendance + 
-                           getDetailedRatings(selectedSubject).tests + 
-                           getDetailedRatings(selectedSubject).dppPerformance + 
-                           getDetailedRatings(selectedSubject).behavior) / 4))}
+                    {(() => {
+                      const detailed = getDetailedRatings(selectedSubject) || { attendance: 0, tests: 0, dppPerformance: 0, behavior: 0 };
+                      return renderPerformanceStars((detailed.attendance + detailed.tests + detailed.dppPerformance + detailed.behavior) / 4);
+                    })()}
                   </div>
                 </div>
               </div>
