@@ -801,6 +801,7 @@ function HomeTab({
   const stats = [
     {
       label: 'DPP Completed',
+      display: 'progress',
       value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`,
       icon: ClipboardList,
       gradient: 'from-green-500 to-emerald-500',
@@ -810,7 +811,8 @@ function HomeTab({
       onClick: undefined
     },
     {
-      label: 'My Performance Rating',
+      label: 'Performance Rating',
+      display: 'stars',
       value: `${currentRating.toFixed(1)}/5.0`,
       icon: Star,
       gradient: 'from-yellow-500 to-orange-500',
@@ -863,7 +865,7 @@ function HomeTab({
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid ${isMobileViewport ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'} gap-4`}>
         {stats.map((stat, index) => (
           <motion.div
             key={index}
@@ -871,21 +873,21 @@ function HomeTab({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             onClick={stat.clickable ? stat.onClick : undefined}
-            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
+            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl ${isMobileViewport ? 'p-4' : 'p-6'} shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
-              <div className="flex items-center justify-between mb-3">
+              <div className={`flex items-center justify-between ${isMobileViewport ? 'mb-2' : 'mb-3'}`}>
                 <motion.div
-                   className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}
+                   className={`${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}
                 >
-                  <stat.icon className="w-6 h-6 text-white" />
+                  <stat.icon className={`${isMobileViewport ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
                 </motion.div>
               </div>
               <p className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold text-gray-900 mb-1`}>{stat.value}</p>
               <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
               
-              {stat.label === 'My Performance Rating' ? (
+              {stat.display === 'stars' ? (
                 <div className="mt-2">
                   {renderPerformanceStars(currentRating)}
                 </div>
