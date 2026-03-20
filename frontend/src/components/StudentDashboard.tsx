@@ -63,11 +63,13 @@ export function StudentDashboard({
   reviewModalTrigger,
   onCloseReview
 }: StudentDashboardProps) {
+  const MOBILE_NAV_SPACER_HEIGHT = 92;
+  const MOBILE_NAV_HIDE_DISTANCE = 112;
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
   const [isMobileViewport, setIsMobileViewport] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
-  const [isMobileNavVisible, setIsMobileNavVisible] = useState(true);
+  const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
@@ -162,7 +164,7 @@ export function StudentDashboard({
 
   useEffect(() => {
     if (!isMobileViewport) {
-      setIsMobileNavVisible(true);
+      setMobileNavOffset(0);
       return;
     }
 
@@ -170,13 +172,15 @@ export function StudentDashboard({
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY;
 
       if (currentScrollY <= 8) {
-        setIsMobileNavVisible(true);
-      } else if (currentScrollY > lastScrollY + 4) {
-        setIsMobileNavVisible(false);
-      } else if (currentScrollY < lastScrollY - 4) {
-        setIsMobileNavVisible(true);
+        setMobileNavOffset(0);
+      } else if (Math.abs(delta) > 1) {
+        setMobileNavOffset((prev) => {
+          const next = prev + delta;
+          return Math.max(0, Math.min(MOBILE_NAV_HIDE_DISTANCE, next));
+        });
       }
 
       lastScrollY = currentScrollY;
@@ -360,27 +364,30 @@ export function StudentDashboard({
         <nav
           className="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white fixed top-0 left-0 right-0 z-layer-navbar transition-transform duration-300"
           style={{
-            transform: isMobileViewport && !isMobileNavVisible ? 'translateY(-100%)' : 'translateY(0)',
+            transform: isMobileViewport ? `translateY(-${mobileNavOffset}px)` : 'translateY(0)',
           }}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {isMobileViewport ? (
               <>
-            <div className="flex items-center justify-between h-16">
+            <div className="flex items-center justify-between h-14">
               <motion.button
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 cursor-pointer"
+                className="flex items-center gap-3 cursor-pointer"
                 onClick={() => {
                   setProfileSection('overview');
                   onNavigate('home');
                 }}
                 title="Go to Dashboard"
               >
-                <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
+                <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
+                <span className="text-lg font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
+                  UJAAS
+                </span>
               </motion.button>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <StudentNotificationSheet
                   notifications={notifications}
                   onMarkAsRead={onMarkAsRead}
@@ -395,13 +402,13 @@ export function StudentDashboard({
                   className="p-0 border-none bg-transparent"
                   title="View Profile"
                 >
-                  <MiniAvatar user={user} className="w-10 h-10" />
+                  <MiniAvatar user={user} className="w-9 h-9" />
                 </motion.button>
               </div>
             </div>
 
             <div className="border-t border-gray-200">
-            <div className="flex items-center justify-center gap-2 px-1 py-3">
+            <div className="flex items-center justify-center gap-2 px-1 py-2">
               {[
                 { id: 'home', label: 'Dashboard', icon: GraduationCap },
                 { id: 'test-series', label: 'Test Series', icon: FileText },
@@ -413,7 +420,7 @@ export function StudentDashboard({
                     if (tab.id === 'home') setProfileSection('overview');
                     onNavigate(tab.id as Tab);
                   }}
-                  className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
+                  className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
                     (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
                       ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
@@ -499,8 +506,8 @@ export function StudentDashboard({
       {/* Main Content */}
       <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         {!isNavbarHidden && (
-          <div className={isMobileViewport ? 'h-[116px]' : 'h-16'} />
-        )} {/* Spacer for fixed navbar */}
+          <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
+        )}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
