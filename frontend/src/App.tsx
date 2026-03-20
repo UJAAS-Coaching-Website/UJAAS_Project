@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Login } from './components/Login';
 import { StudentDashboard } from './components/StudentDashboard';
 import { AdminDashboard, type AdminTab, type AdminSection } from './components/AdminDashboard';
@@ -60,15 +60,14 @@ import {
 import { formatTimeAgo } from './utils/time';
 import { mapApiTestToPublished as apiTestToPublished } from './utils/testMappings';
 import { useIsMobileViewport } from './hooks/useViewport';
-import { 
-  fetchStudentNotifications, 
-  markNotificationAsRead as apiMarkRead, 
-  deleteNotification as apiDeleteNotification 
-} from './api/facultyReviews';
+import { useBatchSaveToast } from './hooks/useBatchSaveToast';
+import { useLandingContent } from './hooks/useLandingContent';
+import { useStudentNotifications } from './hooks/useStudentNotifications';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
 import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
 import { Skeleton } from './components/ui/skeleton';
+import { BatchSaveToast } from './components/BatchSaveToast';
 
 export interface User {
   id: string;
@@ -267,136 +266,21 @@ function App() {
 
   const [user, setUser] = useState<User | null>(null);
   const [reviewModalTrigger, setReviewModalTrigger] = useState(0);
-  const hasShownStorageWarning = useRef(false);
-
-  const safeSetLocalStorage = (key: string, value: string) => {
-    try {
-      localStorage.setItem(key, value);
-    } catch (error) {
-      console.error(`Failed to persist ${key} in localStorage`, error);
-      if (
-        key === 'ujaasLandingData' &&
-        !hasShownStorageWarning.current &&
-        typeof window !== 'undefined'
-      ) {
-        hasShownStorageWarning.current = true;
-        window.alert('Storage is full. New faculty/achiever images will work now but may not be saved after refresh. Use smaller images.');
-      }
-    }
-  };
 
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
-  const [queries, setQueries] = useState<LandingQuery[]>([]);
   const isMobile = useIsMobileViewport();
-
-  const handleAddQuery = async (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => {
-    try {
-      const newQuery = await apiSubmitQuery(query);
-      setQueries(prev => [newQuery as LandingQuery, ...prev]);
-    } catch (error) {
-      console.error('Failed to submit query:', error);
-      // Fallback: add locally
-      const courseName = landingData.courses.find(c => c.id === query.courseId)?.name ?? query.courseId;
-      const fallback: LandingQuery = {
-        name: query.name,
-        email: query.email,
-        phone: query.phone,
-        course: courseName,
-        courseId: query.courseId,
-        message: query.message,
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString(),
-        status: 'new'
-      };
-      setQueries(prev => [fallback, ...prev]);
-    }
-  };
-
-  const handleUpdateQueries = useCallback(async (updatedQueries: LandingQuery[]) => {
-    // Find queries whose status changed and sync with API
-    for (const q of updatedQueries) {
-      const prev = queries.find(old => old.id === q.id);
-      if (prev && prev.status !== q.status) {
-        try {
-          await apiUpdateQueryStatus(q.id, q.status);
-        } catch (error) {
-          console.error('Failed to update query status:', error);
-        }
-      }
-    }
-    setQueries(updatedQueries);
-  }, [queries]);
-
-  const handleDeleteQuery = useCallback(async (id: string) => {
-    try {
-      await apiDeleteQuery(id);
-      setQueries(prev => prev.filter(q => q.id !== id));
-    } catch (error) {
-      console.error('Failed to delete query:', error);
-    }
-  }, []);
-
-  const [landingData, setLandingData] = useState<LandingData>(() => {
-    const defaultData = {
-      courses: [
-        { id: 'fallback-1', name: 'JEE MAINS / ADVANCED' },
-        { id: 'fallback-2', name: 'NEET' },
-        { id: 'fallback-3', name: 'BOARDS' },
-        { id: 'fallback-4', name: 'GUJCET' },
-        { id: 'fallback-5', name: '11TH SCIENCE' },
-        { id: 'fallback-6', name: '12TH SCIENCE' },
-        { id: 'fallback-7', name: '7TH TO 10TH FOUNDATION' },
-        { id: 'fallback-8', name: 'DROPPER BATCH' }
-      ],
-      faculty: [],
-      achievers: [],
-      visions: [],
-      contact: {
-        phone: '+91 98765 43210',
-        email: 'info@ujaas.com',
-        address: '123 Education St, Delhi'
-      }
-    };
-
-    const stored = localStorage.getItem('ujaasLandingData');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-
-        // Merge visions: keep stored ones, but add any defaults that are missing by ID
-        const mergedVisions = [...(Array.isArray(parsed.visions) ? parsed.visions : [])];
-        defaultData.visions.forEach(v => {
-          if (!mergedVisions.some(mv => mv.id === v.id)) {
-            mergedVisions.push(v);
-          }
-        });
-
-        return {
-          ...defaultData,
-          ...parsed,
-          courses: Array.isArray(parsed.courses) ? parsed.courses : defaultData.courses,
-          faculty: Array.isArray(parsed.faculty) ? parsed.faculty : defaultData.faculty,
-          achievers: Array.isArray(parsed.achievers) ? parsed.achievers : defaultData.achievers,
-          visions: mergedVisions,
-          contact: parsed.contact || defaultData.contact,
-        };
-      } catch (e) {
-        console.error('Failed to parse landing data', e);
-      }
-    }
-    return defaultData;
-  });
-
-  const handleUpdateLandingData = useCallback(async (data: LandingData) => {
-    setLandingData(data);
-    try {
-      await apiUpdateLanding(data);
-    } catch (error) {
-      console.error('Failed to save landing data to API:', error);
-      throw error;
-    }
-  }, []);
+  const {
+    landingData,
+    queries,
+    setLandingData,
+    setQueries,
+    safeSetLocalStorage,
+    handleAddQuery,
+    handleUpdateQueries,
+    handleDeleteQuery,
+    handleUpdateLandingData,
+  } = useLandingContent();
 
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>([]);
 
@@ -612,19 +496,20 @@ function App() {
   const [adminSubjects, setAdminSubjects] = useState<ApiSubject[]>([]);
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [batchSaveToast, setBatchSaveToast] = useState<{ visible: boolean; status: 'saving' | 'saved' | 'error'; message: string }>({ visible: false, status: 'saving', message: '' });
-  const batchSaveToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showBatchToast = (status: 'saving' | 'saved' | 'error', message: string, autoHideMs = 2500) => {
-    if (batchSaveToastTimer.current) clearTimeout(batchSaveToastTimer.current);
-    setBatchSaveToast({ visible: true, status, message });
-    if (status !== 'saving') {
-      batchSaveToastTimer.current = setTimeout(() => {
-        setBatchSaveToast(prev => ({ ...prev, visible: false }));
-      }, autoHideMs);
-    }
-  };
+  const { batchSaveToast, setBatchSaveToast, showBatchToast } = useBatchSaveToast();
+  const {
+    notifications,
+    handleMarkAsRead,
+    handleMarkAllAsRead,
+    handleDeleteNotification,
+  } = useStudentNotifications({
+    user,
+    onOpenReview: () => {
+      console.log("🌟 Review Notification Clicked! Triggering modal...");
+      setReviewModalTrigger((prev) => prev + 1);
+    },
+    persistNotifications: safeSetLocalStorage,
+  });
 
   const refreshAdminBatchDependencies = async () => {
     const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
@@ -1218,13 +1103,6 @@ function App() {
     };
   }, [user]);
 
-  // Save notifications to localStorage whenever they change
-  useEffect(() => {
-    if (notifications.length > 0) {
-      safeSetLocalStorage('ujaasNotifications', JSON.stringify(notifications));
-    }
-  }, [notifications]);
-
   const handleLogin = async (userData: User) => {
     setUser(userData);
     setShowGetStarted(false);
@@ -1342,67 +1220,6 @@ function App() {
     setShowGetStarted(true);
     window.history.pushState({ view: 'get-started' }, '', '/get-started');
   };
-
-  const refreshNotifications = useCallback(async () => {
-    if (!user || user.role !== 'student') return;
-    try {
-      const data = await fetchStudentNotifications();
-      const mapped: Notification[] = data.map(n => ({
-        id: n.id,
-        type: (['info', 'success', 'warning', 'announcement'].includes(n.type) ? n.type : 'info') as Notification['type'],
-        title: n.title,
-        message: n.message,
-        time: formatTimeAgo(n.created_at),
-        read: n.is_read,
-        isSticky: n.is_sticky,
-        metadata: n.metadata,
-        icon: (n.type === 'test' ? 'award' : n.type === 'dpp' ? 'dpp' : n.type === 'review' ? 'alert' : 'notes') as Notification['icon'],
-        onClick: n.metadata?.openReview ? () => {
-          console.log("🌟 Review Notification Clicked! Triggering modal...");
-          setReviewModalTrigger(prev => prev + 1);
-        } : undefined
-      }));
-      setNotifications(mapped);
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    refreshNotifications();
-    const timer = setInterval(refreshNotifications, 60000); // Refresh every minute
-    return () => clearInterval(timer);
-  }, [refreshNotifications]);
-
-  const handleMarkAsRead = async (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
-    if (user?.role === 'student') {
-      try {
-        await apiMarkRead(id);
-      } catch (err) {
-        console.error("Failed to mark read:", err);
-      }
-    }
-  };
-
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    // We could add an API for this too if needed
-  };
-
-  const handleDeleteNotification = async (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-    if (user?.role === 'student') {
-      try {
-        await apiDeleteNotification(id);
-      } catch (err) {
-        console.error("Failed to delete notification:", err);
-      }
-    }
-  };
-
   const handleGetStarted = () => {
     setShowGetStarted(false);
     window.history.pushState({ view: 'login' }, '', '/login');
@@ -1707,76 +1524,10 @@ function App() {
         )}
       </AnimatePresence>
     </MotionConfig>
-
-    {/* Batch Save-to-Database Toast */}
-    <AnimatePresence>
-      {batchSaveToast.visible && (
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          transition={{ duration: 0.25 }}
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 99999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '14px 22px',
-            borderRadius: 16,
-            background: batchSaveToast.status === 'error'
-              ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
-              : batchSaveToast.status === 'saved'
-                ? 'linear-gradient(135deg, #059669, #047857)'
-                : 'linear-gradient(135deg, #0891b2, #0e7490)',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 14,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-            backdropFilter: 'blur(8px)',
-            minWidth: 220,
-          }}
-        >
-          {batchSaveToast.status === 'saving' && (
-            <span style={{
-              display: 'inline-block',
-              width: 18,
-              height: 18,
-              border: '2.5px solid rgba(255,255,255,0.3)',
-              borderTopColor: '#fff',
-              borderRadius: '50%',
-              animation: 'spin 0.7s linear infinite',
-              flexShrink: 0,
-            }} />
-          )}
-          {batchSaveToast.status === 'saved' && (
-            <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
-          )}
-          {batchSaveToast.status === 'error' && (
-            <span style={{ fontSize: 18, flexShrink: 0 }}>✕</span>
-          )}
-          <span>{batchSaveToast.message}</span>
-          <button
-            onClick={() => setBatchSaveToast(prev => ({ ...prev, visible: false }))}
-            style={{
-              marginLeft: 'auto',
-              background: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              borderRadius: 8,
-              color: '#fff',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            ✕
-          </button>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <BatchSaveToast
+      toast={batchSaveToast}
+      onDismiss={() => setBatchSaveToast(prev => ({ ...prev, visible: false }))}
+    />
 
     {/* Inline keyframes for spinner */}
     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -1784,3 +1535,5 @@ function App() {
 }
 
 export default App;
+
+
