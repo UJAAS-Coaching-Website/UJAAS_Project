@@ -603,8 +603,8 @@ export function StudentDashboard({
               onClick={e => e.stopPropagation()}
             >
               <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
-                <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
+                <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Batch Weekly Schedule</h3>
+                <button onClick={() => setShowFullTimetable(false)} className={`${isMobileViewport ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-full transition-colors`}><X className={`${isMobileViewport ? 'w-5 h-5' : 'w-6 h-6'} text-gray-500`} /></button>
               </div>
               <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
                 {batchDetails?.timetable_url ? (
@@ -623,12 +623,12 @@ export function StudentDashboard({
                   <button
                     type="button"
                     onClick={() => handleTimetableDownload(batchDetails.timetable_url)}
-                    className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-blue-700 transition flex items-center gap-2 shadow-lg shadow-indigo-200/60 border border-indigo-500/60"
+                    className={`${isMobileViewport ? 'px-4 py-1.5 text-sm rounded-lg gap-1.5' : 'px-6 py-2 rounded-xl gap-2'} bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold hover:from-indigo-700 hover:to-blue-700 transition flex items-center shadow-lg shadow-indigo-200/60 border border-indigo-500/60`}
                   >
-                    <Download className="w-4 h-4" />Download
+                    <Download className={`${isMobileViewport ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />Download
                   </button>
                 )}
-                <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
+                <button onClick={() => setShowFullTimetable(false)} className={`${isMobileViewport ? 'px-4 py-1.5 text-sm rounded-lg' : 'px-6 py-2 rounded-xl'} bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition`}>Close</button>
               </div>
             </motion.div>
           </motion.div>
@@ -982,24 +982,24 @@ function AssignedBatchContent({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border border-white relative overflow-hidden">
+      <div className="flex items-center gap-3 md:gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border border-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
-        <div className="relative z-10">
+        <div className="relative z-10 min-w-0 flex-1">
           <div className="flex flex-col gap-1">
             <h2 className={`${isMobileViewport ? 'text-lg' : 'text-3xl'} font-bold tracking-tight text-slate-900`}>{user.studentDetails?.batch}</h2>
           </div>
         </div>
         <button
           onClick={onViewTimetable}
-          className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white text-slate-700 rounded-xl font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50 self-start md:self-auto md:ml-auto"
+          className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 ${isMobileViewport ? 'px-3 py-1.5 text-xs rounded-lg' : 'px-4 py-2 rounded-xl'} bg-white text-slate-700 font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50`}
         >
-          <Calendar className="w-5 h-5 text-teal-600" />
+          <Calendar className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} text-teal-600`} />
           Time Table
         </button>
       </div>
 
       <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100 shadow-xl">
-        <div className="p-5 flex items-center gap-3">
+        <div className={`${isMobileViewport ? 'p-3' : 'p-5'} flex items-center gap-3`}>
           <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
             <BookOpen className="w-6 h-6 text-emerald-600" />
           </div>

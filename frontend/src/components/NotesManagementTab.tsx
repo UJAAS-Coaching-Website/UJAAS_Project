@@ -644,7 +644,7 @@ export function NotesManagementTab({
       )}
 
       {currentView === 'root' && (
-        <div className={`grid gap-6 ${variant === 'admin' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
+        <div className={`grid gap-4 md:gap-6 ${variant === 'admin' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : variant === 'student' ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
           {subjects.map((sub: { id: string; name: string; color: string }, index: number) => (
             <motion.div
               key={sub.id}
@@ -652,7 +652,10 @@ export function NotesManagementTab({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => navigateToSubject(sub.name)}
-              className="bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4 group cursor-pointer hover:shadow-xl transition-all relative"
+              className={`${variant === 'student'
+                ? 'bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm md:shadow-lg flex items-center md:flex-col md:items-center gap-3 md:gap-4'
+                : 'bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4'
+              } group cursor-pointer hover:shadow-xl transition-all relative`}
             >
                 {variant === 'admin' && (
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 z-10">
@@ -669,13 +672,16 @@ export function NotesManagementTab({
                   </div>
                 )}
               <div
-                className="w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white"
+                className={`${variant === 'student'
+                  ? 'w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl'
+                  : 'w-16 h-16 rounded-2xl'
+                } shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white shrink-0`}
                 style={{ backgroundColor: sub.color }}
               >
-                <Folder className="w-8 h-8" />
+                <Folder className={`${variant === 'student' ? 'w-6 h-6 md:w-8 md:h-8' : 'w-8 h-8'}`} />
               </div>
-              <div className="text-center">
-                <h4 className="font-bold text-gray-900">{sub.name}</h4>
+              <div className={`${variant === 'student' ? 'text-left md:text-center min-w-0 flex-1 md:flex-none' : 'text-center'}`}>
+                <h4 className={`font-bold text-gray-900 ${variant === 'student' ? 'text-base md:text-lg truncate md:whitespace-normal' : ''}`}>{sub.name}</h4>
               </div>
             </motion.div>
           ))}
