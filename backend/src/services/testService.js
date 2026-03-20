@@ -1,5 +1,5 @@
 import { pool } from "../db/index.js";
-import { getStudentBatchModel } from "./studentBatchModel.js";
+import { getStudentBatchModel, pickStudentBatchModel } from "./studentBatchModel.js";
 import {
     mapAssessmentQuestionRow,
     mapAttemptQuestionsForResult,
@@ -65,8 +65,8 @@ function mapAttemptRow(row) {
  * Get all tests with batch assignments and question counts.
  */
 export async function getAllTests() {
-    const batchModel = await getStudentBatchModel();
-    const result = await pool.query(batchModel === "single" ? `
+    const result = await pool.query(await pickStudentBatchModel({
+        single: `
         SELECT
             t.id,
             t.title,
@@ -96,7 +96,8 @@ export async function getAllTests() {
         LEFT JOIN batches b ON b.id = tb.batch_id
         GROUP BY t.id
         ORDER BY t.scheduled_at DESC NULLS LAST, t.title
-    ` : `
+    `,
+        legacy: `
         SELECT
             t.id,
             t.title,
@@ -126,7 +127,8 @@ export async function getAllTests() {
         LEFT JOIN batches b ON b.id = tb.batch_id
         GROUP BY t.id
         ORDER BY t.scheduled_at DESC NULLS LAST, t.title
-    `);
+    `,
+    }));
     return result.rows;
 }
 
@@ -134,8 +136,8 @@ export async function getAllTests() {
  * Get all tests visible to a student based on the student's assigned batch.
  */
 export async function getTestsForStudent(studentId) {
-    const batchModel = await getStudentBatchModel();
-    const result = await pool.query(batchModel === "single" ? `
+    const result = await pool.query(await pickStudentBatchModel({
+        single: `
         SELECT
             t.id,
             t.title,
@@ -218,7 +220,8 @@ export async function getTestsForStudent(studentId) {
         WHERE s.user_id = $1
         GROUP BY t.id
         ORDER BY t.scheduled_at DESC NULLS LAST, t.title
-    ` : `
+    `,
+        legacy: `
         SELECT
             t.id,
             t.title,
@@ -301,7 +304,8 @@ export async function getTestsForStudent(studentId) {
         WHERE sb.student_id = $1
         GROUP BY t.id
         ORDER BY t.scheduled_at DESC NULLS LAST, t.title
-    `, [studentId]);
+    `,
+    }), [studentId]);
 
     return result.rows;
 }
@@ -310,8 +314,8 @@ export async function getTestsForStudent(studentId) {
  * Get a single test with its questions and batch assignments.
  */
 export async function getTestById(id) {
-    const batchModel = await getStudentBatchModel();
-    const testResult = await pool.query(batchModel === "single" ? `
+    const testResult = await pool.query(await pickStudentBatchModel({
+        single: `
         SELECT
             t.id,
             t.title,
@@ -341,7 +345,8 @@ export async function getTestById(id) {
         LEFT JOIN batches b ON b.id = tb.batch_id
         WHERE t.id = $1
         GROUP BY t.id
-    ` : `
+    `,
+        legacy: `
         SELECT
             t.id,
             t.title,
@@ -371,7 +376,8 @@ export async function getTestById(id) {
         LEFT JOIN batches b ON b.id = tb.batch_id
         WHERE t.id = $1
         GROUP BY t.id
-    `, [id]);
+    `,
+    }), [id]);
 
     if (testResult.rows.length === 0) return null;
 

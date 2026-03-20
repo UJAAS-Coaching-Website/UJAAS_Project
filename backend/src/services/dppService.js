@@ -1,5 +1,5 @@
 import { pool } from "../db/index.js";
-import { getStudentBatchModel } from "./studentBatchModel.js";
+import { pickStudentBatchModel } from "./studentBatchModel.js";
 import {
     calculateTotalMarks,
     mapAssessmentQuestionRow,
@@ -89,8 +89,8 @@ async function getDppRowById(id, client = pool) {
 }
 
 async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
-    const batchModel = await getStudentBatchModel();
-    const result = await client.query(batchModel === "single" ? `
+    const result = await client.query(await pickStudentBatchModel({
+        single: `
         SELECT
             d.id,
             d.title,
@@ -117,7 +117,8 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
         WHERE d.id = $1
           AND s.user_id = $2
         LIMIT 1
-    ` : `
+    `,
+        legacy: `
         SELECT
             d.id,
             d.title,
@@ -144,7 +145,8 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
         WHERE d.id = $1
           AND sb.student_id = $2
         LIMIT 1
-    `, [dppId, studentId]);
+    `,
+    }), [dppId, studentId]);
 
     return result.rows[0] || null;
 }
@@ -176,9 +178,9 @@ export async function listDpps({ chapterId, user }) {
 
     let query;
     if (user?.role === "student") {
-        const batchModel = await getStudentBatchModel();
         params.push(user.sub);
-        query = batchModel === "single" ? `
+        query = await pickStudentBatchModel({
+            single: `
             SELECT
                 d.id,
                 d.title,
@@ -212,7 +214,8 @@ export async function listDpps({ chapterId, user }) {
             ${chapterFilter}
             GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
-        ` : `
+        `,
+            legacy: `
             SELECT
                 d.id,
                 d.title,
@@ -246,7 +249,8 @@ export async function listDpps({ chapterId, user }) {
             ${chapterFilter}
             GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
-        `;
+        `,
+        });
     } else {
         query = `
             SELECT
