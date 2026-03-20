@@ -112,6 +112,12 @@ table {
   min-height: auto;
 }
 
+@media (max-width: 1023px) {
+  .footer-reveal-main {
+    min-height: calc(100svh - var(--app-top-chrome) + 56px);
+  }
+}
+
 @media (min-width: 1024px) and (min-height: 700px) {
   .footer-reveal-page {
     --footer-reveal-offset: clamp(72px, 10vh, 120px);

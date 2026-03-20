@@ -269,7 +269,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
           <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} text-teal-50/90 font-medium`}>
             {userRole === 'faculty'
               ? 'Publish subject-wise question sheets batch by batch'
-              : 'Browse subject-wise question sheets for your batch'}
+              : 'Choose a subject and start practicing instantly'}
           </p>
         </div>
         {userRole === 'faculty' && (
@@ -300,27 +300,35 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
           </div>
 
           <div className="flex items-stretch gap-3">
-            <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <div
+              className="relative min-w-0 flex-1"
+              style={isMobileViewport ? { flex: '1 1 0%' } : undefined}
+            >
+              <Search className={`${isMobileViewport ? 'left-3 h-4 w-4' : 'left-3 w-4 h-4'} absolute top-1/2 -translate-y-1/2 text-gray-400`} />
               <input
                 type="text"
-                placeholder="Search by name..."
+                placeholder={isMobileViewport ? 'Search' : 'Search by name...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                className={`${isMobileViewport ? 'h-14 rounded-2xl pl-10 pr-3 text-sm placeholder:text-gray-400' : 'rounded-xl pl-11 pr-4 py-3'} w-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white`}
+                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2' } : undefined}
               />
             </div>
-            <div className="relative w-52 flex-none">
+            <div
+              className={`${isMobileViewport ? 'relative flex-none' : 'relative w-52 flex-none'}`}
+              style={isMobileViewport ? { width: '42%' } : undefined}
+            >
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-4 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white w-full appearance-none"
+                className={`${isMobileViewport ? 'h-14 rounded-2xl px-4 pr-10 text-sm' : 'px-4 pr-12 py-3 rounded-xl'} border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white w-full appearance-none`}
+                style={isMobileViewport ? { fontSize: '12px', lineHeight: '1.2' } : undefined}
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <ChevronDown className={`${isMobileViewport ? 'right-3 h-4 w-4' : 'right-4 h-4 w-4'} pointer-events-none absolute top-1/2 -translate-y-1/2 text-gray-500`} />
             </div>
           </div>
         </div>
@@ -333,12 +341,12 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
       )}
 
       {!isListView && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className={`${isMobileViewport ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'}`}>
           {loadingFolders && Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100 animate-pulse">
-              <div className="w-20 h-20 bg-gray-100 rounded-2xl mb-6" />
-              <div className="h-6 bg-gray-100 rounded w-3/4 mb-2" />
-              <div className="h-4 bg-gray-100 rounded w-1/2" />
+            <div key={index} className={`${isMobileViewport ? 'rounded-2xl p-4' : 'rounded-3xl p-8'} bg-white shadow-lg border border-gray-100 animate-pulse`}>
+              <div className={`${isMobileViewport ? 'mb-4 h-12 w-12 rounded-xl' : 'mb-6 h-20 w-20 rounded-2xl'} bg-gray-100`} />
+              <div className={`${isMobileViewport ? 'mb-2 h-4' : 'mb-2 h-6'} bg-gray-100 rounded w-3/4`} />
+              <div className={`${isMobileViewport ? 'h-3' : 'h-4'} bg-gray-100 rounded w-1/2`} />
             </div>
           ))}
 
@@ -351,12 +359,12 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
                 setSortBy('newest');
                 setSelectedBatch(batch);
               }}
-              className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100 flex flex-col items-center text-center cursor-pointer group hover:border-teal-200 transition-all"
+              className={`${isMobileViewport ? 'rounded-2xl p-4' : 'rounded-3xl p-8'} bg-white shadow-lg border border-gray-100 flex flex-col items-center text-center cursor-pointer group hover:border-teal-200 transition-all`}
             >
-              <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner">
-                <Folder className="w-10 h-10" />
+              <div className={`${isMobileViewport ? 'mb-4 h-12 w-12 rounded-xl' : 'mb-6 h-20 w-20 rounded-2xl'} bg-teal-50 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner`}>
+                <Folder className={`${isMobileViewport ? 'h-6 w-6' : 'h-10 w-10'}`} />
               </div>
-              <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-2`}>{batch.name}</h3>
+              <h3 className={`${isMobileViewport ? 'text-sm' : 'text-xl'} font-bold text-gray-900 mb-2`}>{batch.name}</h3>
               <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-500`}>{facultyCounts.get(batch.id) || 0} Files</p>
             </motion.button>
           ))}
@@ -370,12 +378,12 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
                 setSortBy('newest');
                 setSelectedSubject(subject);
               }}
-              className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100 flex flex-col items-center text-center cursor-pointer group hover:border-teal-200 transition-all"
+              className={`${isMobileViewport ? 'rounded-2xl p-4' : 'rounded-3xl p-8'} bg-white shadow-lg border border-gray-100 flex flex-col items-center text-center cursor-pointer group hover:border-teal-200 transition-all`}
             >
-              <div className="w-20 h-20 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner">
-                <BookOpen className="w-10 h-10" />
+              <div className={`${isMobileViewport ? 'mb-4 h-12 w-12 rounded-xl' : 'mb-6 h-20 w-20 rounded-2xl'} bg-teal-50 flex items-center justify-center text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-all duration-300 shadow-inner`}>
+                <BookOpen className={`${isMobileViewport ? 'h-6 w-6' : 'h-10 w-10'}`} />
               </div>
-              <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-2`}>{subject}</h3>
+              <h3 className={`${isMobileViewport ? 'text-sm' : 'text-xl'} font-bold text-gray-900 mb-2`}>{subject}</h3>
               <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-500`}>{items.filter((item) => item.subject_name === subject).length} Files</p>
             </motion.button>
           ))}
