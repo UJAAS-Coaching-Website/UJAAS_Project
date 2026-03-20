@@ -1,5 +1,10 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
+import {
+    mapAssessmentQuestionRow,
+    mapAttemptQuestionsForResult,
+    scoreAttempt,
+} from "./assessmentCore.js";
 
 const MAX_TEST_ATTEMPTS = 3;
 const TEST_DURATION_EXPR = "COALESCE(t.duration_mins, t.duration_minutes, 0)";
@@ -36,130 +41,6 @@ async function ensureActiveBatchIds(batchIds, client = pool) {
     }
 }
 
-function normalizeNumericValue(value) {
-    const parsed = Number(String(value).trim());
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw) {
-    const submittedNumeric = normalizeNumericValue(submittedAnswer);
-    const correctNumeric = normalizeNumericValue(correctAnswerRaw);
-
-    if (submittedNumeric !== null && correctNumeric !== null) {
-        return submittedNumeric === correctNumeric;
-    }
-
-    return String(submittedAnswer).trim() === String(correctAnswerRaw).trim();
-}
-
-function parseStoredAnswer(value, questionType) {
-    if (value === undefined || value === null || value === "") {
-        return null;
-    }
-
-    if (questionType === "Numerical") {
-        return String(value).trim();
-    }
-
-    if (Array.isArray(value)) {
-        return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
-    }
-
-    if (typeof value === "number") {
-        return value;
-    }
-
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : String(value).trim();
-}
-
-function buildJeeMainScorableSet(questions, answers) {
-    const scorable = new Set();
-    const sectionBCounts = new Map();
-    const normalizedAnswers = answers && typeof answers === "object" ? answers : {};
-
-    for (const question of questions) {
-        const section = question.section || null;
-        if (section === "Section B") {
-            const submittedAnswer = parseStoredAnswer(normalizedAnswers[question.id], question.type);
-            if (submittedAnswer === null) {
-                continue;
-            }
-            const subjectKey = question.subject || "General";
-            const currentCount = sectionBCounts.get(subjectKey) || 0;
-            if (currentCount >= 5) {
-                continue;
-            }
-            sectionBCounts.set(subjectKey, currentCount + 1);
-            scorable.add(question.id);
-            continue;
-        }
-
-        scorable.add(question.id);
-    }
-
-    return scorable;
-}
-
-function scoreAttempt(questions, answers, options = {}) {
-    let score = 0;
-    let correctAnswers = 0;
-    let wrongAnswers = 0;
-    let unattempted = 0;
-
-    const normalizedAnswers = answers && typeof answers === "object" ? answers : {};
-    const isJeeMain = options?.format === "JEE MAIN";
-    const scorableIds = isJeeMain ? buildJeeMainScorableSet(questions, normalizedAnswers) : null;
-
-    for (const question of questions) {
-        if (scorableIds && !scorableIds.has(question.id)) {
-            continue;
-        }
-        const submittedAnswer = parseStoredAnswer(normalizedAnswers[question.id], question.type);
-        const correctAnswerRaw = question.correct_answer ?? question.correct_ans ?? "";
-
-        if (submittedAnswer === null) {
-            unattempted += 1;
-            continue;
-        }
-
-        let isCorrect = false;
-        if (question.type === "Numerical") {
-            isCorrect = isNumericalAnswerCorrect(submittedAnswer, correctAnswerRaw);
-        } else if (question.type === "MSQ") {
-            let normalizedCorrect;
-            try {
-                normalizedCorrect = Array.isArray(correctAnswerRaw)
-                    ? correctAnswerRaw
-                    : JSON.parse(correctAnswerRaw);
-            } catch {
-                normalizedCorrect = [];
-            }
-            const sortedCorrect = (normalizedCorrect || []).map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
-            const sortedSubmitted = Array.isArray(submittedAnswer) ? submittedAnswer : [];
-            isCorrect = JSON.stringify(sortedCorrect) === JSON.stringify(sortedSubmitted);
-        } else {
-            const parsedCorrect = Number(correctAnswerRaw);
-            isCorrect = Number.isFinite(parsedCorrect) && Number(submittedAnswer) === parsedCorrect;
-        }
-
-        if (isCorrect) {
-            correctAnswers += 1;
-            score += Number(question.marks || 0);
-        } else {
-            wrongAnswers += 1;
-            score -= Number(question.neg_marks || 0);
-        }
-    }
-
-    return {
-        score,
-        correctAnswers,
-        wrongAnswers,
-        unattempted,
-    };
-}
-
 function mapAttemptRow(row) {
     if (!row) return null;
     return {
@@ -177,14 +58,6 @@ function mapAttemptRow(row) {
         wrong_answers: Number(row.wrong_answers || 0),
         unattempted: Number(row.unattempted || 0),
         answers: row.answers || {},
-    };
-}
-
-function stripExplanationFields(question) {
-    return {
-        ...question,
-        explanation: null,
-        explanation_img: null,
     };
 }
 
@@ -514,7 +387,7 @@ export async function getTestById(id) {
 
     return {
         ...testResult.rows[0],
-        questions: questionsResult.rows,
+        questions: questionsResult.rows.map(mapAssessmentQuestionRow),
     };
 }
 
@@ -660,13 +533,10 @@ async function buildAttemptResult(attemptId) {
         ORDER BY order_index, subject
     `, [attempt.test_id]);
 
-    const answers = attempt.answers && typeof attempt.answers === "object" ? attempt.answers : {};
-    const questions = questionsResult.rows.map((question) => ({
-        ...stripExplanationFields(question),
-        user_answer: Object.prototype.hasOwnProperty.call(answers, question.id)
-            ? answers[question.id]
-            : null,
-    }));
+    const questions = mapAttemptQuestionsForResult(
+        questionsResult.rows.map(mapAssessmentQuestionRow),
+        attempt.answers
+    );
 
     return {
         attempt_id: attempt.id,
