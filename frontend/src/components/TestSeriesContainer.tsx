@@ -652,36 +652,73 @@ function TestOverview({
                 <p className="text-gray-600 font-medium text-sm sm:text-base">Loading question breakdown...</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
-                      <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
-                      <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
-                      <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
-                      <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {Object.entries(breakdown).map(([subject, sections]) => (
-                      Object.entries(sections).map(([section, data], idx) => (
-                        <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
-                          {idx === 0 ? (
-                            <td className="px-3 py-3 sm:px-4 sm:py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
-                              {subject}
+              <>
+                {/* Desktop Table Wrapper */}
+                <div className="overflow-x-auto hidden sm:block">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
+                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
+                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
+                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
+                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {Object.entries(breakdown).map(([subject, sections]) => (
+                        Object.entries(sections).map(([section, data], idx) => (
+                          <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
+                            {idx === 0 ? (
+                              <td className="px-3 py-3 sm:px-4 sm:py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
+                                {subject}
+                              </td>
+                            ) : null}
+                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-gray-600 font-medium">{section}</td>
+                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-gray-900">{data.count}</td>
+                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-green-600">+{data.marks}</td>
+                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-red-600">-{data.neg}</td>
+                          </tr>
+                        ))
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Table Wrapper */}
+                <div className="overflow-x-auto block sm:hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight">Sub</th>
+                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight">Sec</th>
+                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight text-center">Qs</th>
+                        <th className="px-1 py-1.5 text-[10px] font-bold text-green-600 uppercase tracking-tight text-center">+ve</th>
+                        <th className="px-1 py-1.5 text-[10px] font-bold text-red-600 uppercase tracking-tight text-center">-ve</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {Object.entries(breakdown).map(([subject, sections]) => (
+                        Object.entries(sections).map(([section, data], idx) => (
+                          <tr key={`mobile-${subject}-${section}`} className="hover:bg-gray-50/50">
+                            {idx === 0 ? (
+                              <td className="px-1 py-2 text-[10px] font-bold text-gray-900 border-r border-gray-100 max-w-[80px]" rowSpan={Object.keys(sections).length}>
+                                <div className="line-clamp-2 leading-tight">{subject}</div>
+                              </td>
+                            ) : null}
+                            <td className="px-1 py-2 text-[10px] text-gray-600 font-medium max-w-[100px]">
+                              <div className="line-clamp-2 leading-tight">{section}</div>
                             </td>
-                          ) : null}
-                          <td className="px-3 py-3 sm:px-4 sm:py-4 text-gray-600 font-medium">{section}</td>
-                          <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-gray-900">{data.count}</td>
-                          <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-green-600">+{data.marks}</td>
-                          <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-red-600">-{data.neg}</td>
-                        </tr>
-                      ))
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            <td className="px-1 py-2 text-[10px] text-center font-bold text-gray-900">{data.count}</td>
+                            <td className="px-1 py-2 text-[10px] text-center font-bold text-green-600">+{data.marks}</td>
+                            <td className="px-1 py-2 text-[10px] text-center font-bold text-red-600">-{data.neg}</td>
+                          </tr>
+                        ))
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </section>
 
@@ -691,7 +728,7 @@ function TestOverview({
               whileTap={{ scale: 0.98 }}
               onClick={onStart}
               disabled={isStarting}
-              className="w-full sm:w-64 py-3 sm:py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg disabled:opacity-70 disabled:cursor-wait"
+              className="w-auto px-8 sm:w-64 py-3 sm:py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg disabled:opacity-70 disabled:cursor-wait"
             >
               <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
               {isStarting ? 'Loading Test...' : 'Confirm & Start Test'}
