@@ -873,7 +873,7 @@ function BatchSelectionTab({ batches, onSelectBatch, facultyName, onUploadNotice
           </div>
           <button
             onClick={onUploadNotice}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
           >
             <Megaphone className="w-5 h-5" />
             Upload Notice
