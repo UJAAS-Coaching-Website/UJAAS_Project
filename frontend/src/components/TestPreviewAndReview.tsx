@@ -175,6 +175,7 @@ export function TestPreviewAndReview({
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const shouldRunTimer = !isAnyPreview && !disableEditing && duration > 0;
   const isStudentReviewMode = disableEditing && Boolean(reviewAttemptId) && Boolean(loadQuestionExplanation);
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
@@ -335,7 +336,7 @@ export function TestPreviewAndReview({
   };
 
   useEffect(() => {
-    if (isAnyPreview) return;
+    if (!shouldRunTimer) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -348,7 +349,7 @@ export function TestPreviewAndReview({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isAnyPreview]);
+  }, [shouldRunTimer]);
 
   const handleAutoSubmit = () => {
     const timeSpent = (duration * 60) - timeLeft;
