@@ -268,14 +268,6 @@ export function FacultyDashboard({
     ? batches.find((batch) => batch.label === selectedBatch)
     : null;
 
-  useEffect(() => {
-    if (showFullTimetable) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showFullTimetable]);
   const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
     open: false,
     batch: null

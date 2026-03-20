@@ -23,6 +23,7 @@ import {
   mapApiAttemptResultToAnalytics,
   mapApiTestToPublished as apiTestToPublished,
 } from '../utils/testMappings';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import {
   Clock,
   FileText,
@@ -493,9 +494,7 @@ function TestOverview({
   isStarting?: boolean;
   isLoadingOverview?: boolean;
 }) {
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
+  const isMobileViewport = useIsMobileViewport();
 
   const questions = Array.isArray(test.questions) ? test.questions : [];
 
@@ -516,17 +515,6 @@ function TestOverview({
 
     return stats;
   }, [questions]);
-
-  useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => window.removeEventListener('resize', updateViewport);
-  }, []);
 
   return (
     <div

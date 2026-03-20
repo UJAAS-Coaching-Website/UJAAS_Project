@@ -1,9 +1,10 @@
-import React, { useState, FormEvent, useEffect } from 'react';
+import React, { useState, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Megaphone, X, Loader2, Check } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
 import { broadcastNotice } from '../api/facultyReviews';
 import { toast } from 'sonner';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface UploadNoticeModalProps {
   isOpen: boolean;
@@ -18,14 +19,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

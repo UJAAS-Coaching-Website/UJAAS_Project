@@ -59,6 +59,7 @@ import {
 } from './api/tests';
 import { formatTimeAgo } from './utils/time';
 import { mapApiTestToPublished as apiTestToPublished } from './utils/testMappings';
+import { useIsMobileViewport } from './hooks/useViewport';
 import { 
   fetchStudentNotifications, 
   markNotificationAsRead as apiMarkRead, 
@@ -287,13 +288,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
   const [queries, setQueries] = useState<LandingQuery[]>([]);
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const isMobile = useIsMobileViewport();
 
   const handleAddQuery = async (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => {
     try {

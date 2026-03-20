@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import {
   apiDeleteQuestionBankFromBatch,
   apiFetchQuestionBank,
@@ -110,9 +111,7 @@ async function forceDownload(url: string, filename: string) {
 }
 
 export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
+  const isMobileViewport = useIsMobileViewport();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedBatch, setSelectedBatch] = useState<ApiQuestionBankBatchSummary | null>(null);
@@ -180,19 +179,6 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
       setLoadingItems(false);
     }
   };
-
-  useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => {
-      window.removeEventListener('resize', updateViewport);
-    };
-  }, []);
 
   useEffect(() => {
     void loadFolders();

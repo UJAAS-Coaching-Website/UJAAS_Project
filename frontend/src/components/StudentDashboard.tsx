@@ -29,6 +29,8 @@ import { DPPPractice, type DppPracticeSession } from './DPPPractice';
 import type { ApiStartDppAttemptPayload } from '../api/dpps';
 import { DashboardHeroSkeleton, SubjectCardSkeleton } from './ui/content-skeletons';
 import { Skeleton } from './ui/skeleton';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsMobileViewport } from '../hooks/useViewport';
 
 interface StudentDashboardProps {
   user: User;
@@ -66,9 +68,7 @@ export function StudentDashboard({
   const MOBILE_NAV_SPACER_HEIGHT = 92;
   const MOBILE_NAV_HIDE_DISTANCE = 112;
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
+  const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
@@ -84,6 +84,8 @@ export function StudentDashboard({
   const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
     return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
   });
+
+  useBodyScrollLock(showFullTimetable);
 
   useEffect(() => {
     const loadReviewInfo = async () => {
@@ -150,19 +152,6 @@ export function StudentDashboard({
   };
 
   useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => {
-      window.removeEventListener('resize', updateViewport);
-    };
-  }, []);
-
-  useEffect(() => {
     document.documentElement.classList.add('scrollbar-hide');
     document.body.classList.add('scrollbar-hide');
     return () => {
@@ -201,15 +190,6 @@ export function StudentDashboard({
       window.removeEventListener('scroll', handleScroll);
     };
   }, [isMobileViewport]);
-
-  useEffect(() => {
-    if (showFullTimetable) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showFullTimetable]);
 
   useEffect(() => {
     let cancelled = false;

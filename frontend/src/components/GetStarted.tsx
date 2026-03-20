@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Footer } from './Footer';
 import logo from '../assets/logo.svg';
 import { LandingData } from '../App';
+import { useIsMobileViewport, useWindowWidth } from '../hooks/useViewport';
 
 interface GetStartedProps {
   onGetStarted: () => void;
@@ -26,8 +27,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const [currentAchiever, setCurrentAchiever] = useState(0);
   const [activeVisionIndex, setActiveVisionIndex] = useState(0);
   const [currentFaculty, setCurrentFaculty] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
   const visionScrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobileViewport();
+  const viewportWidth = useWindowWidth();
 
   // Sync activeVisionIndex from scroll position on mobile
   const handleVisionScroll = useCallback(() => {
@@ -45,9 +47,8 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   }, [isMobile, handleVisionScroll]);
 
   const getItemsPerView = (section: 'faculty' | 'achievers') => {
-    if (typeof window === 'undefined') return section === 'faculty' ? 4 : 3;
-    if (window.innerWidth < 768) return 2; // mobile: 2 tiles
-    if (window.innerWidth < 1024) return section === 'faculty' ? 3 : 2; // tablet: 3 faculty, 2 achievers
+    if (viewportWidth < 768) return 2; // mobile: 2 tiles
+    if (viewportWidth < 1024) return section === 'faculty' ? 3 : 2; // tablet: 3 faculty, 2 achievers
     return section === 'faculty' ? 4 : 3; // desktop: 4 faculty, 3 achievers
   };
 
@@ -55,15 +56,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const [achieversItemsPerView, setAchieversItemsPerView] = useState(() => getItemsPerView('achievers'));
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-      setFacultyItemsPerView(getItemsPerView('faculty'));
-      setAchieversItemsPerView(getItemsPerView('achievers'));
-    };
-    handleResize(); // initialize on mount
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    setFacultyItemsPerView(getItemsPerView('faculty'));
+    setAchieversItemsPerView(getItemsPerView('achievers'));
+  }, [viewportWidth]);
 
   const [formData, setFormData] = useState({
     name: '',

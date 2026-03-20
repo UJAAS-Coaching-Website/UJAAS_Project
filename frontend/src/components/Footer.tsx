@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Mail,
   Phone,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import logo from '../assets/logo.svg';
+import { useIsMobileViewport } from '../hooks/useViewport';
 
 const socialLinks = [
   { icon: Facebook, link: 'https://www.facebook.com/100088932682619/', color: 'hover:text-blue-400', label: 'Facebook' },
@@ -40,27 +41,7 @@ const desktopContacts = [
 export function Footer() {
   const currentYear = new Date().getFullYear();
   const [showMoreInfo, setShowMoreInfo] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    return window.innerWidth < 768;
-  });
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    const updateIsMobile = (event?: MediaQueryListEvent) => {
-      setIsMobile(event ? event.matches : mediaQuery.matches);
-    };
-
-    updateIsMobile();
-    mediaQuery.addEventListener('change', updateIsMobile);
-
-    return () => {
-      mediaQuery.removeEventListener('change', updateIsMobile);
-    };
-  }, []);
+  const isMobile = useIsMobileViewport();
 
   return (
     <footer className="mt-auto overflow-hidden bg-gradient-to-br from-gray-900 via-teal-900 to-cyan-900 text-white">
