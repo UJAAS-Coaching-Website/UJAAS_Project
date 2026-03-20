@@ -564,20 +564,20 @@ export function NotesManagementTab({
                   </h2>
                 )
               ) : (
-                <h2 className="font-bold text-gray-900 text-lg">
+                <h2 className={`font-bold text-gray-900 ${variant === 'student' ? 'text-xl md:text-lg' : 'text-lg'}`}>
                   {currentView === 'subject' ? selectedSubject : selectedChapterObj?.name}
                 </h2>
               )}
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className={`flex items-center gap-2 ${variant === 'student' ? 'text-xs md:text-sm text-gray-400 md:text-gray-500 mt-1' : 'text-sm text-gray-500'}`}>
                 {selectedSubject && (
                   <>
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
                     <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
                   </>
                 )}
                 {selectedChapterObj && (
                   <>
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
                     <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapterObj.name}</span>
                   </>
                 )}

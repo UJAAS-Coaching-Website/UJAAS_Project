@@ -634,7 +634,7 @@ export function FacultyDashboard({
               className="flex items-center gap-3"
             >
               <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-              <span className="hidden text-xl font-bold sm:inline" style={{ color: 'rgb(159, 29, 14)' }}>
+              <span className="navbar-brand-wordmark hidden text-xl sm:inline" style={{ color: 'rgb(159, 29, 14)' }}>
                 UJAAS Faculty
               </span>
             </motion.button>

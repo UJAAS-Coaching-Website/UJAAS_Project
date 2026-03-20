@@ -383,7 +383,7 @@ export function StudentDashboard({
                 title="Go to Dashboard"
               >
                 <img src={logo} alt="Logo" className="w-10 h-10 object-contain" />
-                <span className="text-lg font-bold" style={{ color: 'rgb(159, 29, 14)' }}>
+                <span className="navbar-brand-wordmark text-lg" style={{ color: 'rgb(159, 29, 14)' }}>
                   UJAAS
                 </span>
               </motion.button>
@@ -449,7 +449,7 @@ export function StudentDashboard({
                 title="Go to Dashboard"
               >
                 <img src={logo} alt="Logo" className="w-12 h-12 object-contain" />
-                <span className="hidden text-xl font-bold sm:inline" style={{ color: 'rgb(159, 29, 14)' }}>
+                <span className="navbar-brand-wordmark hidden text-xl sm:inline" style={{ color: 'rgb(159, 29, 14)' }}>
                   UJAAS
                 </span>
               </motion.button>
@@ -877,14 +877,14 @@ function HomeTab({
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
-              <div className={`flex items-center justify-between ${isMobileViewport ? 'mb-2' : 'mb-3'}`}>
+              <div className={`${isMobileViewport ? 'flex items-center gap-2 mb-2' : 'mb-3'}`}>
                 <motion.div
-                   className={`${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}
+                   className={`${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg shrink-0`}
                 >
                   <stat.icon className={`${isMobileViewport ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
                 </motion.div>
+                <p className={`${isMobileViewport ? 'text-2xl mb-0' : 'text-3xl mb-1'} font-bold text-gray-900`}>{stat.value}</p>
               </div>
-              <p className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold text-gray-900 mb-1`}>{stat.value}</p>
               <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
               
               {stat.display === 'stars' ? (
