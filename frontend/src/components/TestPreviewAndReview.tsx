@@ -462,7 +462,7 @@ export function TestPreviewAndReview({
   const notAnsweredCount = questions.length - answeredCount;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4`}>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-1 sm:p-2 rounded-xl sm:rounded-2xl overflow-hidden`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
@@ -716,22 +716,22 @@ export function TestPreviewAndReview({
                               }}
                               disabled={isAnyPreview}
                               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isStudentReviewMode
+                                ? optionToneClasses
+                                : correctOptionIndices.includes(index)
                                   ? optionToneClasses
-                                  : correctOptionIndices.includes(index)
-                                    ? optionToneClasses
-                                    : isSelected
-                                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                                      : optionToneClasses
+                                  : isSelected
+                                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                                    : optionToneClasses
                                 }`}
                             >
                               <div className="flex items-center gap-4">
                                 <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isStudentReviewMode
+                                  ? controlToneClasses
+                                  : correctOptionIndices.includes(index)
                                     ? controlToneClasses
-                                    : correctOptionIndices.includes(index)
-                                      ? controlToneClasses
-                                      : isSelected
-                                        ? 'border-blue-500 bg-blue-500'
-                                        : controlToneClasses
+                                    : isSelected
+                                      ? 'border-blue-500 bg-blue-500'
+                                      : controlToneClasses
                                   }`}>
                                   {(isSelected || correctOptionIndices.includes(index)) && (
                                     isMsq ? <Check className="w-4 h-4 text-white" /> : <div className="w-2 h-2 bg-white rounded-full" />
@@ -760,7 +760,7 @@ export function TestPreviewAndReview({
                           (() => {
                             const normalizedAnswer = normalizeReviewAnswer(answers[question.id], question.type);
                             const isUnattempted = normalizedAnswer === null;
-                            const isCorrect = !isUnattempted && isNumericalReviewCorrect(normalizedAnswer as string | number, question.correctAnswer);
+                            const isCorrect = !isUnattempted && isNumericalReviewCorrect(normalizedAnswer as string | number, question.correctAnswer as string | number);
 
                             return (
                               <div className="space-y-3">

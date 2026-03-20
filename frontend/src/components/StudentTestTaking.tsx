@@ -364,7 +364,7 @@ export function StudentTestTaking({
   const groupedStats = getGroupedStats();
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-4`}>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-2 sm:p-2 rounded-xl sm:rounded-2xl overflow-hidden`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
@@ -412,18 +412,18 @@ export function StudentTestTaking({
               {/* Timer - only for students */}
               {!isAnyPreview && enableTimer && (
                 <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
-                    timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
-                      'bg-blue-50 border-blue-300'
+                  timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
+                    'bg-blue-50 border-blue-300'
                   }`}>
                   <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${timeLeft <= 300 ? 'text-red-600' :
-                      timeLeft <= 600 ? 'text-yellow-600' :
-                        'text-blue-600'
+                    timeLeft <= 600 ? 'text-yellow-600' :
+                      'text-blue-600'
                     }`} />
                   <div>
                     <p className="text-xs text-gray-600">Time Left</p>
                     <p className={`text-lg sm:text-2xl font-bold ${timeLeft <= 300 ? 'text-red-600' :
-                        timeLeft <= 600 ? 'text-yellow-600' :
-                          'text-blue-600'
+                      timeLeft <= 600 ? 'text-yellow-600' :
+                        'text-blue-600'
                       }`}>
                       {formatTime(timeLeft)}
                     </p>
@@ -456,8 +456,8 @@ export function StudentTestTaking({
                     if (firstIdx > -1) setCurrentQuestion(firstIdx);
                   }}
                   className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
                     }`}
                 >
                   {s}
@@ -476,8 +476,8 @@ export function StudentTestTaking({
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
                     className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${currentSection === sec
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-                        : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                      : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
                       }`}
                   >
                     {sec}
@@ -581,9 +581,9 @@ export function StudentTestTaking({
                               }}
                               disabled={isAnyPreview || isSectionBLocked}
                               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
                                 }`}
                             >
                               <div className="flex items-center gap-4">
@@ -807,8 +807,8 @@ export function StudentTestTaking({
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${currentQuestion === 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
                   }`}
               >
                 <ChevronLeft className="w-5 h-5" />
@@ -836,8 +836,8 @@ export function StudentTestTaking({
                       <button
                         onClick={() => toggleFlag(question.id)}
                         className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${flaggedQuestions.has(question.id)
-                            ? 'bg-purple-100 border-purple-300 text-purple-700'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          ? 'bg-purple-100 border-purple-300 text-purple-700'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                           }`}
                       >
                         Mark for Review
@@ -881,18 +881,18 @@ export function StudentTestTaking({
                         key={q.id}
                         onClick={() => setCurrentQuestion(q.globalIndex)}
                         className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
-                            ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                            : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
-                              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                              : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : isAnyPreview && hasExplanationContent(q)
-                                  ? 'bg-teal-50 text-teal-700 border border-teal-200'
-                                  : !isAnyPreview && flaggedQuestions.has(q.id)
-                                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                    : !isAnyPreview && visitedQuestions.has(q.id)
-                                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : isAnyPreview && hasExplanationContent(q)
+                                ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                : !isAnyPreview && flaggedQuestions.has(q.id)
+                                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                  : !isAnyPreview && visitedQuestions.has(q.id)
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                       >
                         {q.globalIndex + 1}
@@ -1169,8 +1169,8 @@ export function StudentTestTaking({
                           setHasChanges(true);
                         }}
                         className={`px-4 py-2 rounded-xl text-xs font-bold border-2 transition-all ${selectedBatches.includes(batch.label)
-                            ? 'bg-blue-50 border-blue-500 text-blue-700'
-                            : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-100 text-gray-500 hover:border-gray-200'
                           }`}
                       >
                         {batch.label}
