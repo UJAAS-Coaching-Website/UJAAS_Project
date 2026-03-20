@@ -53,6 +53,8 @@ import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
+import { BatchTimetableModal } from './BatchTimetableModal';
+import { downloadFileFromUrl } from '../utils/downloads';
 import { NotesManagementTab } from './NotesManagementTab';
 import { uploadLandingImage, deleteLandingImage } from '../api/landing';
 import { adminResetUserPassword } from '../api/auth';
@@ -1127,109 +1129,47 @@ export function AdminDashboard({
         </AnimatePresence>
 
         {/* Timetable Modal */}
-        <AnimatePresence>
-          {showFullTimetable && (
-            <motion.div
-              key="timetable-modal-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-10001"
-              onClick={() => setShowFullTimetable(false)}
+        <BatchTimetableModal
+          open={showFullTimetable}
+          onClose={() => setShowFullTimetable(false)}
+          imageUrl={timeTableImage}
+          onDownload={timeTableImage ? () => {
+            void downloadFileFromUrl(timeTableImage, 'timetable');
+          } : null}
+          emptyStateAction={(
+            <button
+              onClick={() => timeTableInputRef.current?.click()}
+              className="mt-4 px-6 py-2 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition"
             >
-              <motion.div
-                key="timetable-modal-content"
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col"
-                onClick={e => e.stopPropagation()}
-              >
-                {/* Sticky Header */}
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                  <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
-                  <button
-                    onClick={() => setShowFullTimetable(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <X className="w-6 h-6 text-gray-500" />
-                  </button>
-                </div>
-
-                {/* Image Container - Strictly contained */}
-                <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                  {timeTableImage ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img
-                        src={timeTableImage}
-                        alt="Full Time Table"
-                        className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-center py-20 w-full">
-                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
-                      <button
-                        onClick={() => timeTableInputRef.current?.click()}
-                        className="mt-4 px-6 py-2 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition"
-                      >
-                        Upload Now
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Sticky Footer */}
-                <div className="p-4 bg-white border-t border-gray-100 flex flex-wrap justify-between items-center gap-3 shrink-0 z-20">
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      ref={timeTableInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleTimeTableUpload}
-                    />
-                    <button
-                      onClick={() => timeTableInputRef.current?.click()}
-                      className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-bold hover:bg-teal-100 transition text-sm"
-                    >
-                      {timeTableImage ? 'Change Image' : 'Upload Image'}
-                    </button>
-                    {timeTableImage && (
-                      <button
-                        onClick={handleTimeTableDelete}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition text-sm"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {timeTableImage && (
-                      <a
-                        href={timeTableImage}
-                        download
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-6 py-2 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition flex items-center gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </a>
-                    )}
-                    <button
-                      onClick={() => setShowFullTimetable(false)}
-                      className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
+              Upload Now
+            </button>
           )}
-        </AnimatePresence>
+          footerStart={(
+            <>
+              <input
+                type="file"
+                ref={timeTableInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleTimeTableUpload}
+              />
+              <button
+                onClick={() => timeTableInputRef.current?.click()}
+                className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-bold hover:bg-teal-100 transition text-sm"
+              >
+                {timeTableImage ? 'Change Image' : 'Upload Image'}
+              </button>
+              {timeTableImage && (
+                <button
+                  onClick={handleTimeTableDelete}
+                  className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition text-sm"
+                >
+                  Delete
+                </button>
+              )}
+            </>
+          )}
+        />
       </div>
     </div>
   );
