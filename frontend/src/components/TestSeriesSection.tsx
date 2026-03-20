@@ -224,25 +224,30 @@ export function TestSeriesSection({
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className={`${isMobileViewport ? 'grid gap-2' : 'grid grid-cols-2 lg:grid-cols-4 gap-4'}`}
+        style={isMobileViewport ? { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' } : undefined}
+      >
         {[
-          { label: 'Total Tests', value: stats.total, icon: FileText, gradient: 'from-blue-500 to-cyan-500' },
-          { label: 'Completed', value: stats.completed, icon: CheckCircle, gradient: 'from-green-500 to-emerald-500' },
-          { label: 'Pending', value: stats.pending, icon: Clock, gradient: 'from-orange-500 to-red-500' },
-          { label: 'Avg Score', value: `${stats.avgScore.toFixed(1)}%`, icon: Award, gradient: 'from-purple-500 to-pink-500' }
+          { label: 'Total Tests', mobileLabel: 'Tests', value: stats.total, icon: FileText, gradient: 'from-blue-500 to-cyan-500' },
+          { label: 'Completed', mobileLabel: 'Done', value: stats.completed, icon: CheckCircle, gradient: 'from-green-500 to-emerald-500' },
+          { label: 'Pending', mobileLabel: 'Pending', value: stats.pending, icon: Clock, gradient: 'from-orange-500 to-red-500' },
+          { label: 'Avg Score', mobileLabel: 'Avg', value: `${stats.avgScore.toFixed(1)}%`, icon: Award, gradient: 'from-purple-500 to-pink-500' }
         ].map((stat, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-xl p-5 shadow-md border border-gray-100"
+            className={`${isMobileViewport ? 'min-w-0 rounded-lg px-1.5 py-2 text-center' : 'rounded-xl p-5'} bg-white shadow-md border border-gray-100`}
           >
-            <div className={`w-12 h-12 bg-gradient-to-br ${stat.gradient} rounded-lg flex items-center justify-center mb-3`}>
-              <stat.icon className="w-6 h-6 text-white" />
+            <div className={`${isMobileViewport ? 'mx-auto mb-1 h-6 w-6 rounded-lg' : 'mb-3 h-12 w-12 rounded-lg'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
+              <stat.icon className={`${isMobileViewport ? 'h-3 w-3' : 'h-6 w-6'} text-white`} />
             </div>
-            <p className={`${isMobileViewport ? 'text-2xl' : 'text-3xl'} font-bold text-gray-900`}>{stat.value}</p>
-            <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 mt-1`}>{stat.label}</p>
+            <p className={`${isMobileViewport ? 'text-base leading-none' : 'text-3xl'} font-bold text-gray-900`}>{stat.value}</p>
+            <p className={`${isMobileViewport ? 'mt-1 text-[10px] leading-tight' : 'mt-1 text-sm'} text-gray-600`}>
+              {isMobileViewport ? stat.mobileLabel : stat.label}
+            </p>
           </motion.div>
         ))}
       </div>
@@ -252,13 +257,13 @@ export function TestSeriesSection({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+        className={`${isMobileViewport ? 'rounded-xl p-4' : 'rounded-2xl p-6'} bg-white shadow-lg border border-gray-100`}
       >
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Status Filter */}
           <div className="flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-            <div className="flex flex-wrap gap-2">
+            <label className={`block font-semibold text-gray-700 ${isMobileViewport ? 'mb-3 text-sm' : 'mb-2 text-sm'}`}>Status</label>
+            <div className={isMobileViewport ? 'flex items-center gap-2' : 'flex flex-wrap gap-2'}>
               {[
                 { id: 'all', label: 'All Tests' },
                 { id: 'completed', label: 'Completed' },
@@ -268,13 +273,19 @@ export function TestSeriesSection({
                 <motion.button
                   key={filter.id}
                   onClick={() => setSelectedFilter(filter.id as any)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  className={`${isMobileViewport ? 'min-w-0 flex-1 px-1 py-1.5 text-[10px]' : 'px-4 py-2'} rounded-lg font-medium transition-all ${
                     selectedFilter === filter.id
                       ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {filter.label}
+                  {isMobileViewport
+                    ? filter.id === 'all'
+                      ? 'All'
+                      : filter.id === 'completed'
+                      ? 'Done'
+                      : filter.label
+                    : filter.label}
                 </motion.button>
               ))}
             </div>
