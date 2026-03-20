@@ -1,5 +1,5 @@
 import { syncScheduledTestStatuses } from "./testService.js";
-import { createMultiBatchNotification } from "./notificationService.js";
+import { createMultiBatchNotification, cleanupExpiredReviewNotifications } from "./notificationService.js";
 
 const DEFAULT_INTERVAL_MS = 30_000;
 
@@ -30,6 +30,13 @@ export function startTestStatusScheduler(intervalMs = DEFAULT_INTERVAL_MS) {
                         }).catch(err => console.error(`Auto-notification for test ${test.id} failed:`, err));
                     }
                 }
+            }
+
+            // Clean up any expired faculty review notifications in DB
+            try {
+                await cleanupExpiredReviewNotifications();
+            } catch (err) {
+                console.error("Cleanup Review Notifications failed:", err.message);
             }
         } catch (error) {
             console.error("Test status sync failed:", error.message);

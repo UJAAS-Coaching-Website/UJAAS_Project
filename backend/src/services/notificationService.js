@@ -100,3 +100,17 @@ export async function deleteNotificationForStudent(studentId, notificationId) {
         [notificationId, studentId]
     );
 }
+
+/**
+ * Automatically clean up expired faculty review notifications
+ */
+export async function cleanupExpiredReviewNotifications() {
+    await pool.query(`
+        DELETE FROM notifications 
+        WHERE type = 'review' 
+        AND NOT EXISTS (
+            SELECT 1 FROM faculty_review_sessions 
+            WHERE is_active = true AND expiry_time > NOW()
+        )
+    `);
+}
