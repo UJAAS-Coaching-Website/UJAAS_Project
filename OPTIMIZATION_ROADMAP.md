@@ -11,13 +11,13 @@
 - Plan 3: Completed
 - Plan 4: Completed
 - Plan 5: Completed
-- Plan 6: Pending
-- Plan 7: Pending
-- Plan 8: Pending
-- Plan 9: Pending
-- Plan 10: Pending
-- Plan 11: Pending
-- Plan 12: Pending
+- Plan 6: Completed
+- Plan 7: Completed
+- Plan 8: Completed
+- Plan 9: Completed
+- Plan 10: Completed
+- Plan 11: Completed
+- Plan 12: Completed
 
 ## Stepwise Plans
 ### Plan 1: Baseline And Dead-Surface Audit
