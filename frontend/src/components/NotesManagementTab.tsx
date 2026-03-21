@@ -448,7 +448,7 @@ export function NotesManagementTab({
       }));
       onNavigate('home', 'dpp');
     } catch (error: any) {
-      alert(error?.message || 'Unable to open DPP preview');
+      alert(error?.message || 'Unable to open DPP review');
     } finally {
       setPreviewingDppId(null);
     }
@@ -938,12 +938,12 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className={`rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${
+                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${
                     previewingDppId === item.id ? 'cursor-wait opacity-70' : variant !== 'student' ? 'cursor-pointer' : ''
                   }`}
                   onClick={variant !== 'student' ? () => { void handleOpenAdminFacultyPreview(item.id); } : undefined}
                 >
-                  <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
+                  <div className="flex h-full flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
@@ -968,7 +968,7 @@ export function NotesManagementTab({
                         </p>
                       )}
                     </div>
-                    <div className="w-full md:w-auto md:shrink-0">
+                    <div className="mt-auto w-full md:w-auto md:shrink-0">
                       {variant === 'student' ? (
                         <>
                           <div className="grid w-full grid-cols-2 gap-2 md:hidden">
@@ -978,7 +978,7 @@ export function NotesManagementTab({
                                 disabled={previewingDppId === item.id}
                                 className="w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
                               >
-                                {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                                {previewingDppId === item.id ? 'Opening...' : 'Review'}
                               </button>
                             )}
                             <button
@@ -996,7 +996,7 @@ export function NotesManagementTab({
                                 disabled={previewingDppId === item.id}
                                 className="rounded-xl border border-teal-200 bg-teal-50 px-5 py-2.5 text-base font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60 md:min-w-[170px]"
                               >
-                                {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                                {previewingDppId === item.id ? 'Opening...' : 'Review'}
                               </button>
                             )}
                             <button
