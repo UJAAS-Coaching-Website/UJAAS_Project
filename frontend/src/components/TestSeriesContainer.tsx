@@ -396,6 +396,7 @@ export function TestSeriesContainer({
         deadlineAt={testState.deadlineAt}
         serverNow={testState.serverNow}
         onSaveProgress={handleSaveProgress}
+        outerPaddingClassName="p-2 pb-3"
       />
     );
   }

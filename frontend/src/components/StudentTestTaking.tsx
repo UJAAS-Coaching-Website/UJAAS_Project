@@ -58,6 +58,7 @@ interface StudentTestTakingProps {
   onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
   enableTimer?: boolean;
   showMarksMeta?: boolean;
+  outerPaddingClassName?: string;
 }
 
 export function StudentTestTaking({
@@ -79,7 +80,8 @@ export function StudentTestTaking({
   serverNow,
   onSaveProgress,
   enableTimer = true,
-  showMarksMeta = true
+  showMarksMeta = true,
+  outerPaddingClassName = 'p-0'
 }: StudentTestTakingProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions || []);
   const [testTitle, setTestTitle] = useState(initialTitle);
@@ -366,7 +368,7 @@ export function StudentTestTaking({
   const groupedStats = getGroupedStats();
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-0 rounded-none overflow-hidden`}>
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 ${outerPaddingClassName} rounded-none overflow-hidden`}>
       <div className="w-full">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
@@ -919,7 +921,10 @@ export function StudentTestTaking({
               )}
             </div>
 
-            <div className="attempt-nav-mobile mt-4 border-t border-gray-100 pt-4">
+            <div
+              className="attempt-nav-mobile mt-4 border-t border-gray-100 px-1 pt-4"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', paddingLeft: '0.25rem', paddingRight: '0.25rem' }}
+            >
               {currentQuestion === questions.length - 1 ? (
                 <motion.button
                   onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
@@ -940,7 +945,7 @@ export function StudentTestTaking({
                     </motion.button>
                     <button
                       onClick={() => setShowMobilePalette(true)}
-                      className="px-4 py-3 bg-gray-100 rounded-xl"
+                      className="px-4 py-3 bg-gray-100 rounded-xl shadow-sm"
                       aria-label="Open question palette"
                     >
                       <Grid3x3 className="w-5 h-5 text-gray-700" />
@@ -952,8 +957,8 @@ export function StudentTestTaking({
                       onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                       disabled={currentQuestion === 0}
                       className={`py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1 ${currentQuestion === 0
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-100 text-gray-700'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-sm'
+                        : 'bg-gray-100 text-gray-700 shadow-sm'
                         }`}
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -964,13 +969,13 @@ export function StudentTestTaking({
                       <>
                         <button
                           onClick={() => selectAnswer(question.id, null)}
-                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium"
+                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium shadow-sm"
                         >
                           Clear
                         </button>
                         <button
                           onClick={() => toggleFlag(question.id)}
-                          className={`py-2.5 rounded-xl text-sm font-medium ${flaggedQuestions.has(question.id)
+                          className={`py-2.5 rounded-xl text-sm font-medium shadow-sm ${flaggedQuestions.has(question.id)
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-gray-100 text-gray-700'
                             }`}
