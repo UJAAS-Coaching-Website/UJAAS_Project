@@ -494,19 +494,19 @@ export function StudentTestTaking({
                     const firstIdx = questions.findIndex(q => q.subject === s);
                     if (firstIdx > -1) setCurrentQuestion(firstIdx);
                   }}
-                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
+                  className={`shrink-0 basis-[calc((100%-1rem)/3)] px-3 py-2 text-xs rounded-xl font-bold transition-all whitespace-nowrap sm:basis-auto sm:px-6 sm:py-2.5 sm:text-sm ${currentSubject === s
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                     }`}
                 >
-                  {s}
+                  <span className="block truncate">{s}</span>
                 </button>
               ))}
             </div>
 
             {/* Section Tabs */}
             {sections.length > 1 && (
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 {sections.map((sec) => (
                   <button
                     key={sec}
@@ -514,13 +514,13 @@ export function StudentTestTaking({
                       const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
-                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${currentSection === sec
+                    className={`flex-1 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold border-2 transition-all ${currentSection === sec
                       ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                       : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
                       }`}
                   >
                     {sec}
-                    <span className="ml-2 text-xs opacity-60">
+                    <span className="ml-1.5 sm:ml-2 text-[11px] sm:text-xs opacity-60">
                       ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
                     </span>
                   </button>
