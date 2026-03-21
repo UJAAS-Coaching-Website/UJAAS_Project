@@ -277,8 +277,12 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-gray-50 p-6 text-gray-800 whitespace-pre-wrap leading-7">
-                {payload.dpp.instructions}
+              <div className="rounded-2xl bg-gray-50 p-6 text-gray-800 leading-7">
+                <div className="space-y-2">
+                  {payload.dpp.instructions.split('\n').map((line, index) => (
+                    line.trim() ? <p key={index}>{line.trim()}</p> : null
+                  ))}
+                </div>
               </div>
 
               <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-gray-600">
