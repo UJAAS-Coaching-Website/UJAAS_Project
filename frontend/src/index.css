@@ -238,6 +238,41 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Poppins', sans-serif;
 }
 
+.dpp-preview-shell {
+  height: 100%;
+  width: 100%;
+}
+
+.dpp-preview-card {
+  display: flex;
+  min-height: 100%;
+  width: 100%;
+  flex-direction: column;
+  overflow-y: auto;
+  border-radius: 1.5rem;
+  background: #fff;
+  padding: 1.25rem 1.25rem 1.25rem;
+  box-shadow: none;
+}
+
+@media (min-width: 640px) {
+  .dpp-preview-shell {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 0.75rem;
+  }
+
+  .dpp-preview-card {
+    margin-left: auto;
+    margin-right: auto;
+    min-height: calc(100dvh - 0.75rem);
+    max-width: 56rem;
+    border: 1px solid oklch(0.967 0.003 264.542);
+    padding: 2rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+}
+
 @layer base {
   *, :after, :before, ::backdrop {
     box-sizing: border-box;

@@ -255,8 +255,8 @@ export function DPPPractice({ session, onExit, onExitResult, onSessionChange }: 
           exit={{ opacity: 0 }}
           className="h-[100dvh] overflow-hidden bg-[oklch(0.98_0.02_196.85)]"
         >
-          <div className="h-full w-full sm:flex sm:items-center sm:justify-center sm:px-6">
-            <div className="flex min-h-full w-full flex-col overflow-y-auto rounded-b-3xl bg-white p-5 shadow-none sm:min-h-0 sm:max-w-4xl sm:rounded-3xl sm:border sm:border-gray-100 sm:p-8 sm:shadow-xl">
+          <div className="dpp-preview-shell">
+            <div className="dpp-preview-card">
               <div className="mb-6 flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-700 sm:h-14 sm:w-14">
