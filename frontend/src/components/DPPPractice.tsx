@@ -23,7 +23,6 @@ export type DppPracticeSession =
 interface DPPPracticeProps {
   session: DppPracticeSession;
   onExit: () => void;
-  onExitResult?: () => void;
   onSessionChange?: (session: DppPracticeSession) => void;
 }
 
@@ -92,7 +91,7 @@ function mapReviewAnswers(result: ApiDppAttemptResult) {
   }, {});
 }
 
-export function DPPPractice({ session, onExit, onExitResult, onSessionChange }: DPPPracticeProps) {
+export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticeProps) {
   const [payload, setPayload] = useState<ApiStartDppAttemptPayload | null>(session.mode === 'attempt' ? session.payload : null);
   const [hasStarted, setHasStarted] = useState(session.mode === 'attempt' ? !(session.payload.dpp.instructions || '').trim() : false);
   const [result, setResult] = useState<ApiDppAttemptResult | null>(session.mode === 'result' ? session.result : null);
@@ -170,10 +169,7 @@ export function DPPPractice({ session, onExit, onExitResult, onSessionChange }: 
         duration={0}
         questions={mapReviewQuestions(result) as any}
         onSubmit={() => {}}
-        onExit={() => {
-          setReviewOpen(false);
-          syncResultSession(result, history, false);
-        }}
+        onExit={onExit}
         initialAnswers={mapReviewAnswers(result)}
         initialTimeSpent={0}
         isPreview={true}
@@ -229,7 +225,7 @@ export function DPPPractice({ session, onExit, onExitResult, onSessionChange }: 
           })),
           attempt_id: result.attempt_id,
         } as any}
-        onClose={onExitResult || onExit}
+        onClose={onExit}
         hideRank={true}
         hideTimeSpent={true}
         hideDownload={true}
