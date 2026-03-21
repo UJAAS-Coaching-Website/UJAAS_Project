@@ -165,11 +165,11 @@ type StudentFormState = {
   name: string;
   rollNumber: string;
   batch: Batch;
+  email: string;
   phoneNumber: string;
   dateOfBirth: string;
   address: string;
   parentContact: string;
-  email?: string;
 };
 
 type FacultyFormState = {
@@ -298,6 +298,7 @@ export function AdminDashboard({
       performance: 0,
       rating: overallFromSubjects ?? (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
       batch: s.assigned_batch?.name || 'Unassigned',
+      email: s.login_id?.includes('@') ? s.login_id : '',
       phoneNumber: s.phone || '',
       dateOfBirth: s.date_of_birth || '',
       address: s.address || '',
@@ -569,6 +570,7 @@ export function AdminDashboard({
         const createdStudent = await onCreateStudent({
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email.trim() || undefined,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,
@@ -2257,6 +2259,7 @@ function AddStudentModal({
     name: initial?.name ?? '',
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
+    email: initial?.email ?? '',
     phoneNumber: initial?.phoneNumber ?? '',
     dateOfBirth: initial?.dateOfBirth ?? '',
     address: initial?.address ?? '',
@@ -2336,6 +2339,18 @@ function AddStudentModal({
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Email {requiredMark}</span>
+              <input
+                type="email"
+                required
+                value={formState.email}
+                onChange={handleChange('email')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="student@email.com"
+              />
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
@@ -2934,8 +2949,28 @@ function BatchFormModal({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const selectedSubjects = Array.from(new Set(formState.assignments.map((item) => item.subject)));
-    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty).filter((name) => name.trim().length > 0)));
+    const normalizedTypedSubject = formState.subject.trim();
+    const inlineAssignments =
+      normalizedTypedSubject.length > 0
+        ? selectedFacultyNames.length > 0
+          ? selectedFacultyNames.map((name) => ({ subject: normalizedTypedSubject, faculty: name }))
+          : [{ subject: normalizedTypedSubject, faculty: '' }]
+        : [];
+    const effectiveAssignments = [...formState.assignments, ...inlineAssignments];
+    const selectedSubjects = Array.from(
+      new Set(
+        effectiveAssignments
+          .map((item) => item.subject.trim())
+          .filter((subject) => subject.length > 0)
+      )
+    );
+    const selectedFaculty = Array.from(
+      new Set(
+        effectiveAssignments
+          .map((item) => item.faculty.trim())
+          .filter((name) => name.length > 0)
+      )
+    );
     if (!formState.name.trim()) {
       setError('Batch name is required.');
       return;

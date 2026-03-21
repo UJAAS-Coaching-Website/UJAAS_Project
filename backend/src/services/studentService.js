@@ -167,7 +167,7 @@ export async function getStudentById(id) {
 /**
  * Create a new student.
  */
-export async function createStudent({ name, rollNumber, phone, address, dateOfBirth, parentContact, batchId }) {
+export async function createStudent({ name, rollNumber, email, phone, address, dateOfBirth, parentContact, batchId }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -175,11 +175,13 @@ export async function createStudent({ name, rollNumber, phone, address, dateOfBi
 
         const password = hashPassword(generateInitialPassword(name));
 
+        const loginId = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : rollNumber;
+
         const userResult = await client.query(
             `INSERT INTO users (name, login_id, role, password_hash, created_at)
              VALUES ($1, $2, 'student', $3, NOW())
              RETURNING id`,
-            [name, rollNumber, password]
+            [name, loginId, password]
         );
         const userId = userResult.rows[0].id;
 

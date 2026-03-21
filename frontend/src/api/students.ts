@@ -54,6 +54,7 @@ export interface ApiStudent {
 export interface CreateStudentPayload {
     name: string;
     rollNumber: string;
+    email?: string;
     phone?: string;
     address?: string;
     dateOfBirth?: string;

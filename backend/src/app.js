@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { corsOrigin } from "./config/index.js";
+import { corsOrigin, frontendOrigin, nodeEnv } from "./config/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import healthRoutes from "./routes/healthRoutes.js";
@@ -50,5 +50,17 @@ app.use("/api/subjects", subjectRoutes);
 app.use("/api/faculty-reviews", facultyReviewRoutes);
 app.use("/api/notification-center", notificationRoutes);
 app.use(healthRoutes);
+
+// In development, forward non-API SPA routes to the frontend dev server.
+if (nodeEnv === "development") {
+    app.get(/^\/(?!api(?:\/|$)).*/, (req, res) => {
+        try {
+            const target = new URL(req.originalUrl || "/", frontendOrigin).toString();
+            return res.redirect(302, target);
+        } catch {
+            return res.status(404).send("Not Found");
+        }
+    });
+}
 
 export default app;

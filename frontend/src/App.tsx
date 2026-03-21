@@ -1280,7 +1280,27 @@ function App() {
     if (user) {
       return <DashboardLoadingShell role={user.role} />;
     }
-
+    const route = parsePath();
+    if (route.view === 'login') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <Login onLogin={handleLogin} />
+        </Suspense>
+      );
+    }
+    if (route.view === 'get-started') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <GetStarted
+            onGetStarted={handleGetStarted}
+            isNewUser={false}
+            userName=""
+            landingData={landingData}
+            onSubmitQuery={handleAddQuery}
+          />
+        </Suspense>
+      );
+    }
     return <AuthLoadingShell isMobile={isMobile} />;
   }
 
