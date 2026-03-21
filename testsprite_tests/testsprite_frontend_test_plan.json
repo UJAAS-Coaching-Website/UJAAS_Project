@@ -1,0 +1,90 @@
+[
+  {
+    "id": "TC001",
+    "title": "Student login success and role redirect",
+    "description": "Verify student can log in and land on student dashboard.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      "Open /login",
+      "Fill student credentials",
+      "Submit login",
+      "Assert student dashboard is visible"
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Invalid login shows inline error",
+    "description": "Verify invalid credentials display login error feedback.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      "Open /login",
+      "Enter invalid credentials",
+      "Submit login",
+      "Assert inline error text appears"
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Student dashboard renders tabs and cards",
+    "description": "Verify dashboard top-level sections render after login.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      "Login as student",
+      "Open Dashboard tab",
+      "Assert key cards and navigation tabs exist"
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Question bank search and sort interaction",
+    "description": "Verify student can open question bank and use search/sort controls.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      "Login as student",
+      "Navigate to Question Bank",
+      "Type into search field",
+      "Change sort option and assert list updates"
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Student profile settings open",
+    "description": "Verify settings tab opens and password change form is reachable.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      "Login as student",
+      "Open Profile",
+      "Navigate to Settings",
+      "Assert password change fields are present"
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Get started form validation",
+    "description": "Verify get-started interest form blocks invalid required fields.",
+    "category": "validation",
+    "priority": "Medium",
+    "steps": [
+      "Open /get-started",
+      "Try submitting empty or invalid form fields",
+      "Assert validation feedback is shown"
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Student test series list loads",
+    "description": "Verify test series tab opens and list/empty state is visible.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      "Login as student",
+      "Navigate to Test Series",
+      "Assert list of tests or explicit empty state appears"
+    ]
+  }
+]

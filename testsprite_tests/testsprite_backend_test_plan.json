@@ -1,0 +1,43 @@
+[
+  {
+    "id": "API001",
+    "title": "Backend health endpoint responds",
+    "description": "Verify backend root/health endpoint returns success.",
+    "priority": "High",
+    "steps": [
+      "Send GET request to /",
+      "Assert HTTP 200 and health response"
+    ]
+  },
+  {
+    "id": "API002",
+    "title": "Login with valid student loginId credentials",
+    "description": "Verify POST /api/auth/login returns auth token/session for student using loginId UJAAS-2026-007 and password ashish@123.",
+    "priority": "High",
+    "steps": [
+      "POST /api/auth/login with loginId UJAAS-2026-007 and password ashish@123",
+      "Assert success response and auth token/cookie fields"
+    ]
+  },
+  {
+    "id": "API003",
+    "title": "Login rejection for invalid credentials",
+    "description": "Verify POST /api/auth/login rejects invalid credentials.",
+    "priority": "High",
+    "steps": [
+      "POST /api/auth/login with invalid credentials",
+      "Assert 401/4xx and clear error body"
+    ]
+  },
+  {
+    "id": "API004",
+    "title": "Authenticated profile endpoint",
+    "description": "Verify /api/auth/me returns current user after login with loginId UJAAS-2026-007 and password ashish@123.",
+    "priority": "High",
+    "steps": [
+      "Login with loginId UJAAS-2026-007 and password ashish@123 to obtain auth context",
+      "GET /api/auth/me with auth context",
+      "Assert user role and identity payload"
+    ]
+  }
+]
