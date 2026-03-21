@@ -31,6 +31,7 @@ export function NotificationCenter({
   onDelete 
 }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedNotifications, setExpandedNotifications] = useState<Record<string, boolean>>({});
   const isMobile = useIsMobile();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [desktopPanelTop, setDesktopPanelTop] = useState(72);
@@ -94,6 +95,13 @@ export function NotificationCenter({
       default:
         return 'from-blue-500 to-indigo-500';
     }
+  };
+
+  const toggleExpandedNotification = (id: string) => {
+    setExpandedNotifications((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   return (
@@ -187,6 +195,11 @@ export function NotificationCenter({
                   ) : (
                     <div className="divide-y divide-gray-100">
                       {notifications.map((notification) => (
+                        (() => {
+                          const isExpanded = Boolean(expandedNotifications[notification.id]);
+                          const shouldShowReadMore = notification.message.trim().length > 120;
+
+                          return (
                         <motion.div
                           key={notification.id}
                           initial={{ opacity: 0, x: -20 }}
@@ -218,9 +231,21 @@ export function NotificationCenter({
                                   <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
                                 )}
                               </div>
-                              <p className="mb-2 text-sm text-gray-600 line-clamp-2">
+                              <p className={`mb-2 text-sm text-gray-600 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
                                 {notification.message}
                               </p>
+                              {shouldShowReadMore && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpandedNotification(notification.id);
+                                  }}
+                                  className="mb-2 text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                                >
+                                  {isExpanded ? 'Show less' : 'Read more'}
+                                </button>
+                              )}
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-gray-500">{notification.time}</span>
                                 {!notification.isSticky && (
@@ -238,6 +263,8 @@ export function NotificationCenter({
                             </div>
                           </div>
                         </motion.div>
+                          );
+                        })()
                       ))}
                     </div>
                   )}
