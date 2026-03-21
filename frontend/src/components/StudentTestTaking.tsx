@@ -368,60 +368,97 @@ export function StudentTestTaking({
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{testTitle}</h1>
-                {isPreview && (
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Edit Test Settings"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {questionCount} Questions
-                </span>
-                {showMarksMeta && (
-                  <span className="flex items-center gap-1">
-                    <Award className="w-3 h-3 sm:w-4 sm:h-4" />
-                    {totalMarks} Marks
-                  </span>
-                )}
-                {isAnyPreview && (
-                  <>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2 sm:items-center sm:gap-3 mb-1">
+                    <h1 className="text-lg leading-tight sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">
+                      {testTitle}
+                    </h1>
+                    {isPreview && (
+                      <button
+                        onClick={() => setShowSettings(true)}
+                        className="mt-0.5 sm:mt-0 p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Test Settings"
+                      >
+                        <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-4 text-[11px] sm:text-sm text-gray-600">
                     <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                      {selectedBatches.join(', ') || 'No batches assigned'}
+                      <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                      {questionCount} Questions
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
-                      }`}>
-                      {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+                    {showMarksMeta && (
+                      <span className="flex items-center gap-1">
+                        <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                        {totalMarks} Marks
+                      </span>
+                    )}
+                    {isAnyPreview && (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                          {selectedBatches.join(', ') || 'No batches assigned'}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+                          }`}>
+                          {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-            <div className="flex items-center gap-3">
-              {/* Timer - only for students */}
+                <button
+                  onClick={handleExitRequest}
+                  disabled={isSubmitting}
+                  className="attempt-header-mobile-only shrink-0 items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-80"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="whitespace-nowrap">
+                    {isSubmitting ? 'Submitting...' : isAnyPreview ? 'Exit Review' : 'Exit Test'}
+                  </span>
+                </button>
+              </div>
+
               {!isAnyPreview && enableTimer && (
-                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
+                <div className={`attempt-header-mobile-timer mt-3 items-center gap-3 w-full min-h-[44px] px-3 py-1 rounded-xl border ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
                   timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
                     'bg-blue-50 border-blue-300'
                   }`}>
-                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${timeLeft <= 300 ? 'text-red-600' :
+                  <Clock className={`w-5 h-5 shrink-0 ${timeLeft <= 300 ? 'text-red-600' :
+                    timeLeft <= 600 ? 'text-yellow-600' :
+                      'text-blue-600'
+                    }`} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-600">Time Left</p>
+                    <p className={`text-xl leading-none font-bold tracking-tight ${timeLeft <= 300 ? 'text-red-600' :
+                      timeLeft <= 600 ? 'text-yellow-600' :
+                        'text-blue-600'
+                      }`}>
+                      {formatTime(timeLeft)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="attempt-header-desktop-controls shrink-0 items-center gap-3">
+              {!isAnyPreview && enableTimer && (
+                <div className={`flex items-center gap-3 min-h-[48px] px-4  rounded-2xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
+                  timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
+                    'bg-blue-50 border-blue-300'
+                  }`}>
+                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${timeLeft <= 300 ? 'text-red-600' :
                     timeLeft <= 600 ? 'text-yellow-600' :
                       'text-blue-600'
                     }`} />
                   <div>
                     <p className="text-xs text-gray-600">Time Left</p>
-                    <p className={`text-lg sm:text-2xl font-bold ${timeLeft <= 300 ? 'text-red-600' :
+                    <p className={`text-lg font-bold leading-none ${timeLeft <= 300 ? 'text-red-600' :
                       timeLeft <= 600 ? 'text-yellow-600' :
                         'text-blue-600'
                       }`}>
@@ -434,10 +471,12 @@ export function StudentTestTaking({
               <button
                 onClick={handleExitRequest}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                className="inline-flex shrink-0 items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-2xl text-base font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-80"
               >
                 <X className="w-5 h-5" />
-                {isSubmitting ? 'Submitting...' : isAnyPreview ? 'Exit Review' : 'Exit Test'}
+                <span className="whitespace-nowrap">
+                  {isSubmitting ? 'Submitting...' : isAnyPreview ? 'Exit Review' : 'Exit Test'}
+                </span>
               </button>
             </div>
           </div>

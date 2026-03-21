@@ -118,6 +118,29 @@ table {
   }
 }
 
+.attempt-header-mobile-only {
+  display: inline-flex;
+}
+
+.attempt-header-mobile-timer {
+  display: flex;
+}
+
+.attempt-header-desktop-controls {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .attempt-header-mobile-only,
+  .attempt-header-mobile-timer {
+    display: none;
+  }
+
+  .attempt-header-desktop-controls {
+    display: flex;
+  }
+}
+
 @media (min-width: 1024px) and (min-height: 700px) {
   .footer-reveal-page {
     --footer-reveal-offset: clamp(72px, 10vh, 120px);
