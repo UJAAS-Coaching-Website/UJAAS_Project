@@ -254,51 +254,53 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
           exit={{ opacity: 0 }}
           className="h-[100dvh] overflow-hidden bg-[oklch(0.98_0.02_196.85)]"
         >
-          <div className="flex h-full items-center justify-center px-4 py-4 sm:px-6">
-            <div className="w-full max-w-4xl rounded-3xl border border-gray-100 bg-white p-8 shadow-xl">
+          <div className="h-full w-full sm:flex sm:items-center sm:justify-center sm:px-6">
+            <div className="flex min-h-full w-full flex-col overflow-y-auto rounded-b-3xl bg-white p-5 shadow-none sm:min-h-0 sm:max-w-4xl sm:rounded-3xl sm:border sm:border-gray-100 sm:p-8 sm:shadow-xl">
               <div className="mb-6 flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
-                    <BookOpen className="w-7 h-7" />
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-700 sm:h-14 sm:w-14">
+                    <BookOpen className="h-6 w-6 sm:h-7 sm:w-7" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-gray-900">{payload.dpp.title}</h2>
-                    <p className="text-gray-600">
+                    <h2 className="text-xl font-bold text-gray-900 sm:text-3xl">{payload.dpp.title}</h2>
+                    <p className="text-sm text-gray-600 sm:text-base">
                       {payload.dpp.subject_name} • {payload.dpp.chapter_name}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onExit}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-slate-700 hover:bg-slate-200"
+                  className="inline-flex items-center justify-center rounded-full p-2 text-slate-700 transition hover:bg-slate-100"
+                  aria-label="Close DPP instructions"
                 >
-                  <X className="w-4 h-4" />
-                  Back
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-gray-50 p-6 text-gray-800 leading-7">
-                <div className="space-y-2">
-                  {payload.dpp.instructions.split('\n').map((line, index) => (
-                    line.trim() ? <p key={index}>{line.trim()}</p> : null
-                  ))}
+              <div className="flex flex-1 flex-col">
+                <div className="rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-800 sm:p-6 sm:text-base sm:leading-7">
+                  <div className="space-y-2">
+                    {payload.dpp.instructions.split('\n').map((line, index) => (
+                      line.trim() ? <p key={index}>{line.trim()}</p> : null
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                <span>{payload.dpp.question_count} questions</span>
-                <span>Attempts used: {payload.submittedAttemptCount}/{payload.maxAttempts}</span>
-                <span>Attempts left: {payload.remainingAttempts}</span>
-              </div>
+                <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-gray-600 sm:text-sm">
+                  <span>{payload.dpp.question_count} questions</span>
+                  <span>Attempts used: {payload.submittedAttemptCount}/{payload.maxAttempts}</span>
+                  <span>Attempts left: {payload.remainingAttempts}</span>
+                </div>
 
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={() => setHasStarted(true)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-6 py-3 font-bold text-white shadow-lg hover:shadow-xl"
-                >
-                  Continue to DPP
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={() => setHasStarted(true)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 px-6 py-2.5 text-sm font-bold text-white shadow-lg hover:shadow-xl sm:px-6 sm:py-3 sm:text-base"
+                  >
+                    Continue to DPP
+                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -315,6 +317,7 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
             initialAnswers={{}}
             enableTimer={false}
             showMarksMeta={false}
+            outerPaddingClassName="p-2 pb-3"
           />
           {submitting && (
             <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm">
