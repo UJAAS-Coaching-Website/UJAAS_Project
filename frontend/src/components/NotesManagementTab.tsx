@@ -897,7 +897,7 @@ export function NotesManagementTab({
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg"><FileText className="w-6 h-6" /></div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-900 truncate mb-1">{item.title}</h4>
+                        <h4 className="mb-1 text-sm font-bold text-gray-900 sm:text-base truncate">{item.title}</h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-400 font-medium">{new Date(item.created_at).toLocaleDateString()}</span>
                           <div className="flex gap-1">
@@ -938,27 +938,27 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className={`rounded-2xl border border-white bg-white/80 p-5 shadow-lg transition-opacity ${
+                  className={`rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${
                     previewingDppId === item.id ? 'cursor-wait opacity-70' : variant !== 'student' ? 'cursor-pointer' : ''
                   }`}
                   onClick={variant !== 'student' ? () => { void handleOpenAdminFacultyPreview(item.id); } : undefined}
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
+                  <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
                           {item.subject_name}
                         </span>
-                        <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 sm:px-2.5 sm:text-xs">
                           {item.question_count} Questions
                         </span>
                       </div>
-                      <h4 className="font-bold text-gray-900">{item.title}</h4>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <h4 className="text-base font-bold text-gray-900 sm:text-lg">{item.title}</h4>
+                      <p className="mt-1 text-xs text-gray-500 sm:text-sm">
                         {item.chapter_name} • {new Date(item.created_at).toLocaleDateString()}
                       </p>
                       {variant === 'student' && (
-                        <p className="mt-3 text-sm text-gray-600">
+                        <p className="mt-3 text-xs text-gray-600 sm:text-sm">
                           Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
                         </p>
                       )}
@@ -968,26 +968,46 @@ export function NotesManagementTab({
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center self-center gap-2">
+                    <div className="w-full md:w-auto md:shrink-0">
                       {variant === 'student' ? (
-                        <div className="flex flex-col gap-2">
-                          <button
-                            onClick={() => handleAttemptDpp(item.id)}
-                            disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
-                            className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2 font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
-                          </button>
-                          {(item.submitted_attempt_count || 0) > 0 && (
+                        <>
+                          <div className="grid w-full grid-cols-2 gap-2 md:hidden">
+                            {(item.submitted_attempt_count || 0) > 0 && (
+                              <button
+                                onClick={() => handlePreviewDpp(item.id)}
+                                disabled={previewingDppId === item.id}
+                                className="w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                              >
+                                {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                              </button>
+                            )}
                             <button
-                              onClick={() => handlePreviewDpp(item.id)}
-                              disabled={previewingDppId === item.id}
-                              className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                              onClick={() => handleAttemptDpp(item.id)}
+                              disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                              className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                              {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
                             </button>
-                          )}
-                        </div>
+                          </div>
+                          <div className="hidden md:flex md:w-auto md:flex-col md:items-stretch md:justify-start md:gap-3">
+                            {(item.submitted_attempt_count || 0) > 0 && (
+                              <button
+                                onClick={() => handlePreviewDpp(item.id)}
+                                disabled={previewingDppId === item.id}
+                                className="rounded-xl border border-teal-200 bg-teal-50 px-5 py-2.5 text-base font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60 md:min-w-[170px]"
+                              >
+                                {previewingDppId === item.id ? 'Opening...' : 'Preview'}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleAttemptDpp(item.id)}
+                              disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                              className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-5 py-2.5 text-base font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50 md:min-w-[170px]"
+                            >
+                              {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                            </button>
+                          </div>
+                        </>
                       ) : (
                         <button
                           onClick={(event) => {
