@@ -480,7 +480,7 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className="footer-reveal-main w-full max-w-7xl mx-auto flex-grow">
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
         )}
