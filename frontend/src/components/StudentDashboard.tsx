@@ -64,6 +64,7 @@ export function StudentDashboard({
   const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+  const [testSeriesMode, setTestSeriesMode] = useState<'list' | 'overview' | 'taking' | 'analytics' | 'viewResults'>('list');
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
   const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
@@ -295,12 +296,14 @@ export function StudentDashboard({
 
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
+  const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
   }, [activeTab, onNavigate]);
 
   const handleTestSeriesStateChange = useCallback((mode: 'list' | 'overview' | 'taking' | 'analytics' | 'viewResults') => {
+    setTestSeriesMode(mode);
     setIsNavbarInternalHidden(mode !== 'list');
   }, []);
 
@@ -480,7 +483,7 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto flex-grow">
+      <main className={`footer-reveal-main w-full flex-grow ${isTestAttemptRoute ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
         )}
