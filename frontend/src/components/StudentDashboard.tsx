@@ -324,6 +324,10 @@ export function StudentDashboard({
     }
   };
 
+  const handleExitDppResult = () => {
+    onNavigate('home', 'dpp');
+  };
+
   const handleTimetableDownload = async (fileUrl: string | null | undefined) => {
     if (!fileUrl) return;
     try {
@@ -497,6 +501,7 @@ export function StudentDashboard({
             <DPPPractice
               session={activeDppSession}
               onExit={handleExitDpp}
+              onExitResult={handleExitDppResult}
               onSessionChange={(nextSession) => {
                 setActiveDppSession(nextSession);
                 sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
