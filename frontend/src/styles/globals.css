@@ -130,6 +130,14 @@ table {
   display: none;
 }
 
+.attempt-nav-desktop {
+  display: none;
+}
+
+.attempt-nav-mobile {
+  display: block;
+}
+
 @media (min-width: 40rem) {
   .attempt-header-mobile-only,
   .attempt-header-mobile-timer {
@@ -138,6 +146,14 @@ table {
 
   .attempt-header-desktop-controls {
     display: flex;
+  }
+
+  .attempt-nav-desktop {
+    display: flex;
+  }
+
+  .attempt-nav-mobile {
+    display: none;
   }
 }
 

@@ -543,7 +543,7 @@ export function StudentTestTaking({
                 <>
                   {/* Question Header */}
                   <div className="flex items-start justify-between mb-6">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0 max-w-full">
                       <div className="question-meta-row flex items-center flex-wrap gap-3 mb-4">
                         <span className="question-meta-chip px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
                           {question.subject}
@@ -576,14 +576,19 @@ export function StudentTestTaking({
                         )}
                       </div>
                       <h2
-                        className="text-lg sm:text-xl font-semibold text-gray-900 leading-snug sm:leading-relaxed mb-4 break-words"
+                        className="w-full max-w-full text-[15px] sm:text-xl font-semibold text-gray-900 leading-snug sm:leading-relaxed mb-4 whitespace-normal break-words"
                         style={{ overflowWrap: 'anywhere' }}
                       >
                         {question.question}
                       </h2>
                       {question.questionImage && (
-                        <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 w-full max-w-full">
-                          <img src={question.questionImage} alt="Question" className="max-h-64 w-full max-w-full object-contain" />
+                        <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block max-w-full align-top">
+                          <img
+                            src={question.questionImage}
+                            alt="Question"
+                            className="block max-h-52 sm:max-h-64 max-w-full w-auto h-auto object-contain"
+                            style={{ maxWidth: 'min(100%, calc(100vw - 2.5rem))' }}
+                          />
                         </div>
                       )}
                     </div>
@@ -622,7 +627,7 @@ export function StudentTestTaking({
                                 selectAnswer(question.id, index);
                               }}
                               disabled={isAnyPreview || isSectionBLocked}
-                              className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
+                              className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all overflow-hidden ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
                                 isSelected
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
                                   : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
@@ -641,14 +646,19 @@ export function StudentTestTaking({
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <span
-                                    className="block text-sm sm:text-base text-gray-900 font-medium break-words"
+                                    className="block w-full max-w-full text-sm sm:text-base text-gray-900 font-medium whitespace-normal break-words"
                                     style={{ overflowWrap: 'anywhere' }}
                                   >
                                     {option}
                                   </span>
                                   {question.optionImages?.[index] && (
-                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 w-full max-w-full">
-                                      <img src={question.optionImages[index]} alt={`Option ${index}`} className="max-h-32 w-full max-w-full object-contain" />
+                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block max-w-full align-top">
+                                      <img
+                                        src={question.optionImages[index]}
+                                        alt={`Option ${index}`}
+                                        className="block max-h-28 sm:max-h-32 max-w-full w-auto h-auto object-contain"
+                                        style={{ maxWidth: 'min(100%, calc(100vw - 5.5rem))' }}
+                                      />
                                     </div>
                                   )}
                                 </div>
@@ -696,12 +706,17 @@ export function StudentTestTaking({
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-700 leading-relaxed italic mb-4" style={{ overflowWrap: 'anywhere' }}>
+                      <p className="text-gray-700 leading-relaxed italic mb-4 whitespace-normal break-words" style={{ overflowWrap: 'anywhere' }}>
                         {question.explanation || "No explanation provided for this question."}
                       </p>
                       {question.explanationImage && (
-                        <div className="rounded-xl overflow-hidden border border-blue-100 bg-white p-2 w-full max-w-full">
-                          <img src={question.explanationImage} alt="Solution" className="max-h-64 w-full max-w-full object-contain" />
+                        <div className="rounded-xl overflow-hidden border border-blue-100 bg-white inline-block max-w-full align-top">
+                          <img
+                            src={question.explanationImage}
+                            alt="Solution"
+                            className="block max-h-64 max-w-full w-auto h-auto object-contain"
+                            style={{ maxWidth: 'min(100%, calc(100vw - 2.5rem))' }}
+                          />
                         </div>
                       )}
                     </div>
@@ -849,7 +864,7 @@ export function StudentTestTaking({
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center justify-between">
+            <div className="attempt-nav-desktop items-center justify-between">
               <motion.button
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
@@ -898,6 +913,62 @@ export function StudentTestTaking({
                     {isAnyPreview ? 'Next' : 'Save & Next'}
                     <ChevronRight className="w-5 h-5" />
                   </motion.button>
+                </div>
+              )}
+            </div>
+
+            <div className="attempt-nav-mobile mt-4 border-t border-gray-100 pt-4">
+              {currentQuestion === questions.length - 1 ? (
+                <motion.button
+                  onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
+                  className={`w-full py-3 bg-gradient-to-r ${isAnyPreview ? 'from-gray-600 to-gray-700' : 'from-green-600 to-emerald-600'} text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2`}
+                >
+                  {isAnyPreview ? <X className="w-4 h-4" /> : null}
+                  {isAnyPreview ? 'Exit Review' : 'Submit Test'}
+                </motion.button>
+              ) : (
+                <div className="space-y-2">
+                  <motion.button
+                    onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
+                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    {isAnyPreview ? 'Next' : 'Save & Next'}
+                    <ChevronRight className="w-4 h-4" />
+                  </motion.button>
+
+                  <div className={`grid gap-2 ${isAnyPreview ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                    <motion.button
+                      onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+                      disabled={currentQuestion === 0}
+                      className={`py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1 ${currentQuestion === 0
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-100 text-gray-700'
+                        }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </motion.button>
+
+                    {!isAnyPreview && (
+                      <>
+                        <button
+                          onClick={() => selectAnswer(question.id, null)}
+                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={() => toggleFlag(question.id)}
+                          className={`py-2.5 rounded-xl text-sm font-medium ${flaggedQuestions.has(question.id)
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                            }`}
+                        >
+                          Review
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
