@@ -3,6 +3,7 @@ import { TestSeriesSection } from './TestSeriesSection';
 import { StudentTestTaking } from './StudentTestTaking';
 import { StudentAnalytics } from './StudentAnalytics';
 import { ViewResults } from './ViewResults';
+import { TestOverview } from './test-series/TestOverview';
 import { User, PublishedTest } from '../App';
 import { API_BASE_URL } from '../api/base';
 import {
@@ -17,37 +18,14 @@ import {
   type ApiAttemptResult,
   type ApiAttemptHistoryEntry,
   type ApiStudentAttemptResultListItem,
-  type ApiTest,
 } from '../api/tests';
-import { motion } from 'motion/react';
 import {
-  Clock,
-  FileText,
-  AlertCircle,
-  BookOpen,
-  Award,
-  ChevronLeft,
-  Play
-} from 'lucide-react';
+  mapApiAttemptResultToAnalytics,
+  mapApiTestToPublished as apiTestToPublished,
+} from '../utils/testMappings';
+import { preloadTestAssets, slugifyText } from '../utils/testSession';
 
 type StudentAnswer = string | number | number[] | null;
-
-function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
-  if (type === 'MCQ') {
-    return Number(correctAnswer);
-  }
-
-  if (type === 'MSQ') {
-    try {
-      const parsed = JSON.parse(correctAnswer);
-      return Array.isArray(parsed) ? parsed.map((value) => Number(value)).filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  return correctAnswer;
-}
 
 type TestState =
   | { mode: 'list' }
@@ -65,94 +43,6 @@ type TestState =
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
 const LAST_RESULT_STORAGE_KEY = 'ujaasLastAttemptResultId';
-const slugify = (text: string) => {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-};
-
-const apiTestToPublished = (t: ApiTest): PublishedTest => ({
-  id: t.id,
-  title: t.title,
-  format: t.format || 'Custom',
-  batches: t.batches.map(b => b.name),
-  duration: t.duration_minutes,
-  totalMarks: t.total_marks,
-  questionCount: t.question_count,
-  enrolledCount: t.enrolled_count,
-  scheduleDate: t.schedule_date || '',
-  scheduleTime: t.schedule_time || '',
-  instructions: t.instructions || undefined,
-  status: t.status,
-  submittedAttemptCount: t.submitted_attempt_count,
-  maxAttempts: t.submitted_attempt_count !== undefined ? 3 : undefined,
-  hasActiveAttempt: t.has_active_attempt,
-  activeAttemptId: t.active_attempt_id ?? null,
-  latestAttemptId: t.latest_attempt_id ?? null,
-  latestAttemptSubmittedAt: t.latest_attempt_submitted_at ?? null,
-  latestAttemptTimeSpent: t.latest_attempt_time_spent ?? null,
-  questions: (t.questions || []).map((q) => ({
-    id: q.id,
-    type: q.type,
-    subject: q.subject,
-    question: q.question_text,
-    questionImage: q.question_img || undefined,
-    options: q.options || undefined,
-    optionImages: q.option_imgs || undefined,
-    correctAnswer: parseQuestionCorrectAnswer(q.type, q.correct_answer),
-    marks: q.marks,
-    negativeMarks: q.neg_marks,
-    explanation: q.explanation || undefined,
-    explanationImage: q.explanation_img || undefined,
-    difficulty: q.difficulty || undefined,
-    metadata: { section: q.section || undefined },
-  })),
-});
-
-function mapAttemptResultToAnalytics(result: ApiAttemptResult) {
-  return {
-    ...result,
-    questions: result.questions.map((question) => ({
-      id: question.id,
-      text: question.question_text,
-      question: question.question_text,
-      questionImage: question.question_img || undefined,
-      options: question.options || undefined,
-      optionImages: question.option_imgs || undefined,
-      correctAnswer: parseQuestionCorrectAnswer(question.type, question.correct_answer),
-      subject: question.subject,
-      marks: question.marks,
-      negativeMarks: question.neg_marks,
-      type: question.type,
-      metadata: { section: question.section || undefined },
-      explanation: question.explanation || undefined,
-      explanationImage: question.explanation_img || undefined,
-      userAnswer: question.user_answer,
-    })),
-  };
-}
-
-async function preloadTestAssets(questions: PublishedTest['questions']) {
-  const imageSources = questions.flatMap((question) => [
-    question.questionImage,
-    question.explanationImage,
-    ...(question.optionImages || []),
-  ]).filter((value): value is string => Boolean(value));
-
-  await Promise.all(imageSources.map((src) => {
-    if (src.startsWith('data:')) {
-      return Promise.resolve();
-    }
-
-    return new Promise<void>((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve();
-      image.onerror = () => resolve();
-      image.src = src;
-    });
-  }));
-}
 
 export function TestSeriesContainer({
   user,
@@ -301,6 +191,10 @@ export function TestSeriesContainer({
           return;
         }
 
+        if (testState.mode === 'analytics' && testState.result?.attempt_id === attemptId) {
+          return;
+        }
+
         await openAttemptAnalytics(attemptId);
         return;
       }
@@ -323,10 +217,12 @@ export function TestSeriesContainer({
       }
 
       if (subTab === 'Results') {
-        await loadAttemptResults();
-        if (testState.mode !== 'viewResults') {
-          setTestState({ mode: 'viewResults' });
+        if (testState.mode === 'viewResults') {
+          return;
         }
+
+        await loadAttemptResults();
+        setTestState({ mode: 'viewResults' });
       }
     };
 
@@ -378,7 +274,7 @@ export function TestSeriesContainer({
 
       setTestState({ mode: 'overview', test: fullTest });
       window.scrollTo({ top: 0, behavior: 'auto' });
-      pendingSubTabRef.current = `Overview-${slugify(fullTest.title)}`;
+      pendingSubTabRef.current = `Overview-${slugifyText(fullTest.title)}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to load test overview');
@@ -425,7 +321,7 @@ export function TestSeriesContainer({
         deadlineAt: payload.attempt.deadline_at,
         serverNow: payload.serverNow,
       });
-      pendingSubTabRef.current = `Test-${slugify(fullTest.title)}`;
+      pendingSubTabRef.current = `Test-${slugifyText(fullTest.title)}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
@@ -507,7 +403,7 @@ export function TestSeriesContainer({
   if (testState.mode === 'analytics' && testState.result) {
     return (
       <StudentAnalytics
-        result={mapAttemptResultToAnalytics(testState.result)}
+        result={mapApiAttemptResultToAnalytics(testState.result)}
         attemptHistory={testState.history || []}
         onSelectAttempt={(attemptId) => {
           void openAttemptAnalytics(attemptId);
@@ -552,214 +448,5 @@ export function TestSeriesContainer({
       isLoadingResults={isLoadingResults}
       attemptResults={attemptResults}
     />
-  );
-}
-
-function TestOverview({
-  test,
-  onStart,
-  onBack,
-  isStarting = false,
-  isLoadingOverview = false
-}: {
-  test: PublishedTest;
-  onStart: () => void;
-  onBack: () => void;
-  isStarting?: boolean;
-  isLoadingOverview?: boolean;
-}) {
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
-
-  const questions = Array.isArray(test.questions) ? test.questions : [];
-
-  const breakdown = useMemo(() => {
-    const stats: Record<string, Record<string, { count: number, marks: number, neg: number }>> = {};
-
-    questions.forEach(q => {
-      const sub = q.subject || 'Default';
-      const sec = q.metadata?.section || 'Section A';
-
-      if (!stats[sub]) stats[sub] = {};
-      if (!stats[sub][sec]) {
-        stats[sub][sec] = { count: 0, marks: q.marks || 0, neg: q.negativeMarks || 0 };
-      }
-
-      stats[sub][sec].count++;
-    });
-
-    return stats;
-  }, [questions]);
-
-  useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => window.removeEventListener('resize', updateViewport);
-  }, []);
-
-  return (
-    <div
-      className={isMobileViewport
-        ? 'fixed inset-0 z-50 bg-white overflow-y-auto w-full scrollbar-hide'
-        : 'w-full bg-transparent px-4'}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={isMobileViewport
-          ? 'min-h-screen w-full bg-white'
-          : 'bg-white max-w-4xl mx-auto rounded-3xl shadow-2xl border border-gray-100 overflow-hidden'}
-      >
-        <div className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 px-4 py-5 sm:px-8 sm:py-8 text-white">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-teal-100 hover:text-white mb-4 sm:mb-6 font-bold transition-colors group text-sm sm:text-base"
-          >
-            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition-transform" />
-            Back to List
-          </button>
-          <h1 className="text-xl sm:text-3xl font-bold mb-2">{test.title}</h1>
-          <div className="flex flex-wrap gap-3 sm:gap-6 text-teal-50 text-xs sm:text-base">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="font-medium">{test.duration} Minutes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="font-medium">{questions.length} Questions</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="font-medium">{test.totalMarks} Maximum Marks</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-4 py-5 sm:px-8 sm:py-8 space-y-8 sm:space-y-12">
-          {test.instructions?.trim() ? (
-            <section className="p-4 sm:p-8 bg-amber-50 rounded-2xl sm:rounded-3xl border border-amber-100 shadow-sm">
-              <h3 className="text-sm sm:text-xl font-bold text-amber-900 mb-4 sm:mb-6 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 sm:w-6 sm:h-6" />
-                General Instructions
-              </h3>
-              <div className="text-amber-800 space-y-3 sm:space-y-4 leading-relaxed text-xs sm:text-base font-semibold">
-                {test.instructions
-                  .split('\n')
-                  .map((point, i) => point.trim() && (
-                    <div key={i} className="flex gap-3">
-                      <span className="shrink-0">-</span>
-                      <p>{point.trim()}</p>
-                    </div>
-                  ))
-                }
-              </div>
-            </section>
-          ) : null}
-
-          <section>
-            <h3 className="text-base sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 sm:w-6 sm:h-6 text-teal-600" />
-              Question Breakdown & Marking Scheme
-            </h3>
-            {isLoadingOverview ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-10 text-center">
-                <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 font-medium text-sm sm:text-base">Loading question breakdown...</p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop Table Wrapper */}
-                <div className="overflow-x-auto hidden sm:block">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Subject</th>
-                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Section</th>
-                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center">Questions</th>
-                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-green-600">Positive</th>
-                        <th className="px-3 py-2 text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider text-center text-red-600">Negative</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {Object.entries(breakdown).map(([subject, sections]) => (
-                        Object.entries(sections).map(([section, data], idx) => (
-                          <tr key={`${subject}-${section}`} className="hover:bg-gray-50/50">
-                            {idx === 0 ? (
-                              <td className="px-3 py-3 sm:px-4 sm:py-4 font-bold text-gray-900 border-r border-gray-100" rowSpan={Object.keys(sections).length}>
-                                {subject}
-                              </td>
-                            ) : null}
-                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-gray-600 font-medium">{section}</td>
-                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-gray-900">{data.count}</td>
-                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-green-600">+{data.marks}</td>
-                            <td className="px-3 py-3 sm:px-4 sm:py-4 text-center font-bold text-red-600">-{data.neg}</td>
-                          </tr>
-                        ))
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Table Wrapper */}
-                <div className="overflow-x-auto block sm:hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight">Sub</th>
-                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight">Sec</th>
-                        <th className="px-1 py-1.5 text-[10px] font-bold text-gray-700 uppercase tracking-tight text-center">Qs</th>
-                        <th className="px-1 py-1.5 text-[10px] font-bold text-green-600 uppercase tracking-tight text-center">+ve</th>
-                        <th className="px-1 py-1.5 text-[10px] font-bold text-red-600 uppercase tracking-tight text-center">-ve</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {Object.entries(breakdown).map(([subject, sections]) => (
-                        Object.entries(sections).map(([section, data], idx) => (
-                          <tr key={`mobile-${subject}-${section}`} className="hover:bg-gray-50/50">
-                            {idx === 0 ? (
-                              <td className="px-1 py-2 text-[10px] font-bold text-gray-900 border-r border-gray-100 max-w-[80px]" rowSpan={Object.keys(sections).length}>
-                                <div className="line-clamp-2 leading-tight">{subject}</div>
-                              </td>
-                            ) : null}
-                            <td className="px-1 py-2 text-[10px] text-gray-600 font-medium max-w-[100px]">
-                              <div className="line-clamp-2 leading-tight">{section}</div>
-                            </td>
-                            <td className="px-1 py-2 text-[10px] text-center font-bold text-gray-900">{data.count}</td>
-                            <td className="px-1 py-2 text-[10px] text-center font-bold text-green-600">+{data.marks}</td>
-                            <td className="px-1 py-2 text-[10px] text-center font-bold text-red-600">-{data.neg}</td>
-                          </tr>
-                        ))
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </section>
-
-          <div className="flex flex-col items-center gap-3 sm:gap-4 pt-2 sm:pt-4">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onStart}
-              disabled={isStarting}
-              className="w-auto px-8 sm:w-64 py-3 sm:py-4 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg disabled:opacity-70 disabled:cursor-wait"
-            >
-              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />
-              {isStarting ? 'Loading Test...' : 'Confirm & Start Test'}
-            </motion.button>
-            <p className="text-xs sm:text-sm text-gray-500 font-medium italic text-center">
-              By clicking start, the full test will be loaded before the timer begins.
-            </p>
-          </div>
-        </div>
-      </motion.div>
-    </div>
   );
 }

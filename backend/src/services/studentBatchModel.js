@@ -39,6 +39,7 @@ export async function getStudentBatchModel() {
     return cachedMode;
 }
 
-export function resetStudentBatchModelCache() {
-    cachedMode = null;
+export async function pickStudentBatchModel(variants) {
+    const mode = await getStudentBatchModel();
+    return mode === "single" ? variants.single : variants.legacy;
 }

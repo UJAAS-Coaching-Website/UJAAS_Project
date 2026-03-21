@@ -49,6 +49,11 @@ import logo from '../assets/logo.svg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
 import { generateInitialPassword } from '../utils/passwords';
+import { getAttendanceRatingValue } from '../utils/profile';
+import { withStoredRemarks } from '../utils/studentRemarks';
+import { downloadFileFromUrl } from '../utils/downloads';
+import { BatchTimetableModal } from './BatchTimetableModal';
+import { FacultyBatchSelectionTab } from './faculty/FacultyDashboardSections';
 
 interface FacultyDashboardProps {
   user: User;
@@ -169,72 +174,6 @@ function renderPerformanceStars(rating: number) {
   );
 }
 
-function getAttendanceRatingValue(attendance?: number, totalClasses?: number, attendanceRating?: number): number {
-  if (typeof attendanceRating === 'number' && Number.isFinite(attendanceRating)) {
-    return Math.max(0, Math.min(5, attendanceRating));
-  }
-  const attendanceCount = Number(attendance ?? 0);
-  const classCount = Number(totalClasses ?? 0);
-  if (classCount > 0) {
-    return Math.max(0, Math.min(5, (attendanceCount / classCount) * 5));
-  }
-  return Math.max(0, Math.min(5, attendanceCount));
-}
-
-const STUDENT_REMARKS_STORAGE_KEY = 'ujaas_student_remarks';
-
-type StoredStudentRemarks = Record<
-  string,
-  {
-    subjectRemarks?: Record<string, string>;
-    adminRemark?: string;
-  }
->;
-
-const readStoredRemarks = (): StoredStudentRemarks => {
-  try {
-    const raw = localStorage.getItem(STUDENT_REMARKS_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as StoredStudentRemarks;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-};
-
-const writeStoredRemarks = (
-  studentId: string,
-  updates: { subjectRemarks?: Record<string, string>; adminRemark?: string }
-) => {
-  const current = readStoredRemarks();
-  const prevEntry = current[studentId] ?? {};
-  current[studentId] = {
-    ...prevEntry,
-    ...updates,
-    subjectRemarks: {
-      ...(prevEntry.subjectRemarks ?? {}),
-      ...(updates.subjectRemarks ?? {}),
-    },
-  };
-  localStorage.setItem(STUDENT_REMARKS_STORAGE_KEY, JSON.stringify(current));
-};
-
-const withStoredRemarks = (list: Student[]): Student[] => {
-  const stored = readStoredRemarks();
-  return list.map((student) => {
-    const entry = stored[student.id];
-    if (!entry) return student;
-    return {
-      ...student,
-      subjectRemarks: {
-        ...(student.subjectRemarks ?? {}),
-        ...(entry.subjectRemarks ?? {}),
-      },
-      adminRemark: entry.adminRemark ?? student.adminRemark,
-    };
-  });
-};
-
 export function FacultyDashboard({
   user,
   activeTab,
@@ -332,14 +271,6 @@ export function FacultyDashboard({
     ? batches.find((batch) => batch.label === selectedBatch)
     : null;
 
-  useEffect(() => {
-    if (showFullTimetable) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showFullTimetable]);
   const [batchStudentPicker, setBatchStudentPicker] = useState<{ open: boolean; batch: Batch | null }>({
     open: false,
     batch: null
@@ -412,20 +343,7 @@ export function FacultyDashboard({
   const handleTimetableDownload = async (fileUrl: string | null | undefined) => {
     if (!fileUrl) return;
     try {
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error('Failed to download timetable.');
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const fileName = fileUrl.split('/').pop()?.split('?')[0] || 'timetable';
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      await downloadFileFromUrl(fileUrl, 'timetable');
     } catch (error) {
       console.error('Timetable download failed:', error);
       window.alert('Failed to download timetable. Please try again.');
@@ -688,7 +606,7 @@ export function FacultyDashboard({
             /* GLOBAL CONTEXT */
             <>
               {adminSection === 'batches' && (
-                <BatchSelectionTab
+                <FacultyBatchSelectionTab
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   facultyName={user.name}
@@ -797,141 +715,18 @@ export function FacultyDashboard({
           userRole="faculty"
         />
 
-        {/* Timetable Modal */}
-        <AnimatePresence>
-          {showFullTimetable && (
-            <motion.div
-              key="timetable-modal-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-modal"
-              onClick={() => setShowFullTimetable(false)}
-            >
-              <motion.div
-                key="timetable-modal-content"
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                  <h3 className="text-xl font-bold text-gray-900">Batch Weekly Schedule</h3>
-                  <button onClick={() => setShowFullTimetable(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6 text-gray-500" /></button>
-                </div>
-                <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                  {selectedBatchInfo?.timetable_url ? (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <img src={selectedBatchInfo.timetable_url} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
-                    </div>
-                  ) : (
-                    <div className="text-center py-20 w-full">
-                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
-                  {selectedBatchInfo?.timetable_url && (
-                    <button
-                      type="button"
-                      onClick={() => handleTimetableDownload(selectedBatchInfo.timetable_url)}
-                      className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-bold hover:from-indigo-700 hover:to-blue-700 transition flex items-center gap-2 shadow-lg shadow-indigo-200/60 border border-indigo-500/60"
-                    >
-                      <Download className="w-4 h-4" />Download
-                    </button>
-                  )}
-                  <button onClick={() => setShowFullTimetable(false)} className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">Close</button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <BatchTimetableModal
+          open={showFullTimetable}
+          onClose={() => setShowFullTimetable(false)}
+          imageUrl={selectedBatchInfo?.timetable_url}
+          onDownload={selectedBatchInfo?.timetable_url ? () => { void handleTimetableDownload(selectedBatchInfo.timetable_url); } : null}
+        />
       </div>
     </div>
   );
 }
 
 // SUB-COMPONENTS
-
-function BatchSelectionTab({ batches, onSelectBatch, facultyName, onUploadNotice }: { batches: BatchInfo[]; onSelectBatch: (batch: Batch) => void; facultyName: string; onUploadNotice: () => void }) {
-  // Only show batches where faculty is assigned
-  const facultyBatches = batches.filter(b => b.facultyAssigned?.includes(facultyName));
-  const sortedBatches = [...facultyBatches].sort((a, b) => {
-    if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
-    return a.is_active === false ? 1 : -1;
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
-            <p className="text-gray-600">Open one of your assigned batches to review students, attendance, and academic content.</p>
-          </div>
-          <button
-            onClick={onUploadNotice}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
-          >
-            <Megaphone className="w-5 h-5" />
-            Upload Notice
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sortedBatches.map((batch) => (
-          <motion.button
-            key={batch.slug}
-            onClick={() => onSelectBatch(batch.label)}
-            className={`p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white text-left group transition-all duration-300 ${batch.is_active === false ? 'opacity-60 grayscale' : 'hover:shadow-2xl'} flex items-center justify-between gap-4`}
-          >
-            <div className="flex-1">
-              <div className="mb-1">
-                <span className="text-black font-normal text-xs tracking-widest uppercase">Batch</span>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 flex items-center justify-between">
-                {batch.label}
-                {batch.is_active === false && <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-3 py-1 rounded-full uppercase tracking-wider">Inactive</span>}
-              </h3>
-            </div>
-            <ChevronRight className="w-8 h-8 text-cyan-600 group-hover:translate-x-1 transition-transform shrink-0" />
-          </motion.button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StudentsDirectoryTab({ students, batches, onAddStudent, onEditStudent, onDeleteStudent, onViewStudent }: { students: Student[]; batches: BatchInfo[]; onAddStudent: () => void; onEditStudent: (s: Student) => void; onDeleteStudent: (id: string) => void; onViewStudent: (s: Student) => void; }) {
-  const [q, setQ] = useState('');
-  const filtered = students.filter(s => s.name.toLowerCase().includes(q.toLowerCase()) || s.rollNumber.toLowerCase().includes(q.toLowerCase()));
-  return (
-    <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex flex-col md:flex-row justify-between gap-4 mb-8">
-        <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students in your assigned batches</p></div>
-        <div className="flex gap-3"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" /><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students..." className="pl-10 pr-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-cyan-500 w-64" /></div><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead><tr className="text-left border-b border-gray-100"><th className="pb-4 font-bold text-gray-700">Student</th><th className="pb-4 font-bold text-gray-700">Batch</th><th className="pb-4 font-bold text-gray-700">Performance</th><th className="pb-4 font-bold text-gray-700">Actions</th></tr></thead>
-          <tbody className="divide-y divide-gray-50">
-            {filtered.map(s => (
-              <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer">
-                <td className="py-4"><div className="font-bold text-gray-900">{s.name}</div><div className="text-xs text-gray-500">{s.rollNumber}</div></td>
-                <td className="py-4"><span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{s.batch}</span></td>
-                <td className="py-4">{renderPerformanceStars(s.rating)}</td>
-                <td className="py-4 flex gap-2"><button onClick={(e) => { e.stopPropagation(); onEditStudent(s); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit className="w-5 h-5" /></button><button onClick={(e) => { e.stopPropagation(); onDeleteStudent(s.id); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-5 h-5" /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 function OverviewTab({
   selectedBatch,
@@ -1008,7 +803,17 @@ function StudentsTab({
   onUpdateRating: (studentId: string, data: any) => Promise<void>;
   isBatchActive?: boolean;
 }) {
+  const STUDENTS_PER_PAGE = 20;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(batchStudents.length / STUDENTS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedStudents = batchStudents.slice(
+    (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
+    safeCurrentPage * STUDENTS_PER_PAGE
+  );
+  const rangeStart = batchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, batchStudents.length);
   
   // Local state for batch-level total classes
   const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
@@ -1026,6 +831,10 @@ function StudentsTab({
     setLocalAttendance(att);
     setBatchTotalClasses(batchStudents.length > 0 ? batchStudents[0].totalClasses : 0);
   }, [students, selectedBatch]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedBatch, students.length]);
 
   const handleSaveTotalClasses = () => {
     setIsEditingTotal(false);
@@ -1126,7 +935,7 @@ function StudentsTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {batchStudents.map((s) => (
+            {paginatedStudents.map((s) => (
               <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
@@ -1166,6 +975,32 @@ function StudentsTab({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm font-medium text-gray-500">
+          Showing {rangeStart}-{rangeEnd} of {batchStudents.length} students
+        </p>
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={safeCurrentPage === 1}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="min-w-20 text-center text-sm font-semibold text-gray-600">
+            Page {safeCurrentPage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={safeCurrentPage === totalPages}
+            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1910,4 +1745,5 @@ function StudentRatingsModal({
     </div>
   );
 }
+
 

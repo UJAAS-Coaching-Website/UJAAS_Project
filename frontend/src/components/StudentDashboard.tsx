@@ -1,17 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User } from '../App';
 import {
   GraduationCap,
-  Star,
-  Clock,
   FileText,
-  Download,
   BookOpen,
-  ClipboardList
 } from 'lucide-react';
 import { fetchBatches, fetchBatch, ApiBatch } from '../api/batches';
-import { apiFetchChapters } from '../api/chapters';
-import { fetchDpps } from '../api/dpps';
 import { TestSeriesContainer } from './TestSeriesContainer';
 import { StudentProfile } from './StudentProfile';
 import { MiniAvatar } from './MiniAvatar';
@@ -23,12 +17,13 @@ import { StudentNotificationSheet } from './StudentNotificationSheet';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import { X, Calendar } from 'lucide-react';
-import { NotesManagementTab } from './NotesManagementTab';
 import { DPPPractice, type DppPracticeSession } from './DPPPractice';
 import type { ApiStartDppAttemptPayload } from '../api/dpps';
-import { DashboardHeroSkeleton, SubjectCardSkeleton } from './ui/content-skeletons';
-import { Skeleton } from './ui/skeleton';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsMobileViewport } from '../hooks/useViewport';
+import { downloadFileFromUrl } from '../utils/downloads';
+import { BatchTimetableModal } from './BatchTimetableModal';
+import { StudentDashboardHome } from './student/StudentDashboardHome';
 
 interface StudentDashboardProps {
   user: User;
@@ -66,9 +61,7 @@ export function StudentDashboard({
   const MOBILE_NAV_SPACER_HEIGHT = 92;
   const MOBILE_NAV_HIDE_DISTANCE = 112;
   const [profileSection, setProfileSection] = useState<'overview' | 'performance' | 'settings'>('overview');
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
+  const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
@@ -84,6 +77,8 @@ export function StudentDashboard({
   const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
     return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
   });
+
+  useBodyScrollLock(showFullTimetable);
 
   useEffect(() => {
     const loadReviewInfo = async () => {
@@ -150,19 +145,6 @@ export function StudentDashboard({
   };
 
   useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => {
-      window.removeEventListener('resize', updateViewport);
-    };
-  }, []);
-
-  useEffect(() => {
     document.documentElement.classList.add('scrollbar-hide');
     document.body.classList.add('scrollbar-hide');
     return () => {
@@ -201,15 +183,6 @@ export function StudentDashboard({
       window.removeEventListener('scroll', handleScroll);
     };
   }, [isMobileViewport]);
-
-  useEffect(() => {
-    if (showFullTimetable) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showFullTimetable]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,9 +296,13 @@ export function StudentDashboard({
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
 
-  const handleSubTabNavigate = (newSubTab?: string) => {
+  const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
-  };
+  }, [activeTab, onNavigate]);
+
+  const handleTestSeriesStateChange = useCallback((mode: 'list' | 'overview' | 'taking' | 'analytics' | 'viewResults') => {
+    setIsNavbarInternalHidden(mode !== 'list');
+  }, []);
 
   const handleExitDpp = () => {
     sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
@@ -347,20 +324,7 @@ export function StudentDashboard({
   const handleTimetableDownload = async (fileUrl: string | null | undefined) => {
     if (!fileUrl) return;
     try {
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error('Failed to download timetable.');
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const fileName = fileUrl.split('/').pop()?.split('?')[0] || 'timetable';
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      await downloadFileFromUrl(fileUrl, 'timetable');
     } catch (error) {
       console.error('Timetable download failed:', error);
       window.alert('Failed to download timetable. Please try again.');
@@ -549,13 +513,13 @@ export function StudentDashboard({
             </div>
           )}
           {activeTab === 'home' && subTab !== 'dpp' && (
-            <HomeTab {...homeTabProps} />
+            <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
             <TestSeriesContainer
               user={user}
               publishedTests={publishedTests}
-              onStateChange={(mode) => setIsNavbarInternalHidden(mode !== 'list')}
+              onStateChange={handleTestSeriesStateChange}
               subTab={subTab}
               onNavigateSubTab={handleSubTabNavigate}
             />
@@ -568,7 +532,7 @@ export function StudentDashboard({
             />
           )}
           {activeTab === 'batch-detail' && (
-            <HomeTab {...homeTabProps} />
+            <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
             <QuestionBank
@@ -594,450 +558,14 @@ export function StudentDashboard({
         )}
       </AnimatePresence>
 
-      {/* Timetable Modal */}
-      <AnimatePresence>
-        {showFullTimetable && (
-          <motion.div
-            key="timetable-modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md z-layer-modal"
-            onClick={() => setShowFullTimetable(false)}
-          >
-            <motion.div
-              key="timetable-modal-content"
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="relative max-w-5xl w-full h-[85vh] bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col z-layer-modal"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-20">
-                <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Batch Weekly Schedule</h3>
-                <button onClick={() => setShowFullTimetable(false)} className={`${isMobileViewport ? 'p-1.5' : 'p-2'} hover:bg-gray-100 rounded-full transition-colors`}><X className={`${isMobileViewport ? 'w-5 h-5' : 'w-6 h-6'} text-gray-500`} /></button>
-              </div>
-              <div className="flex-1 bg-gray-100 p-4 flex items-center justify-center overflow-hidden min-h-0">
-                {batchDetails?.timetable_url ? (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <img src={batchDetails.timetable_url} alt="Full Time Table" className="max-w-full max-h-full object-contain rounded-xl shadow-xl bg-white" />
-                  </div>
-                ) : (
-                  <div className="text-center py-20 w-full">
-                    <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">No timetable uploaded yet.</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3 shrink-0 z-20">
-                {batchDetails?.timetable_url && (
-                  <button
-                    type="button"
-                    onClick={() => handleTimetableDownload(batchDetails.timetable_url)}
-                    className={`${isMobileViewport ? 'px-4 py-1.5 text-sm rounded-lg gap-1.5' : 'px-6 py-2 rounded-xl gap-2'} bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold hover:from-indigo-700 hover:to-blue-700 transition flex items-center shadow-lg shadow-indigo-200/60 border border-indigo-500/60`}
-                  >
-                    <Download className={`${isMobileViewport ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />Download
-                  </button>
-                )}
-                <button onClick={() => setShowFullTimetable(false)} className={`${isMobileViewport ? 'px-4 py-1.5 text-sm rounded-lg' : 'px-6 py-2 rounded-xl'} bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition`}>Close</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function renderPerformanceStars(rating: number) {
-  const normalizedRating = Math.max(0, Math.min(5, rating));
-
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((star) => {
-        let fillPercentage = 0;
-        if (normalizedRating >= star) {
-          fillPercentage = 100;
-        } else if (normalizedRating > star - 1) {
-          fillPercentage = (normalizedRating - (star - 1)) * 100;
-        }
-
-        return (
-          <div
-            key={star}
-            className="relative inline-block select-none"
-            style={{ width: '16px', height: '16px', fontSize: '16px', lineHeight: '16px' }}
-          >
-            {/* Background star (Gray) */}
-            <span style={{ color: '#d1d5db', position: 'absolute', left: 0, top: 0 }}>★</span>
-            {/* Fill star (Gold) */}
-            <div
-              style={{
-                width: `${fillPercentage}%`,
-                overflow: 'hidden',
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                whiteSpace: 'nowrap',
-                color: '#f59e0b',
-                transition: 'width 0.3s ease'
-              }}
-            >
-              <span>★</span>
-            </div>
-          </div>
-        );
-      })}
-      <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
-    </div>
-  );
-}
-
-function HomeTab({
-  user,
-  onNavigate,
-  onOpenPerformance,
-  isMobileViewport,
-  activeTab,
-  onViewTimetable,
-  batchDetails,
-  batchDetailsLoading,
-  batchDetailsError,
-  batchListCount,
-  batchMatchInfo
-}: {
-  user: User;
-  onNavigate: (t: Tab) => void;
-  onOpenPerformance: () => void;
-  isMobileViewport: boolean;
-  activeTab: Tab;
-  onViewTimetable: () => void;
-  batchDetails: ApiBatch | null;
-  batchDetailsLoading: boolean;
-  batchDetailsError: string | null;
-  batchListCount: number | null;
-  batchMatchInfo: string | null;
-}) {
-  const [dppProgress, setDppProgress] = useState({ completed: 0, total: 0, loading: true });
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadDppProgress = async () => {
-      if (!user.studentDetails?.batch) {
-        if (!cancelled) {
-          setDppProgress({ completed: 0, total: 0, loading: false });
-        }
-        return;
-      }
-
-      try {
-        if (!cancelled) {
-          setDppProgress((prev) => ({ ...prev, loading: true }));
-        }
-
-        const studentBatchId = user.studentDetails?.batchId;
-        const target = user.studentDetails?.batch?.toLowerCase().trim();
-        let studentBatch: ApiBatch | null = null;
-        if (studentBatchId) {
-          try {
-            studentBatch = await fetchBatch(studentBatchId);
-          } catch (error) {
-            console.error('Failed to fetch batch by id:', error);
-          }
-        }
-        if (!studentBatch) {
-          const batches = await fetchBatches();
-          studentBatch = batches.find((batch) =>
-            batch.name?.toLowerCase().trim() === target
-            || batch.slug?.toLowerCase().trim() === target
-          ) || null;
-        }
-
-        if (!studentBatch) {
-          if (!cancelled) {
-            setDppProgress({ completed: 0, total: 0, loading: false });
-          }
-          return;
-        }
-
-        const chapters = await apiFetchChapters(studentBatch.id);
-        const dppGroups = await Promise.all(
-          chapters.map((chapter) => fetchDpps(chapter.id).catch(() => []))
-        );
-
-        const dppMap = new Map<string, { submitted_attempt_count?: number }>();
-        dppGroups.flat().forEach((dpp) => {
-          if (!dppMap.has(dpp.id)) {
-            dppMap.set(dpp.id, { submitted_attempt_count: dpp.submitted_attempt_count });
-          }
-        });
-
-        const total = dppMap.size;
-        const completed = Array.from(dppMap.values()).filter((dpp) => Number(dpp.submitted_attempt_count || 0) > 0).length;
-
-        if (!cancelled) {
-          setDppProgress({ completed, total, loading: false });
-        }
-      } catch (error) {
-        console.error('Failed to load DPP progress', error);
-        if (!cancelled) {
-          setDppProgress({ completed: 0, total: 0, loading: false });
-        }
-      }
-    };
-
-    void loadDppProgress();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user.studentDetails?.batch]);
-
-  const calculateOverallRating = () => {
-    if (!user.studentDetails?.ratings) return 0;
-    const r = user.studentDetails.ratings;
-    const dppPerformance = (r as any).dppPerformance || 0;
-    const ratingsList = [r.attendance, r.tests, r.behavior, dppPerformance];
-    const total = ratingsList.reduce((sum, value) => sum + value, 0);
-    return Number((total / ratingsList.length).toFixed(1));
-  };
-
-  const currentRating = calculateOverallRating();
-  const completedCount = dppProgress.completed;
-  const totalDpps = dppProgress.total;
-  const dppPercentage = totalDpps > 0 ? (completedCount / totalDpps) * 100 : 0;
-  const firstName = user.name?.trim().split(/\s+/)[0] || 'Student';
-
-  const stats = [
-    {
-      label: 'DPP Completed',
-      display: 'progress',
-      value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`,
-      icon: ClipboardList,
-      gradient: 'from-green-500 to-emerald-500',
-      bgGradient: 'from-green-50 to-emerald-50',
-      percentage: dppPercentage,
-      clickable: false,
-      onClick: undefined
-    },
-    {
-      label: 'Performance Rating',
-      display: 'stars',
-      value: `${currentRating.toFixed(1)}/5.0`,
-      icon: Star,
-      gradient: 'from-yellow-500 to-orange-500',
-      bgGradient: 'from-yellow-50 to-orange-50',
-      percentage: (currentRating / 5) * 100,
-      clickable: true,
-      onClick: onOpenPerformance
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Welcome Card */}
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        className={`${isMobileViewport ? 'p-5' : 'p-8'} bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl text-white shadow-2xl relative overflow-hidden`}
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
-        
-        <div className={`relative flex ${isMobileViewport ? 'flex-row items-center' : 'flex-col md:flex-row items-start md:items-center'} gap-4 md:gap-6`}>
-          <MiniAvatar user={user} className={`${isMobileViewport ? 'w-16 h-16 text-2xl' : 'w-24 h-24 text-4xl'} border-4 border-white/30 shadow-2xl`} />
-          
-          <div className="flex-1">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <motion.h2
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className={`${isMobileViewport ? 'text-[2rem]' : 'text-3xl'} font-bold leading-tight mb-2`}
-                >
-                  Welcome {firstName}!
-                </motion.h2>
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="space-y-3"
-                >
-                  <p className={`${isMobileViewport ? 'text-sm' : 'text-base'} max-w-xl text-teal-50/90`}>
-                    Pick up where you left off
-                  </p>
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Stats Grid */}
-      <div className={`grid ${isMobileViewport ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2'} gap-4`}>
-        {stats.map((stat, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            onClick={stat.clickable ? stat.onClick : undefined}
-            className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl ${isMobileViewport ? 'p-4' : 'p-6'} shadow-lg border border-white relative overflow-hidden group ${stat.clickable ? 'cursor-pointer' : ''}`}
-          >
-            <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-            <div className="relative">
-              <div className={`${isMobileViewport ? 'flex items-center gap-2 mb-2' : 'mb-3'}`}>
-                <motion.div
-                   className={`${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg shrink-0`}
-                >
-                  <stat.icon className={`${isMobileViewport ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
-                </motion.div>
-                <p
-                  className={`${isMobileViewport ? 'mb-0 text-2xl' : 'mb-1 text-3xl'} font-bold text-gray-900`}
-                  style={isMobileViewport && stat.value === 'Loading...' ? { fontSize: '1.1rem', lineHeight: '1.2' } : undefined}
-                >
-                  {stat.value}
-                </p>
-              </div>
-              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
-              
-              {stat.display === 'stars' ? (
-                <div className="mt-2">
-                  {renderPerformanceStars(currentRating)}
-                </div>
-              ) : (
-                <div className="mt-3 w-full bg-white/50 rounded-full h-1.5">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stat.percentage}%` }}
-                    transition={{ delay: 0.5 + index * 0.1, duration: 1 }}
-                    className={`h-1.5 rounded-full bg-gradient-to-r ${stat.gradient}`}
-                  />
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <AssignedBatchContent
-        user={user}
-        onNavigate={onNavigate}
+      <BatchTimetableModal
+        open={showFullTimetable}
+        onClose={() => setShowFullTimetable(false)}
+        imageUrl={batchDetails?.timetable_url}
         isMobileViewport={isMobileViewport}
-        currentTab={activeTab}
-        onViewTimetable={onViewTimetable}
-        batchDetails={batchDetails}
-        loading={batchDetailsLoading}
-        batchDetailsError={batchDetailsError}
-        batchListCount={batchListCount}
-        batchMatchInfo={batchMatchInfo}
+        onDownload={batchDetails?.timetable_url ? () => { void handleTimetableDownload(batchDetails.timetable_url); } : null}
       />
-
     </div>
   );
 }
-
-function AssignedBatchContent({
-  user,
-  onNavigate,
-  isMobileViewport,
-  currentTab,
-  onViewTimetable,
-  batchDetails,
-  loading,
-  batchDetailsError,
-  batchListCount,
-  batchMatchInfo
-}: {
-  user: User;
-  onNavigate: (tab: Tab, subTab?: string) => void;
-  isMobileViewport: boolean;
-  currentTab: Tab;
-  onViewTimetable: () => void;
-  batchDetails: ApiBatch | null;
-  loading: boolean;
-  batchDetailsError: string | null;
-  batchListCount: number | null;
-  batchMatchInfo: string | null;
-}) {
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <DashboardHeroSkeleton />
-        <div className="rounded-3xl border border-gray-100 bg-white/40 p-1 shadow-xl">
-          <div className="p-5">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-10 w-10 rounded-xl" />
-              <div className="space-y-2">
-                <Skeleton className="h-5 w-44" />
-                <Skeleton className="h-4 w-28" />
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-6 p-5 md:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <SubjectCardSkeleton key={index} />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user.studentDetails?.batch) {
-    return (
-      <div className="rounded-3xl border border-dashed border-gray-200 bg-white/70 p-8 text-center shadow-lg">
-        <GraduationCap className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <h3 className="text-xl font-semibold text-gray-900">No Batch Assigned</h3>
-        <p className="text-sm text-gray-500 mt-2">Your dashboard content will appear here once a batch is assigned.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 md:gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border border-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
-        <div className="relative z-10 min-w-0 flex-1">
-          <div className="flex flex-col gap-1">
-            <h2 className={`${isMobileViewport ? 'text-lg' : 'text-3xl'} font-bold tracking-tight text-slate-900`}>{user.studentDetails?.batch}</h2>
-          </div>
-        </div>
-        <button
-          onClick={onViewTimetable}
-          className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 ${isMobileViewport ? 'px-3 py-1.5 text-xs rounded-lg' : 'px-4 py-2 rounded-xl'} bg-white text-slate-700 font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50`}
-        >
-          <Calendar className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} text-teal-600`} />
-          Time Table
-        </button>
-      </div>
-
-      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100 shadow-xl">
-        <div className={`${isMobileViewport ? 'p-3' : 'p-5'} flex items-center gap-3`}>
-          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Batch Academic Content</h3>
-        </div>
-
-        <div className="p-1">
-          <NotesManagementTab
-            onNavigate={onNavigate}
-            currentTab={currentTab}
-            selectedBatch={batchDetails?.name || user.studentDetails?.batch || null}
-            onChangeBatch={() => onNavigate('home')}
-            onViewTimetable={onViewTimetable}
-            batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []}
-            readOnly={true}
-            variant="student"
-            headerMode="tracker-only"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 

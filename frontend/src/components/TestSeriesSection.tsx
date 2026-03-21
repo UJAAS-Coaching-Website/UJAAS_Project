@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import {
   FileText,
   Clock,
@@ -55,23 +56,8 @@ export function TestSeriesSection({
   isLoadingResults = false,
   attemptResults = []
 }: TestSeriesProps) {
-  const [isMobileViewport, setIsMobileViewport] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
-  );
+  const isMobileViewport = useIsMobileViewport();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
-
-  useEffect(() => {
-    const updateViewport = () => {
-      setIsMobileViewport(window.matchMedia('(max-width: 767px)').matches);
-    };
-
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-
-    return () => {
-      window.removeEventListener('resize', updateViewport);
-    };
-  }, []);
 
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';

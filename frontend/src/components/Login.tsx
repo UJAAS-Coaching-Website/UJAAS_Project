@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { User as UserType } from '../App';
 import { login } from '../api/auth';
 import { 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import logo from '../assets/logo.svg';
+import { useIsMobileViewport } from '../hooks/useViewport';
 
 interface LoginProps {
   onLogin: (user: UserType) => void;
@@ -19,14 +20,7 @@ export function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  const isMobile = useIsMobileViewport();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
