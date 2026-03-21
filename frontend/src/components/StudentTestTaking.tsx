@@ -16,7 +16,8 @@ import {
   Image as ImageIcon,
   Check,
   Settings,
-  Users
+  Users,
+  Grid3x3
 } from 'lucide-react';
 
 interface Question {
@@ -95,6 +96,7 @@ export function StudentTestTaking({
   });
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
@@ -104,7 +106,7 @@ export function StudentTestTaking({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
-  useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
+  useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
 
   const isAnyPreview = isPreview || isFacultyPreview;
   const isJeeMain = format === 'JEE MAIN';
@@ -928,13 +930,22 @@ export function StudentTestTaking({
                 </motion.button>
               ) : (
                 <div className="space-y-2">
-                  <motion.button
-                    onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    {isAnyPreview ? 'Next' : 'Save & Next'}
-                    <ChevronRight className="w-4 h-4" />
-                  </motion.button>
+                  <div className="flex gap-2">
+                    <motion.button
+                      onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
+                      className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      {isAnyPreview ? 'Next' : 'Save & Next'}
+                      <ChevronRight className="w-4 h-4" />
+                    </motion.button>
+                    <button
+                      onClick={() => setShowMobilePalette(true)}
+                      className="px-4 py-3 bg-gray-100 rounded-xl"
+                      aria-label="Open question palette"
+                    >
+                      <Grid3x3 className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </div>
 
                   <div className={`grid gap-2 ${isAnyPreview ? 'grid-cols-1' : 'grid-cols-3'}`}>
                     <motion.button
@@ -975,7 +986,7 @@ export function StudentTestTaking({
           </div>
 
           {/* Sidebar - Question Palette */}
-          <div className="lg:col-span-1">
+          <div className="hidden sm:block lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Question Palette</h3>
 
@@ -1305,6 +1316,132 @@ export function StudentTestTaking({
                 >
                   Confirm Settings
                 </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showMobilePalette && (
+          <div className="sm:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[10004] flex items-end" onClick={() => setShowMobilePalette(false)}>
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+              className="bg-white rounded-t-[28px] w-full max-h-[80vh] overflow-y-auto shadow-2xl border-t border-gray-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 px-4 pt-3 pb-4">
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">Question Palette</h3>
+                  <button onClick={() => setShowMobilePalette(false)} className="p-2 -mr-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close question palette">
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+                <div className="text-xs text-gray-600">
+                  <span className="text-blue-600 font-semibold uppercase">{currentSubject}</span>
+                  <span className="mx-2">•</span>
+                  <span className="uppercase">{currentSection}</span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div className="flex flex-col">
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Current Palette</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-blue-600 uppercase">{currentSubject}</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{currentSection}</span>
+                      </div>
+                    </div>
+                  </div>
+                <div className="grid grid-cols-5 gap-2 mb-6">
+                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
+                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
+                    .map((q) => (
+                      <motion.button
+                        key={q.id}
+                        onClick={() => {
+                          setCurrentQuestion(q.globalIndex);
+                          setShowMobilePalette(false);
+                        }}
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                            ? 'bg-purple-100 text-purple-700'
+                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                              ? 'bg-green-100 text-green-700'
+                              : isAnyPreview && hasExplanationContent(q)
+                                ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                : !isAnyPreview && flaggedQuestions.has(q.id)
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : !isAnyPreview && visitedQuestions.has(q.id)
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-600'
+                          }`}
+                      >
+                        {q.globalIndex + 1}
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                          <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
+                        )}
+                        {isAnyPreview && !hasExplanationContent(q) && (
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
+                        )}
+                      </motion.button>
+                    ))}
+                </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                  {!isAnyPreview && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 rounded" />
+                        <span className="text-xs text-gray-600">Not visited yet</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-100 rounded" />
+                        <span className="text-xs text-gray-600">Answered</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-100 rounded" />
+                        <span className="text-xs text-gray-600">Visited</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-purple-100 rounded" />
+                        <span className="text-xs text-gray-600">Review</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-purple-100 rounded relative">
+                          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                        </div>
+                        <span className="text-xs text-gray-600">Answered & Review</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
+                        <span className="text-xs text-gray-600">Current</span>
+                      </div>
+                    </>
+                  )}
+                  {isAnyPreview && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-teal-50 border border-teal-200 rounded" />
+                        <span className="text-xs text-gray-600">With Explanation</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 rounded relative">
+                          <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                        </div>
+                        <span className="text-xs text-gray-600">Needs Explanation</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
               </div>
             </motion.div>
           </div>
