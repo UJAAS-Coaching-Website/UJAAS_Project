@@ -1,0 +1,16 @@
+{
+  "project": "UJAAS Project",
+  "type": "web application",
+  "roles": ["public", "student", "faculty", "admin"],
+  "requirements": [
+    "Public users can open get-started page and submit interest form",
+    "Users can log in through /login and get role-based redirection",
+    "Students can access dashboard, test series, question bank, and profile",
+    "Students can open notes and attempt assigned tests with analytics",
+    "Profile settings support password change and logout"
+  ],
+  "nfr": [
+    "Role isolation across student, faculty, and admin areas",
+    "Graceful error handling for invalid credentials and missing content"
+  ]
+}
