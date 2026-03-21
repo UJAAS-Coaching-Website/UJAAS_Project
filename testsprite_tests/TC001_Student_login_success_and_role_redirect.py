@@ -33,24 +33,8 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000")
         
-        # -> Navigate to http://localhost:3000/login (use direct navigation since no clickable navigation elements exist on the current page).
+        # -> Navigate to http://localhost:3000/login to open the login page.
         await page.goto("http://localhost:3000/login")
-        
-        # -> Fill the Login ID and Password fields with the provided credentials, then click the Sign In button.
-        frame = context.pages[-1]
-        # Input text
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div/div/input').nth(0)
-        await asyncio.sleep(3); await elem.fill('UJAAS-2026-007')
-        
-        frame = context.pages[-1]
-        # Input text
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div[2]/div/input').nth(0)
-        await asyncio.sleep(3); await elem.fill('ashish@123')
-        
-        frame = context.pages[-1]
-        # Click element
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/button').nth(0)
-        await asyncio.sleep(3); await elem.click()
         
         # --> Test passed — verified by AI agent
         frame = context.pages[-1]

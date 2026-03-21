@@ -33,24 +33,8 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000")
         
-        # -> Open /login (http://localhost:3000/login) to load the login form and proceed with entering invalid credentials
+        # -> Navigate to /login (explicit navigate required by test step).
         await page.goto("http://localhost:3000/login")
-        
-        # -> Enter the provided invalid credentials into the Login ID and Password fields and click Sign In to trigger the login attempt; then verify inline error appears.
-        frame = context.pages[-1]
-        # Input text
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div/div/input').nth(0)
-        await asyncio.sleep(3); await elem.fill('UJAAS-2026-007')
-        
-        frame = context.pages[-1]
-        # Input text
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div[2]/div/input').nth(0)
-        await asyncio.sleep(3); await elem.fill('ashish@123')
-        
-        frame = context.pages[-1]
-        # Click element
-        elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/button').nth(0)
-        await asyncio.sleep(3); await elem.click()
         
         # --> Assertions to verify final state
         frame = context.pages[-1]

@@ -33,13 +33,13 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000")
         
-        # -> Click the 'Login' button (element index 79) to open the login form.
+        # -> Click the 'Login' button to open the login form so credentials can be entered.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/div/section/div/div/button').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Enter student credentials into the login form and click 'Sign In' to authenticate (fill Login ID -> fill Password -> click Sign In).
+        # -> Fill the login form: enter username into input index 735, enter password into input index 736, then click the Sign In button at index 737.
         frame = context.pages[-1]
         # Input text
         elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div/div/input').nth(0)
@@ -55,46 +55,61 @@ async def run_test():
         elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/button').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' button (index 1044) to open the Question Bank page and load its controls.
+        # -> Click the 'Question Bank' navigation button (index 1105) to open the Question Bank page.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' navigation button at index 1456 (fresh element) to open the Question Bank page.
+        # -> Click the Physics subject card (index 1762) to open its question list where the search input and sort controls are expected to be available.
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div/div/div/main/div[2]/div/div[3]/div[2]/div[2]/div/div/div[3]').nth(0)
+        await asyncio.sleep(3); await elem.click()
+        
+        # -> Click the 'Question Bank' navigation button (index 2222) to open the Question Bank page and reveal the subject/question list.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' navigation button (index 2194) to open the Question Bank page so the search and sort controls can be located.
+        # -> Click the Physics subject card (index 3354) to open its question list so the search input and sort controls become available.
+        frame = context.pages[-1]
+        # Click element
+        elem = frame.locator('xpath=/html/body/div/div/div/main/div[2]/div/div[3]/div[2]/div[2]/div/div/div[3]/div[2]').nth(0)
+        await asyncio.sleep(3); await elem.click()
+        
+        # -> Click the 'Question Bank' navigation button to open the Question Bank page and then proceed to open a subject/chapter to reveal search and sort controls.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' navigation button at index 3722 to open the Question Bank page and load its controls (search input and sort).
+        # -> Click the 'Question Bank' navigation button to ensure the Question Bank view is active and get a fresh set of interactive elements for opening a subject/chapter.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' navigation button (index 5628) to open the Question Bank page so the search input and sort controls can be located.
+        # -> Click the Physics subject card to open its question list so the search input and sort controls become available (use a fresh clickable index from the current page).
         frame = context.pages[-1]
         # Click element
-        elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
+        elem = frame.locator('xpath=/html/body/div/div/div/main/div[2]/div/div[3]/div[2]/div[2]/div/div/div[3]').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Click the 'Question Bank' navigation button (index 6459) to open the Question Bank page so the search input and sort controls can be located.
+        # -> Click the visible 'Physics' subject card (index 5266) to open its question list so the search input and sort controls become available.
         frame = context.pages[-1]
         # Click element
-        elem = frame.locator('xpath=/html/body/div/div/div/nav/div/div/div/button[3]').nth(0)
+        elem = frame.locator('xpath=/html/body/div/div/div/main/div[2]/div/div[3]/div[2]/div[2]/div/div/div/div/button').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # --> Test passed — verified by AI agent
+        # --> Assertions to verify final state
         frame = context.pages[-1]
-        current_url = await frame.evaluate("() => window.location.href")
-        assert current_url is not None, "Test completed successfully"
+        assert await frame.locator("xpath=//*[contains(., 'Logout')]").nth(0).is_visible(), "Expected 'Logout' to be visible"
+        assert await frame.locator("xpath=//*[contains(., 'Question Bank')]").nth(0).is_visible(), "Expected 'Question Bank' to be visible"
+        assert await frame.locator("xpath=//*[contains(., 'Physics')]").nth(0).is_visible(), "Expected 'Physics' to be visible"
+        assert await frame.locator("xpath=//*[contains(., 'Search')]").nth(0).is_visible(), "Expected 'Search' to be visible"
+        assert await frame.locator("xpath=//*[contains(., 'Sort by')]").nth(0).is_visible(), "Expected 'Sort by' to be visible"
         await asyncio.sleep(5)
 
     finally:

@@ -33,13 +33,13 @@ async def run_test():
         # -> Navigate to http://localhost:3000
         await page.goto("http://localhost:3000")
         
-        # -> Click the Login button to open the login form (index 79).
+        # -> Click the Login button to open the login form so credentials can be entered.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div/div/section/div/div/button').nth(0)
         await asyncio.sleep(3); await elem.click()
         
-        # -> Fill Login ID and Password fields and click Sign In to submit credentials, then verify dashboard top-level sections after successful login.
+        # -> Fill Login ID and Password with student credentials and click Sign In to authenticate (then open Dashboard and assert top-level cards/tabs).
         frame = context.pages[-1]
         # Input text
         elem = frame.locator('xpath=/html/body/div/div/div/div[2]/div/form/div/div/input').nth(0)
