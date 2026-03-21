@@ -488,7 +488,7 @@ export function StudentTestTaking({
 
         {/* Subject and Section Tabs */}
         {subjects.length > 0 && (
-          <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col gap-3 mb-4 sm:gap-4 sm:mb-6">
             {/* Subject Tabs */}
             <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
               {subjects.map((s) => (
@@ -535,9 +535,9 @@ export function StudentTestTaking({
         )}
 
         {/* Main Content */}
-        <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid lg:grid-cols-4 gap-3 sm:gap-6">
           {/* Main Question Area */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4">
             {/* Question Card */}
             <div
               key={currentQuestion}
@@ -546,7 +546,7 @@ export function StudentTestTaking({
               {!isEditing ? (
                 <>
                   {/* Question Header */}
-                  <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-start justify-between mb-4 sm:mb-6">
                     <div className="flex-1 min-w-0 max-w-full">
                       <div className="question-meta-row flex items-center flex-wrap gap-3 mb-4">
                         <span className="question-meta-chip px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
@@ -675,7 +675,7 @@ export function StudentTestTaking({
                         );
                       })
                     ) : (
-                      <div className="bg-amber-50 p-6 rounded-2xl border-2 border-dashed border-amber-200">
+                      <div className="p-4 sm:p-5 rounded-2xl bg-white">
                         <p className="text-sm font-bold text-amber-800 mb-2">Numerical Answer</p>
                         {isAnyPreview ? (
                           <div className="flex items-center gap-3">
@@ -685,12 +685,14 @@ export function StudentTestTaking({
                             <span className="text-xs font-bold text-green-600">CORRECT ANSWER</span>
                           </div>
                         ) : (
-                          <NumericAnswerKeypad
-                            value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
-                            onChange={(nextValue) => selectAnswer(question.id, nextValue)}
-                            placeholder="Enter numerical value"
-                            disabled={isSectionBLocked}
-                          />
+                          <div className="pt-1">
+                            <NumericAnswerKeypad
+                              value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
+                              onChange={(nextValue) => selectAnswer(question.id, nextValue)}
+                              placeholder="Enter numerical value"
+                              disabled={isSectionBLocked}
+                            />
+                          </div>
                         )}
                       </div>
                     )}
@@ -922,7 +924,7 @@ export function StudentTestTaking({
             </div>
 
             <div
-              className="attempt-nav-mobile mt-4 border-t border-gray-100 px-1 pt-4"
+              className="attempt-nav-mobile mt-3 border-t border-gray-100 px-1 pt-3"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', paddingLeft: '0.25rem', paddingRight: '0.25rem' }}
             >
               {currentQuestion === questions.length - 1 ? (
