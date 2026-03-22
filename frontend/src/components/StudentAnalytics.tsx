@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
 import { useIsMobileViewport } from '../hooks/useViewport';
+import { useRef, useState, useEffect } from 'react';
 import {
   Trophy,
   Target,
@@ -84,11 +85,21 @@ export function StudentAnalytics({
   loadingAttemptId = null
 }: StudentAnalyticsProps) {
   const isMobileViewport = useIsMobileViewport();
+  const [showReview, setShowReview] = useState(false);
+  const reviewRef = useRef<HTMLDivElement | null>(null);
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
+
+  useEffect(() => {
+    if (!showReview) return;
+    const frame = requestAnimationFrame(() => {
+      reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [showReview]);
 
   const reviewAnswers = result.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
@@ -141,6 +152,20 @@ export function StudentAnalytics({
             </div>
             <div className="shrink-0">
               <div className="flex items-center justify-end gap-3 sm:gap-4">
+                <button
+                  onClick={() => setShowReview((prev) => !prev)}
+                  className={`flex items-center justify-center gap-2 ${
+                    isMobileViewport ? 'w-10 h-10 rounded-xl' : 'px-6 py-3 rounded-2xl'
+                  } bg-white text-indigo-700 border border-indigo-200 shadow-sm hover:bg-indigo-50 transition-all`}
+                  aria-label={showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis'}
+                >
+                  <BarChart3 className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
+                  {!isMobileViewport && (
+                    <span className="text-base font-semibold">
+                      {showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis'}
+                    </span>
+                  )}
+                </button>
                 {!hideDownload && (
                   <button
                     onClick={handleDownloadTestPDF}
@@ -283,27 +308,30 @@ export function StudentAnalytics({
         </div>
 
         {/* Review Mode (Read Only) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <TestPreviewAndReview
-            testId={result.testId}
-            testTitle={`${result.testTitle} - Review`}
-            duration={result.duration}
-            questions={reviewQuestions}
-            onSubmit={() => {}}
-            onExit={onClose}
-            initialAnswers={reviewAnswers}
-            initialTimeSpent={result.timeSpent}
-            isFacultyPreview={true}
-            disableEditing={true}
-            hideExplanations={hideExplanations}
-            reviewAttemptId={(result as any).attempt_id}
-            loadQuestionExplanation={fetchAttemptQuestionExplanation}
-          />
-        </motion.div>
+        {showReview && (
+          <motion.div
+            ref={reviewRef}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <TestPreviewAndReview
+              testId={result.testId}
+              testTitle={`${result.testTitle} - Review`}
+              duration={result.duration}
+              questions={reviewQuestions}
+              onSubmit={() => {}}
+              onExit={() => setShowReview(false)}
+              exitLabel="Hide"
+              initialAnswers={reviewAnswers}
+              initialTimeSpent={result.timeSpent}
+              disableEditing={true}
+              hideExplanations={hideExplanations}
+              reviewAttemptId={(result as any).attempt_id}
+              loadQuestionExplanation={fetchAttemptQuestionExplanation}
+            />
+          </motion.div>
+        )}
       </div>
     </div>
   );

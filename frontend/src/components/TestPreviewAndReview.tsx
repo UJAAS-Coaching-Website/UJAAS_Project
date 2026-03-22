@@ -62,6 +62,7 @@ interface TestPreviewAndReviewProps {
   questions: Question[];
   onSubmit: (answers: Record<string, string | number | number[] | null>, timeSpent: number) => void;
   onExit: () => void;
+  exitLabel?: string;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => Promise<void> | void;
   initialAnswers?: Record<string, string | number | number[] | null>;
   initialTimeSpent?: number;
@@ -146,6 +147,7 @@ export function TestPreviewAndReview({
   questions: initialQuestions,
   onSubmit,
   onExit,
+  exitLabel,
   onSave,
   initialAnswers = {},
   initialTimeSpent = 0,
@@ -179,6 +181,7 @@ export function TestPreviewAndReview({
   const isMobileViewport = useIsMobileViewport();
 
   const isAnyPreview = isPreview || isFacultyPreview;
+  const exitButtonLabel = exitLabel ?? (isAnyPreview ? 'Exit Review' : 'Exit Test');
   const shouldRunTimer = !isAnyPreview && !disableEditing && duration > 0;
   const isStudentReviewMode = disableEditing && Boolean(reviewAttemptId) && Boolean(loadQuestionExplanation);
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
@@ -219,9 +222,15 @@ export function TestPreviewAndReview({
       } else {
         onExit();
       }
-    } else {
-      setShowExitConfirm(true);
+      return;
     }
+
+    if (disableEditing) {
+      onExit();
+      return;
+    }
+
+    setShowExitConfirm(true);
   };
 
   const handleConfirmExit = async (save: boolean) => {
@@ -240,10 +249,16 @@ export function TestPreviewAndReview({
       } else {
         onExit();
       }
-    } else {
-      // For students, confirm exit means submit
-      handleSubmit();
+      return;
     }
+
+    if (disableEditing) {
+      onExit();
+      return;
+    }
+
+    // For students, confirm exit means submit
+    handleSubmit();
   };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
@@ -498,25 +513,27 @@ export function TestPreviewAndReview({
                       <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
                       {totalMarks} Marks
                     </span>
-                    {isAnyPreview && (
+                {isAnyPreview && (
+                  <>
+                    {!disableEditing && (
                       <>
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
                           {selectedBatches.join(', ') || 'No batches assigned'}
                         </span>
-                        {!disableEditing && (
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                              isFacultyPreview
-                                ? 'bg-teal-100 text-teal-700 border-teal-200'
-                                : 'bg-amber-100 text-amber-700 border-amber-200'
-                            }`}
-                          >
-                            {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
-                          </span>
-                        )}
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                            isFacultyPreview
+                              ? 'bg-teal-100 text-teal-700 border-teal-200'
+                              : 'bg-amber-100 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
+                        </span>
                       </>
                     )}
+                  </>
+                )}
                   </div>
                 </div>
 
@@ -525,7 +542,7 @@ export function TestPreviewAndReview({
                   className="attempt-header-mobile-only shrink-0 items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 >
                   <X className="w-4 h-4" />
-                  <span className="whitespace-nowrap">{isAnyPreview ? 'Exit Review' : 'Exit Test'}</span>
+                  <span className="whitespace-nowrap">{exitButtonLabel}</span>
                 </button>
               </div>
 
@@ -600,7 +617,7 @@ export function TestPreviewAndReview({
                 className="inline-flex shrink-0 items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-2xl text-base font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <X className="w-5 h-5" />
-                <span className="whitespace-nowrap">{isAnyPreview ? 'Exit Review' : 'Exit Test'}</span>
+                <span className="whitespace-nowrap">{exitButtonLabel}</span>
               </button>
             </div>
           </div>
@@ -1120,7 +1137,7 @@ export function TestPreviewAndReview({
 
               {currentQuestion === questions.length - 1 ? (
                 <motion.button
-                  onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
+                  onClick={() => (isAnyPreview || disableEditing) ? handleExitRequest() : setShowSubmitDialog(true)}
                   className={`px-8 py-3 ${
                     isAnyPreview
                       ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -1128,14 +1145,14 @@ export function TestPreviewAndReview({
                   } rounded-xl font-semibold shadow-lg transition-all flex items-center gap-2`}
                 >
                   {isAnyPreview ? <X className="w-5 h-5 text-slate-700" /> : null}
-                  {isAnyPreview ? 'Exit Review' : 'Submit Test'}
+                  {(isAnyPreview || disableEditing) ? exitButtonLabel : 'Submit Test'}
                 </motion.button>
               ) : (
                 <motion.button
                   onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                 >
-                  {isAnyPreview ? 'Next' : 'Save & Next'}
+                  {(isAnyPreview || disableEditing) ? 'Next' : 'Save & Next'}
                   <ChevronRight className="w-5 h-5" />
                 </motion.button>
               )}
@@ -1148,18 +1165,18 @@ export function TestPreviewAndReview({
               <div className="flex gap-2">
                 <motion.button
                   onClick={() => currentQuestion === questions.length - 1
-                    ? (isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true))
+                    ? ((isAnyPreview || disableEditing) ? handleExitRequest() : setShowSubmitDialog(true))
                     : setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))
                   }
                   className={`flex-1 py-3 ${
                     currentQuestion === questions.length - 1
-                      ? isAnyPreview
+                      ? (isAnyPreview || disableEditing)
                         ? 'bg-gradient-to-r from-gray-600 to-gray-700'
                         : 'bg-gradient-to-r from-green-600 to-emerald-600'
                       : 'bg-gradient-to-r from-blue-600 to-indigo-600'
                   } text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2`}
                 >
-                  {currentQuestion === questions.length - 1 ? (isAnyPreview ? 'Exit Review' : 'Submit Test') : (isAnyPreview ? 'Next' : 'Save & Next')}
+                  {currentQuestion === questions.length - 1 ? ((isAnyPreview || disableEditing) ? exitButtonLabel : 'Submit Test') : ((isAnyPreview || disableEditing) ? 'Next' : 'Save & Next')}
                   <ChevronRight className="w-4 h-4" />
                 </motion.button>
                 <button
