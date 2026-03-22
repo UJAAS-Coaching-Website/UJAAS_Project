@@ -20,6 +20,7 @@ export function StudentNotificationSheet({
   onDelete,
 }: StudentNotificationSheetProps) {
   const [open, setOpen] = useState(false);
+  const [expandedNotifications, setExpandedNotifications] = useState<Record<string, boolean>>({});
   const isMobile = useIsMobile();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [desktopPosition, setDesktopPosition] = useState({ top: 64, left: 16 });
@@ -95,6 +96,13 @@ export function StudentNotificationSheet({
       default:
         return 'from-blue-500 to-indigo-500';
     }
+  };
+
+  const toggleExpandedNotification = (id: string) => {
+    setExpandedNotifications((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   return (
@@ -211,8 +219,13 @@ export function StudentNotificationSheet({
                         <p className="text-gray-600">No notifications yet</p>
                       </div>
                     ) : (
-                      <div className="divide-y divide-gray-100">
-                        {notifications.map((notification) => (
+                        <div className="divide-y divide-gray-100">
+                          {notifications.map((notification) => (
+                            (() => {
+                              const isExpanded = Boolean(expandedNotifications[notification.id]);
+                              const shouldShowReadMore = notification.message.trim().length > 120;
+
+                              return (
                           <div
                             key={notification.id}
                             role="button"
@@ -257,9 +270,21 @@ export function StudentNotificationSheet({
                                   )}
                                 </div>
 
-                                <p className="mb-2 line-clamp-2 text-sm text-gray-600">
+                                <p className={`mb-2 text-sm text-gray-600 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
                                   {notification.message}
                                 </p>
+                                {shouldShowReadMore && (
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      toggleExpandedNotification(notification.id);
+                                    }}
+                                    className="mb-2 text-xs font-semibold text-blue-600 transition hover:text-blue-700"
+                                  >
+                                    {isExpanded ? 'Show less' : 'Read more'}
+                                  </button>
+                                )}
 
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="text-xs text-gray-500">{notification.time}</span>
@@ -279,10 +304,12 @@ export function StudentNotificationSheet({
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                              );
+                            })()
+                          ))}
+                        </div>
+                      )}
+                    </div>
                 </div>
               </motion.aside>
             </>

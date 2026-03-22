@@ -369,7 +369,28 @@ export function TestSeriesContainer({
       pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
-      window.alert(error?.message || 'Unable to submit test');
+      const message = error?.message || 'Unable to submit test';
+      const shouldRecoverToLatestAttempt = Boolean(options?.autoSubmitted)
+        && typeof message === 'string'
+        && message.toLowerCase().includes('active attempt not found');
+
+      if (shouldRecoverToLatestAttempt) {
+        try {
+          localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+          const summary = await patchAttemptSummary(testState.test.id).catch(() => fetchMyTestAttemptSummary(testState.test.id));
+          const latestAttemptId = summary.history[0]?.id;
+
+          if (latestAttemptId) {
+            await loadAttemptResults().catch(() => undefined);
+            await openAttemptAnalytics(latestAttemptId);
+            return;
+          }
+        } catch (recoveryError) {
+          console.error('Failed to recover auto-submitted attempt', recoveryError);
+        }
+      }
+
+      window.alert(message);
     }
   };
 

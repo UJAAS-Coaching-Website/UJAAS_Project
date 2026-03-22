@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
@@ -109,6 +109,7 @@ export function StudentTestTaking({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
   const isMobileViewport = useIsMobileViewport();
 
@@ -197,12 +198,16 @@ export function StudentTestTaking({
   };
 
   useEffect(() => {
+    autoSubmitTriggeredRef.current = false;
+  }, [testId]);
+
+  useEffect(() => {
     if (isAnyPreview || !enableTimer) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          handleAutoSubmit();
+          void handleAutoSubmit();
           return 0;
         }
         return prev - 1;
@@ -213,16 +218,26 @@ export function StudentTestTaking({
   }, [isAnyPreview]);
 
   useEffect(() => {
-    if (isAnyPreview || !onSaveProgress) return;
+    if (isAnyPreview || !onSaveProgress || isSubmitting || autoSubmitTriggeredRef.current) return;
     const saveTimer = setTimeout(() => {
       void onSaveProgress(answers);
     }, 800);
     return () => clearTimeout(saveTimer);
-  }, [answers, isAnyPreview, onSaveProgress]);
+  }, [answers, isAnyPreview, isSubmitting, onSaveProgress]);
 
   const handleAutoSubmit = async () => {
-    if (isSubmitting) return;
-    await onSubmit(answers, { autoSubmitted: true });
+    if (isSubmitting || autoSubmitTriggeredRef.current) return;
+
+    autoSubmitTriggeredRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      await onSubmit(answers, { autoSubmitted: true });
+      setShowSubmitDialog(false);
+      setShowExitConfirm(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (autoSubmitted = false) => {
