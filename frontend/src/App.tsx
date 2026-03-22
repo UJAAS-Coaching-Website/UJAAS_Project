@@ -337,6 +337,8 @@ function App() {
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
 
+  const shouldBlockNonDesktop = Boolean(user && (user.role === 'admin' || user.role === 'faculty') && isMobile);
+
   const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => {
     showBatchToast('saving', 'Publishing test to database...');
     try {
@@ -1282,6 +1284,26 @@ function App() {
     }
 
     return <AuthLoadingShell isMobile={isMobile} />;
+  }
+
+  if (shouldBlockNonDesktop) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-xl rounded-3xl border border-white/70 bg-white/80 p-8 text-center shadow-2xl backdrop-blur">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 shadow-sm">
+            <img src={logo} alt="UJAAS Logo" className="h-9 w-9 object-contain" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Desktop View Required</h1>
+          <p className="mt-3 text-sm text-gray-600 sm:text-base">
+            The admin and faculty dashboards are optimized for desktop only. Please enable Desktop Site
+            in your browser or open this page on a laptop/desktop to continue.
+          </p>
+          <div className="mt-6 rounded-2xl bg-teal-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-teal-700 sm:text-sm">
+            Tip: Browser menu → “Desktop site”
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (<>
