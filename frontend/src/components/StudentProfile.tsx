@@ -176,7 +176,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
   const overallPerformance = calculateOverallPerformance();
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6`}>
       {/* Profile Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -231,7 +231,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
             key={tab.id}
             onClick={() => setActiveSection(tab.id as any)}
             className={`flex items-center font-medium transition-all rounded-lg whitespace-nowrap ${
-              isMobileViewport ? 'gap-1.5 px-3 py-1.5 text-xs' : 'gap-2 px-4 py-2 text-base'
+              isMobileViewport ? 'gap-2 px-3 py-2 text-xs' : 'gap-2 px-4 py-2 text-base'
             } ${
               activeSection === tab.id
                 ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
@@ -415,7 +415,7 @@ function PerformanceSection({ details, user, isMobileViewport }: { details: Stud
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className={isMobileViewport ? 'space-y-4' : 'space-y-6'}>
       <AnimatePresence>
         {selectedSubject && (
           <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
@@ -505,16 +505,16 @@ function PerformanceSection({ details, user, isMobileViewport }: { details: Stud
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-8 text-gray-900 shadow-xl border border-white relative overflow-hidden"
+        className={`bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl ${isMobileViewport ? 'p-6' : 'p-8'} text-gray-900 shadow-xl border border-white relative overflow-hidden`}
       >
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/40 rounded-full -mr-24 -mt-24" />
         <div className="relative">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-2xl font-bold mb-1">Overall Rating</h3>
-              <p className="text-gray-500 font-medium">Based on all academic factors</p>
+              <h3 className={`${isMobileViewport ? 'text-xl font-semibold' : 'text-2xl font-bold'} mb-1`}>Overall Rating</h3>
+              <p className={`${isMobileViewport ? 'text-gray-500 font-normal text-sm' : 'text-gray-500 font-medium'}`}>Based on all academic factors</p>
             </div>
-            <div className={`${isMobileViewport ? 'w-12 h-12 rounded-xl' : 'w-14 h-14 rounded-2xl'} bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg`}>
+            <div className={`${isMobileViewport ? 'w-12 h-12 rounded-lg' : 'w-14 h-14 rounded-2xl'} bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg`}>
               <Star className={isMobileViewport ? 'w-6 h-6 text-white' : 'w-7 h-7 text-white'} />
             </div>
           </div>
@@ -651,32 +651,32 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="space-y-3"
+        className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3"
       >
         <motion.button
           onClick={() => setShowChangePassword(true)}
-          className="w-full p-4 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
+          className="w-full p-4 md:p-3 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
         >
           <div>
-            <h4 className="font-semibold text-gray-900">Change Password</h4>
-            <p className="text-sm text-gray-600">Update your account password</p>
+            <h4 className="font-semibold text-gray-900 md:text-sm">Change Password</h4>
+            <p className="text-sm text-gray-600 md:text-xs">Update your account password</p>
           </div>
-          <div className="w-8 h-8 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center transition">
-            <Lock className="w-4 h-4 text-indigo-600" />
+          <div className="w-8 h-8 md:w-7 md:h-7 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center transition">
+            <Lock className="w-4 h-4 md:w-3.5 md:h-3.5 text-indigo-600" />
           </div>
         </motion.button>
 
         <motion.button
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full p-4 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
+          className="w-full p-4 md:p-3 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-              <LogOut className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 md:w-8 md:h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+              <LogOut className="w-5 h-5 md:w-4 md:h-4 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-orange-700">Logout</h4>
-              <p className="text-sm text-orange-600">Sign out of your account</p>
+              <h4 className="font-semibold text-orange-700 md:text-sm">Logout</h4>
+              <p className="text-sm text-orange-600 md:text-xs">Sign out of your account</p>
             </div>
           </div>
         </motion.button>

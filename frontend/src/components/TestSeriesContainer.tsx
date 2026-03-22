@@ -67,6 +67,11 @@ export function TestSeriesContainer({
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
   const analyticsRequestRef = useRef(0);
+  const previousResultsSubTabRef = useRef<string | null>(null);
+  const previousResultsScrollRef = useRef<number | null>(null);
+  const lastNonResultsSubTabRef = useRef<string | null>(null);
+  const previousResultsStateRef = useRef<TestState | null>(null);
+  const analyticsOriginRef = useRef<'results' | 'list'>('list');
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -166,6 +171,9 @@ export function TestSeriesContainer({
   }, [loadAttemptResults]);
 
   useEffect(() => {
+    if (subTab && subTab !== 'Results') {
+      lastNonResultsSubTabRef.current = subTab;
+    }
     const syncFromRoute = async () => {
       if (subTab && pendingSubTabRef.current === subTab) {
         pendingSubTabRef.current = null;
@@ -221,6 +229,12 @@ export function TestSeriesContainer({
           return;
         }
 
+        if (!previousResultsSubTabRef.current) {
+          previousResultsSubTabRef.current = lastNonResultsSubTabRef.current || 'list';
+        }
+        if (!previousResultsStateRef.current) {
+          previousResultsStateRef.current = testState;
+        }
         await loadAttemptResults();
         setTestState({ mode: 'viewResults' });
       }
@@ -368,6 +382,59 @@ export function TestSeriesContainer({
     onNavigateSubTab?.(undefined);
   };
 
+  const handleBackFromAnalytics = () => {
+    if (analyticsOriginRef.current === 'results') {
+      analyticsOriginRef.current = 'list';
+      setTestState({ mode: 'viewResults' });
+      pendingSubTabRef.current = 'Results';
+      onNavigateSubTab?.(pendingSubTabRef.current);
+      const scrollTarget = previousResultsScrollRef.current;
+      if (scrollTarget !== null) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+        });
+      }
+      return;
+    }
+    handleBackToList();
+  };
+
+  const handleBackFromResults = () => {
+    const previousSubTab = previousResultsSubTabRef.current;
+    const previousState = previousResultsStateRef.current;
+    const previousScroll = previousResultsScrollRef.current;
+
+    previousResultsSubTabRef.current = null;
+    previousResultsStateRef.current = null;
+    previousResultsScrollRef.current = null;
+
+    if (previousState) {
+      setTestState(previousState);
+      if (previousState.mode === 'analytics' && previousState.result?.attempt_id) {
+        onNavigateSubTab?.(`Analysis-${previousState.result.attempt_id}`);
+      } else if (previousState.mode === 'overview') {
+        onNavigateSubTab?.(`Overview-${slugifyText(previousState.test.title)}`);
+      } else if (previousState.mode === 'taking') {
+        onNavigateSubTab?.(`Test-${slugifyText(previousState.test.title)}`);
+      } else {
+        onNavigateSubTab?.(previousSubTab === 'list' ? undefined : previousSubTab || undefined);
+      }
+      if (previousScroll !== null) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: previousScroll, behavior: 'auto' });
+        });
+      }
+      return;
+    }
+
+    if (previousSubTab && previousSubTab !== 'Results') {
+      onNavigateSubTab?.(previousSubTab === 'list' ? undefined : previousSubTab);
+      return;
+    }
+
+    handleBackToList();
+  };
+
   const currentTests = useMemo(() => studentTests, [studentTests]);
 
   if (testState.mode === 'overview' && testState.test) {
@@ -410,7 +477,7 @@ export function TestSeriesContainer({
           void openAttemptAnalytics(attemptId);
         }}
         loadingAttemptId={loadingAnalysisAttemptId}
-        onClose={handleBackToList}
+        onClose={handleBackFromAnalytics}
       />
     );
   }
@@ -419,10 +486,12 @@ export function TestSeriesContainer({
     return (
       <ViewResults
         results={attemptResults}
-        onClose={handleBackToList}
+        onClose={handleBackFromResults}
         loadingAttemptId={loadingAnalysisAttemptId}
         isLoading={isLoadingResults}
         onViewDetailedAnalytics={(attemptId) => {
+          analyticsOriginRef.current = 'results';
+          previousResultsScrollRef.current = window.scrollY;
           void openAttemptAnalytics(attemptId);
         }}
       />
@@ -434,11 +503,15 @@ export function TestSeriesContainer({
       onStartTest={handleStartTest}
       onViewAnalytics={(attemptId) => {
         if (attemptId) {
+          analyticsOriginRef.current = 'list';
           void openAttemptAnalytics(attemptId);
         }
       }}
       onViewResults={() => {
+        previousResultsScrollRef.current = window.scrollY;
+        previousResultsStateRef.current = testState;
         void loadAttemptResults();
+        previousResultsSubTabRef.current = pendingSubTabRef.current || subTab || 'list';
         setTestState({ mode: 'viewResults' });
         pendingSubTabRef.current = 'Results';
         onNavigateSubTab?.(pendingSubTabRef.current);
