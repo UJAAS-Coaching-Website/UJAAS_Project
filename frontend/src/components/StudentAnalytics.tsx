@@ -151,31 +151,29 @@ export function StudentAnalytics({
               <p className="hidden md:block text-xs sm:text-base text-gray-600">{subtitle}</p>
             </div>
             <div className="shrink-0">
-              <div className="flex items-center flex-wrap justify-start md:justify-end gap-3 sm:gap-4">
+              <div className="flex items-center flex-wrap justify-between md:justify-end gap-2 sm:gap-4 w-full md:w-auto">
                 <button
                   onClick={() => setShowReview((prev) => !prev)}
-                  className={`flex items-center justify-center gap-2 ${
-                    isMobileViewport ? 'w-10 h-10 rounded-xl' : 'px-6 py-3 rounded-2xl'
+                  className={`flex items-center justify-center ${isMobileViewport ? 'gap-1.5' : 'gap-2'} ${
+                    isMobileViewport ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-2xl'
                   } bg-white text-indigo-700 border border-indigo-200 shadow-sm hover:bg-indigo-50 transition-all`}
                   aria-label={showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis'}
                 >
                   <BarChart3 className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
-                  {!isMobileViewport && (
-                    <span className="text-base font-semibold">
-                      {showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis'}
-                    </span>
-                  )}
+                  <span className="text-sm sm:text-base font-semibold">
+                    {isMobileViewport ? 'Detailed' : (showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis')}
+                  </span>
                 </button>
                 {!hideDownload && (
                   <button
                     onClick={handleDownloadTestPDF}
-                    className={`flex items-center justify-center gap-2 ${
-                      isMobileViewport ? 'w-10 h-10 rounded-xl' : 'px-6 py-3 rounded-2xl'
+                    className={`flex items-center justify-center ${isMobileViewport ? 'gap-1.5' : 'gap-2'} ${
+                      isMobileViewport ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-2xl'
                     } bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-200 transition-all`}
                     aria-label="Download"
                   >
                     <Download className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
-                    {!isMobileViewport && <span className="text-base font-medium">Download</span>}
+                    <span className="text-sm sm:text-base font-medium">Download</span>
                   </button>
                 )}
                 <button
