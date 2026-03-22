@@ -539,7 +539,7 @@ export function FacultyDashboard({
       </nav>
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className={`footer-reveal-main w-full flex-grow ${performanceInsightsTestId ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         <motion.div
           key={`${selectedBatch || adminSection}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}

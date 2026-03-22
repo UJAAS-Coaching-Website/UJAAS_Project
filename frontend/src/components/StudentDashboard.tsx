@@ -297,6 +297,7 @@ export function StudentDashboard({
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
   const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
+  const isTestAnalyticsRoute = activeTab === 'test-series' && testSeriesMode === 'analytics';
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -483,7 +484,7 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className={`footer-reveal-main w-full flex-grow ${(isTestAttemptRoute || isDppRoute) ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+      <main className={`footer-reveal-main w-full flex-grow ${(isTestAttemptRoute || isTestAnalyticsRoute || isDppRoute) ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
         )}

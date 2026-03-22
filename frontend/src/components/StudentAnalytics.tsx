@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { TestPreviewAndReview } from './TestPreviewAndReview';
 import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import {
   Trophy,
   Target,
@@ -14,7 +15,8 @@ import {
   Calendar,
   BookOpen,
   ChevronRight,
-  Download
+  Download,
+  X
 } from 'lucide-react';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
@@ -81,6 +83,7 @@ export function StudentAnalytics({
   onSelectAttempt,
   loadingAttemptId = null
 }: StudentAnalyticsProps) {
+  const isMobileViewport = useIsMobileViewport();
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
@@ -128,30 +131,42 @@ export function StudentAnalytics({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-2 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{result.testTitle}</h1>
-              <p className="text-gray-600">{subtitle}</p>
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1.5 sm:mb-2">{result.testTitle}</h1>
+              <p className="text-xs sm:text-base text-gray-600">{subtitle}</p>
             </div>
-            <div className="flex gap-3">
-              {!hideDownload && (
+            <div className="shrink-0">
+              <div className="flex items-center justify-end gap-3 sm:gap-4">
+                {!hideDownload && (
+                  <button
+                    onClick={handleDownloadTestPDF}
+                    className={`flex items-center justify-center gap-2 ${
+                      isMobileViewport ? 'w-10 h-10 rounded-xl' : 'px-6 py-3 rounded-2xl'
+                    } bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-200 transition-all`}
+                    aria-label="Download"
+                  >
+                    <Download className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
+                    {!isMobileViewport && <span className="text-base font-medium">Download</span>}
+                  </button>
+                )}
                 <button
-                  onClick={handleDownloadTestPDF}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl font-medium hover:bg-blue-200 transition-all"
+                  onClick={onClose}
+                  className={`flex items-center justify-center ${
+                    isMobileViewport ? 'w-10 h-10 rounded-xl' : 'px-6 py-3 rounded-2xl'
+                  } bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all`}
+                  aria-label="Close"
                 >
-                  <Download className="w-5 h-5" />
-                  Download
+                  {isMobileViewport ? (
+                    <X className="w-4 h-4" />
+                  ) : (
+                    <span className="text-base font-semibold">Close</span>
+                  )}
                 </button>
-              )}
-              <button
-                onClick={onClose}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
-              >
-                Close
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -160,8 +175,8 @@ export function StudentAnalytics({
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Your Attempts</h2>
-                <p className="text-sm text-gray-600">Switch between all submitted attempts for this test</p>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">Your Attempts</h2>
+                <p className="text-xs sm:text-sm text-gray-600">Switch between all submitted attempts for this test</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {attemptHistory.map((attempt) => {
@@ -172,7 +187,7 @@ export function StudentAnalytics({
                       key={attempt.id}
                       onClick={() => onSelectAttempt(attempt.id)}
                       disabled={isLoading || isActive}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                      className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                         isActive
                           ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white'
                           : isLoading
@@ -189,7 +204,7 @@ export function StudentAnalytics({
           </div>
         ) : null}
 
-        {/* Score Card */}
+        
         <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-8 mb-6 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
@@ -215,11 +230,11 @@ export function StudentAnalytics({
               <p className="text-5xl font-bold mb-1">{accuracy}%</p>
               <p className="text-blue-100">{result.correctAnswers}/{result.totalQuestions} correct</p>
               <div className="mt-3 text-sm">
-                <span className="text-green-300">✓ {result.correctAnswers}</span>
-                <span className="mx-2">•</span>
-                <span className="text-red-300">✗ {result.wrongAnswers}</span>
-                <span className="mx-2">•</span>
-                <span className="text-gray-300">− {result.unattempted}</span>
+                <span className="text-green-300">&#10003; {result.correctAnswers}</span>
+                <span className="mx-2">&bull;</span>
+                <span className="text-red-300">&#10007; {result.wrongAnswers}</span>
+                <span className="mx-2">&bull;</span>
+                <span className="text-gray-300">&#8722; {result.unattempted}</span>
               </div>
             </div>
 
@@ -239,7 +254,7 @@ export function StudentAnalytics({
           </div>
         </div>
 
-        {/* Stats Grid */}
+        \3
         <div className={`grid gap-4 mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
           {[
             { icon: CheckCircle, label: 'Correct', value: result.correctAnswers, color: 'green' },
@@ -253,13 +268,13 @@ export function StudentAnalytics({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.05 }}
-              className="bg-white rounded-xl p-6 shadow-lg border border-gray-100"
+              className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100"
             >
-              <div className={`w-12 h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-3`}>
-                <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-3`}>
+                <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${stat.color}-600`} />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-600 mt-1">{stat.label}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">{stat.label}</p>
             </motion.div>
           ))}
         </div>
