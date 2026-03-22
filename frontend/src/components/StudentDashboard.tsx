@@ -298,6 +298,7 @@ export function StudentDashboard({
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
   const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
   const isTestAnalyticsRoute = activeTab === 'test-series' && testSeriesMode === 'analytics';
+  const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -385,34 +386,36 @@ export function StudentDashboard({
               </div>
             </div>
 
-            <div className="border-t border-gray-200">
-            <div className="flex items-center justify-center gap-2 px-1 py-2">
-              {[
-                { id: 'home', label: 'Dashboard', icon: GraduationCap },
-                { id: 'test-series', label: 'Test Series', icon: FileText },
-                { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === 'home') setProfileSection('overview');
-                    onNavigate(tab.id as Tab);
-                  }}
-                  className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
-                    (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
-                    }`}
-                  style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
-                >
-                  <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">
-                    {isMobileViewport && tab.id === 'question-bank' ? 'QB' : tab.label}
-                  </span>
-                </motion.button>
-              ))}
-            </div>
-            </div>
+            {activeTab !== 'profile' && (
+              <div className="border-t border-gray-200">
+                <div className="flex items-center justify-center gap-2 px-1 py-2">
+                  {[
+                    { id: 'home', label: 'Dashboard', icon: GraduationCap },
+                    { id: 'test-series', label: 'Test Series', icon: FileText },
+                    { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
+                  ].map((tab) => (
+                    <motion.button
+                      key={tab.id}
+                      onClick={() => {
+                        if (tab.id === 'home') setProfileSection('overview');
+                        onNavigate(tab.id as Tab);
+                      }}
+                      className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
+                        (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
+                          ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                          : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        }`}
+                      style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
+                    >
+                      <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {isMobileViewport && tab.id === 'question-bank' ? 'QB' : tab.label}
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
               </>
             ) : (
             <div className="flex items-center justify-between h-16">
@@ -486,7 +489,7 @@ export function StudentDashboard({
       {/* Main Content */}
       <main className={`footer-reveal-main w-full flex-grow ${(isTestAttemptRoute || isTestAnalyticsRoute || isDppRoute) ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         {!isNavbarHidden && (
-          <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
+          <div style={{ height: isMobileViewport ? `${mobileSpacerHeight}px` : '4rem' }} />
         )}
         <motion.div
           key={activeTab}
