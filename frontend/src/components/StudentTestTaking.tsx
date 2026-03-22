@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
 import {
   Clock,
@@ -109,6 +110,7 @@ export function StudentTestTaking({
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
+  const isMobileViewport = useIsMobileViewport();
 
   const isAnyPreview = isPreview || isFacultyPreview;
   const isJeeMain = format === 'JEE MAIN';
@@ -1098,37 +1100,45 @@ export function StudentTestTaking({
       <AnimatePresence>
         {/* Submit Dialog */}
         {showSubmitDialog && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
+          <div
+            className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex z-[10004] ${
+              isMobileViewport ? 'items-stretch justify-stretch p-0' : 'items-center justify-center p-4'
+            }`}
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-6 sm:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className={`bg-white w-full overflow-y-auto shadow-2xl ${
+                isMobileViewport
+                  ? 'min-h-[100dvh] h-[100dvh] max-h-[100dvh] rounded-none p-3 pb-4'
+                  : 'max-w-4xl max-h-[90vh] rounded-3xl p-6 sm:p-8'
+              }`}
             >
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Test Summary</h3>
-                <p className="text-gray-600">Please review your attempt before submitting.</p>
+              <div className="text-center mb-4 sm:mb-6">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Test Summary</h3>
+                <p className="text-sm sm:text-base text-gray-600">Please review your attempt before submitting.</p>
               </div>
 
-              <div className="overflow-x-auto mb-8 border border-gray-100 rounded-2xl shadow-sm">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-700 uppercase text-xs font-bold">
+              <div className="overflow-x-auto mb-6 sm:mb-8 border border-gray-100 rounded-2xl shadow-sm">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead className="bg-gray-50 text-gray-700 uppercase text-[10px] sm:text-xs font-bold">
                     <tr>
-                      <th rowSpan={2} className="px-4 py-4 border-b border-r border-gray-200">Status</th>
+                      <th rowSpan={2} className="px-2 py-3 sm:px-4 sm:py-4 border-b border-r border-gray-200">Status</th>
                       {subjects.map(subject => (
                         <th
                           key={subject}
                           colSpan={Object.keys(groupedStats[subject]).length}
-                          className="px-4 py-2 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-700"
+                          className="px-2 py-2 sm:px-4 border-b border-r border-gray-200 text-center bg-blue-50 text-blue-700"
                         >
                           {subject}
                         </th>
                       ))}
-                      <th rowSpan={2} className="px-4 py-4 border-b border-gray-200 text-center bg-indigo-50 text-indigo-700">Grand Total</th>
+                      <th rowSpan={2} className="px-2 py-3 sm:px-4 sm:py-4 border-b border-gray-200 text-center bg-indigo-50 text-indigo-700">Grand Total</th>
                     </tr>
                     <tr>
                       {subjects.map(subject =>
                         Object.keys(groupedStats[subject]).map(section => (
-                          <th key={`${subject}-${section}`} className="px-4 py-2 border-b border-r border-gray-200 text-center font-semibold text-[10px]">
+                          <th key={`${subject}-${section}`} className="px-2 py-2 sm:px-4 border-b border-r border-gray-200 text-center font-semibold text-[9px] sm:text-[10px]">
                             {section}
                           </th>
                         ))
@@ -1146,34 +1156,34 @@ export function StudentTestTaking({
                       let grandTotal = 0;
                       return (
                         <tr key={row.key} className="hover:bg-gray-50/50 transition-colors">
-                          <td className={`px-4 py-3 font-bold border-r border-gray-100 ${row.color}`}>{row.label}</td>
+                          <td className={`px-2 py-2.5 sm:px-4 sm:py-3 font-bold border-r border-gray-100 ${row.color}`}>{row.label}</td>
                           {subjects.map(subject =>
                             Object.keys(groupedStats[subject]).map(section => {
                               const val = (groupedStats[subject][section] as any)[row.key];
                               grandTotal += val;
                               return (
-                                <td key={`${subject}-${section}-${row.key}`} className="px-4 py-3 text-center border-r border-gray-100 font-medium">
+                                <td key={`${subject}-${section}-${row.key}`} className="px-2 py-2.5 sm:px-4 sm:py-3 text-center border-r border-gray-100 font-medium">
                                   {val}
                                 </td>
                               );
                             })
                           )}
-                          <td className={`px-4 py-3 text-center font-bold bg-indigo-50/30 ${row.color}`}>{grandTotal}</td>
+                          <td className={`px-2 py-2.5 sm:px-4 sm:py-3 text-center font-bold bg-indigo-50/30 ${row.color}`}>{grandTotal}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot className="bg-gray-50/50 font-bold">
                     <tr>
-                      <td className="px-4 py-3 border-r border-gray-100">Total Questions</td>
+                      <td className="px-2 py-2.5 sm:px-4 sm:py-3 border-r border-gray-100">Total Questions</td>
                       {subjects.map(subject =>
                         Object.keys(groupedStats[subject]).map(section => (
-                          <td key={`${subject}-${section}-total`} className="px-4 py-3 text-center border-r border-gray-100">
+                          <td key={`${subject}-${section}-total`} className="px-2 py-2.5 sm:px-4 sm:py-3 text-center border-r border-gray-100">
                             {groupedStats[subject][section].total}
                           </td>
                         ))
                       )}
-                      <td className="px-4 py-3 text-center bg-indigo-50 text-indigo-900">{questions.length}</td>
+                      <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center bg-indigo-50 text-indigo-900">{questions.length}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1183,14 +1193,14 @@ export function StudentTestTaking({
                 <button
                   onClick={() => setShowSubmitDialog(false)}
                   disabled={isSubmitting}
-                  className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  className="flex-1 py-3 sm:py-4 text-base sm:text-lg bg-gray-100 text-gray-700 rounded-xl sm:rounded-2xl font-bold hover:bg-gray-200 transition-all"
                 >
                   Back to Test
                 </button>
                 <motion.button
                   onClick={() => void handleSubmit()}
                   disabled={isSubmitting}
-                  className="flex-1 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-80 disabled:cursor-wait flex items-center justify-center gap-2"
+                  className="flex-1 py-3 sm:py-4 text-base sm:text-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl sm:rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-80 disabled:cursor-wait flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>
