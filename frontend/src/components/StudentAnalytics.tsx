@@ -145,13 +145,13 @@ export function StudentAnalytics({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
             <div>
               <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1.5 sm:mb-2">{result.testTitle}</h1>
-              <p className="text-xs sm:text-base text-gray-600">{subtitle}</p>
+              <p className="hidden md:block text-xs sm:text-base text-gray-600">{subtitle}</p>
             </div>
             <div className="shrink-0">
-              <div className="flex items-center justify-end gap-3 sm:gap-4">
+              <div className="flex items-center flex-wrap justify-start md:justify-end gap-3 sm:gap-4">
                 <button
                   onClick={() => setShowReview((prev) => !prev)}
                   className={`flex items-center justify-center gap-2 ${
@@ -201,7 +201,7 @@ export function StudentAnalytics({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">Your Attempts</h2>
-                <p className="text-xs sm:text-sm text-gray-600">Switch between all submitted attempts for this test</p>
+                <p className="hidden md:block text-xs sm:text-sm text-gray-600">Switch between all submitted attempts for this test</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {attemptHistory.map((attempt) => {
