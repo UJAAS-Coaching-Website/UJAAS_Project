@@ -65,6 +65,8 @@ interface StudentAnalyticsProps {
   hideDownload?: boolean;
   hideRank?: boolean;
   hideTimeSpent?: boolean;
+  hideSummaryCard?: boolean;
+  forceStatsRow?: boolean;
   subtitle?: string;
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
@@ -79,6 +81,8 @@ export function StudentAnalytics({
   hideDownload = false,
   hideRank = false,
   hideTimeSpent = false,
+  hideSummaryCard = false,
+  forceStatsRow = false,
   subtitle = 'Detailed Performance Analysis',
   attemptHistory = [],
   onSelectAttempt,
@@ -228,60 +232,64 @@ export function StudentAnalytics({
         ) : null}
 
         
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-4 md:p-8 mb-4 sm:mb-6 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 md:w-64 md:h-64 bg-white/10 rounded-full -mr-20 -mt-20 md:-mr-32 md:-mt-32" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 md:w-48 md:h-48 bg-white/10 rounded-full -ml-16 -mb-16 md:-ml-24 md:-mb-24" />
-          
-          <div className={`relative grid grid-cols-3 gap-3 md:gap-6 ${hideRank ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-            <div className="text-center">
-              <div className="mb-2">
-                <Trophy className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-yellow-300" />
-              </div>
-              <p className="text-blue-100 text-xs md:text-sm mb-1">Your Score</p>
-              <p className="text-3xl md:text-5xl font-bold mb-1">{result.obtainedMarks}</p>
-              <p className="text-blue-100 hidden md:block">out of {result.totalMarks}</p>
-              {!isMobileViewport && (
-                <div className="mt-2 md:mt-3 px-3 md:px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full inline-flex items-center justify-center">
-                  <span className="text-base md:text-lg font-bold">{percentage}%</span>
-                </div>
-              )}
-            </div>
-
-            <div className="text-center">
-              <div className="mb-2">
-                <Target className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-green-300" />
-              </div>
-              <p className="text-blue-100 text-xs md:text-sm mb-1">Accuracy</p>
-              <p className="text-3xl md:text-5xl font-bold mb-1">{accuracy}%</p>
-              <p className="text-blue-100 hidden md:block">{result.correctAnswers}/{result.totalQuestions} correct</p>
-              <div className="mt-2 md:mt-3 text-sm hidden md:block">
-                <span className="text-green-300">&#10003; {result.correctAnswers}</span>
-                <span className="mx-2">&bull;</span>
-                <span className="text-red-300">&#10007; {result.wrongAnswers}</span>
-                <span className="mx-2">&bull;</span>
-                <span className="text-gray-300">&#8722; {result.unattempted}</span>
-              </div>
-            </div>
-
-            {!hideRank ? (
+        {!hideSummaryCard && (
+          <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-4 md:p-8 mb-4 sm:mb-6 text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 md:w-64 md:h-64 bg-white/10 rounded-full -mr-20 -mt-20 md:-mr-32 md:-mt-32" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 md:w-48 md:h-48 bg-white/10 rounded-full -ml-16 -mb-16 md:-ml-24 md:-mb-24" />
+            
+            <div className={`relative grid grid-cols-3 gap-3 md:gap-6 ${hideRank ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
               <div className="text-center">
                 <div className="mb-2">
-                  <Award className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-purple-300" />
+                  <Trophy className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-yellow-300" />
                 </div>
-                <p className="text-blue-100 text-xs md:text-sm mb-1">Your Rank</p>
-                <p className="text-3xl md:text-5xl font-bold mb-1">#{result.rank ?? 0}</p>
-                <p className="text-blue-100 hidden md:block">out of {result.totalStudents ?? 0}</p>
+                <p className="text-blue-100 text-xs md:text-sm mb-1">Your Score</p>
+                <p className="text-3xl md:text-5xl font-bold mb-1">{result.obtainedMarks}</p>
+                <p className="text-blue-100 hidden md:block">out of {result.totalMarks}</p>
                 {!isMobileViewport && (
                   <div className="mt-2 md:mt-3 px-3 md:px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full inline-flex items-center justify-center">
-                    <span className="text-base md:text-lg font-bold">Top Performance</span>
+                    <span className="text-base md:text-lg font-bold">{percentage}%</span>
                   </div>
                 )}
               </div>
-            ) : null}
-          </div>
-        </div>
 
-        <div className={`grid gap-3 md:gap-4 mb-4 sm:mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
+              <div className="text-center">
+                <div className="mb-2">
+                  <Target className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-green-300" />
+                </div>
+                <p className="text-blue-100 text-xs md:text-sm mb-1">Accuracy</p>
+                <p className="text-3xl md:text-5xl font-bold mb-1">{accuracy}%</p>
+                <p className="text-blue-100 hidden md:block">{result.correctAnswers}/{result.totalQuestions} correct</p>
+                <div className="mt-2 md:mt-3 text-sm hidden md:block">
+                  <span className="text-green-300">&#10003; {result.correctAnswers}</span>
+                  <span className="mx-2">&bull;</span>
+                  <span className="text-red-300">&#10007; {result.wrongAnswers}</span>
+                  <span className="mx-2">&bull;</span>
+                  <span className="text-gray-300">&#8722; {result.unattempted}</span>
+                </div>
+              </div>
+
+              {!hideRank ? (
+                <div className="text-center">
+                  <div className="mb-2">
+                    <Award className="w-8 h-8 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 text-purple-300" />
+                  </div>
+                  <p className="text-blue-100 text-xs md:text-sm mb-1">Your Rank</p>
+                  <p className="text-3xl md:text-5xl font-bold mb-1">#{result.rank ?? 0}</p>
+                  <p className="text-blue-100 hidden md:block">out of {result.totalStudents ?? 0}</p>
+                  {!isMobileViewport && (
+                    <div className="mt-2 md:mt-3 px-3 md:px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full inline-flex items-center justify-center">
+                      <span className="text-base md:text-lg font-bold">Top Performance</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        <div className={`grid gap-3 md:gap-4 mb-4 sm:mb-6 ${
+          forceStatsRow ? 'grid-cols-3' : (hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4')
+        }`}>
           {[
             { icon: CheckCircle, label: 'Correct', value: result.correctAnswers, color: 'green' },
             { icon: XCircle, label: 'Wrong', value: result.wrongAnswers, color: 'red' },

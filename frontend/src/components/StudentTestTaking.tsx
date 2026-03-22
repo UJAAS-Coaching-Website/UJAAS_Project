@@ -101,7 +101,7 @@ export function StudentTestTaking({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [flaggedQuestions] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
     () => new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : [])
   );
@@ -303,16 +303,6 @@ export function StudentTestTaking({
       ? currentValues.filter((value) => value !== optionIndex)
       : [...currentValues, optionIndex].sort((a, b) => a - b);
     selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
-  };
-
-  const toggleFlag = (questionId: string) => {
-    const newFlagged = new Set(flaggedQuestions);
-    if (newFlagged.has(questionId)) {
-      newFlagged.delete(questionId);
-    } else {
-      newFlagged.add(questionId);
-    }
-    setFlaggedQuestions(newFlagged);
   };
 
   const getQuestionStatus = (index: number) => {
@@ -903,15 +893,6 @@ export function StudentTestTaking({
                       >
                         Clear
                       </button>
-                      <button
-                        onClick={() => toggleFlag(question.id)}
-                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${flaggedQuestions.has(question.id)
-                          ? 'bg-purple-100 border-purple-300 text-purple-700'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                          }`}
-                      >
-                        Mark for Review
-                      </button>
                     </>
                   )}
                   <motion.button
@@ -976,15 +957,6 @@ export function StudentTestTaking({
                           className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium shadow-sm"
                         >
                           Clear
-                        </button>
-                        <button
-                          onClick={() => toggleFlag(question.id)}
-                          className={`py-2.5 rounded-xl text-sm font-medium shadow-sm ${flaggedQuestions.has(question.id)
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                            }`}
-                        >
-                          Review
                         </button>
                       </>
                     )}

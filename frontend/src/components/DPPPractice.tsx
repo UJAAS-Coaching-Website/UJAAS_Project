@@ -229,6 +229,8 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
         hideRank={true}
         hideTimeSpent={true}
         hideDownload={true}
+        hideSummaryCard={true}
+        forceStatsRow={true}
         subtitle="DPP Performance Summary"
         loadingAttemptId={loadingAttemptId}
         attemptHistory={history as any}

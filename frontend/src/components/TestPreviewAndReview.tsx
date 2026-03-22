@@ -7,7 +7,6 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Flag,
   CheckCircle,
   AlertCircle,
   X,
@@ -171,7 +170,7 @@ export function TestPreviewAndReview({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [flaggedQuestions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -410,15 +409,6 @@ export function TestPreviewAndReview({
     selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
   };
 
-  const toggleFlag = (questionId: string) => {
-    const newFlagged = new Set(flaggedQuestions);
-    if (newFlagged.has(questionId)) {
-      newFlagged.delete(questionId);
-    } else {
-      newFlagged.add(questionId);
-    }
-    setFlaggedQuestions(newFlagged);
-  };
 
   const getQuestionStatus = (index: number) => {
     const question = questions[index];
@@ -623,8 +613,8 @@ export function TestPreviewAndReview({
           </div>
         </div>
 
-        {/* Subject and Section Tabs (Preview Mode Only) */}
-        {isAnyPreview && (
+        {/* Subject and Section Tabs (Preview + Student Review) */}
+        {(isAnyPreview || isStudentReviewMode) && (
           <div className="flex flex-col gap-3 mb-4 sm:gap-4 sm:mb-6">
             {/* Subject Tabs */}
             <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
@@ -716,17 +706,7 @@ export function TestPreviewAndReview({
                         </div>
                       )}
                     </div>
-                    {!isAnyPreview && (
-                      <button
-                        onClick={() => toggleFlag(question.id)}
-                        className={`p-2 rounded-lg transition-colors ${flaggedQuestions.has(question.id)
-                          ? 'bg-amber-100 text-amber-600'
-                          : 'bg-gray-100 text-gray-400 hover:text-amber-600'
-                          }`}
-                      >
-                        <Flag className="w-5 h-5" />
-                      </button>
-                    )}
+                    {!isAnyPreview ? null : null}
                   </div>
 
                   {/* Options */}
@@ -1170,9 +1150,7 @@ export function TestPreviewAndReview({
                   }
                   className={`flex-1 py-3 ${
                     currentQuestion === questions.length - 1
-                      ? (isAnyPreview || disableEditing)
-                        ? 'bg-gradient-to-r from-gray-600 to-gray-700'
-                        : 'bg-gradient-to-r from-green-600 to-emerald-600'
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600'
                       : 'bg-gradient-to-r from-blue-600 to-indigo-600'
                   } text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2`}
                 >
@@ -1220,10 +1198,6 @@ export function TestPreviewAndReview({
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-gray-700">Not Answered</span>
                     <span className="text-lg font-bold text-gray-600">{notAnsweredCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Flagged</span>
-                    <span className="text-lg font-bold text-amber-600">{flaggedQuestions.size}</span>
                   </div>
                 </div>
               )}
