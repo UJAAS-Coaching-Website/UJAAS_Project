@@ -133,7 +133,7 @@ export function StudentAnalytics({
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-2 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1.5 sm:mb-2">{result.testTitle}</h1>
@@ -172,7 +172,7 @@ export function StudentAnalytics({
         </div>
 
         {attemptHistory.length > 1 && onSelectAttempt ? (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-6">
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-4 mb-4 sm:mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-900">Your Attempts</h2>
@@ -205,7 +205,7 @@ export function StudentAnalytics({
         ) : null}
 
         
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-5 md:p-8 mb-6 text-white relative overflow-hidden">
+        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl shadow-2xl p-4 md:p-8 mb-4 sm:mb-6 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 md:w-64 md:h-64 bg-white/10 rounded-full -mr-20 -mt-20 md:-mr-32 md:-mt-32" />
           <div className="absolute bottom-0 left-0 w-32 h-32 md:w-48 md:h-48 bg-white/10 rounded-full -ml-16 -mb-16 md:-ml-24 md:-mb-24" />
           
@@ -258,7 +258,7 @@ export function StudentAnalytics({
           </div>
         </div>
 
-        <div className={`grid gap-4 mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
+        <div className={`grid gap-3 md:gap-4 mb-4 sm:mb-6 ${hideTimeSpent ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
           {[
             { icon: CheckCircle, label: 'Correct', value: result.correctAnswers, color: 'green' },
             { icon: XCircle, label: 'Wrong', value: result.wrongAnswers, color: 'red' },
@@ -271,13 +271,13 @@ export function StudentAnalytics({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.05 }}
-              className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100"
+              className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border border-gray-100"
             >
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-3`}>
-                <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 text-${stat.color}-600`} />
+              <div className={`w-9 h-9 sm:w-12 sm:h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mb-2 sm:mb-3`}>
+                <stat.icon className={`w-4 h-4 sm:w-6 sm:h-6 text-${stat.color}-600`} />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">{stat.label}</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-[11px] sm:text-sm text-gray-600 mt-1">{stat.label}</p>
             </motion.div>
           ))}
         </div>

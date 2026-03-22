@@ -373,8 +373,8 @@ export function StudentTestTaking({
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 ${outerPaddingClassName} rounded-none overflow-hidden`}>
       <div className="w-full">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-3 sm:mb-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -392,7 +392,7 @@ export function StudentTestTaking({
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-4 text-[11px] sm:text-sm text-gray-600">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-4 text-[11px] sm:text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
                       {questionCount} Questions
@@ -431,7 +431,7 @@ export function StudentTestTaking({
               </div>
 
               {!isAnyPreview && enableTimer && (
-                <div className={`attempt-header-mobile-timer mt-3 items-center gap-3 w-full min-h-[44px] px-3 py-1 rounded-xl border ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
+                <div className={`attempt-header-mobile-timer mt-2 items-center gap-2 w-full min-h-[44px] px-3 py-1 rounded-xl border ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
                   timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
                     'bg-blue-50 border-blue-300'
                   }`}>
@@ -490,7 +490,7 @@ export function StudentTestTaking({
 
         {/* Subject and Section Tabs */}
         {subjects.length > 0 && (
-          <div className="flex flex-col gap-3 mb-4 sm:gap-4 sm:mb-6">
+          <div className="flex flex-col gap-3 mb-3 sm:gap-4 sm:mb-6">
             {/* Subject Tabs */}
             <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
               {subjects.map((s) => (
@@ -550,7 +550,7 @@ export function StudentTestTaking({
                   {/* Question Header */}
                   <div className="flex items-start justify-between mb-4 sm:mb-6">
                     <div className="flex-1 min-w-0 max-w-full">
-                      <div className="question-meta-row flex items-center flex-wrap gap-3 mb-4">
+                      <div className="question-meta-row flex items-center flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4">
                         <span className="question-meta-chip px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
                           {question.subject}
                         </span>
@@ -588,7 +588,7 @@ export function StudentTestTaking({
                         {question.question}
                       </h2>
                       {question.questionImage && (
-                        <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block max-w-full align-top">
+                        <div className="mb-4 sm:mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block max-w-full align-top">
                           <img
                             src={question.questionImage}
                             alt="Question"
@@ -602,11 +602,11 @@ export function StudentTestTaking({
 
                   {/* Options */}
                   {!isAnyPreview && isSectionBQuestion(question) && (sectionBLimitMessage || isSectionBLocked) && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                    <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                       {sectionBLimitMessage || `Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`}
                     </div>
                   )}
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
                         const isCorrect = isAnyPreview && (
@@ -618,7 +618,7 @@ export function StudentTestTaking({
                         const isMsq = question.type === 'MSQ';
 
                         return (
-                          <div key={index} className="space-y-2">
+                          <div key={index} className="space-y-1.5 sm:space-y-2">
                             <button
                               onClick={() => {
                                 if (isAnyPreview) return;
@@ -658,7 +658,7 @@ export function StudentTestTaking({
                                     {option}
                                   </span>
                                   {question.optionImages?.[index] && (
-                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block max-w-full align-top">
+                                    <div className="mt-1.5 sm:mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block max-w-full align-top">
                                       <img
                                         src={question.optionImages[index]}
                                         alt={`Option ${index}`}
@@ -677,7 +677,7 @@ export function StudentTestTaking({
                         );
                       })
                     ) : (
-                      <div className="p-4 sm:p-5 rounded-2xl bg-white">
+                      <div className="p-3 sm:p-5 rounded-2xl bg-white">
                         <p className="text-sm font-bold text-amber-800 mb-2">Numerical Answer</p>
                         {isAnyPreview ? (
                           <div className="flex items-center gap-3">

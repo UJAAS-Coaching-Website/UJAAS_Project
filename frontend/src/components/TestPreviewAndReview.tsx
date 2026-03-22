@@ -1,6 +1,7 @@
 import { useState, useEffect, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useIsMobileViewport } from '../hooks/useViewport';
 import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
 import {
   Clock,
@@ -17,7 +18,8 @@ import {
   Image as ImageIcon,
   Check,
   Settings,
-  Users
+  Users,
+  Grid3x3
 } from 'lucide-react';
 import { API_BASE_URL } from '../api/base';
 
@@ -165,6 +167,7 @@ export function TestPreviewAndReview({
   const [timeLeft, setTimeLeft] = useState((duration * 60) - initialTimeSpent);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
@@ -172,7 +175,8 @@ export function TestPreviewAndReview({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
   const [questionExplanations, setQuestionExplanations] = useState<Record<string, QuestionExplanationState>>({});
-  useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings);
+  useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
+  const isMobileViewport = useIsMobileViewport();
 
   const isAnyPreview = isPreview || isFacultyPreview;
   const shouldRunTimer = !isAnyPreview && !disableEditing && duration > 0;
@@ -466,64 +470,125 @@ export function TestPreviewAndReview({
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 p-1 sm:p-2 rounded-xl sm:rounded-2xl overflow-hidden`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{testTitle}</h1>
-                {isPreview && (
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Edit Test Settings"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {questionCount} Questions
-                </span>
-                <span className="flex items-center gap-1">
-                  <Award className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {totalMarks} Marks
-                </span>
-                {isAnyPreview && (
-                  <>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                      {selectedBatches.join(', ') || 'No batches assigned'}
-                    </span>
-                    {!disableEditing && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${isFacultyPreview ? 'bg-teal-100 text-teal-700 border-teal-200' : 'bg-amber-100 text-amber-700 border-amber-200'
-                        }`}>
-                        {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
-                      </span>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 mb-3 sm:mb-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start gap-2 sm:items-center sm:gap-3 mb-1">
+                    <h1 className="text-lg leading-tight sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">
+                      {testTitle}
+                    </h1>
+                    {isPreview && (
+                      <button
+                        onClick={() => setShowSettings(true)}
+                        className="mt-0.5 sm:mt-0 p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit Test Settings"
+                      >
+                        <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
                     )}
-                  </>
-                )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-4 text-[11px] sm:text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                      {questionCount} Questions
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                      {totalMarks} Marks
+                    </span>
+                    {isAnyPreview && (
+                      <>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                          {selectedBatches.join(', ') || 'No batches assigned'}
+                        </span>
+                        {!disableEditing && (
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                              isFacultyPreview
+                                ? 'bg-teal-100 text-teal-700 border-teal-200'
+                                : 'bg-amber-100 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {isFacultyPreview ? 'Faculty Review Mode' : 'Admin Preview Mode'}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleExitRequest}
+                  className="attempt-header-mobile-only shrink-0 items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="whitespace-nowrap">{isAnyPreview ? 'Exit Review' : 'Exit Test'}</span>
+                </button>
               </div>
+
+              {!isAnyPreview && shouldRunTimer && (
+                <div
+                  className={`attempt-header-mobile-timer mt-2 items-center gap-2 w-full min-h-[44px] px-3 py-1 rounded-xl border ${
+                    timeLeft <= 300
+                      ? 'bg-red-50 border-red-300'
+                      : timeLeft <= 600
+                        ? 'bg-yellow-50 border-yellow-300'
+                        : 'bg-blue-50 border-blue-300'
+                  }`}
+                >
+                  <Clock
+                    className={`w-5 h-5 shrink-0 ${
+                      timeLeft <= 300 ? 'text-red-600' : timeLeft <= 600 ? 'text-yellow-600' : 'text-blue-600'
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-600">Time Left</p>
+                    <p
+                      className={`text-xl leading-none font-bold tracking-tight ${
+                        timeLeft <= 300
+                          ? 'text-red-600'
+                          : timeLeft <= 600
+                            ? 'text-yellow-600'
+                            : 'text-blue-600'
+                      }`}
+                    >
+                      {formatTime(timeLeft)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Timer - only for students */}
-              {!isAnyPreview && (
-                <div className={`flex items-center gap-3 px-4 sm:px-6 py-2 sm:py-3 rounded-xl border-2 ${timeLeft <= 300 ? 'bg-red-50 border-red-300' :
-                  timeLeft <= 600 ? 'bg-yellow-50 border-yellow-300' :
-                    'bg-blue-50 border-blue-300'
-                  }`}>
-                  <Clock className={`w-5 h-5 sm:w-6 sm:h-6 ${timeLeft <= 300 ? 'text-red-600' :
-                    timeLeft <= 600 ? 'text-yellow-600' :
-                      'text-blue-600'
-                    }`} />
+            <div className="attempt-header-desktop-controls shrink-0 items-center gap-3">
+              {!isAnyPreview && shouldRunTimer && (
+                <div
+                  className={`flex items-center gap-3 min-h-[48px] px-4 rounded-2xl border-2 ${
+                    timeLeft <= 300
+                      ? 'bg-red-50 border-red-300'
+                      : timeLeft <= 600
+                        ? 'bg-yellow-50 border-yellow-300'
+                        : 'bg-blue-50 border-blue-300'
+                  }`}
+                >
+                  <Clock
+                    className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${
+                      timeLeft <= 300 ? 'text-red-600' : timeLeft <= 600 ? 'text-yellow-600' : 'text-blue-600'
+                    }`}
+                  />
                   <div>
                     <p className="text-xs text-gray-600">Time Left</p>
-                    <p className={`text-lg sm:text-2xl font-bold ${timeLeft <= 300 ? 'text-red-600' :
-                      timeLeft <= 600 ? 'text-yellow-600' :
-                        'text-blue-600'
-                      }`}>
+                    <p
+                      className={`text-lg font-bold leading-none ${
+                        timeLeft <= 300
+                          ? 'text-red-600'
+                          : timeLeft <= 600
+                            ? 'text-yellow-600'
+                            : 'text-blue-600'
+                      }`}
+                    >
                       {formatTime(timeLeft)}
                     </p>
                   </div>
@@ -532,10 +597,10 @@ export function TestPreviewAndReview({
 
               <button
                 onClick={handleExitRequest}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                className="inline-flex shrink-0 items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-2xl text-base font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
               >
                 <X className="w-5 h-5" />
-                {isAnyPreview ? 'Exit Review' : 'Exit Test'}
+                <span className="whitespace-nowrap">{isAnyPreview ? 'Exit Review' : 'Exit Test'}</span>
               </button>
             </div>
           </div>
@@ -543,7 +608,7 @@ export function TestPreviewAndReview({
 
         {/* Subject and Section Tabs (Preview Mode Only) */}
         {isAnyPreview && (
-          <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col gap-3 mb-4 sm:gap-4 sm:mb-6">
             {/* Subject Tabs */}
             <div className="flex gap-2 p-1.5 bg-white/50 backdrop-blur rounded-2xl border border-white shadow-sm overflow-x-auto">
               {subjects.map((s) => (
@@ -553,7 +618,7 @@ export function TestPreviewAndReview({
                     const firstIdx = questions.findIndex(q => q.subject === s);
                     if (firstIdx > -1) setCurrentQuestion(firstIdx);
                   }}
-                  className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
+                  className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${currentSubject === s
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105'
                     : 'bg-white text-gray-600 hover:bg-gray-50'
                     }`}
@@ -565,7 +630,7 @@ export function TestPreviewAndReview({
 
             {/* Section Tabs */}
             {sections.length > 1 && (
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 {sections.map((sec) => (
                   <button
                     key={sec}
@@ -573,13 +638,13 @@ export function TestPreviewAndReview({
                       const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
-                    className={`flex-1 py-3 rounded-2xl font-bold border-2 transition-all ${currentSection === sec
+                    className={`flex-1 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold border-2 transition-all ${currentSection === sec
                       ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                       : 'border-white bg-white/50 text-gray-500 hover:border-gray-200'
                       }`}
                   >
                     {sec}
-                    <span className="ml-2 text-xs opacity-60">
+                    <span className="ml-2 text-[10px] sm:text-xs opacity-60">
                       ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
                     </span>
                   </button>
@@ -590,30 +655,30 @@ export function TestPreviewAndReview({
         )}
 
         {/* Main Content */}
-        <div className="grid lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid lg:grid-cols-4 gap-3 sm:gap-6">
           {/* Main Question Area */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className="lg:col-span-3 space-y-3 sm:space-y-4">
             {/* Question Card */}
             <div
               key={currentQuestion}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 lg:p-8"
+              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-6 lg:p-8"
             >
               {!isEditing ? (
                 <>
                   {/* Question Header */}
-                  <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-start justify-between mb-4 sm:mb-6">
                     <div className="flex-1">
-                      <div className="flex items-center flex-wrap gap-3 mb-4">
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                      <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[11px] sm:text-sm font-semibold">
                           {question.subject}
                         </span>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-[11px] sm:text-sm font-semibold">
                           +{question.marks} marks
                         </span>
-                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-[11px] sm:text-sm font-semibold">
                           -{question.negativeMarks ?? 0} neg
                         </span>
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold uppercase">
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-[11px] sm:text-sm font-semibold uppercase">
                           {question.type}
                         </span>
                         {isAnyPreview && !disableEditing && !hideExplanations && (
@@ -625,11 +690,11 @@ export function TestPreviewAndReview({
                           </button>
                         )}
                       </div>
-                      <h2 className="text-xl font-semibold text-gray-900 leading-relaxed mb-4">
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 leading-relaxed mb-3 sm:mb-4">
                         {question.question}
                       </h2>
                       {question.questionImage && (
-                        <div className="mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block">
+                        <div className="mb-4 sm:mb-6 rounded-xl overflow-hidden border border-gray-200 inline-block">
                           <img src={question.questionImage} alt="Question" className="max-h-64 w-auto object-contain" />
                         </div>
                       )}
@@ -648,7 +713,7 @@ export function TestPreviewAndReview({
                   </div>
 
                   {/* Options */}
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
                         const isSelected = isOptionSelected(question.id, index);
@@ -705,7 +770,7 @@ export function TestPreviewAndReview({
                         }
 
                         return (
-                          <div key={index} className="space-y-2">
+                          <div key={index} className="space-y-1.5 sm:space-y-2">
                             <button
                               onClick={() => {
                                 if (isAnyPreview) return;
@@ -716,7 +781,7 @@ export function TestPreviewAndReview({
                                 selectAnswer(question.id, index);
                               }}
                               disabled={isAnyPreview}
-                              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${isStudentReviewMode
+                              className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all ${isStudentReviewMode
                                 ? optionToneClasses
                                 : correctOptionIndices.includes(index)
                                   ? optionToneClasses
@@ -725,7 +790,7 @@ export function TestPreviewAndReview({
                                     : optionToneClasses
                                 }`}
                             >
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-3 sm:gap-4">
                                 <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isStudentReviewMode
                                   ? controlToneClasses
                                   : correctOptionIndices.includes(index)
@@ -739,15 +804,15 @@ export function TestPreviewAndReview({
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <span className="text-gray-900 font-medium">{option}</span>
+                                  <span className="text-gray-900 font-medium text-sm sm:text-base">{option}</span>
                                   {question.optionImages?.[index] && (
-                                    <div className="mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block">
+                                    <div className="mt-1.5 sm:mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block">
                                       <img src={question.optionImages[index]} alt={`Option ${index}`} className="max-h-32 w-auto object-contain" />
                                     </div>
                                   )}
                                 </div>
                                 {badgeLabel && (
-                                  <span className={`text-xs font-bold px-2 py-1 rounded ${badgeClasses}`}>{badgeLabel}</span>
+                                  <span className={`text-[10px] sm:text-xs font-bold px-2 py-1 rounded ${badgeClasses}`}>{badgeLabel}</span>
                                 )}
                               </div>
                             </button>
@@ -755,7 +820,7 @@ export function TestPreviewAndReview({
                         );
                       })
                     ) : (
-                      <div className="bg-amber-50 p-6 rounded-2xl border-2 border-dashed border-amber-200">
+                      <div className="bg-amber-50 p-4 sm:p-6 rounded-2xl border-2 border-dashed border-amber-200">
                         <p className="text-sm font-bold text-amber-800 mb-2">Numerical Answer</p>
                         {isStudentReviewMode ? (
                           (() => {
@@ -1039,14 +1104,15 @@ export function TestPreviewAndReview({
             </div>
 
             {/* Navigation */}
-            <div className="flex items-center justify-between">
+            <div className="attempt-nav-desktop items-center justify-between">
               <motion.button
                 onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                 disabled={currentQuestion === 0}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${currentQuestion === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
-                  }`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                  currentQuestion === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-500 hover:text-blue-600 shadow-sm'
+                }`}
               >
                 <ChevronLeft className="w-5 h-5" />
                 Previous
@@ -1055,7 +1121,11 @@ export function TestPreviewAndReview({
               {currentQuestion === questions.length - 1 ? (
                 <motion.button
                   onClick={() => isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true)}
-                  className={`px-8 py-3 ${isAnyPreview ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-xl'} rounded-xl font-semibold shadow-lg transition-all flex items-center gap-2`}
+                  className={`px-8 py-3 ${
+                    isAnyPreview
+                      ? 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-xl'
+                  } rounded-xl font-semibold shadow-lg transition-all flex items-center gap-2`}
                 >
                   {isAnyPreview ? <X className="w-5 h-5 text-slate-700" /> : null}
                   {isAnyPreview ? 'Exit Review' : 'Submit Test'}
@@ -1065,15 +1135,61 @@ export function TestPreviewAndReview({
                   onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                 >
-                  Next
+                  {isAnyPreview ? 'Next' : 'Save & Next'}
                   <ChevronRight className="w-5 h-5" />
                 </motion.button>
               )}
             </div>
+
+            <div
+              className="attempt-nav-mobile mt-3 border-t border-gray-100 px-1 pt-3"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)', paddingLeft: '0.25rem', paddingRight: '0.25rem' }}
+            >
+              <div className="flex gap-2">
+                <motion.button
+                  onClick={() => currentQuestion === questions.length - 1
+                    ? (isAnyPreview ? handleExitRequest() : setShowSubmitDialog(true))
+                    : setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))
+                  }
+                  className={`flex-1 py-3 ${
+                    currentQuestion === questions.length - 1
+                      ? isAnyPreview
+                        ? 'bg-gradient-to-r from-gray-600 to-gray-700'
+                        : 'bg-gradient-to-r from-green-600 to-emerald-600'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                  } text-white rounded-xl text-sm font-semibold shadow-lg transition-all flex items-center justify-center gap-2`}
+                >
+                  {currentQuestion === questions.length - 1 ? (isAnyPreview ? 'Exit Review' : 'Submit Test') : (isAnyPreview ? 'Next' : 'Save & Next')}
+                  <ChevronRight className="w-4 h-4" />
+                </motion.button>
+                <button
+                  onClick={() => setShowMobilePalette(true)}
+                  className="px-4 py-3 bg-gray-100 rounded-xl shadow-sm"
+                  aria-label="Open question palette"
+                >
+                  <Grid3x3 className="w-5 h-5 text-gray-700" />
+                </button>
+              </div>
+
+              <div className="grid gap-2 grid-cols-1 mt-2">
+                <motion.button
+                  onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+                  disabled={currentQuestion === 0}
+                  className={`py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-1 ${
+                    currentQuestion === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-sm'
+                      : 'bg-gray-100 text-gray-700 shadow-sm'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </motion.button>
+              </div>
+            </div>
           </div>
 
           {/* Sidebar - Question Palette */}
-          <div className="lg:col-span-1">
+          <div className="hidden sm:block lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Question Palette</h3>
 
@@ -1178,11 +1294,19 @@ export function TestPreviewAndReview({
       <AnimatePresence>
         {/* Submit Dialog */}
         {showSubmitDialog && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10004] p-4">
+          <div
+            className={`fixed inset-0 bg-black/50 backdrop-blur-sm flex z-[10004] ${
+              isMobileViewport ? 'items-stretch justify-stretch p-0' : 'items-center justify-center p-4'
+            }`}
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className={`bg-white w-full overflow-y-auto shadow-2xl ${
+                isMobileViewport
+                  ? 'min-h-[100dvh] h-[100dvh] max-h-[100dvh] rounded-none p-3 pb-4'
+                  : 'max-w-md max-h-[90vh] rounded-3xl p-8'
+              }`}
             >
               <div className="text-center mb-6">
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1339,6 +1463,121 @@ export function TestPreviewAndReview({
                 >
                   Confirm Settings
                 </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showMobilePalette && (
+          <div
+            className="sm:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[10004] flex items-end"
+            onClick={() => setShowMobilePalette(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+              className="bg-white rounded-t-[28px] w-full max-h-[80vh] overflow-y-auto shadow-2xl border-t border-gray-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 px-4 pt-3 pb-4">
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-900">Question Palette</h3>
+                  <button
+                    onClick={() => setShowMobilePalette(false)}
+                    className="p-2 -mr-2 rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label="Close question palette"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+                <div className="text-xs text-gray-600">
+                  <span className="text-blue-600 font-semibold uppercase">{currentSubject}</span>
+                  <span className="mx-2">•</span>
+                  <span className="uppercase">{currentSection}</span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <div className="flex flex-col">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Current Palette</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-blue-600 uppercase">{currentSubject}</span>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{currentSection}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-2 mb-6">
+                      {questions.map((q, index) => ({ ...q, globalIndex: index }))
+                        .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
+                        .map((q) => (
+                          <motion.button
+                            key={q.id}
+                            onClick={() => {
+                              setCurrentQuestion(q.globalIndex);
+                              setShowMobilePalette(false);
+                            }}
+                            className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                              : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                                ? 'bg-green-100 text-green-700'
+                                : isAnyPreview && hasExplanationContent(q) && !hideExplanations
+                                  ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                  : !isAnyPreview && flaggedQuestions.has(q.id)
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {q.globalIndex + 1}
+                            {!isAnyPreview && flaggedQuestions.has(q.id) && (
+                              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
+                            )}
+                            {isAnyPreview && !hasExplanationContent(q) && !hideExplanations && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full" />
+                            )}
+                          </motion.button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {isAnyPreview && !hideExplanations && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-teal-50 border border-teal-200 rounded" />
+                        <span className="text-xs text-gray-600">With Explanation</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 rounded relative">
+                          <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                        </div>
+                        <span className="text-xs text-gray-600">Needs Explanation</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isAnyPreview && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-100 rounded" />
+                        <span className="text-xs text-gray-600">Answered</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 rounded" />
+                        <span className="text-xs text-gray-600">Not Answered</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
+                        <span className="text-xs text-gray-600">Current</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
