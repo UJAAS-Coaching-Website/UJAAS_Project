@@ -209,3 +209,44 @@ export function TestSeriesSkeleton() {
     </div>
   );
 }
+
+export function ProfileSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Profile Header Block */}
+      <div className="rounded-3xl p-5 md:p-8 bg-white shadow-xl border border-gray-100 flex flex-row items-center md:items-center gap-4 md:gap-6 relative overflow-hidden">
+        <Skeleton className="w-16 h-16 md:w-24 md:h-24 rounded-full shrink-0" />
+        <div className="flex-1 space-y-3 w-full text-left flex flex-col items-start md:items-start">
+          <Skeleton className="h-6 md:h-8 w-48 md:w-64" />
+          <Skeleton className="h-3 md:h-4 w-32 md:w-48" />
+
+
+
+
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        <Skeleton className="h-10 w-28 rounded-lg shrink-0" />
+        <Skeleton className="h-10 w-32 rounded-lg shrink-0" />
+        <Skeleton className="h-10 w-28 rounded-lg shrink-0" />
+      </div>
+
+      {/* Overview Grid Area */}
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-lg sm:p-6 space-y-4">
+          <Skeleton className="h-6 w-48 mb-6" />
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i}>
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-10 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

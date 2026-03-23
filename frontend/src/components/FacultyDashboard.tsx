@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -609,7 +609,9 @@ export function FacultyDashboard({
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
-            <FacultyProfile user={user as any} onLogout={onLogout} />
+            <Suspense fallback={<ProfileSkeleton />}>
+              <FacultyProfile user={user as any} onLogout={onLogout} />
+            </Suspense>
           ) : activeTab === 'notices' ? (
             <NoticesManagement
               batches={batches

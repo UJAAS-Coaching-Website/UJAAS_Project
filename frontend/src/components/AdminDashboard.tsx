@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent, type FormEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton } from './ui/content-skeletons';
 import { createPortal } from 'react-dom';
 import { User, LandingData, Tab } from '../App';
 import {
@@ -869,7 +869,9 @@ export function AdminDashboard({
                 />
               </div>
             ) : activeTab === 'profile' ? (
-              <AdminProfile user={user} onLogout={onLogout} />
+              <Suspense fallback={<ProfileSkeleton />}>
+                <AdminProfile user={user} onLogout={onLogout} />
+              </Suspense>
             ) : activeTab === 'notices' ? (
               <NoticesManagement
                 batches={batches.map((b) => ({
