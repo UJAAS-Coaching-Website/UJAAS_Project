@@ -4,6 +4,7 @@ import {
     getStudentDppAttemptSummary,
     startStudentDppAttempt,
     submitStudentDppAttempt,
+    closeStudentDppSession,
     getDppAttemptResultForUser,
     getDppAttemptQuestionExplanationForUser,
     getDppAttemptAnalysis,
@@ -13,6 +14,7 @@ import {
 } from "../services/dppService.js";
 import { getFacultyManagedChapter, getFacultyManagedDpp } from "../services/contentAccessService.js";
 import { createMultiBatchNotification } from "../services/notificationService.js";
+import { getDeviceIdFromRequest } from "../utils/device.js";
 
 export async function handleListDpps(req, res) {
     try {
@@ -52,7 +54,8 @@ export async function handleGetMyDppAttemptSummary(req, res) {
 
 export async function handleStartMyDppAttempt(req, res) {
     try {
-        const payload = await startStudentDppAttempt(req.params.id, req.user.sub);
+        const deviceId = getDeviceIdFromRequest(req);
+        const payload = await startStudentDppAttempt(req.params.id, req.user.sub, deviceId);
         if (!payload) {
             return res.status(404).json({ message: "dpp not found" });
         }
@@ -61,6 +64,12 @@ export async function handleStartMyDppAttempt(req, res) {
         if (error?.code === "ATTEMPT_LIMIT_REACHED") {
             return res.status(409).json({ message: "maximum attempts reached" });
         }
+        if (error?.code === "SESSION_ACTIVE_OTHER_DEVICE") {
+            return res.status(409).json({ message: "session active on another device" });
+        }
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
         console.error("handleStartMyDppAttempt error:", error.message);
         return res.status(500).json({ message: "failed to start dpp attempt", error: error.message });
     }
@@ -68,8 +77,10 @@ export async function handleStartMyDppAttempt(req, res) {
 
 export async function handleSubmitMyDppAttempt(req, res) {
     try {
+        const deviceId = getDeviceIdFromRequest(req);
         const result = await submitStudentDppAttempt(req.params.id, req.user.sub, {
             answers: req.body?.answers || {},
+            deviceId,
         });
         if (!result) {
             return res.status(404).json({ message: "dpp not found" });
@@ -79,8 +90,31 @@ export async function handleSubmitMyDppAttempt(req, res) {
         if (error?.code === "ATTEMPT_LIMIT_REACHED") {
             return res.status(409).json({ message: "maximum attempts reached" });
         }
+        if (error?.code === "SESSION_ACTIVE_OTHER_DEVICE") {
+            return res.status(409).json({ message: "session active on another device" });
+        }
+        if (error?.code === "SESSION_NOT_FOUND") {
+            return res.status(409).json({ message: "dpp session not found. start the dpp again." });
+        }
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
         console.error("handleSubmitMyDppAttempt error:", error.message);
         return res.status(500).json({ message: "failed to submit dpp attempt", error: error.message });
+    }
+}
+
+export async function handleCloseMyDppSession(req, res) {
+    try {
+        const deviceId = getDeviceIdFromRequest(req);
+        await closeStudentDppSession(req.params.id, req.user.sub, deviceId);
+        return res.status(200).json({ status: "ok" });
+    } catch (error) {
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
+        console.error("handleCloseMyDppSession error:", error.message);
+        return res.status(500).json({ message: "failed to close dpp session", error: error.message });
     }
 }
 

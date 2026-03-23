@@ -24,6 +24,7 @@ import {
   mapApiTestToPublished as apiTestToPublished,
 } from '../utils/testMappings';
 import { preloadTestAssets, slugifyText } from '../utils/testSession';
+import { getDeviceId } from '../utils/deviceId';
 
 type StudentAnswer = string | number | number[] | null;
 
@@ -256,6 +257,7 @@ export function TestSeriesContainer({
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-Device-Id': getDeviceId(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({

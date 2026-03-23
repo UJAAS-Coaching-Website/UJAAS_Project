@@ -62,10 +62,6 @@ export function TestSeriesSection({
   const isMobileViewport = useIsMobileViewport();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
 
-  if (loading) {
-    return <TestSeriesSkeleton />;
-  }
-
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';
     const formattedTime = time
@@ -162,6 +158,10 @@ export function TestSeriesSection({
 
     return { total, completed, pending, avgScore };
   }, [allTests, attemptResults]);
+
+  if (loading) {
+    return <TestSeriesSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

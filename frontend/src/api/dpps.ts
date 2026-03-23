@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./base";
+import { getDeviceId } from "../utils/deviceId";
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -10,6 +11,10 @@ function getAuthHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
 }
 
+function getDeviceHeaders(): Record<string, string> {
+    return { "X-Device-Id": getDeviceId() };
+}
+
 async function runRequest(path: string, options: RequestInit = {}): Promise<Response> {
     return fetch(`${API_BASE_URL}${path}`, {
         ...options,
@@ -17,6 +22,7 @@ async function runRequest(path: string, options: RequestInit = {}): Promise<Resp
         cache: "no-store",
         headers: {
             "Content-Type": "application/json",
+            ...getDeviceHeaders(),
             ...getAuthHeaders(),
             ...(options.headers || {}),
         },
@@ -205,6 +211,12 @@ export async function submitMyDppAttempt(id: string, answers: Record<string, str
     return request<ApiDppAttemptResult>(`/api/dpps/${id}/submit`, {
         method: "POST",
         body: JSON.stringify({ answers }),
+    });
+}
+
+export async function closeMyDppSession(id: string): Promise<void> {
+    await request(`/api/dpps/${id}/session/close`, {
+        method: "POST",
     });
 }
 

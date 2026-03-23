@@ -18,7 +18,7 @@ import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import { DPPPractice, type DppPracticeSession } from './DPPPractice';
-import type { ApiStartDppAttemptPayload } from '../api/dpps';
+import { closeMyDppSession, type ApiStartDppAttemptPayload } from '../api/dpps';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
 import { downloadFileFromUrl } from '../utils/downloads';
@@ -310,6 +310,16 @@ export function StudentDashboard({
   }, []);
 
   const handleExitDpp = () => {
+    const dppId = activeDppSession?.mode === 'attempt'
+      ? activeDppSession.payload.dpp.id
+      : activeDppSession?.mode === 'result'
+        ? activeDppSession.result.dppId
+        : null;
+
+    if (dppId) {
+      closeMyDppSession(dppId).catch(() => undefined);
+    }
+
     sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
 
     try {

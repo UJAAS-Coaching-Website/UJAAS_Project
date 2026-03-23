@@ -58,6 +58,7 @@ function mapAttemptRow(row) {
         wrong_answers: Number(row.wrong_answers || 0),
         unattempted: Number(row.unattempted || 0),
         answers: row.answers || {},
+        device_id: row.device_id || null,
     };
 }
 
@@ -450,6 +451,20 @@ async function getActiveAttempt(client, testId, studentId, forUpdate = false) {
     return mapAttemptRow(result.rows[0]);
 }
 
+async function getAnyActiveAttempt(client, studentId, forUpdate = false) {
+    const result = await client.query(`
+        SELECT *
+        FROM test_attempts
+        WHERE student_id = $1
+          AND submitted_at IS NULL
+        ORDER BY started_at DESC
+        LIMIT 1
+        ${forUpdate ? "FOR UPDATE" : ""}
+    `, [studentId]);
+
+    return mapAttemptRow(result.rows[0]);
+}
+
 const TEST_FIRST_ATTEMPT_RANKING_CTE = `
     first_submitted_attempts AS (
         SELECT *
@@ -657,7 +672,7 @@ export async function getStudentAttemptSummary(testId, studentId) {
     };
 }
 
-export async function startOrResumeStudentAttempt(testId, studentId) {
+export async function startOrResumeStudentAttempt(testId, studentId, deviceId) {
     const test = await getTestByIdForStudent(testId, studentId);
     if (!test) {
         return null;
@@ -669,12 +684,41 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
         throw error;
     }
 
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
 
-        const existingActiveAttempt = await getActiveAttempt(client, testId, studentId, true);
+        const existingActiveAttempt = await getAnyActiveAttempt(client, studentId, true);
         if (existingActiveAttempt) {
+            if (existingActiveAttempt.test_id !== testId) {
+                await client.query("ROLLBACK");
+                const error = new Error("another test is already active");
+                error.code = "ANOTHER_TEST_ACTIVE";
+                throw error;
+            }
+
+            if (existingActiveAttempt.device_id && existingActiveAttempt.device_id !== deviceId) {
+                await client.query("ROLLBACK");
+                const error = new Error("session active on another device");
+                error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+                throw error;
+            }
+
+            if (!existingActiveAttempt.device_id) {
+                await client.query(`
+                    UPDATE test_attempts
+                    SET device_id = $2
+                    WHERE id = $1
+                `, [existingActiveAttempt.id, deviceId]);
+                existingActiveAttempt.device_id = deviceId;
+            }
+
             await client.query("COMMIT");
             return {
                 test,
@@ -708,7 +752,8 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
                 attempt_no,
                 started_at,
                 deadline_at,
-                answers
+                answers,
+                device_id
             )
             VALUES (
                 $1,
@@ -716,10 +761,11 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
                 $3,
                 NOW(),
                 NOW() + make_interval(mins => $4::int),
-                '{}'::jsonb
+                '{}'::jsonb,
+                $5
             )
             RETURNING *
-        `, [testId, studentId, Number(nextAttemptResult.rows[0].next_attempt_no), Number(test.duration_minutes || 0)]);
+        `, [testId, studentId, Number(nextAttemptResult.rows[0].next_attempt_no), Number(test.duration_minutes || 0), deviceId]);
 
         await client.query("COMMIT");
 
@@ -739,20 +785,53 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
     }
 }
 
-export async function saveStudentAttemptProgress(attemptId, studentId, answers) {
+export async function saveStudentAttemptProgress(attemptId, studentId, answers, deviceId) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
+    const lookup = await pool.query(`
+        SELECT device_id
+        FROM test_attempts
+        WHERE id = $1
+          AND student_id = $2
+          AND submitted_at IS NULL
+    `, [attemptId, studentId]);
+
+    if (lookup.rowCount === 0) {
+        return null;
+    }
+
+    const existingDevice = lookup.rows[0]?.device_id || null;
+    if (existingDevice && existingDevice !== deviceId) {
+        const error = new Error("session active on another device");
+        error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+        throw error;
+    }
+
     const result = await pool.query(`
         UPDATE test_attempts
-        SET answers = COALESCE($3::jsonb, '{}'::jsonb)
+        SET
+            answers = COALESCE($3::jsonb, '{}'::jsonb),
+            device_id = COALESCE(device_id, $4)
         WHERE id = $1
           AND student_id = $2
           AND submitted_at IS NULL
         RETURNING id, test_id, student_id, attempt_no, started_at, deadline_at, submitted_at, auto_submitted, time_spent, score, correct_answers, wrong_answers, unattempted, answers
-    `, [attemptId, studentId, JSON.stringify(answers || {})]);
+    `, [attemptId, studentId, JSON.stringify(answers || {}), deviceId]);
 
     return mapAttemptRow(result.rows[0]);
 }
 
-export async function submitStudentAttempt(attemptId, studentId, { answers, autoSubmitted = false } = {}) {
+export async function submitStudentAttempt(attemptId, studentId, { answers, autoSubmitted = false, deviceId } = {}) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -776,6 +855,12 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
         }
 
         const attempt = attemptResult.rows[0];
+        if (attempt.device_id && attempt.device_id !== deviceId) {
+            await client.query("ROLLBACK");
+            const error = new Error("session active on another device");
+            error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+            throw error;
+        }
         const mergedAnswers = answers && typeof answers === "object" && Object.keys(answers).length > 0
             ? answers
             : (attempt.answers || {});
@@ -818,7 +903,8 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
                 score = $5,
                 correct_answers = $6,
                 wrong_answers = $7,
-                unattempted = $8
+                unattempted = $8,
+                device_id = COALESCE(device_id, $9)
             WHERE id = $1
         `, [
             attemptId,
@@ -829,6 +915,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
             metrics.correctAnswers,
             metrics.wrongAnswers,
             metrics.unattempted,
+            deviceId,
         ]);
 
         await client.query("COMMIT");

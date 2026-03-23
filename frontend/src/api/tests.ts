@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./base";
+import { getDeviceId } from "../utils/deviceId";
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -10,6 +11,10 @@ function getAuthHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
 }
 
+function getDeviceHeaders(): Record<string, string> {
+    return { "X-Device-Id": getDeviceId() };
+}
+
 async function runRequest(path: string, options: RequestInit = {}): Promise<Response> {
     return fetch(`${API_BASE_URL}${path}`, {
         ...options,
@@ -17,6 +22,7 @@ async function runRequest(path: string, options: RequestInit = {}): Promise<Resp
         cache: "no-store",
         headers: {
             "Content-Type": "application/json",
+            ...getDeviceHeaders(),
             ...getAuthHeaders(),
             ...(options.headers || {}),
         },
