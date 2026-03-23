@@ -102,8 +102,15 @@ export interface QueryItem {
     status: "new" | "seen" | "contacted";
 }
 
-export async function fetchQueries(): Promise<{ queries: QueryItem[] }> {
-    return apiRequest<{ queries: QueryItem[] }>("/api/queries");
+let queriesCache: QueryItem[] | null = null;
+export const getQueriesCache = () => queriesCache;
+export const setQueriesCache = (data: QueryItem[] | null) => { queriesCache = data; };
+
+export async function fetchQueries(forceRefresh = false): Promise<{ queries: QueryItem[] }> {
+    if (queriesCache && !forceRefresh) return { queries: queriesCache };
+    const res = await apiRequest<{ queries: QueryItem[] }>("/api/queries");
+    queriesCache = res.queries;
+    return res;
 }
 
 export async function submitQuery(data: {

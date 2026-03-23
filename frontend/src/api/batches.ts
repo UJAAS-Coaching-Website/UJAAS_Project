@@ -108,11 +108,17 @@ export interface PermanentDeleteBatchSummary {
     removedTimetableReference: number;
 }
 
+let batchesCache: ApiBatch[] | null = null;
+export const getBatchesCache = () => batchesCache;
+export const setBatchesCache = (data: ApiBatch[] | null) => { batchesCache = data; };
+
 // ── API functions ──────────────────────────────────────
 
-export async function fetchBatches(): Promise<ApiBatch[]> {
+export async function fetchBatches(forceRefresh = false): Promise<ApiBatch[]> {
+    if (batchesCache && !forceRefresh) return batchesCache;
     const batches = await request<ApiBatch[]>("/api/batches");
-    return batches.map(normalizeBatch);
+    batchesCache = batches.map(normalizeBatch);
+    return batchesCache;
 }
 
 export async function fetchBatch(id: string): Promise<ApiBatch> {

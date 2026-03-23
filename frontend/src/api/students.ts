@@ -84,13 +84,20 @@ export interface UpdateStudentRatingPayload {
     remarks?: string;
 }
 
+let studentsCache: ApiStudent[] | null = null;
+export const getStudentsCache = () => studentsCache;
+export const setStudentsCache = (data: ApiStudent[] | null) => { studentsCache = data; };
+
 // ── API functions ──────────────────────────────────────
 
-export async function fetchStudents(search?: string): Promise<ApiStudent[]> {
+export async function fetchStudents(search?: string, forceRefresh = false): Promise<ApiStudent[]> {
     const query = search && search.trim().length > 0
         ? `?search=${encodeURIComponent(search.trim())}`
         : "";
-    return request<ApiStudent[]>(`/api/students${query}`);
+    if (!query && studentsCache && !forceRefresh) return studentsCache;
+    const res = await request<ApiStudent[]>(`/api/students${query}`);
+    if (!query) studentsCache = res;
+    return res;
 }
 
 export async function fetchStudent(id: string): Promise<ApiStudent> {

@@ -44,8 +44,14 @@ export interface ApiFaculty {
     joining_date?: string;
 }
 
-export async function fetchFaculties(): Promise<ApiFaculty[]> {
-    return request<ApiFaculty[]>('/api/faculties');
+let facultiesCache: ApiFaculty[] | null = null;
+export const getFacultiesCache = () => facultiesCache;
+export const setFacultiesCache = (data: ApiFaculty[] | null) => { facultiesCache = data; };
+
+export async function fetchFaculties(forceRefresh = false): Promise<ApiFaculty[]> {
+    if (facultiesCache && !forceRefresh) return facultiesCache;
+    facultiesCache = await request<ApiFaculty[]>('/api/faculties');
+    return facultiesCache;
 }
 
 export interface CreateFacultyPayload {

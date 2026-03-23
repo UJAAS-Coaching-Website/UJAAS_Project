@@ -1057,43 +1057,8 @@ function App() {
           setUser(loggedInUser);
           setShowGetStarted(false);
 
-          setIsGlobalDataLoading(true);
-          (async () => {
-            try {
-              const fetchTasks: Promise<any>[] = [
-                apiFetchTests().catch(e => { console.warn('Could not fetch tests:', e); return []; })
-              ];
-
-              if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-                fetchTasks.push(apiFetchBatches().catch(e => { console.warn('Could not fetch batches:', e); return []; }));
-                if (loggedInUser.role === 'admin') {
-                  fetchTasks.push(fetchFaculties().catch(e => { console.warn('Could not fetch faculties:', e); return []; }));
-                  fetchTasks.push(fetchQueries().catch(() => { console.warn('Could not fetch queries'); return { queries: [] }; }));
-                }
-                fetchTasks.push(apiFetchStudents().catch(e => { console.warn('Could not fetch students:', e); return []; }));
-              }
-
-              const results = await Promise.all(fetchTasks);
-
-              let nextIdx = 0;
-              setPublishedTests((results[nextIdx++] as ApiTest[]).map(apiTestToPublished));
-
-              if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-                setAdminBatches(results[nextIdx++].map(apiBatchToInfo));
-                if (loggedInUser.role === 'admin') {
-                  setAdminFaculties(results[nextIdx++]);
-                  setQueries(results[nextIdx++].queries as LandingQuery[]);
-                  setAdminStudents(results[nextIdx++]);
-                  await refreshAdminSubjects();
-                } else {
-                  setAdminFaculties([]);
-                  setAdminStudents(results[nextIdx++]);
-                }
-              }
-            } finally {
-              setIsGlobalDataLoading(false);
-            }
-          })();
+          // Fetching is now handled reactively by the loadRequiredData useEffect hook
+          // that listens to activeTab and adminLandingSection.
         } else {
           setUser(null);
           // If no user, set empty batches
@@ -1128,6 +1093,46 @@ function App() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [user]);
+
+  // True Lazy Tab Loading Watcher Hook
+  useEffect(() => {
+    if (!user) return;
+    let isFetching = false;
+    const fetchTasks: Promise<any>[] = [];
+
+    // 1. Batches & Students (Global Foundations)
+    if ((user.role === 'admin' || user.role === 'faculty') && adminBatches.length === 0) {
+      isFetching = true;
+      fetchTasks.push(apiFetchBatches().then(res => setAdminBatches(res.map(apiBatchToInfo))).catch(() => {}));
+      if (adminStudents.length === 0) {
+        fetchTasks.push(apiFetchStudents().then(res => setAdminStudents(res)).catch(() => {}));
+        fetchTasks.push(refreshAdminSubjects());
+      }
+    }
+
+    // 2. Faculties
+    if (user.role === 'admin' && adminLandingSection === 'faculty' && adminFaculties.length === 0) {
+      isFetching = true;
+      fetchTasks.push(fetchFaculties().then(res => setAdminFaculties(res)).catch(() => {}));
+    }
+
+    // 3. Tests
+    if ((activeTab === 'test-series' || adminLandingSection === 'test-series') && publishedTests.length === 0) {
+      isFetching = true;
+      fetchTasks.push(apiFetchTests().then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
+    }
+
+    // 4. Queries
+    if (user.role === 'admin' && adminLandingSection === 'queries' && queries.length === 0) {
+      isFetching = true;
+      fetchTasks.push(fetchQueries().then(res => setQueries(res.queries as LandingQuery[])).catch(() => {}));
+    }
+
+    if (isFetching) {
+      setIsGlobalDataLoading(true);
+      Promise.all(fetchTasks).finally(() => setIsGlobalDataLoading(false));
+    }
+  }, [user, activeTab, adminLandingSection]);
 
   const handleLogin = async (userData: User) => {
     setUser(userData);
@@ -1191,48 +1196,7 @@ function App() {
       userData.role === 'faculty' ? '/faculty' : '/admin'
     );
 
-    // Fetch batches and queries from API for admin/faculty/student correctly mapped
-    if (userData.role === 'admin' || userData.role === 'faculty' || userData.role === 'student') {
-      setIsGlobalDataLoading(true);
-      (async () => {
-        try {
-          const fetchTasks: Promise<any>[] = [
-            apiFetchTests().catch(e => { console.warn('Could not fetch tests:', e); return []; })
-          ];
-
-          if (userData.role === 'admin' || userData.role === 'faculty') {
-            fetchTasks.push(apiFetchBatches().catch(e => { console.warn('Could not fetch batches:', e); return []; }));
-            if (userData.role === 'admin') {
-              fetchTasks.push(fetchFaculties().catch(e => { console.warn('Could not fetch faculties:', e); return []; }));
-              fetchTasks.push(fetchQueries().catch(() => { console.warn('Could not fetch queries'); return { queries: [] }; }));
-            }
-            fetchTasks.push(apiFetchStudents().catch(e => { console.warn('Could not fetch students:', e); return []; }));
-          }
-
-          const results = await Promise.all(fetchTasks);
-
-          let nextIdx = 0;
-          setPublishedTests((results[nextIdx++] as ApiTest[]).map(apiTestToPublished));
-
-          if (userData.role === 'admin' || userData.role === 'faculty') {
-            setAdminBatches(results[nextIdx++].map(apiBatchToInfo));
-            if (userData.role === 'admin') {
-              setAdminFaculties(results[nextIdx++]);
-              setQueries(results[nextIdx++].queries as LandingQuery[]);
-              setAdminStudents(results[nextIdx++]);
-              await refreshAdminSubjects();
-            } else {
-              setAdminFaculties([]);
-              setAdminStudents(results[nextIdx++]);
-            }
-          }
-        } catch (error) {
-          console.warn('Error fetching global data:', error);
-        } finally {
-          setIsGlobalDataLoading(false);
-        }
-      })();
-    }
+    // Fetching is deferred to the Lazy Tab Loading Watcher Hook above
   };
 
   const handleLogout = async () => {
