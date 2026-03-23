@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from 'multer';
 import { updateProfile, uploadAvatar, deleteAvatar } from "../controllers/profileController.js";
 import { authenticate, requireAnyRole } from "../middleware/auth.js";
+import { invalidateCache } from "../middleware/redisCache.js";
 
 const router = Router();
 
@@ -25,8 +26,8 @@ const upload = multer({
     }
 });
 
-router.put("/me", authenticate, requireAnyRole("student", "faculty", "admin"), updateProfile);
-router.post("/avatar", authenticate, upload.single('avatar'), uploadAvatar);
-router.delete("/avatar", authenticate, deleteAvatar);
+router.put("/me", authenticate, requireAnyRole("student", "faculty", "admin"), invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), updateProfile);
+router.post("/avatar", authenticate, upload.single('avatar'), invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), uploadAvatar);
+router.delete("/avatar", authenticate, invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), deleteAvatar);
 
 export default router;

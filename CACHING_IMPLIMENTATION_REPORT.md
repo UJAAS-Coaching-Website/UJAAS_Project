@@ -43,6 +43,12 @@ The following core components and API routes have been fortified with Redis cach
 *   **Time-To-Live (TTL):** 1 hour.
 *   **Invalidation Triggers:** When an admin creates, edits, or deletes a faculty member's profile.
 
+### 6. Image Caching (User Avatars & Landing Page)
+*   **Cached Data:** Binary image files (DPs, hero banners, logos) and their JSON URL payloads.
+*   **Type of Caching:** The images themselves are cached locally on the user's browser using aggressive S3 HTTP Headers (`Cache-Control: public, max-age=31536000`), completely bypassing the server on subsequent loads.
+*   **Invalidation Triggers (File Renaming):** To instantly display new images without waiting a year for the browser cache to clear, the backend generates completely unique, randomized filenames (`avatar-{timestamp}.webp` and `{randomUUID}.jpg`) on every upload. Once the new URL is saved to the database, the browser detects a brand new URL and instantly downloads the fresh image.
+*   **URL Payload Caching:** The APIs that deliver these URLs (`/api/landing` and `/api/auth/me`) are cached using Redis to ensure the database isn't bottlenecked delivering the image links structure.
+
 ---
 
 ## Testing Plan

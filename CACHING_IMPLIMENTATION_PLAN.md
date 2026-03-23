@@ -130,6 +130,19 @@ These are heavy modules used by multiple roles. They require the most aggressive
   - Cache Key: `questions:{topic}:{diff}:page:{n}`.
   - Invalidate: Delete `questions:*` when an Admin/Faculty edits or adds a question.
 
+### Feature 5: Image Caching (Avatars & Landing Pages)
+
+#### Frontend Caching via S3 & File Renaming
+- **Concept:** Caching huge binary images in Redis is highly inefficient. Instead, we rely on the user's browser to cache these assets perfectly for up to 1 year using S3 Headers (`Cache-Control: public, max-age=31536000`).
+- **Invalidation Strategy (File Renaming):** To ensure Admins and Students never see stale images when they upload new ones, we natively rename all uploads with timestamps (`avatar-{Date.now()}.webp`) or UUIDs (`{randomId}.jpg`). The browser sees a totally new URL and downloads the fresh image instantly.
+
+#### Backend API Caching (`landingRoutes.js` and `profileRoutes.js`)
+- **`GET /api/landing`**:
+  - Cache Key: `public:landing`.
+  - Invalidate: When an admin updates the landing page (`PUT /api/landing`). TTL: 1 hour.
+- **`PUT /api/profile/avatar` and `DELETE /api/profile/avatar`**:
+  - Invalidate: When a student updates their Profile Picture, instantly invalidate `admin:students:{id}` and `admin:students:*` so the fresh URL is delivered reliably to the Frontend.
+
 ## Verification Plan
 
 ### Automated Tests
