@@ -25,6 +25,7 @@ export interface StudentPerformance {
   studentName: string;
   attemptCount: number;
   latestSubmittedAt: string;
+  firstSubmittedAt?: string;
   score: number;
   totalMarks: number;
   accuracy: number;
@@ -70,6 +71,7 @@ export function TestPerformanceInsights({
             studentName: perf.studentName,
             attemptCount: perf.attemptCount,
             latestSubmittedAt: perf.latestSubmittedAt,
+            firstSubmittedAt: (perf as any).firstSubmittedAt,
             score: perf.score,
             totalMarks: perf.totalMarks,
             accuracy: perf.accuracy,
@@ -93,12 +95,7 @@ export function TestPerformanceInsights({
   }, [testId]);
 
   const rankedPerformances = useMemo(() => {
-    return [...performances]
-      .sort((a, b) => b.score - a.score)
-      .map((p, index) => ({
-        ...p,
-        rank: index + 1,
-      }));
+    return [...performances].sort((a, b) => (a.rank || 0) - (b.rank || 0));
   }, [performances]);
 
   const filteredPerformances = rankedPerformances.filter((p) =>
@@ -267,7 +264,7 @@ export function TestPerformanceInsights({
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
-                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Latest Submission</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">First Submission</th>
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
                     <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
@@ -276,8 +273,9 @@ export function TestPerformanceInsights({
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredPerformances.map((perf) => {
-                    const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
-                    const submissionDateTime = formatSubmissionTime(perf.latestSubmittedAt);
+                    const submissionTimestamp = perf.firstSubmittedAt || perf.latestSubmittedAt;
+                    const status = getSubmissionStatus(submissionTimestamp, perf.timeSpent);
+                    const submissionDateTime = formatSubmissionTime(submissionTimestamp);
                     return (
                       <tr
                         key={perf.studentId}
@@ -309,11 +307,12 @@ export function TestPerformanceInsights({
                           <div className="font-semibold text-gray-700 text-xs sm:text-sm">{perf.attemptCount}</div>
                         </td>
                         <td className="px-3 py-3 sm:px-6 sm:py-4">
-                          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-sm text-gray-600">
+                          <div className="flex items-center text-[11px] sm:text-sm text-gray-600">
                             <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                            {submissionDateTime.date}
-                            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 ml-0.5 sm:ml-1" />
-                            {submissionDateTime.time}
+                            <span className="ml-1">{submissionDateTime.date}</span>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span>{submissionDateTime.time}</span>
                           </div>
                         </td>
                         <td className="px-3 py-3 sm:px-6 sm:py-4">
