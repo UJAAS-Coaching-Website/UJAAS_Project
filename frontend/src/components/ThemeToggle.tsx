@@ -16,36 +16,41 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       aria-pressed={isDark}
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-      className={`group inline-flex items-center gap-3 rounded-full border px-2.5 py-2 text-left backdrop-blur-md transition-all ${
+      className={`group inline-flex items-center gap-2 rounded-full border px-2 py-1.5 text-left backdrop-blur-md transition-all ${
+        !compact ? 'sm:gap-4 sm:px-4 sm:py-2.5 sm:min-w-[190px]' : ''
+      } ${
         isDark
           ? 'border-white/15 bg-slate-950/45 text-slate-100 shadow-lg shadow-black/20'
           : 'border-white/35 bg-white/15 text-white shadow-lg shadow-cyan-950/15'
-      } ${compact ? 'min-w-[132px]' : 'min-w-[148px]'}`}
+      }`}
     >
       <span
-        className={`relative flex ${compact ? 'h-7 w-12' : 'h-8 w-14'} items-center rounded-full px-1 transition-colors ${
-          isDark ? 'bg-slate-900/90' : 'bg-white/25'
-        }`}
+        className={`relative flex items-center rounded-full px-1 transition-colors ${
+          compact ? 'h-6 w-11' : 'h-6 w-11 sm:h-9 sm:w-[72px]'
+        } ${isDark ? 'bg-slate-900/90 justify-end' : 'bg-white/25 justify-start'}`}
       >
         <motion.span
           layout
           transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-          className={`flex ${compact ? 'h-5 w-5' : 'h-6 w-6'} items-center justify-center rounded-full shadow-md ${
-            isDark ? 'bg-slate-100 text-slate-900' : 'bg-white text-cyan-700'
-          }`}
+          className={`flex items-center justify-center rounded-full shadow-md ${
+            compact ? 'h-4 w-4' : 'h-4 w-4 sm:h-7 sm:w-7'
+          } ${isDark ? 'bg-slate-100 text-slate-900' : 'bg-white text-cyan-700'}`}
         >
-          {isDark ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+          {isDark ? (
+            <Moon className={compact ? 'h-3 w-3' : 'h-3 w-3 sm:h-4 sm:w-4'} />
+          ) : (
+            <Sun className={compact ? 'h-3 w-3' : 'h-3 w-3 sm:h-4 sm:w-4'} />
+          )}
         </motion.span>
       </span>
 
-      <span className="flex flex-col leading-none">
-        <span className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isDark ? 'text-slate-400' : 'text-cyan-100/80'}`}>
-          Theme
+      {!compact && (
+        <span className="hidden sm:block leading-none">
+          <span className="text-base font-semibold tracking-wide text-white">
+            {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+          </span>
         </span>
-        <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-white'}`}>
-          {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-        </span>
-      </span>
+      )}
     </button>
   );
 }
