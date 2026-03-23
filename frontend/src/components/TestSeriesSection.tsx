@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useIsMobileViewport } from '../hooks/useViewport';
+import { TestSeriesSkeleton } from './ui/content-skeletons';
 import {
   FileText,
   Clock,
@@ -36,6 +37,7 @@ interface TestSeries {
 }
 
 interface TestSeriesProps {
+  loading?: boolean;
   onStartTest: (test: import('../App').PublishedTest) => Promise<void>;
   onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
@@ -47,6 +49,7 @@ interface TestSeriesProps {
 }
 
 export function TestSeriesSection({ 
+  loading = false,
   onStartTest, 
   onViewAnalytics, 
   onViewResults,
@@ -58,6 +61,10 @@ export function TestSeriesSection({
 }: TestSeriesProps) {
   const isMobileViewport = useIsMobileViewport();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
+
+  if (loading) {
+    return <TestSeriesSkeleton />;
+  }
 
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';

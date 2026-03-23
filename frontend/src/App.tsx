@@ -209,27 +209,21 @@ function DashboardLoadingShell({ role }: { role: User['role'] }) {
         <div className="space-y-6">
           <DashboardHeroSkeleton />
 
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
+          <div className={`grid gap-4 ${role === 'student' ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+            {Array.from({ length: role === 'student' ? 2 : 4 }).map((_, index) => (
               <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
             ))}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: role === 'student' ? 4 : 6 }).map((_, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: 4 }).map((_, index) => (
               <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
             ))}
           </div>
 
-          {showManagementRows ? (
+          {showManagementRows && (
             <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
               <TableRowsSkeleton rows={6} columns={role === 'admin' ? 5 : 4} />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <TestCardSkeleton key={`dashboard-test-skeleton-${index}`} />
-              ))}
             </div>
           )}
         </div>

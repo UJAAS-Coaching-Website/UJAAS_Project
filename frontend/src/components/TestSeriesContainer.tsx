@@ -521,6 +521,7 @@ export function TestSeriesContainer({
 
   return (
     <TestSeriesSection
+      loading={currentTests.length === 0 && isLoadingResults}
       onStartTest={handleStartTest}
       onViewAnalytics={(attemptId) => {
         if (attemptId) {
