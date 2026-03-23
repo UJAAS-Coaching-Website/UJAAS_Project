@@ -1,4 +1,5 @@
 import { useState, FormEvent, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus,
@@ -1204,22 +1205,23 @@ export function NotesManagementTab({
       )}
 
       {/* Add Chapter Modal */}
-      <AnimatePresence>
-        {isAddChapterModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-modal">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddChapterModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 leading-relaxed"
-            >
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isAddChapterModalOpen && (
+            <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setIsAddChapterModalOpen(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[10060] leading-relaxed"
+              >
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
                 <h3 className="text-xl font-bold">Add New Chapter</h3>
                 <p className="text-teal-50 text-sm opacity-90">Adding to {selectedSubject} folder</p>
@@ -1263,26 +1265,29 @@ export function NotesManagementTab({
                 </div>
               </form>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
       {/* Add Subject Modal */}
-      <AnimatePresence>
-        {isAddSubjectModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center p-4 z-layer-modal">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsAddSubjectModalOpen(false)}
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 leading-relaxed"
-            >
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isAddSubjectModalOpen && (
+            <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setIsAddSubjectModalOpen(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col z-[10060] leading-relaxed"
+              >
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 to-blue-600 text-white">
                 <h3 className="text-xl font-bold">Add New Subject</h3>
                 <p className="text-teal-50 text-sm opacity-90">Adding to {selectedBatch} batch</p>
@@ -1317,9 +1322,11 @@ export function NotesManagementTab({
                 </div>
               </form>
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
