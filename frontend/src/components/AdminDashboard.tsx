@@ -2363,9 +2363,8 @@ function AddStudentModal({
           </div>
 
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Address {requiredMark}</span>
+            <span className="block">Address (Optional)</span>
             <textarea
-              required
               rows={3}
               value={formState.address}
               onChange={handleChange('address')}
@@ -2375,10 +2374,9 @@ function AddStudentModal({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Parent Contact {requiredMark}</span>
+            <span className="block">Parent Contact (Optional)</span>
             <input
               type="tel"
-              required
               value={formState.parentContact}
               onChange={handleChange('parentContact')}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
