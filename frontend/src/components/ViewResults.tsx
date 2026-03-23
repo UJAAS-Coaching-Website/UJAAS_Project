@@ -73,7 +73,14 @@ export function ViewResults({
         style={isMobileViewport ? { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' } : undefined}
       >
         {isLoading ? Array.from({ length: 4 }).map((_, index) => (
-          <StatCardSkeleton key={`result-stat-skeleton-${index}`} />
+          <div
+            key={`result-stat-skeleton-${index}`}
+            className={`${isMobileViewport ? 'min-w-0 rounded-lg px-1.5 py-2 text-center' : 'rounded-xl p-5'} bg-white shadow-md border border-gray-100 flex flex-col items-center md:items-start`}
+          >
+            <div className={`${isMobileViewport ? 'mb-1 h-6 w-6' : 'mb-3 h-12 w-12'} rounded-lg bg-gray-200 animate-pulse`} />
+            <div className={`${isMobileViewport ? 'h-4 w-8' : 'h-8 w-16'} bg-gray-200 animate-pulse rounded`} />
+            <div className={`${isMobileViewport ? 'mt-1 h-2 w-12' : 'mt-1 h-4 w-24'} bg-gray-200 animate-pulse rounded`} />
+          </div>
         )) : [
           { label: 'Attempts', mobileLabel: 'Attempts', value: totalAttempts.toString(), icon: BookOpen, gradient: 'from-blue-500 to-cyan-500' },
           { label: 'Average Score', mobileLabel: 'Avg', value: `${averageScore.toFixed(1)}%`, icon: Target, gradient: 'from-green-500 to-emerald-500' },
