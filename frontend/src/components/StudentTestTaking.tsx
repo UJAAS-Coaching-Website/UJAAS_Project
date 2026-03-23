@@ -41,6 +41,7 @@ type StudentAnswer = string | number | number[] | null;
 
 interface StudentTestTakingProps {
   testId: string;
+  attemptId: string;
   testTitle: string;
   duration: number; // in minutes
   questions: Question[];
@@ -62,8 +63,12 @@ interface StudentTestTakingProps {
   outerPaddingClassName?: string;
 }
 
+const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
+const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
+
 export function StudentTestTaking({
   testId,
+  attemptId,
   testTitle: initialTitle,
   duration,
   questions: initialQuestions,
@@ -262,6 +267,56 @@ export function StudentTestTaking({
 
   const isAnsweredValue = (value: StudentAnswer | undefined) =>
     Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && value !== '';
+
+  const hasAnyAnswer = useMemo(
+    () => questions.some((q) => isAnsweredValue(answers[q.id])),
+    [answers, questions]
+  );
+
+  useEffect(() => {
+    if (!attemptId) return;
+    const key = `${ANSWER_FLAG_PREFIX}${attemptId}`;
+    const answersKey = `${ANSWER_STORAGE_PREFIX}${attemptId}`;
+    try {
+      if (Object.keys(answers || {}).length > 0) {
+        localStorage.setItem(answersKey, JSON.stringify(answers));
+      } else {
+        localStorage.removeItem(answersKey);
+      }
+    } catch {
+      // ignore storage failures
+    }
+    if (hasAnyAnswer) {
+      localStorage.setItem(key, '1');
+    } else {
+      localStorage.removeItem(key);
+    }
+  }, [attemptId, hasAnyAnswer, answers]);
+
+  useEffect(() => {
+    if (isAnyPreview || !onSaveProgress) return;
+
+    const flushProgress = () => {
+      try {
+        void onSaveProgress(answers);
+      } catch {
+        // ignore
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushProgress();
+      }
+    };
+
+    window.addEventListener('pagehide', flushProgress);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', flushProgress);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [answers, isAnyPreview, onSaveProgress]);
 
   const isSectionBQuestion = (q?: Question) =>
     Boolean(q && isJeeMain && q.metadata?.section === 'Section B');

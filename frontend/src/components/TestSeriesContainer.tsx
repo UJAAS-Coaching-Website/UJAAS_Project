@@ -44,6 +44,9 @@ type TestState =
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
 const LAST_RESULT_STORAGE_KEY = 'ujaasLastAttemptResultId';
+const AUTO_SUBMIT_PENDING_KEY = 'ujaasAutoSubmitPending';
+const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
+const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
 
 export function TestSeriesContainer({
   user,
@@ -146,6 +149,24 @@ export function TestSeriesContainer({
 
     try {
       const session = JSON.parse(stored) as { testId: string };
+      const pendingAutoSubmit = localStorage.getItem(AUTO_SUBMIT_PENDING_KEY);
+      if (pendingAutoSubmit) {
+        const pending = JSON.parse(pendingAutoSubmit) as { testId?: string; attemptId?: string };
+        if (pending?.testId === session.testId) {
+          const summary = await fetchMyTestAttemptSummary(session.testId).catch(() => null);
+          const latestAttemptId = summary?.history?.[0]?.id;
+          if (latestAttemptId) {
+            localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+            localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+            if (pending?.attemptId) {
+              localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${pending.attemptId}`);
+              localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${pending.attemptId}`);
+            }
+            await openAttemptAnalytics(latestAttemptId);
+            return;
+          }
+        }
+      }
       const payload = await startMyTestAttempt(session.testId);
       const fullTest = apiTestToPublished(payload.test);
       const nextState = mode === 'overview'
@@ -266,6 +287,22 @@ export function TestSeriesContainer({
     const token = localStorage.getItem('ujaasToken');
 
     const handleBeforeUnload = () => {
+      const hasAnswer = localStorage.getItem(`${ANSWER_FLAG_PREFIX}${attemptId}`) === '1';
+      if (!hasAnswer) return;
+      let cachedAnswers: Record<string, StudentAnswer> | undefined;
+      const storedAnswers = localStorage.getItem(`${ANSWER_STORAGE_PREFIX}${attemptId}`);
+      if (storedAnswers) {
+        try {
+          cachedAnswers = JSON.parse(storedAnswers);
+        } catch {
+          cachedAnswers = undefined;
+        }
+      }
+      localStorage.setItem(AUTO_SUBMIT_PENDING_KEY, JSON.stringify({
+        testId: testState.test.id,
+        attemptId,
+        at: Date.now(),
+      }));
       void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/submit`, {
         method: 'POST',
         keepalive: true,
@@ -277,6 +314,7 @@ export function TestSeriesContainer({
         },
         body: JSON.stringify({
           autoSubmitted: true,
+          ...(cachedAnswers ? { answers: cachedAnswers } : {}),
         }),
       });
     };
@@ -387,6 +425,9 @@ export function TestSeriesContainer({
     try {
       const result = await submitMyAttempt(testState.attemptId, answers, Boolean(options?.autoSubmitted));
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+      localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+      localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
+      localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
@@ -402,6 +443,9 @@ export function TestSeriesContainer({
       if (shouldRecoverToLatestAttempt) {
         try {
           localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+          localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+          localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
+          localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
           const summary = await patchAttemptSummary(testState.test.id).catch(() => fetchMyTestAttemptSummary(testState.test.id));
           const latestAttemptId = summary.history[0]?.id;
 
@@ -499,6 +543,7 @@ export function TestSeriesContainer({
     return (
       <StudentTestTaking
         testId={testState.test.id}
+        attemptId={testState.attemptId}
         testTitle={testState.test.title}
         duration={testState.test.duration}
         format={testState.test.format}

@@ -308,6 +308,7 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
         <motion.div key="attempt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <StudentTestTaking
             testId={payload.dpp.id}
+            attemptId={`dpp-${payload.dpp.id}`}
             testTitle={payload.dpp.title}
             duration={0}
             questions={questions as any}
