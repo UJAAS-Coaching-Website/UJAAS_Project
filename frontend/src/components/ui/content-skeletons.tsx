@@ -1,4 +1,5 @@
 import { Skeleton } from "./skeleton";
+import logo from '../../assets/logo.svg';
 
 export function SubjectCardSkeleton() {
   return (
@@ -275,6 +276,77 @@ export function QuestionBankSkeleton() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function DashboardLoadingShell({ role }: { role: 'admin' | 'faculty' | 'student' }) {
+  const showManagementRows = role === 'admin' || role === 'faculty';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      <div className="border-b border-white bg-white/70 backdrop-blur-lg shadow-lg">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="UJAAS Logo" className="h-10 w-10 object-contain opacity-80" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {showManagementRows ? (
+          <div className="space-y-6">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-64" />
+                  <Skeleton className="h-5 w-96 max-w-full" />
+                </div>
+                <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
+                  <Skeleton className="h-12 w-40 rounded-xl" />
+                  <Skeleton className="h-12 w-40 rounded-xl" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={`admin-batch-skeleton-${index}`} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-8 w-48" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <DashboardHeroSkeleton />
+
+            <div className="grid gap-4 grid-cols-2">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent, type FormEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, DashboardLoadingShell } from './ui/content-skeletons';
 import { createPortal } from 'react-dom';
 import { User, LandingData, Tab } from '../App';
 import {
@@ -66,7 +66,7 @@ import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
 const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminBatchSelectionTab })));
 const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
-const AdminStudentsDirectoryTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminStudentsDirectoryTab })));
+const AdminStudentsTab = lazy(() => import('./admin/AdminStudentsTab').then(m => ({ default: m.AdminStudentsTab })));
 import { formatIndianMobileInput } from '../utils/phone';
 
 interface AdminDashboardProps {
@@ -120,6 +120,7 @@ interface AdminDashboardProps {
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
   onRefreshFaculties: () => void;
   onSearchStudents?: (query: string) => void;
+  isDataLoading?: boolean;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -284,7 +285,12 @@ export function AdminDashboard({
   onRemoveSubjectFromBatch,
   onRefreshFaculties,
   onSearchStudents,
+  isDataLoading,
 }: AdminDashboardProps) {
+  if (isDataLoading) {
+    return <DashboardLoadingShell role="admin" />;
+  }
+
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
     const subjectRatings = (s as any).subject_ratings || {};
@@ -902,14 +908,9 @@ export function AdminDashboard({
                   />
                 )}
                 {adminSection === 'students' && (
-                  <AdminStudentsDirectoryTab
-                    students={students}
-                    onAddStudent={() => openAddStudent(null)}
-                    onEditStudent={openEditStudent}
-                    onDeleteStudent={handleDeleteStudent}
+                  <AdminStudentsTab
+                    batches={batches}
                     onViewStudent={openStudentRatings}
-                    renderStars={renderPerformanceStars}
-                    onSearchStudents={onSearchStudents}
                   />
                 )}
                 {adminSection === 'faculty' && (
@@ -3721,7 +3722,7 @@ function StudentRatingsModal({
           score: performance ? `${performance.score}/${performance.totalMarks}` : '-',
           rank: rankDisplay,
           accuracy: performance ? `${Math.round(performance.accuracy)}%` : '-',
-          status: attempted ? 'Attempted' : 'Not Attempted',
+          status: attempted ? ('Attempted' as const) : ('Not Attempted' as const),
         };
       });
 

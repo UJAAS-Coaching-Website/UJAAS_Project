@@ -49,6 +49,9 @@ export interface ApiStudent {
     rating_participation: number;
     rating_behavior: number;
     assigned_batch: ApiStudentBatch | null;
+    subject_ratings?: Record<string, any>;
+    subject_remarks?: Record<string, string>;
+    admin_remark?: string;
 }
 
 export interface CreateStudentPayload {
