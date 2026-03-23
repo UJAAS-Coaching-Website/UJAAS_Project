@@ -1197,6 +1197,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isActionPending = (action: string) => pendingAction === action;
   const isActionInFlight = pendingAction !== null;
+  const subjectOptions = Array.from(new Set([
+    ...(data.courses || []).map((c) => c.name),
+    ...(data.faculty || []).map((f) => f.subject),
+  ]))
+    .map((subject) => subject.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
 
   const [newFacultyImageFile, setNewFacultyImageFile] = useState<File | null>(null);
   const [newFacultyPreview, setNewFacultyPreview] = useState<string>('');
