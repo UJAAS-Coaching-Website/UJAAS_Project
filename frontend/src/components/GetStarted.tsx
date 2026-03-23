@@ -14,6 +14,7 @@ import { Footer } from './Footer';
 import logo from '../assets/logo.svg';
 import { LandingData } from '../App';
 import { useIsMobileViewport, useWindowWidth } from '../hooks/useViewport';
+import { formatIndianMobileInput } from '../utils/phone';
 
 interface GetStartedProps {
   onGetStarted: () => void;
@@ -63,7 +64,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
+    phone: formatIndianMobileInput(''),
     courseId: '',
     message: ''
   });
@@ -74,7 +75,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
     e.preventDefault();
     onSubmitQuery(formData);
     alert('Thank you! Your interest has been registered. Our team will contact you soon.');
-    setFormData({ name: '', email: '', phone: '', courseId: '', message: '' });
+    setFormData({ name: '', email: '', phone: formatIndianMobileInput(''), courseId: '', message: '' });
   };
 
   const nextAchiever = () => {
@@ -630,7 +631,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phone: formatIndianMobileInput(e.target.value) })}
                     className="w-full px-2.5 py-2 md:px-4 md:py-3 text-sm md:text-base border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
                     placeholder="+91 98765 43210"
                   />

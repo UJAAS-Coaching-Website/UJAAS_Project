@@ -63,6 +63,7 @@ import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
 import { AdminBatchSelectionTab, AdminQueriesManagementTab, AdminStudentsDirectoryTab } from './admin/AdminDashboardSections';
+import { formatIndianMobileInput } from '../utils/phone';
 
 interface AdminDashboardProps {
   user: User;
@@ -2260,10 +2261,10 @@ function AddStudentModal({
     name: initial?.name ?? '',
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
-    phoneNumber: initial?.phoneNumber ?? '',
+    phoneNumber: formatIndianMobileInput(initial?.phoneNumber ?? ''),
     dateOfBirth: initial?.dateOfBirth ?? '',
     address: initial?.address ?? '',
-    parentContact: initial?.parentContact ?? '',
+    parentContact: formatIndianMobileInput(initial?.parentContact ?? ''),
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
@@ -2276,7 +2277,11 @@ function AddStudentModal({
   if (!open) return null;
 
   const handleChange = (field: keyof StudentFormState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+    const raw = event.target.value;
+    const nextValue = field === 'phoneNumber' || field === 'parentContact'
+      ? formatIndianMobileInput(raw)
+      : raw;
+    setFormState((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -2431,7 +2436,7 @@ function AddFacultyModal({
     subject: initialData?.subject ?? '',
     designation: initialData?.designation ?? '',
     name: initialData?.name ?? '',
-    phone: initialData?.phone ?? '',
+    phone: formatIndianMobileInput(initialData?.phone ?? ''),
     email: initialData?.email ?? '',
     joinDate: initialData?.joinDate ?? '',
     rating: initialData?.rating ?? 0,
@@ -2447,7 +2452,7 @@ function AddFacultyModal({
       subject: initialData?.subject ?? '',
       designation: initialData?.designation ?? '',
       name: initialData?.name ?? '',
-      phone: initialData?.phone ?? '',
+      phone: formatIndianMobileInput(initialData?.phone ?? ''),
       email: initialData?.email ?? '',
       joinDate: initialData?.joinDate ?? '',
       rating: initialData?.rating ?? 0,
@@ -2459,7 +2464,12 @@ function AddFacultyModal({
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = field === 'rating' || field === 'reviewCount' ? parseFloat(event.target.value) || 0 : event.target.value;
+    const raw = event.target.value;
+    const value = field === 'rating' || field === 'reviewCount'
+      ? parseFloat(raw) || 0
+      : field === 'phone'
+        ? formatIndianMobileInput(raw)
+        : raw;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
   const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
@@ -3176,9 +3186,9 @@ function StudentRatingsModal({
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
-    phoneNumber: '',
+    phoneNumber: formatIndianMobileInput(''),
     dateOfBirth: '',
-    parentContact: '',
+    parentContact: formatIndianMobileInput(''),
     address: '',
   });
   const [testPerformanceRows, setTestPerformanceRows] = useState<Array<{
@@ -3200,9 +3210,9 @@ function StudentRatingsModal({
     setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
-      phoneNumber: student.phoneNumber ?? '',
+      phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
       dateOfBirth: student.dateOfBirth ?? '',
-      parentContact: student.parentContact ?? '',
+      parentContact: formatIndianMobileInput(student.parentContact ?? ''),
       address: student.address ?? '',
     });
     setAdminRemarkDraft(student.adminRemark ?? '');
@@ -3729,9 +3739,9 @@ function StudentRatingsModal({
                         setIsEditingProfile(false);
                         setProfileDraft({
                           name: student.name ?? '',
-                          phoneNumber: student.phoneNumber ?? '',
+                          phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
                           dateOfBirth: student.dateOfBirth ?? '',
-                          parentContact: student.parentContact ?? '',
+                          parentContact: formatIndianMobileInput(student.parentContact ?? ''),
                           address: student.address ?? '',
                         });
                       }}
@@ -3774,7 +3784,7 @@ function StudentRatingsModal({
                     <input
                       type="tel"
                       value={profileDraft.phoneNumber}
-                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, phoneNumber: formatIndianMobileInput(e.target.value) }))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (
@@ -3800,7 +3810,7 @@ function StudentRatingsModal({
                     <input
                       type="tel"
                       value={profileDraft.parentContact}
-                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, parentContact: e.target.value }))}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, parentContact: formatIndianMobileInput(e.target.value) }))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (
