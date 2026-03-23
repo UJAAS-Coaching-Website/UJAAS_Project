@@ -5,6 +5,8 @@ import { motion } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { Mail, Lock, LogOut, Camera } from 'lucide-react';
 import { EditableAvatar } from './EditableAvatar';
+import { ThemeToggle } from './ThemeToggle';
+import { useTheme } from '../theme';
 
 interface AdminProfileProps {
   user: {
@@ -20,6 +22,7 @@ interface AdminProfileProps {
 }
 export function AdminProfile({ user, onLogout }: AdminProfileProps) {
   const [profileUser, setProfileUser] = useState(user);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     setProfileUser(user);
@@ -61,10 +64,14 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden"
+        className={`rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden ${
+          isDark
+            ? 'bg-gradient-to-r from-slate-900 via-cyan-950 to-blue-950'
+            : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500'
+        }`}
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
+        <div className={`absolute top-0 right-0 w-64 h-64 rounded-full -mr-32 -mt-32 ${isDark ? 'bg-cyan-300/10' : 'bg-white/10'}`} />
+        <div className={`absolute bottom-0 left-0 w-48 h-48 rounded-full -ml-24 -mb-24 ${isDark ? 'bg-blue-200/10' : 'bg-white/10'}`} />
 
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-6">
           <EditableAvatar 
@@ -76,12 +83,15 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-3xl font-bold mb-2">{displayName}</h2>
-                <div className="flex flex-wrap gap-4 text-indigo-100">
+                <div className={`flex flex-wrap gap-4 ${isDark ? 'text-slate-300' : 'text-indigo-100'}`}>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     <span>{profileUser.loginId || profileUser.email}</span>
                   </div>
                 </div>
+              </div>
+              <div className="shrink-0">
+                <ThemeToggle />
               </div>
             </div>
           </div>
@@ -94,6 +104,7 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
 }
 
 function SettingsSection({ onLogout }: { onLogout: () => void }) {
+  const { isDark } = useTheme();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
@@ -172,13 +183,19 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
       >
         <motion.button
           onClick={() => setShowChangePassword(true)}
-          className="w-full p-4 md:p-3 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
+          className={`w-full p-4 md:p-3 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border ${
+            isDark
+              ? 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700'
+              : 'bg-gradient-to-r from-gray-50 to-indigo-50 border-gray-200'
+          }`}
         >
           <div>
-            <h4 className="font-semibold text-gray-900 md:text-sm">Change Password</h4>
-            <p className="text-sm text-gray-600 md:text-xs">Update your account password</p>
+            <h4 className={`font-semibold md:text-sm ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>Change Password</h4>
+            <p className={`text-sm md:text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Update your account password</p>
           </div>
-          <div className="w-8 h-8 md:w-7 md:h-7 bg-indigo-100 group-hover:bg-indigo-200 rounded-lg flex items-center justify-center transition">
+          <div className={`w-8 h-8 md:w-7 md:h-7 rounded-lg flex items-center justify-center transition ${
+            isDark ? 'bg-indigo-500/20 group-hover:bg-indigo-500/30' : 'bg-indigo-100 group-hover:bg-indigo-200'
+          }`}>
             <Lock className="w-4 h-4 md:w-3.5 md:h-3.5 text-indigo-600" />
           </div>
         </motion.button>

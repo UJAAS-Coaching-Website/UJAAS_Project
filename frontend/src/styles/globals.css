@@ -4,7 +4,9 @@
   body {
     @apply antialiased;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    background: linear-gradient(135deg, #D4E5E3 0%, #A8C9D7 100%);
+    background: var(--app-bg);
+    color: var(--app-text);
+    transition: background 0.25s ease, color 0.25s ease;
   }
 
   h1 {
@@ -43,17 +45,17 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f0f9ff;
+  background: var(--app-scrollbar-track);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background: var(--app-scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #0f766e, #0891b2);
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 /* Custom scrollbar class for specific elements */
@@ -89,7 +91,7 @@ table {
 
 /* Focus Visible for Accessibility */
 *:focus-visible {
-  outline: 2px solid #8BC4C4;
+  outline: 2px solid var(--app-focus);
   outline-offset: 2px;
 }
 
@@ -97,6 +99,143 @@ table {
 :root {
   --app-top-chrome: 0px;
   --footer-reveal-offset: 0px;
+  --app-bg: linear-gradient(135deg, #D4E5E3 0%, #A8C9D7 100%);
+  --app-text: #111827;
+  --app-scrollbar-track: #f0f9ff;
+  --app-scrollbar-thumb: linear-gradient(135deg, #14b8a6, #06b6d4);
+  --app-scrollbar-thumb-hover: linear-gradient(135deg, #0f766e, #0891b2);
+  --app-focus: #8BC4C4;
+}
+
+html.theme-dark {
+  --app-bg: radial-gradient(circle at top, #0f3342 0%, #081723 45%, #030712 100%);
+  --app-text: #e5eef7;
+  --app-scrollbar-track: #0f172a;
+  --app-scrollbar-thumb: linear-gradient(135deg, #0891b2, #1d4ed8);
+  --app-scrollbar-thumb-hover: linear-gradient(135deg, #06b6d4, #2563eb);
+  --app-focus: #67e8f9;
+}
+
+html.theme-dark body {
+  color-scheme: dark;
+}
+
+html.theme-dark .footer-reveal-page,
+html.theme-dark .footer-reveal-main,
+html.theme-dark .min-h-screen {
+  background: transparent;
+}
+
+html.theme-dark .bg-white,
+html.theme-dark .bg-white\/80,
+html.theme-dark .bg-white\/90,
+html.theme-dark .bg-white\/70,
+html.theme-dark .bg-white\/50,
+html.theme-dark .bg-gray-50,
+html.theme-dark .bg-gray-100,
+html.theme-dark .bg-gray-200 {
+  background-color: rgba(8, 15, 28, 0.88) !important;
+}
+
+html.theme-dark .bg-white\/20,
+html.theme-dark .bg-white\/10,
+html.theme-dark .bg-white\/5 {
+  background-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html.theme-dark .border-white,
+html.theme-dark .border-white\/70,
+html.theme-dark .border-white\/50,
+html.theme-dark .border-gray-100,
+html.theme-dark .border-gray-200,
+html.theme-dark .border-gray-300 {
+  border-color: rgba(71, 85, 105, 0.9) !important;
+}
+
+html.theme-dark .text-gray-900 {
+  color: #f8fafc !important;
+}
+
+html.theme-dark .text-gray-800,
+html.theme-dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+html.theme-dark .text-gray-600,
+html.theme-dark .text-gray-500,
+html.theme-dark .text-gray-400 {
+  color: #94a3b8 !important;
+}
+
+html.theme-dark .shadow-lg,
+html.theme-dark .shadow-xl,
+html.theme-dark .shadow-2xl,
+html.theme-dark .shadow-md,
+html.theme-dark .shadow-sm {
+  --tw-shadow-color: rgb(2 6 23 / 0.55) !important;
+}
+
+html.theme-dark .from-teal-50 {
+  --tw-gradient-from: #0f172a !important;
+}
+
+html.theme-dark .via-cyan-50 {
+  --tw-gradient-via: #0b1b2e !important;
+}
+
+html.theme-dark .to-blue-50 {
+  --tw-gradient-to: #111827 !important;
+}
+
+html.theme-dark .from-gray-50 {
+  --tw-gradient-from: #111827 !important;
+}
+
+html.theme-dark .to-indigo-50,
+html.theme-dark .to-cyan-50,
+html.theme-dark .to-orange-50,
+html.theme-dark .to-red-50,
+html.theme-dark .to-purple-50,
+html.theme-dark .to-pink-50,
+html.theme-dark .to-emerald-50 {
+  --tw-gradient-to: #172033 !important;
+}
+
+html.theme-dark .from-yellow-50,
+html.theme-dark .from-orange-50,
+html.theme-dark .from-purple-50,
+html.theme-dark .from-pink-50,
+html.theme-dark .from-green-50,
+html.theme-dark .from-blue-50,
+html.theme-dark .from-indigo-50 {
+  --tw-gradient-from: #111827 !important;
+}
+
+html.theme-dark input,
+html.theme-dark textarea,
+html.theme-dark select {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  color: #e5eef7 !important;
+  border-color: rgba(71, 85, 105, 0.9) !important;
+}
+
+html.theme-dark ::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.theme-dark thead,
+html.theme-dark tbody,
+html.theme-dark tr,
+html.theme-dark td,
+html.theme-dark th {
+  border-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.theme-dark .hover\:bg-gray-50:hover,
+html.theme-dark .hover\:bg-gray-100:hover,
+html.theme-dark .hover\:bg-gray-200:hover,
+html.theme-dark .hover\:bg-white:hover {
+  background-color: rgba(30, 41, 59, 0.95) !important;
 }
 
 .footer-reveal-page {
