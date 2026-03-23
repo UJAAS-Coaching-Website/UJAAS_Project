@@ -160,7 +160,6 @@ export function DashboardHeroSkeleton() {
         <div className="min-w-0 flex-1 space-y-2">
           <Skeleton className="h-8 md:h-9 w-48 md:w-64" />
           <Skeleton className="h-4 md:h-5 w-40 md:w-56" />
-
         </div>
       </div>
     </div>
@@ -171,32 +170,41 @@ export function TestSeriesSkeleton() {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="rounded-2xl p-5 md:p-6 bg-white shadow-lg border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48 md:w-64" />
-          <Skeleton className="h-4 w-64 md:w-80" />
+      <div className="rounded-3xl md:rounded-2xl p-5 md:p-6 bg-white shadow-lg border border-gray-100 flex flex-row items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-8 md:h-10 w-32 md:w-48 mb-2" />
+          <Skeleton className="h-3 md:h-4 w-48 md:w-64" />
         </div>
-        <Skeleton className="h-10 w-full md:w-32 rounded-xl" />
+        <div className="flex shrink-0 items-center">
+          <Skeleton className="h-9 w-20 md:h-12 md:w-32 rounded-lg md:rounded-xl" />
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-4 gap-2 lg:gap-4">
+      <div 
+        className="grid gap-2 lg:gap-4" 
+        style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
+      >
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-lg md:rounded-xl px-1.5 py-2 md:p-5 bg-white shadow-md border border-gray-100 flex flex-col md:items-start items-center text-center md:text-left">
-            <Skeleton className="mb-1 md:mb-3 h-6 w-6 md:h-12 md:w-12 rounded-lg" />
-            <Skeleton className="h-4 md:h-8 w-8 md:w-16" />
-            <Skeleton className="mt-1 h-2 md:h-4 w-12 md:w-20" />
+          <div key={i} className="min-w-0 rounded-lg md:rounded-xl px-1.5 py-2 md:p-5 bg-white shadow-md border border-gray-100 flex flex-col items-center md:items-start text-center md:text-left">
+            <Skeleton className="mb-1 md:mb-3 h-6 w-6 md:h-12 md:w-12 rounded-lg shrink-0" />
+            <Skeleton className="h-4 md:h-9 w-8 md:w-16 shrink-0" />
+            <Skeleton className="mt-1 md:mt-2 h-2 md:h-4 w-12 md:w-20 shrink-0" />
           </div>
         ))}
       </div>
 
       {/* Filters */}
       <div className="rounded-xl md:rounded-2xl p-4 md:p-6 bg-white shadow-lg border border-gray-100">
-        <Skeleton className="mb-2 md:mb-3 h-3 md:h-4 w-12 md:w-16" />
-        <div className="flex flex-row flex-nowrap overflow-hidden md:flex-wrap gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 md:h-10 flex-1 min-w-[3rem] md:flex-none md:w-24 rounded-lg" />
-          ))}
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
+            <Skeleton className="mb-3 md:mb-2 h-3 md:h-4 w-12 md:w-16" />
+            <div className="flex items-center gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-7 md:h-10 flex-1 min-w-0 md:flex-none md:w-24 rounded-lg" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -214,15 +222,11 @@ export function ProfileSkeleton() {
   return (
     <div className="space-y-6">
       {/* Profile Header Block */}
-      <div className="rounded-3xl p-5 md:p-8 bg-white shadow-xl border border-gray-100 flex flex-row items-center md:items-center gap-4 md:gap-6 relative overflow-hidden">
+      <div className="rounded-3xl p-5 md:p-8 bg-white shadow-xl border border-gray-100 flex flex-row items-center gap-4 md:gap-6 relative overflow-hidden">
         <Skeleton className="w-16 h-16 md:w-24 md:h-24 rounded-full shrink-0" />
-        <div className="flex-1 space-y-3 w-full text-left flex flex-col items-start md:items-start">
+        <div className="flex-1 space-y-3 w-full text-left flex flex-col items-start">
           <Skeleton className="h-6 md:h-8 w-48 md:w-64" />
           <Skeleton className="h-3 md:h-4 w-32 md:w-48" />
-
-
-
-
         </div>
       </div>
 
