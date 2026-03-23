@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { User } from '../App';
 import {
   GraduationCap,
@@ -6,24 +6,26 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { fetchBatches, fetchBatch, ApiBatch } from '../api/batches';
-import { TestSeriesContainer } from './TestSeriesContainer';
-import { StudentProfile } from './StudentProfile';
+const TestSeriesContainer = lazy(() => import('./TestSeriesContainer').then(m => ({ default: m.TestSeriesContainer })));
+const StudentProfile = lazy(() => import('./StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { FacultyReviewModal } from './FacultyReviewModal';
 import { getFacultiesToRate, type FacultyToRate, type ReviewSession } from '../api/facultyReviews';
-import { QuestionBank } from './QuestionBank';
+const QuestionBank = lazy(() => import('./QuestionBank').then(m => ({ default: m.QuestionBank })));
 import { Notification } from './NotificationCenter';
 import { StudentNotificationSheet } from './StudentNotificationSheet';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import { DPPPractice, type DppPracticeSession } from './DPPPractice';
+import type { DppPracticeSession } from './DPPPractice';
+const DPPPractice = lazy(() => import('./DPPPractice').then(m => ({ default: m.DPPPractice })));
 import { closeMyDppSession, type ApiStartDppAttemptPayload } from '../api/dpps';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
 import { StudentDashboardHome } from './student/StudentDashboardHome';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 
 interface StudentDashboardProps {
   user: User;
@@ -514,14 +516,16 @@ export function StudentDashboard({
           transition={{ duration: 0.3 }}
         >
           {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
-            <DPPPractice
-              session={activeDppSession}
-              onExit={handleExitDpp}
-              onSessionChange={(nextSession) => {
-                setActiveDppSession(nextSession);
-                sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
-              }}
-            />
+            <Suspense fallback={<DashboardHeroSkeleton />}>
+              <DPPPractice
+                session={activeDppSession}
+                onExit={handleExitDpp}
+                onSessionChange={(nextSession) => {
+                  setActiveDppSession(nextSession);
+                  sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+                }}
+              />
+            </Suspense>
           )}
           {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
             <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
@@ -539,30 +543,36 @@ export function StudentDashboard({
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
-            <TestSeriesContainer
-              user={user}
-              publishedTests={publishedTests}
-              onStateChange={handleTestSeriesStateChange}
-              subTab={subTab}
-              onNavigateSubTab={handleSubTabNavigate}
-            />
+            <Suspense fallback={<div className="space-y-4"><TestCardSkeleton /><TestCardSkeleton /></div>}>
+              <TestSeriesContainer
+                user={user}
+                publishedTests={publishedTests}
+                onStateChange={handleTestSeriesStateChange}
+                subTab={subTab}
+                onNavigateSubTab={handleSubTabNavigate}
+              />
+            </Suspense>
           )}
           {activeTab === 'profile' && (
-            <StudentProfile
-              user={user}
-              onLogout={onLogout}
-              initialSection={profileSection}
-            />
+            <Suspense fallback={<div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></div>}>
+              <StudentProfile
+                user={user}
+                onLogout={onLogout}
+                initialSection={profileSection}
+              />
+            </Suspense>
           )}
           {activeTab === 'batch-detail' && (
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
-            <QuestionBank
-              userRole="student"
-              userBatch={user.studentDetails?.batch}
-              onBack={() => onNavigate('home')}
-            />
+            <Suspense fallback={<div className="space-y-4"><TableRowsSkeleton rows={5} /></div>}>
+              <QuestionBank
+                userRole="student"
+                userBatch={user.studentDetails?.batch}
+                onBack={() => onNavigate('home')}
+              />
+            </Suspense>
           )}
         </motion.div>
       </main>

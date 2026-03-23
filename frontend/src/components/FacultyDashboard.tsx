@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -30,23 +31,24 @@ import {
   Check,
   Megaphone
 } from 'lucide-react';
-import { NoticesManagement } from './NoticesManagement';
-import { StudentRating } from './StudentRating';
-import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { FacultyProfile } from './FacultyProfile';
+const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
+const StudentRating = lazy(() => import('./StudentRating').then(m => ({ default: m.StudentRating })));
+const StudentRankingsEnhanced = lazy(() => import('./StudentRankingsEnhanced').then(m => ({ default: m.StudentRankingsEnhanced })));
+const FacultyProfile = lazy(() => import('./FacultyProfile').then(m => ({ default: m.FacultyProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { CreateTestSeries } from './CreateTestSeries';
-import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { CreateDPP } from './CreateDPP';
-import { UploadNotes } from './UploadNotes';
-import { QuestionBank } from './QuestionBank';
-import { TestPreviewAndReview } from './TestPreviewAndReview';
+const CreateTestSeries = lazy(() => import('./CreateTestSeries').then(m => ({ default: m.CreateTestSeries })));
+import type { StudentPerformance } from './TestPerformanceInsights';
+const TestPerformanceInsights = lazy(() => import('./TestPerformanceInsights').then(m => ({ default: m.TestPerformanceInsights })));
+const CreateDPP = lazy(() => import('./CreateDPP').then(m => ({ default: m.CreateDPP })));
+const UploadNotes = lazy(() => import('./UploadNotes').then(m => ({ default: m.UploadNotes })));
+const QuestionBank = lazy(() => import('./QuestionBank').then(m => ({ default: m.QuestionBank })));
+const TestPreviewAndReview = lazy(() => import('./TestPreviewAndReview').then(m => ({ default: m.TestPreviewAndReview })));
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import { NotesManagementTab } from './NotesManagementTab';
+const NotesManagementTab = lazy(() => import('./NotesManagementTab').then(m => ({ default: m.NotesManagementTab })));
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
 import { ApiBatch } from '../api/batches';
 import { generateInitialPassword } from '../utils/passwords';
@@ -54,7 +56,7 @@ import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks } from '../utils/studentRemarks';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
-import { FacultyBatchSelectionTab } from './faculty/FacultyDashboardSections';
+const FacultyBatchSelectionTab = lazy(() => import('./faculty/FacultyDashboardSections').then(m => ({ default: m.FacultyBatchSelectionTab })));
 
 interface FacultyDashboardProps {
   user: User;
@@ -547,6 +549,12 @@ export function FacultyDashboard({
           transition={{ duration: 0.3 }}
         >
           {/* Layered Rendering Logic - Standard across dashboards */}
+          <Suspense fallback={
+            activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
+            activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+            (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+            <DashboardHeroSkeleton />
+          }>
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches.filter((batch) => batch.is_active)} />
           ) : activeTab === 'question-bank' ? (
@@ -667,6 +675,7 @@ export function FacultyDashboard({
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
             </>
           )}
+          </Suspense>
         </motion.div>
       </main>
 

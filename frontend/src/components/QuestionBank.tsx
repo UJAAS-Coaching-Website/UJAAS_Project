@@ -102,6 +102,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
 
   useBodyScrollLock(isAddModalOpen);
 
@@ -140,6 +141,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
   const loadList = async () => {
     setLoadingItems(true);
     setErrorMessage('');
+    setVisibleCount(12);
     try {
       const response = await apiFetchQuestionBank(
         userRole === 'faculty'
@@ -390,7 +392,7 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
             </div>
           ))}
 
-          {!loadingItems && items.map((item) => {
+          {!loadingItems && items.slice(0, visibleCount).map((item) => {
             const deleteKey = selectedBatch ? `${item.id}:${selectedBatch.id}` : item.id;
             return (
               <motion.div
@@ -443,6 +445,17 @@ export function QuestionBank({ userRole, userSubject }: QuestionBankProps) {
               </motion.div>
             );
           })}
+
+          {!loadingItems && items.length > visibleCount && (
+            <div className="md:col-span-2 flex justify-center mt-6">
+              <button
+                onClick={() => setVisibleCount((c) => c + 12)}
+                className="px-8 py-3 bg-white border border-gray-200 text-teal-600 rounded-2xl shadow-sm hover:bg-teal-50 font-bold transition-colors"
+               >
+                 Load More Questions
+               </button>
+             </div>
+          )}
 
           {!loadingItems && items.length === 0 && (
             <div className="md:col-span-2 py-20 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">

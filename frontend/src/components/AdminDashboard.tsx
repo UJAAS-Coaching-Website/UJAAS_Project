@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent, type FormEvent } from 'react';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 import { createPortal } from 'react-dom';
 import { User, LandingData, Tab } from '../App';
 import {
@@ -38,18 +39,19 @@ import {
   Loader2
 } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
-import { NoticesManagement } from './NoticesManagement';
+const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
 import { triggerReviewSession } from '../api/facultyReviews';
-import { StudentRating } from './StudentRating';
-import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { AdminProfile } from './AdminProfile';
+const StudentRating = lazy(() => import('./StudentRating').then(m => ({ default: m.StudentRating })));
+const StudentRankingsEnhanced = lazy(() => import('./StudentRankingsEnhanced').then(m => ({ default: m.StudentRankingsEnhanced })));
+const AdminProfile = lazy(() => import('./AdminProfile').then(m => ({ default: m.AdminProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { CreateTestSeries } from './CreateTestSeries';
-import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { TestPreviewAndReview } from './TestPreviewAndReview';
+const CreateTestSeries = lazy(() => import('./CreateTestSeries').then(m => ({ default: m.CreateTestSeries })));
+import type { StudentPerformance } from './TestPerformanceInsights';
+const TestPerformanceInsights = lazy(() => import('./TestPerformanceInsights').then(m => ({ default: m.TestPerformanceInsights })));
+const TestPreviewAndReview = lazy(() => import('./TestPreviewAndReview').then(m => ({ default: m.TestPreviewAndReview })));
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
@@ -62,7 +64,9 @@ import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
-import { AdminBatchSelectionTab, AdminQueriesManagementTab, AdminStudentsDirectoryTab } from './admin/AdminDashboardSections';
+const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminBatchSelectionTab })));
+const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
+const AdminStudentsDirectoryTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminStudentsDirectoryTab })));
 import { formatIndianMobileInput } from '../utils/phone';
 
 interface AdminDashboardProps {
@@ -809,6 +813,12 @@ export function AdminDashboard({
           transition={{ duration: 0.3 }}
         >
           {/* Layered Rendering Logic */}
+          <Suspense fallback={
+            activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
+            activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+            (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+            <DashboardHeroSkeleton />
+          }>
           {activeTab === 'create-test' ? (
             <CreateTestSeries
               onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
@@ -965,6 +975,7 @@ export function AdminDashboard({
               </>
 
           )}
+          </Suspense>
         </motion.div>
       </main>
 

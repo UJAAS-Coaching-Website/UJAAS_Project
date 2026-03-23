@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { checkCache, invalidateCache } from "../middleware/redisCache.js";
 import { authenticate } from "../middleware/auth.js";
 import {
     handleDeleteQuestionBankBatchLink,
@@ -34,8 +35,8 @@ const upload = multer({
 
 router.use(authenticate);
 
-router.get("/", handleGetQuestionBank);
-router.post("/upload", (req, res, next) => {
+router.get("/", checkCache(req => `questions:query:${JSON.stringify(req.query)}`, 3600), handleGetQuestionBank);
+router.post("/upload", invalidateCache(['questions:query:*']), (req, res, next) => {
     upload.single("file")(req, res, (error) => {
         if (error instanceof multer.MulterError) {
             if (error.code === "LIMIT_FILE_SIZE") {
@@ -54,6 +55,6 @@ router.post("/upload", (req, res, next) => {
         return handleUploadQuestionBankFile(req, res, next);
     });
 });
-router.delete("/:fileId/batches/:batchId", handleDeleteQuestionBankBatchLink);
+router.delete("/:fileId/batches/:batchId", invalidateCache(['questions:query:*']), handleDeleteQuestionBankBatchLink);
 
 export default router;
