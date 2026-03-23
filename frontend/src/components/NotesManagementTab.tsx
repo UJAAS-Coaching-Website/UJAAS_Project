@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Calendar, Plus,
@@ -59,6 +59,11 @@ interface NotesManagementTabProps {
 
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
+const NOTES_VIEW_PARAM = 'notesView';
+const NOTES_SUBJECT_PARAM = 'notesSubject';
+const NOTES_CHAPTER_ID_PARAM = 'notesChapterId';
+const NOTES_CHAPTER_NAME_PARAM = 'notesChapter';
+const NOTES_CONTENT_PARAM = 'notesContent';
 
 function parseDppCorrectAnswer(type: string, correctAnswer: string) {
   if (type === 'MCQ') {
@@ -129,6 +134,7 @@ export function NotesManagementTab({
   const [analyticsLoadingDppId, setAnalyticsLoadingDppId] = useState<string | null>(null);
   const [analyticsDpp, setAnalyticsDpp] = useState<{ id: string; title: string; analysis: ApiDppAnalysis } | null>(null);
   const [previewDpp, setPreviewDpp] = useState<ApiDpp | null>(null);
+  const hasRestoredFromUrlRef = useRef(false);
 
   const defaultSubjects = [
     { name: 'Physics', color: '#3b82f6' },
@@ -163,7 +169,7 @@ export function NotesManagementTab({
   const canManageStructure = !readOnly && isCurrentBatchActive && variant === 'admin';
   const canManageContent = !readOnly && isCurrentBatchActive && variant === 'faculty' && facultyMatchesSubject;
 
-  useEffect(() => {
+  const restoreNotesContext = useCallback(() => {
     if (!selectedBatch) return;
 
     try {
@@ -205,7 +211,110 @@ export function NotesManagementTab({
       console.error('Failed to restore notes context', error);
       localStorage.removeItem(NOTES_RETURN_CONTEXT_KEY);
     }
-  }, [selectedBatch, currentBatch?.id]);
+  }, [currentBatch?.id, selectedBatch]);
+
+  const restoreNotesContextFromUrl = useCallback(() => {
+    if (hasRestoredFromUrlRef.current) return;
+    if (!selectedBatch || !currentBatch?.id) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get(NOTES_VIEW_PARAM) as ('root' | 'subject' | 'chapter' | null);
+    if (!view) return;
+
+    const subject = params.get(NOTES_SUBJECT_PARAM) || undefined;
+    const chapterId = params.get(NOTES_CHAPTER_ID_PARAM) || undefined;
+    const chapterName = params.get(NOTES_CHAPTER_NAME_PARAM) || undefined;
+    const content = params.get(NOTES_CONTENT_PARAM) as ('notes' | 'dpps' | null);
+
+    if (subject) {
+      setSelectedSubject(subject);
+    }
+
+    if (view === 'chapter' && chapterId && chapterName) {
+      setSelectedChapterObj({
+        id: chapterId,
+        batch_id: currentBatch.id,
+        subject_name: subject || '',
+        name: chapterName,
+        order_index: 0,
+        created_at: new Date().toISOString(),
+      });
+      setCurrentView('chapter');
+      setActiveContentType(content || 'notes');
+      hasRestoredFromUrlRef.current = true;
+      return;
+    }
+
+    if (view === 'subject') {
+      setSelectedChapterObj(null);
+      setCurrentView('subject');
+      hasRestoredFromUrlRef.current = true;
+      return;
+    }
+
+    if (view === 'root') {
+      setSelectedChapterObj(null);
+      setSelectedSubject(null);
+      setCurrentView('root');
+      hasRestoredFromUrlRef.current = true;
+    }
+  }, [currentBatch?.id, selectedBatch]);
+
+  const syncNotesContextToUrl = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    if (currentView === 'root') {
+      params.delete(NOTES_VIEW_PARAM);
+      params.delete(NOTES_SUBJECT_PARAM);
+      params.delete(NOTES_CHAPTER_ID_PARAM);
+      params.delete(NOTES_CHAPTER_NAME_PARAM);
+      params.delete(NOTES_CONTENT_PARAM);
+    } else {
+      params.set(NOTES_VIEW_PARAM, currentView);
+      if (selectedSubject) {
+        params.set(NOTES_SUBJECT_PARAM, selectedSubject);
+      } else {
+        params.delete(NOTES_SUBJECT_PARAM);
+      }
+
+      if (currentView === 'chapter' && selectedChapterObj) {
+        params.set(NOTES_CHAPTER_ID_PARAM, selectedChapterObj.id);
+        params.set(NOTES_CHAPTER_NAME_PARAM, selectedChapterObj.name);
+        params.set(NOTES_CONTENT_PARAM, activeContentType);
+      } else {
+        params.delete(NOTES_CHAPTER_ID_PARAM);
+        params.delete(NOTES_CHAPTER_NAME_PARAM);
+        params.delete(NOTES_CONTENT_PARAM);
+      }
+    }
+
+    const next = `${url.pathname}?${params.toString()}`.replace(/\?$/, '');
+    window.history.replaceState(window.history.state, '', next);
+  }, [activeContentType, currentView, selectedChapterObj, selectedSubject]);
+
+  useEffect(() => {
+    restoreNotesContext();
+  }, [restoreNotesContext]);
+
+  useEffect(() => {
+    const handleContextEvent = () => restoreNotesContext();
+    window.addEventListener('storage', handleContextEvent);
+    window.addEventListener('ujaas-notes-return-context', handleContextEvent);
+    return () => {
+      window.removeEventListener('storage', handleContextEvent);
+      window.removeEventListener('ujaas-notes-return-context', handleContextEvent);
+    };
+  }, [restoreNotesContext]);
+
+  useEffect(() => {
+    restoreNotesContextFromUrl();
+  }, [restoreNotesContextFromUrl]);
+
+  useEffect(() => {
+    syncNotesContextToUrl();
+  }, [syncNotesContextToUrl]);
 
   // Load backend chapters whenever we view a subject
   useEffect(() => {

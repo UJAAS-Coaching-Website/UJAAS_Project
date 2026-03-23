@@ -567,6 +567,13 @@ function App() {
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const { batchSaveToast, setBatchSaveToast, showBatchToast } = useBatchSaveToast();
+  const handleStudentNotificationNavigate = useCallback((tab: 'home' | 'test-series', subTab?: string) => {
+    if (!user || user.role !== 'student') return;
+    setActiveTab(tab);
+    setStudentSubTab(subTab);
+    const path = subTab ? `/student/${tab}/${subTab}` : `/student/${tab}`;
+    window.history.pushState({ tab, subTab }, '', path);
+  }, [user]);
   const {
     notifications,
     handleMarkAsRead,
@@ -578,6 +585,7 @@ function App() {
       console.log("🌟 Review Notification Clicked! Triggering modal...");
       setReviewModalTrigger((prev) => prev + 1);
     },
+    onNavigate: handleStudentNotificationNavigate,
     persistNotifications: safeSetLocalStorage,
   });
 

@@ -14,6 +14,7 @@ export interface Notification {
   read: boolean;
   icon?: 'notes' | 'dpp' | 'award' | 'alert';
   isSticky?: boolean;
+  metadata?: Record<string, any>;
   onClick?: () => void;
 }
 
@@ -210,6 +211,7 @@ export function NotificationCenter({
                           }`}
                           onClick={() => {
                             if (notification.onClick) {
+                              onMarkAsRead(notification.id);
                               notification.onClick();
                               setIsOpen(false);
                             } else {

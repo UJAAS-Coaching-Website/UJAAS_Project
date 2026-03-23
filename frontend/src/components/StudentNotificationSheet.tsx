@@ -235,6 +235,7 @@ export function StudentNotificationSheet({
                             }`}
                             onClick={() => {
                               if (notification.onClick) {
+                                onMarkAsRead(notification.id);
                                 notification.onClick();
                                 setOpen(false);
                                 return;
@@ -247,6 +248,7 @@ export function StudentNotificationSheet({
 
                               event.preventDefault();
                               if (notification.onClick) {
+                                onMarkAsRead(notification.id);
                                 notification.onClick();
                                 setOpen(false);
                                 return;
