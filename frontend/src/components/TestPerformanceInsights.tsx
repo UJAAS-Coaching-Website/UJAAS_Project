@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Users,
@@ -59,12 +59,13 @@ export function TestPerformanceInsights({
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const searchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadAnalysis = async () => {
       setIsLoading(true);
       try {
-        const analysis = await fetchTestAnalysis(testId);
+        const analysis = await fetchTestAnalysis(testId, searchQuery);
         setPerformances(
           analysis.performances.map((perf) => ({
             studentId: perf.studentId,
@@ -91,16 +92,25 @@ export function TestPerformanceInsights({
       }
     };
 
-    void loadAnalysis();
-  }, [testId]);
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = window.setTimeout(() => {
+      void loadAnalysis();
+    }, 250);
+
+    return () => {
+      if (searchTimerRef.current) {
+        window.clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [testId, searchQuery]);
 
   const rankedPerformances = useMemo(() => {
     return [...performances].sort((a, b) => (a.rank || 0) - (b.rank || 0));
   }, [performances]);
 
-  const filteredPerformances = rankedPerformances.filter((p) =>
-    p.studentName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPerformances = rankedPerformances;
 
   const getSubmissionStatus = (submittedAt: string, timeSpentInSeconds: number) => {
     if (!scheduledDateTime) return null;

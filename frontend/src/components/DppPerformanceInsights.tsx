@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Users,
@@ -30,6 +30,7 @@ export function DppPerformanceInsights({
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const searchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const mapAnalysisToPerformances = (analysis: ApiDppAnalysis) => (
@@ -43,7 +44,7 @@ export function DppPerformanceInsights({
     );
 
     const loadAnalysis = async () => {
-      if (initialAnalysis && initialAnalysis.dppId === dppId) {
+      if (initialAnalysis && initialAnalysis.dppId === dppId && !searchQuery.trim()) {
         setPerformances(mapAnalysisToPerformances(initialAnalysis));
         setIsLoading(false);
         return;
@@ -51,7 +52,7 @@ export function DppPerformanceInsights({
 
       setIsLoading(true);
       try {
-        const analysis = await fetchDppAnalysis(dppId);
+        const analysis = await fetchDppAnalysis(dppId, searchQuery);
         setPerformances(mapAnalysisToPerformances(analysis));
       } catch (error) {
         console.error('Failed to load DPP analysis', error);
@@ -61,14 +62,21 @@ export function DppPerformanceInsights({
       }
     };
 
-    void loadAnalysis();
-  }, [dppId, initialAnalysis]);
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = window.setTimeout(() => {
+      void loadAnalysis();
+    }, 250);
 
-  const filteredPerformances = useMemo(() => {
-    return performances.filter((p) =>
-      p.studentName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [performances, searchQuery]);
+    return () => {
+      if (searchTimerRef.current) {
+        window.clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [dppId, initialAnalysis, searchQuery]);
+
+  const filteredPerformances = useMemo(() => performances, [performances]);
 
   const formatSubmissionTime = (submittedAt: string) => {
     const submittedDate = new Date(submittedAt);

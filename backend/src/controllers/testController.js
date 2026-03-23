@@ -371,7 +371,7 @@ export async function getTestAnalysis(req, res) {
             return res.status(403).json({ message: "forbidden: draft tests only visible to admin" });
         }
 
-        const performances = await getTestAttemptAnalysis(req.params.id);
+        const performances = await getTestAttemptAnalysis(req.params.id, req.query.search);
         return res.status(200).json({
             testId: req.params.id,
             performances,

@@ -153,7 +153,7 @@ export async function handleGetDppAnalysis(req, res) {
             }
         }
 
-        const analysis = await getDppAttemptAnalysis(req.params.id);
+        const analysis = await getDppAttemptAnalysis(req.params.id, req.query.search);
         return res.status(200).json(analysis);
     } catch (error) {
         console.error("handleGetDppAnalysis error:", error.message);

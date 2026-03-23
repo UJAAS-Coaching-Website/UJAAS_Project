@@ -231,8 +231,11 @@ export async function fetchDppAttemptQuestionExplanation(
     return request<ApiDppQuestionExplanation>(`/api/dpps/attempts/${attemptId}/questions/${questionId}/explanation`);
 }
 
-export async function fetchDppAnalysis(dppId: string): Promise<ApiDppAnalysis> {
-    return request<ApiDppAnalysis>(`/api/dpps/${dppId}/attempts/analysis`);
+export async function fetchDppAnalysis(dppId: string, search?: string): Promise<ApiDppAnalysis> {
+    const query = search && search.trim().length > 0
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : "";
+    return request<ApiDppAnalysis>(`/api/dpps/${dppId}/attempts/analysis${query}`);
 }
 
 export async function createDpp(payload: CreateDppPayload): Promise<ApiDpp> {

@@ -637,7 +637,8 @@ export async function getDppAttemptQuestionExplanationForUser(attemptId, questio
     };
 }
 
-export async function getDppAttemptAnalysis(dppId) {
+export async function getDppAttemptAnalysis(dppId, search) {
+    const searchTerm = search && String(search).trim() ? `%${String(search).trim()}%` : null;
     const result = await pool.query(`
         WITH question_counts AS (
             SELECT COUNT(*)::int AS total_questions
@@ -659,8 +660,9 @@ export async function getDppAttemptAnalysis(dppId) {
         JOIN users u ON u.id = da.student_id
         CROSS JOIN question_counts qc
         WHERE da.dpp_id = $1
+        ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
         ORDER BY da.submitted_at DESC, da.attempt_no DESC
-    `, [dppId]);
+    `, searchTerm ? [dppId, searchTerm] : [dppId]);
 
     const dppRow = await getDppRowById(dppId);
     const questions = await getQuestionsForDpp(dppId);

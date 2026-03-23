@@ -339,6 +339,9 @@ export async function submitMyAttempt(
     });
 }
 
-export async function fetchTestAnalysis(testId: string): Promise<ApiTestAnalysis> {
-    return request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis`);
+export async function fetchTestAnalysis(testId: string, search?: string): Promise<ApiTestAnalysis> {
+    const query = search && search.trim().length > 0
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : "";
+    return request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis${query}`);
 }

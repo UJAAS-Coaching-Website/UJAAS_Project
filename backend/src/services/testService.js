@@ -1029,7 +1029,8 @@ export async function getStudentAttemptResults(studentId) {
     }));
 }
 
-export async function getTestAttemptAnalysis(testId) {
+export async function getTestAttemptAnalysis(testId, search) {
+    const searchTerm = search && String(search).trim() ? `%${String(search).trim()}%` : null;
     const [allAttemptsResult, firstAttemptsResult] = await Promise.all([
         pool.query(`
             WITH submitted_attempts AS (
@@ -1040,6 +1041,7 @@ export async function getTestAttemptAnalysis(testId) {
                 JOIN users u ON u.id = ta.student_id
                 WHERE ta.test_id = $1
                   AND ta.submitted_at IS NOT NULL
+                  ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
             ),
             question_counts AS (
                 SELECT COUNT(*)::int AS total_questions
@@ -1066,7 +1068,7 @@ export async function getTestAttemptAnalysis(testId) {
             CROSS JOIN question_counts qc
             JOIN tests t ON t.id = sa.test_id
             ORDER BY sa.submitted_at DESC, sa.attempt_no DESC
-        `, [testId]),
+        `, searchTerm ? [testId, searchTerm] : [testId]),
         pool.query(`
             WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
             SELECT
@@ -1096,7 +1098,8 @@ export async function getTestAttemptAnalysis(testId) {
             LEFT JOIN question_counts qc
                 ON qc.test_id = fsa.test_id
             WHERE fsa.test_id = $1
-        `, [testId]),
+            ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
+        `, searchTerm ? [testId, searchTerm] : [testId]),
     ]);
 
     const allAttempts = await Promise.all(allAttemptsResult.rows.map(async (row) => ({

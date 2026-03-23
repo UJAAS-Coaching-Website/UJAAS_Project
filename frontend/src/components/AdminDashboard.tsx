@@ -114,6 +114,7 @@ interface AdminDashboardProps {
   subjectCatalog: import('../api/subjects').ApiSubject[];
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
   onRefreshFaculties: () => void;
+  onSearchStudents?: (query: string) => void;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -277,6 +278,7 @@ export function AdminDashboard({
   subjectCatalog,
   onRemoveSubjectFromBatch,
   onRefreshFaculties,
+  onSearchStudents,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
@@ -880,6 +882,7 @@ export function AdminDashboard({
                   onDeleteStudent={handleDeleteStudent}
                   onViewStudent={openStudentRatings}
                   renderStars={renderPerformanceStars}
+                  onSearchStudents={onSearchStudents}
                 />
               )}
               {adminSection === 'faculty' && (

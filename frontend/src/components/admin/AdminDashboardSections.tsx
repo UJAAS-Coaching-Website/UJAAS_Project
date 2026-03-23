@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight, Edit, Eye, Megaphone, MessageSquare, Plus, Trash2 } from 'lucide-react';
 
@@ -165,6 +165,7 @@ export function AdminStudentsDirectoryTab({
   onDeleteStudent,
   onViewStudent,
   renderStars,
+  onSearchStudents,
 }: {
   students: StudentDirectoryStudent[];
   onAddStudent: () => void;
@@ -172,14 +173,23 @@ export function AdminStudentsDirectoryTab({
   onDeleteStudent: (id: string) => void;
   onViewStudent: (student: StudentDirectoryStudent) => void;
   renderStars: (rating: number) => React.ReactNode;
+  onSearchStudents?: (query: string) => void;
 }) {
   const STUDENTS_PER_PAGE = 20;
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filtered = students
-    .filter((student) => student.name.toLowerCase().includes(query.toLowerCase()) || student.rollNumber.toLowerCase().includes(query.toLowerCase()))
+  useEffect(() => {
+    if (!onSearchStudents) return;
+    const timer = window.setTimeout(() => {
+      onSearchStudents(query);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [onSearchStudents, query]);
+
+  const filtered = (onSearchStudents ? students : students
+    .filter((student) => student.name.toLowerCase().includes(query.toLowerCase()) || student.rollNumber.toLowerCase().includes(query.toLowerCase())))
     .sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':

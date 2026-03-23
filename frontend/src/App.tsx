@@ -589,6 +589,16 @@ function App() {
     persistNotifications: safeSetLocalStorage,
   });
 
+  const handleSearchAdminStudents = useCallback(async (query: string) => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      const results = await apiFetchStudents(query);
+      setAdminStudents(results);
+    } catch (error) {
+      console.warn('Could not search students from API:', error);
+    }
+  }, [user]);
+
   const refreshAdminBatchDependencies = async () => {
     const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
       apiFetchBatches(),
@@ -1580,6 +1590,7 @@ function App() {
               selectedPreviewTest={selectedPreviewTest}
               subjectCatalog={adminSubjects}
               onRemoveSubjectFromBatch={handleRemoveSubjectFromBatch}
+              onSearchStudents={handleSearchAdminStudents}
             />
             </Suspense>
           </motion.div>

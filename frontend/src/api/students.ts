@@ -82,8 +82,11 @@ export interface UpdateStudentRatingPayload {
 
 // ── API functions ──────────────────────────────────────
 
-export async function fetchStudents(): Promise<ApiStudent[]> {
-    return request<ApiStudent[]>("/api/students");
+export async function fetchStudents(search?: string): Promise<ApiStudent[]> {
+    const query = search && search.trim().length > 0
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : "";
+    return request<ApiStudent[]>(`/api/students${query}`);
 }
 
 export async function fetchStudent(id: string): Promise<ApiStudent> {
