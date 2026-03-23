@@ -18,6 +18,7 @@ import {
 } from "../services/testService.js";
 import { deleteAllImagesForContext } from "../services/storageService.js";
 import { createMultiBatchNotification } from "../services/notificationService.js";
+import { getDeviceIdFromRequest } from "../utils/device.js";
 
 function isPositiveNumber(value) {
     return Number.isFinite(Number(value)) && Number(value) > 0;
@@ -93,7 +94,7 @@ export async function handleCreateTest(req, res) {
             status: status || 'upcoming',
             batchIds,
             questions,
-            createdBy: req.user?.id || null,
+            createdBy: req.user?.sub || null,
         });
 
         // Trigger Notification if not a draft
@@ -262,7 +263,8 @@ export async function getMyTestAttemptSummary(req, res) {
 
 export async function startMyTestAttempt(req, res) {
     try {
-        const payload = await startOrResumeStudentAttempt(req.params.id, req.user.sub);
+        const deviceId = getDeviceIdFromRequest(req);
+        const payload = await startOrResumeStudentAttempt(req.params.id, req.user.sub, deviceId);
         if (!payload) {
             return res.status(404).json({ message: "test not found" });
         }
@@ -274,6 +276,15 @@ export async function startMyTestAttempt(req, res) {
         if (error?.code === "TEST_NOT_LIVE") {
             return res.status(409).json({ message: "test is not live" });
         }
+        if (error?.code === "SESSION_ACTIVE_OTHER_DEVICE") {
+            return res.status(409).json({ message: "session active on another device" });
+        }
+        if (error?.code === "ANOTHER_TEST_ACTIVE") {
+            return res.status(409).json({ message: "another test is already active. finish it before starting a new one." });
+        }
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
         console.error("startMyTestAttempt error:", error.message);
         return res.status(500).json({ message: "failed to start attempt", error: error.message });
     }
@@ -281,12 +292,19 @@ export async function startMyTestAttempt(req, res) {
 
 export async function saveMyAttemptProgress(req, res) {
     try {
-        const attempt = await saveStudentAttemptProgress(req.params.attemptId, req.user.sub, req.body?.answers || {});
+        const deviceId = getDeviceIdFromRequest(req);
+        const attempt = await saveStudentAttemptProgress(req.params.attemptId, req.user.sub, req.body?.answers || {}, deviceId);
         if (!attempt) {
             return res.status(404).json({ message: "active attempt not found" });
         }
         return res.status(200).json(attempt);
     } catch (error) {
+        if (error?.code === "SESSION_ACTIVE_OTHER_DEVICE") {
+            return res.status(409).json({ message: "session active on another device" });
+        }
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
         console.error("saveMyAttemptProgress error:", error.message);
         return res.status(500).json({ message: "failed to save attempt progress", error: error.message });
     }
@@ -294,15 +312,23 @@ export async function saveMyAttemptProgress(req, res) {
 
 export async function submitMyAttempt(req, res) {
     try {
+        const deviceId = getDeviceIdFromRequest(req);
         const result = await submitStudentAttempt(req.params.attemptId, req.user.sub, {
             answers: req.body?.answers || {},
             autoSubmitted: Boolean(req.body?.autoSubmitted),
+            deviceId,
         });
         if (!result) {
             return res.status(404).json({ message: "active attempt not found" });
         }
         return res.status(200).json(result);
     } catch (error) {
+        if (error?.code === "SESSION_ACTIVE_OTHER_DEVICE") {
+            return res.status(409).json({ message: "session active on another device" });
+        }
+        if (error?.code === "DEVICE_ID_REQUIRED") {
+            return res.status(400).json({ message: "device id required" });
+        }
         console.error("submitMyAttempt error:", error.message);
         return res.status(500).json({ message: "failed to submit attempt", error: error.message });
     }
@@ -345,7 +371,7 @@ export async function getTestAnalysis(req, res) {
             return res.status(403).json({ message: "forbidden: draft tests only visible to admin" });
         }
 
-        const performances = await getTestAttemptAnalysis(req.params.id);
+        const performances = await getTestAttemptAnalysis(req.params.id, req.query.search);
         return res.status(200).json({
             testId: req.params.id,
             performances,

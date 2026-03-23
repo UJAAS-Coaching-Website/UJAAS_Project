@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent, type FormEvent } from 'react';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 import { createPortal } from 'react-dom';
 import { User, LandingData, Tab } from '../App';
 import {
@@ -38,18 +39,19 @@ import {
   Loader2
 } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
-import UploadNoticeModal from './UploadNoticeModal';
+const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
 import { triggerReviewSession } from '../api/facultyReviews';
-import { StudentRating } from './StudentRating';
-import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { AdminProfile } from './AdminProfile';
+const StudentRating = lazy(() => import('./StudentRating').then(m => ({ default: m.StudentRating })));
+const StudentRankingsEnhanced = lazy(() => import('./StudentRankingsEnhanced').then(m => ({ default: m.StudentRankingsEnhanced })));
+const AdminProfile = lazy(() => import('./AdminProfile').then(m => ({ default: m.AdminProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { CreateTestSeries } from './CreateTestSeries';
-import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { TestPreviewAndReview } from './TestPreviewAndReview';
+const CreateTestSeries = lazy(() => import('./CreateTestSeries').then(m => ({ default: m.CreateTestSeries })));
+import type { StudentPerformance } from './TestPerformanceInsights';
+const TestPerformanceInsights = lazy(() => import('./TestPerformanceInsights').then(m => ({ default: m.TestPerformanceInsights })));
+const TestPreviewAndReview = lazy(() => import('./TestPreviewAndReview').then(m => ({ default: m.TestPreviewAndReview })));
 import { fetchTestAnalysis, fetchTests, forceTestLiveNow as apiForceTestLiveNow } from '../api/tests';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
@@ -62,7 +64,10 @@ import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
-import { AdminBatchSelectionTab, AdminQueriesManagementTab, AdminStudentsDirectoryTab } from './admin/AdminDashboardSections';
+const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminBatchSelectionTab })));
+const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
+const AdminStudentsDirectoryTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminStudentsDirectoryTab })));
+import { formatIndianMobileInput } from '../utils/phone';
 
 interface AdminDashboardProps {
   user: User;
@@ -114,10 +119,11 @@ interface AdminDashboardProps {
   subjectCatalog: import('../api/subjects').ApiSubject[];
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
   onRefreshFaculties: () => void;
+  onSearchStudents?: (query: string) => void;
 }
 
-export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
@@ -277,6 +283,7 @@ export function AdminDashboard({
   subjectCatalog,
   onRemoveSubjectFromBatch,
   onRefreshFaculties,
+  onSearchStudents,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
@@ -284,9 +291,9 @@ export function AdminDashboard({
     const subjectValues = Object.values(subjectRatings);
     const overallFromSubjects = subjectValues.length > 0
       ? subjectValues.reduce((acc: number, curr: any) => {
-          const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
-          return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
-        }, 0) / subjectValues.length
+        const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
+        return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+      }, 0) / subjectValues.length
       : null;
 
     return {
@@ -319,6 +326,7 @@ export function AdminDashboard({
     designation: f.designation,
     phone: f.phone,
     rating: f.rating,
+    reviewCount: Number(f.reviewCount ?? f.review_count ?? 0),
     joinDate: f.joining_date
   }));
   const subjectOptions = Array.from(new Set([
@@ -376,7 +384,6 @@ export function AdminDashboard({
     query: null
   });
 
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
 
   const fallbackForceTestLiveNow = async (testId: string): Promise<import('../App').PublishedTest> => {
@@ -385,33 +392,33 @@ export function AdminDashboard({
 
     const fallbackUpdatedTest: import('../App').PublishedTest = existing
       ? {
-          ...existing,
-          status: 'live',
-          scheduleDate: updated.schedule_date || existing.scheduleDate,
-          scheduleTime: updated.schedule_time || existing.scheduleTime,
-        }
+        ...existing,
+        status: 'live',
+        scheduleDate: updated.schedule_date || existing.scheduleDate,
+        scheduleTime: updated.schedule_time || existing.scheduleTime,
+      }
       : {
-          id: updated.id,
-          title: updated.title,
-          format: updated.format || 'Custom',
-          batches: updated.batches.map((batch) => batch.name),
-          duration: updated.duration_minutes,
-          totalMarks: updated.total_marks,
-          questionCount: updated.question_count,
-          enrolledCount: updated.enrolled_count,
-          scheduleDate: updated.schedule_date || '',
-          scheduleTime: updated.schedule_time || '',
-          questions: [],
-          instructions: updated.instructions || undefined,
-          status: updated.status,
-          submittedAttemptCount: updated.submitted_attempt_count,
-          maxAttempts: updated.submitted_attempt_count !== undefined ? 3 : undefined,
-          hasActiveAttempt: updated.has_active_attempt,
-          activeAttemptId: updated.active_attempt_id ?? null,
-          latestAttemptId: updated.latest_attempt_id ?? null,
-          latestAttemptSubmittedAt: updated.latest_attempt_submitted_at ?? null,
-          latestAttemptTimeSpent: updated.latest_attempt_time_spent ?? null,
-        };
+        id: updated.id,
+        title: updated.title,
+        format: updated.format || 'Custom',
+        batches: updated.batches.map((batch) => batch.name),
+        duration: updated.duration_minutes,
+        totalMarks: updated.total_marks,
+        questionCount: updated.question_count,
+        enrolledCount: updated.enrolled_count,
+        scheduleDate: updated.schedule_date || '',
+        scheduleTime: updated.schedule_time || '',
+        questions: [],
+        instructions: updated.instructions || undefined,
+        status: updated.status,
+        submittedAttemptCount: updated.submitted_attempt_count,
+        maxAttempts: updated.submitted_attempt_count !== undefined ? 3 : undefined,
+        hasActiveAttempt: updated.has_active_attempt,
+        activeAttemptId: updated.active_attempt_id ?? null,
+        latestAttemptId: updated.latest_attempt_id ?? null,
+        latestAttemptSubmittedAt: updated.latest_attempt_submitted_at ?? null,
+        latestAttemptTimeSpent: updated.latest_attempt_time_spent ?? null,
+      };
 
     return fallbackUpdatedTest;
   };
@@ -800,7 +807,7 @@ export function AdminDashboard({
       </nav>
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className={`footer-reveal-main w-full flex-grow ${performanceInsightsTestId ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         <motion.div
           key={`${selectedBatch || adminSection}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}
@@ -808,149 +815,169 @@ export function AdminDashboard({
           transition={{ duration: 0.3 }}
         >
           {/* Layered Rendering Logic */}
-          {activeTab === 'create-test' ? (
-            <CreateTestSeries
-              onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
-              batches={batches.filter((batch) => batch.is_active)}
-              onPublish={onPublishTest}
-              onSaveDraft={onSaveDraft}
-              resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
-            />
-          ) : performanceInsightsTestId ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
-              {(() => {
-                const test = publishedTests.find(t => t.id === performanceInsightsTestId);
-                const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
-                return (
-                  <TestPerformanceInsights
-                    testId={performanceInsightsTestId}
-                    testTitle={test?.title || ''}
-                    scheduledDateTime={scheduledDateTime}
-                    testQuestions={test?.questions}
-                    testDuration={test?.duration}
-                    testInstructions={test?.instructions}
-                    onClose={() => setPerformanceInsightsTestId(null)}
-                  />
-                );
-              })()}
-            </div>
-          ) : activeTab === 'preview-test' && selectedPreviewTest ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
-              <TestPreviewAndReview
-                testId={selectedPreviewTest.id}
-                testTitle={selectedPreviewTest.title}
-                duration={selectedPreviewTest.duration}
-                questions={selectedPreviewTest.questions}
-                onSubmit={() => onNavigate('test-series')}
-                onExit={() => onNavigate('test-series')}
-                onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
-                  await onUpdatePublishedTest(testId, {
-                    questions: updatedQuestions,
-                    title: updatedTitle,
-                    batches: updatedBatches
-                  });
-                }}
-                isPreview={true}
-                availableBatches={batches.filter((batch) => batch.is_active)}
-                initialBatches={selectedPreviewTest.batches}
+          <Suspense fallback={
+            activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
+              activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+                (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+                  <DashboardHeroSkeleton />
+          }>
+            {activeTab === 'create-test' ? (
+              <CreateTestSeries
+                onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
+                batches={batches.filter((batch) => batch.is_active)}
+                onPublish={onPublishTest}
+                onSaveDraft={onSaveDraft}
+                resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
               />
-            </div>
-          ) : activeTab === 'profile' ? (
-            <AdminProfile user={user} onLogout={onLogout} />
-          ) : !selectedBatch ? (
-            /* GLOBAL CONTEXT */
-            <>
-              {adminSection === 'landing' && (
-                <LandingManagementTab
-                  data={landingData}
-                  onUpdate={onUpdateLandingData}
+            ) : performanceInsightsTestId ? (
+              <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
+                {(() => {
+                  const test = publishedTests.find(t => t.id === performanceInsightsTestId);
+                  const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
+                  return (
+                    <TestPerformanceInsights
+                      testId={performanceInsightsTestId}
+                      testTitle={test?.title || ''}
+                      scheduledDateTime={scheduledDateTime}
+                      testQuestions={test?.questions}
+                      testDuration={test?.duration}
+                      testInstructions={test?.instructions}
+                      onClose={() => setPerformanceInsightsTestId(null)}
+                    />
+                  );
+                })()}
+              </div>
+            ) : activeTab === 'preview-test' && selectedPreviewTest ? (
+              <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
+                <TestPreviewAndReview
+                  testId={selectedPreviewTest.id}
+                  testTitle={selectedPreviewTest.title}
+                  duration={selectedPreviewTest.duration}
+                  questions={selectedPreviewTest.questions}
+                  onSubmit={() => onNavigate('test-series')}
+                  onExit={() => onNavigate('test-series')}
+                  onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                    await onUpdatePublishedTest(testId, {
+                      questions: updatedQuestions,
+                      title: updatedTitle,
+                      batches: updatedBatches
+                    });
+                  }}
+                  isPreview={true}
+                  availableBatches={batches.filter((batch) => batch.is_active)}
+                  initialBatches={selectedPreviewTest.batches}
                 />
-              )}
-              {adminSection === 'batches' && (
-                <AdminBatchSelectionTab
-                  batches={batches}
-                  onSelectBatch={onSelectBatch}
-                  onAddBatch={openAddBatch}
-                  onUploadNotice={() => setIsNoticeModalOpen(true)}
-                />
-              )}
-              {adminSection === 'students' && (
-                <AdminStudentsDirectoryTab
-                  students={students}
-                  onAddStudent={() => openAddStudent(null)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={handleDeleteStudent}
-                  onViewStudent={openStudentRatings}
-                  renderStars={renderPerformanceStars}
-                />
-              )}
-              {adminSection === 'faculty' && (
-                <FacultyDirectoryTab
-                  faculty={faculty}
-                  onAddFaculty={openAddFaculty}
-                  onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
-                  onEditFaculty={openEditFaculty}
-                  onDeleteFaculty={handleDeleteFaculty}
-                  onRefreshFaculty={onRefreshFaculties}
-                />
-              )}
-              {adminSection === 'test-series' && (
-                <TestSeriesManagementTab
-                  onNavigate={onNavigate}
-                  selectedBatch={null as unknown as Batch}
-                  onChangeBatch={() => { }}
-                  publishedTests={publishedTests}
-                  onPreviewTest={onPreviewTest}
-                  onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
-                  onDeletePublishedTest={onDeletePublishedTest}
-                  onForceTestLiveNow={onForceTestLiveNow ?? fallbackForceTestLiveNow}
-                  onResumeDraft={onResumeDraft}
-                />
-              )}
-              {adminSection === 'queries' && (
-                <AdminQueriesManagementTab
-                  queries={queries}
-                  onViewQuery={openQueryDetails}
-                  onDeleteQuery={handleDeleteQuery}
-                />
-              )}
-            </>
-          ) : (
-            /* BATCH CONTEXT */
-            <>
-              {activeTab === 'home' && (
-                <OverviewTab
-                  selectedBatch={selectedBatch}
-                  onEditBatch={openEditBatch}
-                  onPermanentDeleteBatch={openPermanentDeleteModal}
-                  students={students}
-                  faculty={faculty}
-                  batches={batches}
-                  onNavigate={onNavigate}
-                  onClearBatch={onClearBatch}
-                  onViewTimetable={() => setShowFullTimetable(true)}
-                  onUpdateBatch={onUpdateBatch}
+              </div>
+            ) : activeTab === 'profile' ? (
+              <AdminProfile user={user} onLogout={onLogout} />
+            ) : activeTab === 'notices' ? (
+              <NoticesManagement
+                batches={batches.map((b) => ({
+                  id: b.id || '',
+                  name: b.label,
+                  slug: b.slug,
+                  is_active: b.is_active !== false,
+                  subjects: b.subjects,
+                }) as ApiBatch)}
+                userRole="admin"
+                onBack={() => onNavigate('home')}
+              />
+            ) : !selectedBatch ? (
+              /* GLOBAL CONTEXT */
+              <>
+                {adminSection === 'landing' && (
+                  <LandingManagementTab
+                    data={landingData}
+                    onUpdate={onUpdateLandingData}
+                  />
+                )}
+                {adminSection === 'batches' && (
+                  <AdminBatchSelectionTab
+                    batches={batches}
+                    onSelectBatch={onSelectBatch}
+                    onAddBatch={openAddBatch}
+                    onOpenNotices={() => onNavigate('notices')}
+                  />
+                )}
+                {adminSection === 'students' && (
+                  <AdminStudentsDirectoryTab
+                    students={students}
+                    onAddStudent={() => openAddStudent(null)}
+                    onEditStudent={openEditStudent}
+                    onDeleteStudent={handleDeleteStudent}
+                    onViewStudent={openStudentRatings}
+                    renderStars={renderPerformanceStars}
+                    onSearchStudents={onSearchStudents}
+                  />
+                )}
+                {adminSection === 'faculty' && (
+                  <FacultyDirectoryTab
+                    faculty={faculty}
+                    onAddFaculty={openAddFaculty}
+                    onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
+                    onEditFaculty={openEditFaculty}
+                    onDeleteFaculty={handleDeleteFaculty}
+                    onRefreshFaculty={onRefreshFaculties}
+                  />
+                )}
+                {adminSection === 'test-series' && (
+                  <TestSeriesManagementTab
+                    onNavigate={onNavigate}
+                    selectedBatch={null as unknown as Batch}
+                    onChangeBatch={() => { }}
+                    publishedTests={publishedTests}
+                    onPreviewTest={onPreviewTest}
+                    onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
+                    onDeletePublishedTest={onDeletePublishedTest}
+                    onForceTestLiveNow={onForceTestLiveNow ?? fallbackForceTestLiveNow}
+                    onResumeDraft={onResumeDraft}
+                  />
+                )}
+                {adminSection === 'queries' && (
+                  <AdminQueriesManagementTab
+                    queries={queries}
+                    onViewQuery={openQueryDetails}
+                    onDeleteQuery={handleDeleteQuery}
+                  />
+                )}
+              </>
+            ) : (
+              /* BATCH CONTEXT */
+              <>
+                {activeTab === 'home' && (
+                  <OverviewTab
+                    selectedBatch={selectedBatch}
+                    onEditBatch={openEditBatch}
+                    onPermanentDeleteBatch={openPermanentDeleteModal}
+                    students={students}
+                    faculty={faculty}
+                    batches={batches}
+                    onNavigate={onNavigate}
+                    onClearBatch={onClearBatch}
+                    onViewTimetable={() => setShowFullTimetable(true)}
+                    onUpdateBatch={onUpdateBatch}
                     subjectCatalog={subjectCatalog}
                     onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
                   />
-              )}
-              {activeTab === 'students' && (
-                <StudentsTab
-                  students={students}
-                  selectedBatch={selectedBatch}
-                  onChangeBatch={onClearBatch}
-                  onAddStudent={() => openBatchStudentPicker(selectedBatch)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
-                  onViewStudent={openStudentRatings}
-                  isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
-                />
-              )}
-              {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
-              {activeTab === 'rankings' && <StudentRankingsEnhanced />}
+                )}
+                {activeTab === 'students' && (
+                  <StudentsTab
+                    students={students}
+                    selectedBatch={selectedBatch}
+                    onChangeBatch={onClearBatch}
+                    onAddStudent={() => openBatchStudentPicker(selectedBatch)}
+                    onEditStudent={openEditStudent}
+                    onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
+                    onViewStudent={openStudentRatings}
+                    isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
+                  />
+                )}
+                {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
+                {activeTab === 'rankings' && <StudentRankingsEnhanced />}
               </>
 
-          )}
+            )}
+          </Suspense>
         </motion.div>
       </main>
 
@@ -969,15 +996,15 @@ export function AdminDashboard({
           onSubmit={handleSaveStudent}
         />
 
-          <AddFacultyModal
-            open={facultyModal.open}
-            onClose={closeFacultyModal}
-            initialData={facultyModal.initialData}
-            title={facultyModal.title}
-            onSubmit={handleSaveFaculty}
-            isInitialEditing={facultyModal.isEditing}
-            subjectOptions={subjectOptions}
-          />
+        <AddFacultyModal
+          open={facultyModal.open}
+          onClose={closeFacultyModal}
+          initialData={facultyModal.initialData}
+          title={facultyModal.title}
+          onSubmit={handleSaveFaculty}
+          isInitialEditing={facultyModal.isEditing}
+          subjectOptions={subjectOptions}
+        />
 
         <BatchFormModal
           open={batchModal.open}
@@ -1008,17 +1035,6 @@ export function AdminDashboard({
           onAssign={handleAssignExistingStudentToBatch}
         />
 
-        <UploadNoticeModal
-          isOpen={isNoticeModalOpen}
-          onClose={() => setIsNoticeModalOpen(false)}
-          batches={batches.map(b => ({
-            id: b.id || '',
-            name: b.label,
-            slug: b.slug,
-            is_active: b.isActive !== false
-          }))}
-          userRole="admin"
-        />
         <AnimatePresence>
           {ratingModal.open && (
             <StudentRatingsModal
@@ -1106,11 +1122,10 @@ export function AdminDashboard({
                           <button
                             key={s}
                             onClick={() => handleQueryStatusChange(queryModal.query!.id, s)}
-                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                              queryModal.query?.status === s
+                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${queryModal.query?.status === s
                                 ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
+                              }`}
                           >
                             {s.charAt(0).toUpperCase() + s.slice(1)}
                           </button>
@@ -1194,6 +1209,90 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const saveStatusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isActionPending = (action: string) => pendingAction === action;
   const isActionInFlight = pendingAction !== null;
+  const subjectOptions = Array.from(new Set([
+    ...(data.courses || []).map((c) => c.name),
+    ...(data.faculty || []).map((f) => f.subject),
+  ]))
+    .map((subject) => subject.trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  const [newFacultyImageFile, setNewFacultyImageFile] = useState<File | null>(null);
+  const [newFacultyPreview, setNewFacultyPreview] = useState<string>('');
+  const newFacultyInputRef = useRef<HTMLInputElement>(null);
+
+  const [editFacultyImageFile, setEditFacultyImageFile] = useState<File | null>(null);
+  const [editFacultyPreview, setEditFacultyPreview] = useState<string>('');
+  const [editFacultyImageRemoved, setEditFacultyImageRemoved] = useState(false);
+  const editFacultyInputRef = useRef<HTMLInputElement>(null);
+
+  const [newAchieverImageFile, setNewAchieverImageFile] = useState<File | null>(null);
+  const [newAchieverPreview, setNewAchieverPreview] = useState<string>('');
+  const newAchieverInputRef = useRef<HTMLInputElement>(null);
+
+  const [newVisionImageFile, setNewVisionImageFile] = useState<File | null>(null);
+  const [newVisionPreview, setNewVisionPreview] = useState<string>('');
+  const newVisionInputRef = useRef<HTMLInputElement>(null);
+
+  const [editVisionImageFile, setEditVisionImageFile] = useState<File | null>(null);
+  const [editVisionPreview, setEditVisionPreview] = useState<string>('');
+  const [editVisionImageRemoved, setEditVisionImageRemoved] = useState(false);
+  const editVisionInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+      if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
+      if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+      if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+      if (editVisionPreview.startsWith('blob:')) URL.revokeObjectURL(editVisionPreview);
+    };
+  }, [newFacultyPreview, editFacultyPreview, newAchieverPreview, newVisionPreview, editVisionPreview]);
+
+  useEffect(() => {
+    if (!isAddingFaculty) {
+      setNewFacultyImageFile(null);
+      setNewFacultyPreview('');
+    }
+  }, [isAddingFaculty]);
+
+  useEffect(() => {
+    if (!isAddingAchiever) {
+      setNewAchieverImageFile(null);
+      setNewAchieverPreview('');
+    }
+  }, [isAddingAchiever]);
+
+  useEffect(() => {
+    if (!isAddingVision) {
+      setNewVisionImageFile(null);
+      setNewVisionPreview('');
+    }
+  }, [isAddingVision]);
+
+  useEffect(() => {
+    if (editingFacultyIndex === null) {
+      setEditFacultyImageFile(null);
+      setEditFacultyPreview('');
+      setEditFacultyImageRemoved(false);
+      return;
+    }
+    setEditFacultyImageFile(null);
+    setEditFacultyImageRemoved(false);
+    setEditFacultyPreview(data.faculty[editingFacultyIndex]?.image || '');
+  }, [editingFacultyIndex, data.faculty]);
+
+  useEffect(() => {
+    if (editingVisionIndex === null) {
+      setEditVisionImageFile(null);
+      setEditVisionPreview('');
+      setEditVisionImageRemoved(false);
+      return;
+    }
+    setEditVisionImageFile(null);
+    setEditVisionImageRemoved(false);
+    setEditVisionPreview(data.visions[editingVisionIndex]?.image || '');
+  }, [editingVisionIndex, data.visions]);
 
   const runLandingAction = async <T,>(action: string, task: () => Promise<T>) => {
     setPendingAction(action);
@@ -1244,7 +1343,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       window.alert('Image is too large. Please upload an image smaller than 600 KB.');
       return null;
     }
-    
+
     setIsSaving(true);
     try {
       return await uploadLandingImage(file, itemRole);
@@ -1289,12 +1388,14 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newFacultyImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'faculty');
       if (url === null) return false;
-      
+
       const saved = await safeUpdate({
         ...data,
         faculty: [...data.faculty, {
@@ -1307,6 +1408,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingFaculty(false);
+        setNewFacultyImageFile(null);
+        setNewFacultyPreview('');
       }
       return saved;
     });
@@ -1317,12 +1420,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     if (editingFacultyIndex === null) return;
     await runLandingAction('update-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
       const existing = data.faculty[editingFacultyIndex].image;
-      
+
       let url = existing;
-      if (file && file.size > 0) {
-        const uploaded = await uploadAndGetUrl(file, 'faculty');
+      if (editFacultyImageRemoved && !editFacultyImageFile) {
+        window.alert('Please upload a new image.');
+        return false;
+      }
+      if (editFacultyImageFile) {
+        const uploaded = await uploadAndGetUrl(editFacultyImageFile, 'faculty');
         if (uploaded === null) return false;
         url = uploaded;
         await conditionallyDeleteImage(existing);
@@ -1339,6 +1445,9 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       const saved = await safeUpdate({ ...data, faculty: next });
       if (saved) {
         setEditingFacultyIndex(null);
+        setEditFacultyImageFile(null);
+        setEditFacultyPreview('');
+        setEditFacultyImageRemoved(false);
       }
       return saved;
     });
@@ -1348,12 +1457,14 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-achiever', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newAchieverImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'achiever');
       if (url === null) return false;
-      
+
       const saved = await safeUpdate({
         ...data,
         achievers: [...data.achievers, {
@@ -1365,6 +1476,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingAchiever(false);
+        setNewAchieverImageFile(null);
+        setNewAchieverPreview('');
       }
       return saved;
     });
@@ -1374,9 +1487,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-vision', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newVisionImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'vision');
       if (url === null) return false;
 
@@ -1392,6 +1507,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingVision(false);
+        setNewVisionImageFile(null);
+        setNewVisionPreview('');
       }
       return saved;
     });
@@ -1402,12 +1519,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     if (editingVisionIndex === null) return;
     await runLandingAction('update-vision', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
       const existing = data.visions[editingVisionIndex].image;
 
       let url = existing;
-      if (file && file.size > 0) {
-        const uploaded = await uploadAndGetUrl(file, 'vision');
+      if (editVisionImageRemoved && !editVisionImageFile) {
+        window.alert('Please upload a new image.');
+        return false;
+      }
+      if (editVisionImageFile) {
+        const uploaded = await uploadAndGetUrl(editVisionImageFile, 'vision');
         if (uploaded === null) return false;
         url = uploaded;
         await conditionallyDeleteImage(existing);
@@ -1424,6 +1544,9 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       const saved = await safeUpdate({ ...data, visions: next });
       if (saved) {
         setEditingVisionIndex(null);
+        setEditVisionImageFile(null);
+        setEditVisionPreview('');
+        setEditVisionImageRemoved(false);
       }
       return saved;
     });
@@ -1474,38 +1597,159 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             {isAddingFaculty ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingFaculty ? 'Cancel' : 'Add Faculty'}
           </button>
         </div>
-          {isAddingFaculty && (
-            <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                {subjectOptions.map((subject) => (
+        {isAddingFaculty && (
+          <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+              {subjectOptions.map((subject) => (
+                <option key={subject} value={subject}>{subject}</option>
+              ))}
+            </select>
+            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newFacultyPreview ? (
+                  <img src={newFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newFacultyInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newFacultyPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newFacultyPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                        setNewFacultyPreview('');
+                        setNewFacultyImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {!newFacultyPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={newFacultyInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                  setNewFacultyImageFile(file);
+                  setNewFacultyPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
+            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
+          </form>
+        )}
+        {editingFacultyIndex !== null && (
+          <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+              {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
+                .map((subject) => subject.trim())
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b))
+                .map((subject) => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
-              </select>
-              <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="imageFile" type="file" accept="image/*" required className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
-              <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
-            </form>
-          )}
-          {editingFacultyIndex !== null && (
-            <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
-                  .map((subject) => subject.trim())
-                  .filter(Boolean)
-                  .sort((a, b) => a.localeCompare(b))
-                  .map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-              <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
-              <div className="md:col-span-2 flex gap-3">
+            </select>
+            <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {!editFacultyPreview && !editFacultyImageRemoved ? (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                ) : editFacultyPreview ? (
+                  <img src={editFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    Image removed
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editFacultyInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {editFacultyPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {editFacultyPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditFacultyImageRemoved(true);
+                        setEditFacultyPreview('');
+                        setEditFacultyImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {editFacultyImageRemoved && (
+                    <p className="text-xs text-red-500">Please upload a new image to continue.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={editFacultyInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
+                  setEditFacultyImageFile(file);
+                  setEditFacultyPreview(URL.createObjectURL(file));
+                  setEditFacultyImageRemoved(false);
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
+            <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-faculty') ? 'Updating...' : 'Update'}</button>
               <button type="button" onClick={() => setEditingFacultyIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
             </div>
@@ -1556,7 +1800,65 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="year" placeholder="Year (optional)" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Achiever Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newAchieverPreview ? (
+                  <img src={newAchieverPreview} alt="Achiever preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newAchieverInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newAchieverPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newAchieverPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+                        setNewAchieverPreview('');
+                        setNewAchieverImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {!newAchieverPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={newAchieverInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+                  setNewAchieverImageFile(file);
+                  setNewAchieverPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
             <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-achiever') ? 'Adding Achiever...' : 'Save'}</button>
           </form>
         )}
@@ -1608,7 +1910,62 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <textarea name="vision" required placeholder="Vision Text" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Square Image</label>
-              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newVisionPreview ? (
+                  <img src={newVisionPreview} alt="Vision preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newVisionInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newVisionPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newVisionPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+                        setNewVisionPreview('');
+                        setNewVisionImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {!newVisionPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={newVisionInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+                  setNewVisionImageFile(file);
+                  setNewVisionPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
             </div>
             <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-vision') ? 'Saving Vision Tile...' : 'Save Vision Tile'}</button>
           </form>
@@ -1619,8 +1976,64 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="designation" required defaultValue={data.visions[editingVisionIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image (Optional)</label>
-              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {editVisionPreview ? (
+                  <img src={editVisionPreview} alt="Vision preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    {editVisionImageRemoved ? 'Image removed' : 'No image'}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editVisionInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {editVisionPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {editVisionPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditVisionImageRemoved(true);
+                        setEditVisionPreview('');
+                        setEditVisionImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {editVisionImageRemoved && (
+                    <p className="text-xs text-red-500">Please upload a new image to continue.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={editVisionInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (editVisionPreview.startsWith('blob:')) URL.revokeObjectURL(editVisionPreview);
+                  setEditVisionImageFile(file);
+                  setEditVisionPreview(URL.createObjectURL(file));
+                  setEditVisionImageRemoved(false);
+                }}
+                disabled={isActionInFlight}
+              />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-vision') ? 'Updating Vision Tile...' : 'Update Vision Tile'}</button>
@@ -1775,8 +2188,8 @@ function OverviewTab({
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
           <div>
-          <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
-          <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
+            <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
+            <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -2016,8 +2429,8 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
           <p className="text-gray-500">Manage all faculties and subject experts</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button 
-            onClick={handleTriggerReview} 
+          <button
+            onClick={handleTriggerReview}
             disabled={isTriggering}
             className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold shadow-sm flex items-center gap-2 hover:bg-orange-50 transition disabled:opacity-50"
           >
@@ -2137,93 +2550,93 @@ function TestSeriesManagementTab({
           {publishedTests.map((originalTest) => {
             const test = testOverrides[originalTest.id] || originalTest;
             return (
-            <div key={test.id} className="h-full">
-            <div
-              onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
-              className={`h-full bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
-                <div className="flex items-center gap-2">
-                  {test.status === 'draft' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200">Draft</span>
-                  )}
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
-                    test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                    }`}>{test.format}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete Test Series"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
-              <div className="space-y-2 mb-6 flex-1">
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{test.scheduleDate ? new Date(test.scheduleDate).toLocaleDateString() : 'No date'} {test.scheduleTime ? `at ${test.scheduleTime}` : ''}</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
-                {test.status === 'draft' && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {test.status === 'draft' ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
-                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    <Edit className="w-4 h-4" /> Resume Editing
-                  </button>
-                ) : (
-                  <>
-                    <div className="flex gap-2">
+              <div key={test.id} className="h-full">
+                <div
+                  onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
+                  className={`h-full bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
+                    <div className="flex items-center gap-2">
+                      {test.status === 'draft' && (
+                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200">Draft</span>
+                      )}
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
+                        test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                        }`}>{test.format}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
-                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Test Series"
                       >
-                        <Eye className="w-4 h-4" /> Preview
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
-                        className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                      >
-                        <BarChart3 className="w-4 h-4" /> Performance
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    {test.status === 'upcoming' && (
-                      <button
-                        disabled={forceLiveLoadingTestId === test.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleForceLiveNow(test.id, test.title);
-                        }}
-                        className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 ${
-                          forceLiveLoadingTestId === test.id
-                            ? 'cursor-wait'
-                            : 'hover:shadow-lg'
-                        }`}
-                      >
-                        {forceLiveLoadingTestId === test.id ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            Setting Live...
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-4 h-4" /> Set Live Now
-                          </>
-                        )}
-                      </button>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
+                  <div className="space-y-2 mb-6 flex-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{test.scheduleDate ? new Date(test.scheduleDate).toLocaleDateString() : 'No date'} {test.scheduleTime ? `at ${test.scheduleTime}` : ''}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
+                    {test.status === 'draft' && (
+                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
                     )}
-                  </>
-                )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {test.status === 'draft' ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
+                        className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Edit className="w-4 h-4" /> Resume Editing
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
+                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" /> Preview
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
+                            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                          >
+                            <BarChart3 className="w-4 h-4" /> Performance
+                          </button>
+                        </div>
+                        {test.status === 'upcoming' && (
+                          <button
+                            disabled={forceLiveLoadingTestId === test.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleForceLiveNow(test.id, test.title);
+                            }}
+                            className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 ${forceLiveLoadingTestId === test.id
+                                ? 'cursor-wait'
+                                : 'hover:shadow-lg'
+                              }`}
+                          >
+                            {forceLiveLoadingTestId === test.id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                Setting Live...
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-4 h-4" /> Set Live Now
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            </div>
-          )})}
+            )
+          })}
         </div>
       ) : (
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center">
@@ -2260,10 +2673,10 @@ function AddStudentModal({
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
     email: initial?.email ?? '',
-    phoneNumber: initial?.phoneNumber ?? '',
+    phoneNumber: formatIndianMobileInput(initial?.phoneNumber ?? ''),
     dateOfBirth: initial?.dateOfBirth ?? '',
     address: initial?.address ?? '',
-    parentContact: initial?.parentContact ?? '',
+    parentContact: formatIndianMobileInput(initial?.parentContact ?? ''),
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
@@ -2276,7 +2689,11 @@ function AddStudentModal({
   if (!open) return null;
 
   const handleChange = (field: keyof StudentFormState) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormState((prev) => ({ ...prev, [field]: event.target.value }));
+    const raw = event.target.value;
+    const nextValue = field === 'phoneNumber' || field === 'parentContact'
+      ? formatIndianMobileInput(raw)
+      : raw;
+    setFormState((prev) => ({ ...prev, [field]: nextValue }));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -2378,9 +2795,8 @@ function AddStudentModal({
           </div>
 
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Address {requiredMark}</span>
+            <span className="block">Address (Optional)</span>
             <textarea
-              required
               rows={3}
               value={formState.address}
               onChange={handleChange('address')}
@@ -2390,10 +2806,9 @@ function AddStudentModal({
           </label>
 
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
-            <span className="block">Parent Contact {requiredMark}</span>
+            <span className="block">Parent Contact (Optional)</span>
             <input
               type="tel"
-              required
               value={formState.parentContact}
               onChange={handleChange('parentContact')}
               className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2445,7 +2860,7 @@ function AddFacultyModal({
     subject: initialData?.subject ?? '',
     designation: initialData?.designation ?? '',
     name: initialData?.name ?? '',
-    phone: initialData?.phone ?? '',
+    phone: formatIndianMobileInput(initialData?.phone ?? ''),
     email: initialData?.email ?? '',
     joinDate: initialData?.joinDate ?? '',
     rating: initialData?.rating ?? 0,
@@ -2461,7 +2876,7 @@ function AddFacultyModal({
       subject: initialData?.subject ?? '',
       designation: initialData?.designation ?? '',
       name: initialData?.name ?? '',
-      phone: initialData?.phone ?? '',
+      phone: formatIndianMobileInput(initialData?.phone ?? ''),
       email: initialData?.email ?? '',
       joinDate: initialData?.joinDate ?? '',
       rating: initialData?.rating ?? 0,
@@ -2473,7 +2888,12 @@ function AddFacultyModal({
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = field === 'rating' || field === 'reviewCount' ? parseFloat(event.target.value) || 0 : event.target.value;
+    const raw = event.target.value;
+    const value = field === 'rating' || field === 'reviewCount'
+      ? parseFloat(raw) || 0
+      : field === 'phone'
+        ? formatIndianMobileInput(raw)
+        : raw;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
   const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
@@ -2513,22 +2933,22 @@ function AddFacultyModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="space-y-2 text-sm font-medium text-gray-700 block">
-                <span className="block">Subject {isEditing && requiredMark}</span>
-                <select
-                  required={isEditing}
-                  disabled={!isEditing}
-                  value={formState.subject}
-                  onChange={handleChange('subject')}
-                  className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
-                >
-                  <option value="">{mergedSubjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                  {mergedSubjectOptions.map((subject) => (
-                    <option key={subject} value={subject}>{subject}</option>
-                  ))}
-                </select>
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Subject {isEditing && requiredMark}</span>
+              <select
+                required={isEditing}
+                disabled={!isEditing}
+                value={formState.subject}
+                onChange={handleChange('subject')}
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+              >
+                <option value="">{mergedSubjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+                {mergedSubjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Designation</span>
@@ -2884,30 +3304,30 @@ function BatchFormModal({
 
   useEffect(() => {
     if (!open) return;
-      if (mode === 'edit' && batchLabel) {
-        const current = batches.find((batch) => batch.label === batchLabel);
-        const assignments = (current?.facultyAssigned ?? [])
-          .map((name) => {
-            const found = faculty.find((item) => item.name === name);
-            return found ? { subject: found.subject, faculty: found.name } : null;
-          })
-          .filter((item): item is { subject: string; faculty: string } => !!item);
-        const assignedSubjects = new Set(assignments.map((item) => item.subject));
-        const subjectOnlyAssignments = (current?.subjects ?? [])
-          .filter((subject) => subject && !assignedSubjects.has(subject))
-          .map((subject) => ({ subject, faculty: '' }));
-        setFormState({
-          name: current?.label ?? batchLabel,
-          subject: '',
-          faculty: '',
-          assignments: [...assignments, ...subjectOnlyAssignments],
-        });
-      } else {
-        setFormState({ name: '', subject: '', faculty: '', assignments: [] });
-      }
-      setSelectedFacultyNames([]);
-      setError(null);
-    }, [open, mode, batchLabel, batches, faculty]);
+    if (mode === 'edit' && batchLabel) {
+      const current = batches.find((batch) => batch.label === batchLabel);
+      const assignments = (current?.facultyAssigned ?? [])
+        .map((name) => {
+          const found = faculty.find((item) => item.name === name);
+          return found ? { subject: found.subject, faculty: found.name } : null;
+        })
+        .filter((item): item is { subject: string; faculty: string } => !!item);
+      const assignedSubjects = new Set(assignments.map((item) => item.subject));
+      const subjectOnlyAssignments = (current?.subjects ?? [])
+        .filter((subject) => subject && !assignedSubjects.has(subject))
+        .map((subject) => ({ subject, faculty: '' }));
+      setFormState({
+        name: current?.label ?? batchLabel,
+        subject: '',
+        faculty: '',
+        assignments: [...assignments, ...subjectOnlyAssignments],
+      });
+    } else {
+      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+    }
+    setSelectedFacultyNames([]);
+    setError(null);
+  }, [open, mode, batchLabel, batches, faculty]);
 
   if (!open) return null;
 
@@ -3126,11 +3546,11 @@ function BatchFormModal({
             </div>
           </div>
 
-            {formState.assignments.length > 0 && (
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
-                <p className="text-sm font-medium text-gray-700">Selected</p>
-                <div className="space-y-1">
-                  {formState.assignments.map((item, index) => (
+          {formState.assignments.length > 0 && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-gray-700">Selected</p>
+              <div className="space-y-1">
+                {formState.assignments.map((item, index) => (
                   <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
                       {item.subject} — <span className="font-semibold">{item.faculty ? item.faculty : 'Unassigned'}</span>
@@ -3148,10 +3568,10 @@ function BatchFormModal({
                       Remove
                     </button>
                   </div>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -3210,9 +3630,9 @@ function StudentRatingsModal({
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
-    phoneNumber: '',
+    phoneNumber: formatIndianMobileInput(''),
     dateOfBirth: '',
-    parentContact: '',
+    parentContact: formatIndianMobileInput(''),
     address: '',
   });
   const [testPerformanceRows, setTestPerformanceRows] = useState<Array<{
@@ -3234,9 +3654,9 @@ function StudentRatingsModal({
     setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
-      phoneNumber: student.phoneNumber ?? '',
+      phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
       dateOfBirth: student.dateOfBirth ?? '',
-      parentContact: student.parentContact ?? '',
+      parentContact: formatIndianMobileInput(student.parentContact ?? ''),
       address: student.address ?? '',
     });
     setAdminRemarkDraft(student.adminRemark ?? '');
@@ -3763,9 +4183,9 @@ function StudentRatingsModal({
                         setIsEditingProfile(false);
                         setProfileDraft({
                           name: student.name ?? '',
-                          phoneNumber: student.phoneNumber ?? '',
+                          phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
                           dateOfBirth: student.dateOfBirth ?? '',
-                          parentContact: student.parentContact ?? '',
+                          parentContact: formatIndianMobileInput(student.parentContact ?? ''),
                           address: student.address ?? '',
                         });
                       }}
@@ -3808,7 +4228,7 @@ function StudentRatingsModal({
                     <input
                       type="tel"
                       value={profileDraft.phoneNumber}
-                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, phoneNumber: formatIndianMobileInput(e.target.value) }))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (
@@ -3834,7 +4254,7 @@ function StudentRatingsModal({
                     <input
                       type="tel"
                       value={profileDraft.parentContact}
-                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, parentContact: e.target.value }))}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, parentContact: formatIndianMobileInput(e.target.value) }))}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
                     />
                   ) : (

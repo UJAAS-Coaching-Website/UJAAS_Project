@@ -61,7 +61,6 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
   }, []);
 
   const subjectLabel = useMemo(() => chapter?.subject_name || '', [chapter?.subject_name]);
-
   const handleAddQuestion = (question: Question) => {
     setQuestions((prev) => {
       const existingIndex = prev.findIndex((item) => item.id === question.id);
@@ -94,7 +93,7 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
       setPublishing(true);
       await createDpp({
         title: dppData.title.trim(),
-        instructions: dppData.instructions.trim() || undefined,
+        instructions: dppData.instructions,
         chapter_id: chapter.id,
         questions,
       });
@@ -377,7 +376,11 @@ export function CreateDPP({ onBack }: CreateDPPProps) {
                 {!!dppData.instructions.trim() && (
                   <div className="mb-6 rounded-2xl border border-gray-100 bg-gray-50 p-5">
                     <p className="mb-2 text-sm font-semibold text-gray-700">Instructions Preview</p>
-                    <p className="whitespace-pre-wrap text-gray-700">{dppData.instructions}</p>
+                    <div className="space-y-2 text-gray-700">
+                      {dppData.instructions.split('\n').map((line, index) => (
+                        line.trim() ? <p key={index}>{line.trim()}</p> : null
+                      ))}
+                    </div>
                   </div>
                 )}
 

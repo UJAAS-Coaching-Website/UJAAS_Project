@@ -12,6 +12,7 @@ import {
     handleCreateDpp,
     handleUpdateDpp,
     handleDeleteDpp,
+    handleCloseMyDppSession,
 } from "../controllers/dppController.js";
 
 const router = Router();
@@ -24,6 +25,7 @@ router.get("/:id/attempts/analysis", requireAnyRole("admin", "faculty"), handleG
 router.get("/:id/attempts", requireRole("student"), handleGetMyDppAttemptSummary);
 router.post("/:id/attempts/start", requireRole("student"), handleStartMyDppAttempt);
 router.post("/:id/submit", requireRole("student"), handleSubmitMyDppAttempt);
+router.post("/:id/session/close", requireRole("student"), handleCloseMyDppSession);
 
 router.get("/", requireAnyRole("admin", "faculty", "student"), handleListDpps);
 router.get("/:id", requireAnyRole("admin", "faculty", "student"), handleGetDpp);

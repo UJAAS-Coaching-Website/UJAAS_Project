@@ -50,3 +50,27 @@ export async function broadcastNotice(payload: { batchIds: string[], title: stri
         body: JSON.stringify(payload)
     });
 }
+
+export interface ApiNotice {
+    id: string;
+    title: string;
+    message: string;
+    created_at: string;
+    batch_ids: string[];
+}
+
+export async function fetchMyNotices(): Promise<ApiNotice[]> {
+    const res = await request<{ status: string; notices: ApiNotice[] }>("/api/notification-center/mine");
+    return res.notices || [];
+}
+
+export async function updateNotice(id: string, payload: { batchIds: string[]; title: string; message: string }): Promise<void> {
+    await request(`/api/notification-center/mine/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+    });
+}
+
+export async function deleteNoticeById(id: string): Promise<void> {
+    await request(`/api/notification-center/mine/${id}`, { method: "DELETE" });
+}

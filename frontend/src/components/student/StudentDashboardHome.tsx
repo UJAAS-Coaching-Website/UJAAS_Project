@@ -176,7 +176,6 @@ function StudentAssignedBatchContent({
   if (loading) {
     return (
       <div className="space-y-6">
-        <DashboardHeroSkeleton />
         <div className="rounded-3xl border border-gray-100 bg-white/40 p-1 shadow-xl">
           <div className="p-5">
             <div className="flex items-center gap-3">
@@ -187,7 +186,7 @@ function StudentAssignedBatchContent({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-6 p-5 md:grid-cols-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 p-5">
             {Array.from({ length: 4 }).map((_, index) => <SubjectCardSkeleton key={index} />)}
           </div>
         </div>

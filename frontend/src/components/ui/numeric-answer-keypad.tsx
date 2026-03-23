@@ -67,7 +67,7 @@ export function NumericAnswerKeypad({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="inline-flex flex-col items-start gap-2" style={{ width: '13rem' }}>
       <input
         type="text"
         value={value}
@@ -76,18 +76,18 @@ export function NumericAnswerKeypad({
         onKeyDown={(event) => event.preventDefault()}
         onPaste={(event) => event.preventDefault()}
         onDrop={(event) => event.preventDefault()}
-        className="w-full max-w-xs px-4 py-3 border-2 border-amber-200 rounded-xl bg-white text-lg font-semibold text-gray-900"
+        className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg bg-white text-sm font-semibold text-gray-900"
         placeholder={placeholder}
         aria-label={placeholder}
       />
-      <div className="grid max-w-xs grid-cols-3 gap-2">
+      <div className="grid w-full grid-cols-3 gap-2">
         {NUMERIC_KEYS.map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => handleKeyPress(key)}
             disabled={disabled}
-            className="rounded-xl border border-amber-200 bg-white px-4 py-3 text-lg font-bold text-slate-800 shadow-sm transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-sm font-bold text-slate-800 shadow-sm transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {key}
           </button>
@@ -96,7 +96,7 @@ export function NumericAnswerKeypad({
           type="button"
           onClick={handleBackspace}
           disabled={disabled}
-          className="rounded-xl border border-amber-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Backspace
         </button>
@@ -104,7 +104,7 @@ export function NumericAnswerKeypad({
           type="button"
           onClick={handleClear}
           disabled={disabled}
-          className="col-span-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="col-span-2 w-full rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] font-bold text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Clear
         </button>

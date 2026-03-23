@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -30,30 +31,32 @@ import {
   Check,
   Megaphone
 } from 'lucide-react';
-import UploadNoticeModal from './UploadNoticeModal';
-import { StudentRating } from './StudentRating';
-import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
-import { FacultyProfile } from './FacultyProfile';
+const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
+const StudentRating = lazy(() => import('./StudentRating').then(m => ({ default: m.StudentRating })));
+const StudentRankingsEnhanced = lazy(() => import('./StudentRankingsEnhanced').then(m => ({ default: m.StudentRankingsEnhanced })));
+const FacultyProfile = lazy(() => import('./FacultyProfile').then(m => ({ default: m.FacultyProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { NotificationCenter, Notification } from './NotificationCenter';
 import { Footer } from './Footer';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { CreateTestSeries } from './CreateTestSeries';
-import { TestPerformanceInsights, StudentPerformance } from './TestPerformanceInsights';
-import { CreateDPP } from './CreateDPP';
-import { UploadNotes } from './UploadNotes';
-import { QuestionBank } from './QuestionBank';
-import { TestPreviewAndReview } from './TestPreviewAndReview';
+const CreateTestSeries = lazy(() => import('./CreateTestSeries').then(m => ({ default: m.CreateTestSeries })));
+import type { StudentPerformance } from './TestPerformanceInsights';
+const TestPerformanceInsights = lazy(() => import('./TestPerformanceInsights').then(m => ({ default: m.TestPerformanceInsights })));
+const CreateDPP = lazy(() => import('./CreateDPP').then(m => ({ default: m.CreateDPP })));
+const UploadNotes = lazy(() => import('./UploadNotes').then(m => ({ default: m.UploadNotes })));
+const QuestionBank = lazy(() => import('./QuestionBank').then(m => ({ default: m.QuestionBank })));
+const TestPreviewAndReview = lazy(() => import('./TestPreviewAndReview').then(m => ({ default: m.TestPreviewAndReview })));
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import { NotesManagementTab } from './NotesManagementTab';
+const NotesManagementTab = lazy(() => import('./NotesManagementTab').then(m => ({ default: m.NotesManagementTab })));
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
+import { ApiBatch } from '../api/batches';
 import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks } from '../utils/studentRemarks';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
-import { FacultyBatchSelectionTab } from './faculty/FacultyDashboardSections';
+const FacultyBatchSelectionTab = lazy(() => import('./faculty/FacultyDashboardSections').then(m => ({ default: m.FacultyBatchSelectionTab })));
 
 interface FacultyDashboardProps {
   user: User;
@@ -79,7 +82,7 @@ interface FacultyDashboardProps {
   onUpdateStudentRating: (studentId: string, data: any) => Promise<void>;
 }
 
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type FacultySection = 'batches' | 'students' | 'test-series';
 type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
@@ -276,7 +279,6 @@ export function FacultyDashboard({
     batch: null
   });
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   useBodyScrollLock(
     studentModal.open ||
@@ -539,7 +541,7 @@ export function FacultyDashboard({
       </nav>
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main className={`footer-reveal-main w-full flex-grow ${performanceInsightsTestId ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
         <motion.div
           key={`${selectedBatch || adminSection}-${activeTab}`}
           initial={{ opacity: 0, y: 20 }}
@@ -547,6 +549,12 @@ export function FacultyDashboard({
           transition={{ duration: 0.3 }}
         >
           {/* Layered Rendering Logic - Standard across dashboards */}
+          <Suspense fallback={
+            activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
+            activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+            (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+            <DashboardHeroSkeleton />
+          }>
           {activeTab === 'create-test' ? (
             <CreateTestSeries onBack={() => onNavigate('test-series')} batches={batches.filter((batch) => batch.is_active)} />
           ) : activeTab === 'question-bank' ? (
@@ -602,6 +610,20 @@ export function FacultyDashboard({
             <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
             <FacultyProfile user={user as any} onLogout={onLogout} />
+          ) : activeTab === 'notices' ? (
+            <NoticesManagement
+              batches={batches
+                .filter(b => b.facultyAssigned?.includes(user.name))
+                .map(b => ({
+                  id: b.id || '',
+                  name: b.label,
+                  slug: b.slug,
+                  is_active: b.is_active !== false,
+                  subjects: b.subjects,
+                }) as ApiBatch)}
+              userRole="faculty"
+              onBack={() => onNavigate('home')}
+            />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -610,7 +632,7 @@ export function FacultyDashboard({
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   facultyName={user.name}
-                  onUploadNotice={() => setIsNoticeModalOpen(true)}
+                  onOpenNotices={() => onNavigate('notices')}
                 />
               )}
               {adminSection === 'test-series' && (
@@ -653,6 +675,7 @@ export function FacultyDashboard({
               {activeTab === 'rankings' && <StudentRankingsEnhanced />}
             </>
           )}
+          </Suspense>
         </motion.div>
       </main>
 
@@ -699,21 +722,6 @@ export function FacultyDashboard({
             />
           )}
         </AnimatePresence>
-
-        <UploadNoticeModal
-          isOpen={isNoticeModalOpen}
-          onClose={() => setIsNoticeModalOpen(false)}
-          batches={batches
-            .filter(b => b.facultyAssigned?.includes(user.name))
-            .map(b => ({
-              id: b.id || '',
-              name: b.label,
-              slug: b.slug,
-              is_active: b.is_active !== false
-            }))
-          }
-          userRole="faculty"
-        />
 
         <BatchTimetableModal
           open={showFullTimetable}

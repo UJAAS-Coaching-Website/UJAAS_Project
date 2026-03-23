@@ -40,6 +40,7 @@ export interface ApiFaculty {
     bio?: string;
     phone?: string;
     rating?: number;
+    reviewCount?: number;
     joining_date?: string;
 }
 

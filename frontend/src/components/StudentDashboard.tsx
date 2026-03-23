@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { User } from '../App';
 import {
   GraduationCap,
@@ -6,24 +6,26 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { fetchBatches, fetchBatch, ApiBatch } from '../api/batches';
-import { TestSeriesContainer } from './TestSeriesContainer';
-import { StudentProfile } from './StudentProfile';
+const TestSeriesContainer = lazy(() => import('./TestSeriesContainer').then(m => ({ default: m.TestSeriesContainer })));
+const StudentProfile = lazy(() => import('./StudentProfile').then(m => ({ default: m.StudentProfile })));
 import { MiniAvatar } from './MiniAvatar';
 import { FacultyReviewModal } from './FacultyReviewModal';
 import { getFacultiesToRate, type FacultyToRate, type ReviewSession } from '../api/facultyReviews';
-import { QuestionBank } from './QuestionBank';
+const QuestionBank = lazy(() => import('./QuestionBank').then(m => ({ default: m.QuestionBank })));
 import { Notification } from './NotificationCenter';
 import { StudentNotificationSheet } from './StudentNotificationSheet';
 import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
-import { DPPPractice, type DppPracticeSession } from './DPPPractice';
-import type { ApiStartDppAttemptPayload } from '../api/dpps';
+import type { DppPracticeSession } from './DPPPractice';
+const DPPPractice = lazy(() => import('./DPPPractice').then(m => ({ default: m.DPPPractice })));
+import { closeMyDppSession, type ApiStartDppAttemptPayload } from '../api/dpps';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
 import { StudentDashboardHome } from './student/StudentDashboardHome';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
 
 interface StudentDashboardProps {
   user: User;
@@ -64,6 +66,7 @@ export function StudentDashboard({
   const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+  const [testSeriesMode, setTestSeriesMode] = useState<'list' | 'overview' | 'taking' | 'analytics' | 'viewResults'>('list');
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
   const [batchDetails, setBatchDetails] = useState<ApiBatch | null>(null);
@@ -295,16 +298,30 @@ export function StudentDashboard({
 
   const isDppRoute = activeTab === 'home' && subTab === 'dpp';
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
+  const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
+  const isTestAnalyticsRoute = activeTab === 'test-series' && testSeriesMode === 'analytics';
+  const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
   }, [activeTab, onNavigate]);
 
   const handleTestSeriesStateChange = useCallback((mode: 'list' | 'overview' | 'taking' | 'analytics' | 'viewResults') => {
+    setTestSeriesMode(mode);
     setIsNavbarInternalHidden(mode !== 'list');
   }, []);
 
   const handleExitDpp = () => {
+    const dppId = activeDppSession?.mode === 'attempt'
+      ? activeDppSession.payload.dpp.id
+      : activeDppSession?.mode === 'result'
+        ? activeDppSession.result.dppId
+        : null;
+
+    if (dppId) {
+      closeMyDppSession(dppId).catch(() => undefined);
+    }
+
     sessionStorage.removeItem(ACTIVE_DPP_SESSION_KEY);
 
     try {
@@ -381,34 +398,36 @@ export function StudentDashboard({
               </div>
             </div>
 
-            <div className="border-t border-gray-200">
-            <div className="flex items-center justify-center gap-2 px-1 py-2">
-              {[
-                { id: 'home', label: 'Dashboard', icon: GraduationCap },
-                { id: 'test-series', label: 'Test Series', icon: FileText },
-                { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === 'home') setProfileSection('overview');
-                    onNavigate(tab.id as Tab);
-                  }}
-                  className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
-                    (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
-                      : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
-                    }`}
-                  style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
-                >
-                  <tab.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">
-                    {isMobileViewport && tab.id === 'question-bank' ? 'QB' : tab.label}
-                  </span>
-                </motion.button>
-              ))}
-            </div>
-            </div>
+            {activeTab !== 'profile' && (
+              <div className="border-t border-gray-200">
+                <div className="flex items-center justify-center gap-2 px-1 py-2">
+                  {[
+                    { id: 'home', label: 'Dashboard', icon: GraduationCap },
+                    { id: 'test-series', label: 'Test Series', icon: FileText },
+                    { id: 'question-bank', label: 'Question Bank', icon: BookOpen }
+                  ].map((tab) => (
+                    <motion.button
+                      key={tab.id}
+                      onClick={() => {
+                        if (tab.id === 'home') setProfileSection('overview');
+                        onNavigate(tab.id as Tab);
+                      }}
+                      className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
+                        (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
+                          ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                          : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
+                        }`}
+                      style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
+                    >
+                      <tab.icon className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">
+                        {isMobileViewport && tab.id === 'question-bank' ? 'QB' : tab.label}
+                      </span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
               </>
             ) : (
             <div className="flex items-center justify-between h-16">
@@ -480,9 +499,15 @@ export function StudentDashboard({
       )}
 
       {/* Main Content */}
-      <main className="footer-reveal-main w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+      <main
+        className={`footer-reveal-main w-full flex-grow ${
+          (isTestAttemptRoute || isTestAnalyticsRoute || isDppRoute)
+            ? (isMobileViewport ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6')
+            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+        }`}
+      >
         {!isNavbarHidden && (
-          <div style={{ height: isMobileViewport ? `${MOBILE_NAV_SPACER_HEIGHT}px` : '4rem' }} />
+          <div style={{ height: isMobileViewport ? `${mobileSpacerHeight}px` : '4rem' }} />
         )}
         <motion.div
           key={activeTab}
@@ -491,14 +516,16 @@ export function StudentDashboard({
           transition={{ duration: 0.3 }}
         >
           {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
-            <DPPPractice
-              session={activeDppSession}
-              onExit={handleExitDpp}
-              onSessionChange={(nextSession) => {
-                setActiveDppSession(nextSession);
-                sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
-              }}
-            />
+            <Suspense fallback={<DashboardHeroSkeleton />}>
+              <DPPPractice
+                session={activeDppSession}
+                onExit={handleExitDpp}
+                onSessionChange={(nextSession) => {
+                  setActiveDppSession(nextSession);
+                  sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+                }}
+              />
+            </Suspense>
           )}
           {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
             <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
@@ -516,30 +543,36 @@ export function StudentDashboard({
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
-            <TestSeriesContainer
-              user={user}
-              publishedTests={publishedTests}
-              onStateChange={handleTestSeriesStateChange}
-              subTab={subTab}
-              onNavigateSubTab={handleSubTabNavigate}
-            />
+            <Suspense fallback={<div className="space-y-4"><TestCardSkeleton /><TestCardSkeleton /></div>}>
+              <TestSeriesContainer
+                user={user}
+                publishedTests={publishedTests}
+                onStateChange={handleTestSeriesStateChange}
+                subTab={subTab}
+                onNavigateSubTab={handleSubTabNavigate}
+              />
+            </Suspense>
           )}
           {activeTab === 'profile' && (
-            <StudentProfile
-              user={user}
-              onLogout={onLogout}
-              initialSection={profileSection}
-            />
+            <Suspense fallback={<div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></div>}>
+              <StudentProfile
+                user={user}
+                onLogout={onLogout}
+                initialSection={profileSection}
+              />
+            </Suspense>
           )}
           {activeTab === 'batch-detail' && (
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
-            <QuestionBank
-              userRole="student"
-              userBatch={user.studentDetails?.batch}
-              onBack={() => onNavigate('home')}
-            />
+            <Suspense fallback={<div className="space-y-4"><TableRowsSkeleton rows={5} /></div>}>
+              <QuestionBank
+                userRole="student"
+                userBatch={user.studentDetails?.batch}
+                onBack={() => onNavigate('home')}
+              />
+            </Suspense>
           )}
         </motion.div>
       </main>

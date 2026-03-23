@@ -58,6 +58,7 @@ function mapAttemptRow(row) {
         wrong_answers: Number(row.wrong_answers || 0),
         unattempted: Number(row.unattempted || 0),
         answers: row.answers || {},
+        device_id: row.device_id || null,
     };
 }
 
@@ -450,7 +451,28 @@ async function getActiveAttempt(client, testId, studentId, forUpdate = false) {
     return mapAttemptRow(result.rows[0]);
 }
 
+async function getAnyActiveAttempt(client, studentId, forUpdate = false) {
+    const result = await client.query(`
+        SELECT *
+        FROM test_attempts
+        WHERE student_id = $1
+          AND submitted_at IS NULL
+        ORDER BY started_at DESC
+        LIMIT 1
+        ${forUpdate ? "FOR UPDATE" : ""}
+    `, [studentId]);
+
+    return mapAttemptRow(result.rows[0]);
+}
+
 const TEST_FIRST_ATTEMPT_RANKING_CTE = `
+    question_counts AS (
+        SELECT
+            test_id,
+            COUNT(*)::int AS total_questions
+        FROM questions
+        GROUP BY test_id
+    ),
     first_submitted_attempts AS (
         SELECT *
         FROM (
@@ -470,9 +492,13 @@ const TEST_FIRST_ATTEMPT_RANKING_CTE = `
             fsa.test_id,
             fsa.student_id,
             fsa.id AS ranked_attempt_id,
-            RANK() OVER (
+            ROW_NUMBER() OVER (
                 PARTITION BY fsa.test_id
-                ORDER BY fsa.score DESC NULLS LAST, fsa.submitted_at ASC, fsa.attempt_no ASC
+                ORDER BY
+                    fsa.score DESC NULLS LAST,
+                    fsa.correct_answers DESC NULLS LAST,
+                    fsa.submitted_at ASC,
+                    fsa.attempt_no ASC
             ) AS rank,
             COUNT(*) OVER (PARTITION BY fsa.test_id) AS total_students
         FROM first_submitted_attempts fsa
@@ -657,7 +683,7 @@ export async function getStudentAttemptSummary(testId, studentId) {
     };
 }
 
-export async function startOrResumeStudentAttempt(testId, studentId) {
+export async function startOrResumeStudentAttempt(testId, studentId, deviceId) {
     const test = await getTestByIdForStudent(testId, studentId);
     if (!test) {
         return null;
@@ -669,12 +695,41 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
         throw error;
     }
 
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
 
-        const existingActiveAttempt = await getActiveAttempt(client, testId, studentId, true);
+        const existingActiveAttempt = await getAnyActiveAttempt(client, studentId, true);
         if (existingActiveAttempt) {
+            if (existingActiveAttempt.test_id !== testId) {
+                await client.query("ROLLBACK");
+                const error = new Error("another test is already active");
+                error.code = "ANOTHER_TEST_ACTIVE";
+                throw error;
+            }
+
+            if (existingActiveAttempt.device_id && existingActiveAttempt.device_id !== deviceId) {
+                await client.query("ROLLBACK");
+                const error = new Error("session active on another device");
+                error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+                throw error;
+            }
+
+            if (!existingActiveAttempt.device_id) {
+                await client.query(`
+                    UPDATE test_attempts
+                    SET device_id = $2
+                    WHERE id = $1
+                `, [existingActiveAttempt.id, deviceId]);
+                existingActiveAttempt.device_id = deviceId;
+            }
+
             await client.query("COMMIT");
             return {
                 test,
@@ -708,7 +763,8 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
                 attempt_no,
                 started_at,
                 deadline_at,
-                answers
+                answers,
+                device_id
             )
             VALUES (
                 $1,
@@ -716,10 +772,11 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
                 $3,
                 NOW(),
                 NOW() + make_interval(mins => $4::int),
-                '{}'::jsonb
+                '{}'::jsonb,
+                $5
             )
             RETURNING *
-        `, [testId, studentId, Number(nextAttemptResult.rows[0].next_attempt_no), Number(test.duration_minutes || 0)]);
+        `, [testId, studentId, Number(nextAttemptResult.rows[0].next_attempt_no), Number(test.duration_minutes || 0), deviceId]);
 
         await client.query("COMMIT");
 
@@ -739,20 +796,53 @@ export async function startOrResumeStudentAttempt(testId, studentId) {
     }
 }
 
-export async function saveStudentAttemptProgress(attemptId, studentId, answers) {
+export async function saveStudentAttemptProgress(attemptId, studentId, answers, deviceId) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
+    const lookup = await pool.query(`
+        SELECT device_id
+        FROM test_attempts
+        WHERE id = $1
+          AND student_id = $2
+          AND submitted_at IS NULL
+    `, [attemptId, studentId]);
+
+    if (lookup.rowCount === 0) {
+        return null;
+    }
+
+    const existingDevice = lookup.rows[0]?.device_id || null;
+    if (existingDevice && existingDevice !== deviceId) {
+        const error = new Error("session active on another device");
+        error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+        throw error;
+    }
+
     const result = await pool.query(`
         UPDATE test_attempts
-        SET answers = COALESCE($3::jsonb, '{}'::jsonb)
+        SET
+            answers = COALESCE($3::jsonb, '{}'::jsonb),
+            device_id = COALESCE(device_id, $4)
         WHERE id = $1
           AND student_id = $2
           AND submitted_at IS NULL
         RETURNING id, test_id, student_id, attempt_no, started_at, deadline_at, submitted_at, auto_submitted, time_spent, score, correct_answers, wrong_answers, unattempted, answers
-    `, [attemptId, studentId, JSON.stringify(answers || {})]);
+    `, [attemptId, studentId, JSON.stringify(answers || {}), deviceId]);
 
     return mapAttemptRow(result.rows[0]);
 }
 
-export async function submitStudentAttempt(attemptId, studentId, { answers, autoSubmitted = false } = {}) {
+export async function submitStudentAttempt(attemptId, studentId, { answers, autoSubmitted = false, deviceId } = {}) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -776,6 +866,12 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
         }
 
         const attempt = attemptResult.rows[0];
+        if (attempt.device_id && attempt.device_id !== deviceId) {
+            await client.query("ROLLBACK");
+            const error = new Error("session active on another device");
+            error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+            throw error;
+        }
         const mergedAnswers = answers && typeof answers === "object" && Object.keys(answers).length > 0
             ? answers
             : (attempt.answers || {});
@@ -818,7 +914,8 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
                 score = $5,
                 correct_answers = $6,
                 wrong_answers = $7,
-                unattempted = $8
+                unattempted = $8,
+                device_id = COALESCE(device_id, $9)
             WHERE id = $1
         `, [
             attemptId,
@@ -829,6 +926,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
             metrics.correctAnswers,
             metrics.wrongAnswers,
             metrics.unattempted,
+            deviceId,
         ]);
 
         await client.query("COMMIT");
@@ -931,52 +1029,80 @@ export async function getStudentAttemptResults(studentId) {
     }));
 }
 
-export async function getTestAttemptAnalysis(testId) {
-    const result = await pool.query(`
-        WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE},
-        submitted_attempts AS (
+export async function getTestAttemptAnalysis(testId, search) {
+    const searchTerm = search && String(search).trim() ? `%${String(search).trim()}%` : null;
+    const [allAttemptsResult, firstAttemptsResult] = await Promise.all([
+        pool.query(`
+            WITH submitted_attempts AS (
+                SELECT
+                    ta.*,
+                    u.name AS student_name
+                FROM test_attempts ta
+                JOIN users u ON u.id = ta.student_id
+                WHERE ta.test_id = $1
+                  AND ta.submitted_at IS NOT NULL
+                  ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
+            ),
+            question_counts AS (
+                SELECT COUNT(*)::int AS total_questions
+                FROM questions
+                WHERE test_id = $1
+            )
             SELECT
-                ta.*,
-                u.name AS student_name
-            FROM test_attempts ta
-            JOIN users u ON u.id = ta.student_id
-            WHERE ta.test_id = $1
-              AND ta.submitted_at IS NOT NULL
-        ),
-        question_counts AS (
-            SELECT COUNT(*)::int AS total_questions
-            FROM questions
-            WHERE test_id = $1
-        )
-        SELECT
-            sa.id,
-            sa.student_id,
-            sa.student_name,
-            sa.attempt_no,
-            sa.submitted_at,
-            sa.auto_submitted,
-            sa.time_spent,
-            sa.score,
-            sa.correct_answers,
-            sa.wrong_answers,
-            sa.unattempted,
-            rfa.rank,
-            rfa.total_students,
-            qc.total_questions,
-            t.total_marks,
-            COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
-            t.instructions,
-            t.title AS test_title
-        FROM submitted_attempts sa
-        LEFT JOIN ranked_first_attempts rfa
-            ON rfa.test_id = sa.test_id
-           AND rfa.student_id = sa.student_id
-        CROSS JOIN question_counts qc
-        JOIN tests t ON t.id = sa.test_id
-        ORDER BY sa.submitted_at DESC, sa.attempt_no DESC
-    `, [testId]);
+                sa.id,
+                sa.student_id,
+                sa.student_name,
+                sa.attempt_no,
+                sa.submitted_at,
+                sa.auto_submitted,
+                sa.time_spent,
+                sa.score,
+                sa.correct_answers,
+                sa.wrong_answers,
+                sa.unattempted,
+                qc.total_questions,
+                t.total_marks,
+                COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
+                t.title AS test_title
+            FROM submitted_attempts sa
+            CROSS JOIN question_counts qc
+            JOIN tests t ON t.id = sa.test_id
+            ORDER BY sa.submitted_at DESC, sa.attempt_no DESC
+        `, searchTerm ? [testId, searchTerm] : [testId]),
+        pool.query(`
+            WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
+            SELECT
+                fsa.id,
+                fsa.student_id,
+                u.name AS student_name,
+                fsa.attempt_no,
+                fsa.submitted_at,
+                fsa.auto_submitted,
+                fsa.time_spent,
+                fsa.score,
+                fsa.correct_answers,
+                fsa.wrong_answers,
+                fsa.unattempted,
+                rfa.rank,
+                rfa.total_students,
+                qc.total_questions,
+                t.total_marks,
+                COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes,
+                t.title AS test_title
+            FROM first_submitted_attempts fsa
+            JOIN users u ON u.id = fsa.student_id
+            JOIN tests t ON t.id = fsa.test_id
+            LEFT JOIN ranked_first_attempts rfa
+                ON rfa.test_id = fsa.test_id
+               AND rfa.student_id = fsa.student_id
+            LEFT JOIN question_counts qc
+                ON qc.test_id = fsa.test_id
+            WHERE fsa.test_id = $1
+            ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
+        `, searchTerm ? [testId, searchTerm] : [testId]),
+    ]);
 
-    const mappedAttempts = await Promise.all(result.rows.map(async (row) => ({
+    const allAttempts = await Promise.all(allAttemptsResult.rows.map(async (row) => ({
         attemptId: row.id,
         studentId: row.student_id,
         studentName: row.student_name,
@@ -988,25 +1114,47 @@ export async function getTestAttemptAnalysis(testId) {
         accuracy: Number(row.total_questions || 0) > 0
             ? Number((((Number(row.correct_answers || 0) / Number(row.total_questions || 1)) * 100).toFixed(1)))
             : 0,
-        rank: Number(row.rank || 0),
         timeSpent: Number(row.time_spent || 0),
         result: await buildAttemptResult(row.id),
     })));
 
+    const firstAttempts = new Map(
+        firstAttemptsResult.rows.map((row) => [
+            row.student_id,
+            {
+                studentId: row.student_id,
+                studentName: row.student_name,
+                attemptNo: Number(row.attempt_no),
+                submittedAt: row.submitted_at,
+                autoSubmitted: row.auto_submitted,
+                score: Number(row.score || 0),
+                totalMarks: Number(row.total_marks || 0),
+                accuracy: Number(row.total_questions || 0) > 0
+                    ? Number((((Number(row.correct_answers || 0) / Number(row.total_questions || 1)) * 100).toFixed(1)))
+                    : 0,
+                rank: Number(row.rank || 0),
+                totalStudents: Number(row.total_students || 0),
+                timeSpent: Number(row.time_spent || 0),
+            },
+        ])
+    );
+
     const grouped = new Map();
-    for (const attempt of mappedAttempts) {
+    for (const attempt of allAttempts) {
         const existing = grouped.get(attempt.studentId);
         if (!existing) {
+            const first = firstAttempts.get(attempt.studentId);
             grouped.set(attempt.studentId, {
                 studentId: attempt.studentId,
                 studentName: attempt.studentName,
                 attemptCount: 1,
                 latestSubmittedAt: attempt.submittedAt,
-                score: attempt.score,
-                totalMarks: attempt.totalMarks,
-                accuracy: attempt.accuracy,
-                rank: attempt.rank,
-                timeSpent: attempt.timeSpent,
+                firstSubmittedAt: first?.submittedAt ?? attempt.submittedAt,
+                score: first?.score ?? attempt.score,
+                totalMarks: first?.totalMarks ?? attempt.totalMarks,
+                accuracy: first?.accuracy ?? attempt.accuracy,
+                rank: first?.rank ?? 0,
+                timeSpent: first?.timeSpent ?? attempt.timeSpent,
                 attempts: [attempt.result],
             });
             continue;

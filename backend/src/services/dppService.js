@@ -308,6 +308,18 @@ async function getSubmittedAttemptCount(dppId, studentId, client = pool) {
     return Number(result.rows[0]?.count || 0);
 }
 
+async function getActiveDppSession(client, dppId, studentId, forUpdate = false) {
+    const result = await client.query(`
+        SELECT *
+        FROM dpp_sessions
+        WHERE dpp_id = $1
+          AND student_id = $2
+        ${forUpdate ? "FOR UPDATE" : ""}
+    `, [dppId, studentId]);
+
+    return result.rows[0] || null;
+}
+
 export async function getStudentDppAttemptSummary(dppId, studentId) {
     const dpp = await getStudentVisibleDppRow(dppId, studentId);
     if (!dpp) return null;
@@ -344,27 +356,69 @@ export async function getStudentDppAttemptSummary(dppId, studentId) {
     };
 }
 
-export async function startStudentDppAttempt(dppId, studentId) {
-    const dpp = await getStudentVisibleDppRow(dppId, studentId);
-    if (!dpp) return null;
-
-    const submittedAttemptCount = await getSubmittedAttemptCount(dppId, studentId);
-    if (submittedAttemptCount >= MAX_DPP_ATTEMPTS) {
-        const error = new Error("maximum attempts reached");
-        error.code = "ATTEMPT_LIMIT_REACHED";
+export async function startStudentDppAttempt(dppId, studentId, deviceId) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
         throw error;
     }
 
-    const questions = await getQuestionsForDpp(dppId);
-    const summary = await getStudentDppAttemptSummary(dppId, studentId);
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    return {
-        dpp: mapDpp(dpp, { questions }),
-        maxAttempts: MAX_DPP_ATTEMPTS,
-        submittedAttemptCount,
-        remainingAttempts: Math.max(0, MAX_DPP_ATTEMPTS - submittedAttemptCount),
-        history: summary?.history || [],
-    };
+        const dpp = await getStudentVisibleDppRow(dppId, studentId, client);
+        if (!dpp) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        const session = await getActiveDppSession(client, dppId, studentId, true);
+        if (session && session.device_id !== deviceId) {
+            await client.query("ROLLBACK");
+            const error = new Error("session active on another device");
+            error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+            throw error;
+        }
+
+        if (session) {
+            await client.query(`
+                UPDATE dpp_sessions
+                SET last_seen_at = NOW()
+                WHERE id = $1
+            `, [session.id]);
+        } else {
+            await client.query(`
+                INSERT INTO dpp_sessions (dpp_id, student_id, device_id)
+                VALUES ($1, $2, $3)
+            `, [dppId, studentId, deviceId]);
+        }
+
+        const submittedAttemptCount = await getSubmittedAttemptCount(dppId, studentId, client);
+        if (submittedAttemptCount >= MAX_DPP_ATTEMPTS) {
+            await client.query("ROLLBACK");
+            const error = new Error("maximum attempts reached");
+            error.code = "ATTEMPT_LIMIT_REACHED";
+            throw error;
+        }
+
+        const questions = await getQuestionsForDpp(dppId, client);
+        const summary = await getStudentDppAttemptSummary(dppId, studentId);
+
+        await client.query("COMMIT");
+        return {
+            dpp: mapDpp(dpp, { questions }),
+            maxAttempts: MAX_DPP_ATTEMPTS,
+            submittedAttemptCount,
+            remainingAttempts: Math.max(0, MAX_DPP_ATTEMPTS - submittedAttemptCount),
+            history: summary?.history || [],
+        };
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 async function buildDppAttemptResult(attemptId) {
@@ -447,13 +501,36 @@ async function getDppAttemptAccessForUser(attemptId, user) {
     return attempt;
 }
 
-export async function submitStudentDppAttempt(dppId, studentId, { answers } = {}) {
-    const dpp = await getStudentVisibleDppRow(dppId, studentId);
-    if (!dpp) return null;
+export async function submitStudentDppAttempt(dppId, studentId, { answers, deviceId } = {}) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
 
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+
+        const dpp = await getStudentVisibleDppRow(dppId, studentId, client);
+        if (!dpp) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        const session = await getActiveDppSession(client, dppId, studentId, true);
+        if (!session) {
+            await client.query("ROLLBACK");
+            const error = new Error("session not found");
+            error.code = "SESSION_NOT_FOUND";
+            throw error;
+        }
+        if (session.device_id !== deviceId) {
+            await client.query("ROLLBACK");
+            const error = new Error("session active on another device");
+            error.code = "SESSION_ACTIVE_OTHER_DEVICE";
+            throw error;
+        }
 
         const submittedAttemptCount = await getSubmittedAttemptCount(dppId, studentId, client);
         if (submittedAttemptCount >= MAX_DPP_ATTEMPTS) {
@@ -498,6 +575,12 @@ export async function submitStudentDppAttempt(dppId, studentId, { answers } = {}
             metrics.unattempted,
         ]);
 
+        await client.query(`
+            DELETE FROM dpp_sessions
+            WHERE dpp_id = $1
+              AND student_id = $2
+        `, [dppId, studentId]);
+
         await client.query("COMMIT");
         return buildDppAttemptResult(insertResult.rows[0].id);
     } catch (error) {
@@ -506,6 +589,23 @@ export async function submitStudentDppAttempt(dppId, studentId, { answers } = {}
     } finally {
         client.release();
     }
+}
+
+export async function closeStudentDppSession(dppId, studentId, deviceId) {
+    if (!deviceId) {
+        const error = new Error("device id required");
+        error.code = "DEVICE_ID_REQUIRED";
+        throw error;
+    }
+
+    const result = await pool.query(`
+        DELETE FROM dpp_sessions
+        WHERE dpp_id = $1
+          AND student_id = $2
+          AND device_id = $3
+    `, [dppId, studentId, deviceId]);
+
+    return result.rowCount > 0;
 }
 
 export async function getDppAttemptResultForUser(attemptId, user) {
@@ -537,7 +637,8 @@ export async function getDppAttemptQuestionExplanationForUser(attemptId, questio
     };
 }
 
-export async function getDppAttemptAnalysis(dppId) {
+export async function getDppAttemptAnalysis(dppId, search) {
+    const searchTerm = search && String(search).trim() ? `%${String(search).trim()}%` : null;
     const result = await pool.query(`
         WITH question_counts AS (
             SELECT COUNT(*)::int AS total_questions
@@ -559,8 +660,9 @@ export async function getDppAttemptAnalysis(dppId) {
         JOIN users u ON u.id = da.student_id
         CROSS JOIN question_counts qc
         WHERE da.dpp_id = $1
+        ${searchTerm ? "AND (u.name ILIKE $2 OR u.login_id ILIKE $2)" : ""}
         ORDER BY da.submitted_at DESC, da.attempt_no DESC
-    `, [dppId]);
+    `, searchTerm ? [dppId, searchTerm] : [dppId]);
 
     const dppRow = await getDppRowById(dppId);
     const questions = await getQuestionsForDpp(dppId);

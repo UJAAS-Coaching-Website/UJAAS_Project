@@ -24,6 +24,7 @@ import {
   mapApiTestToPublished as apiTestToPublished,
 } from '../utils/testMappings';
 import { preloadTestAssets, slugifyText } from '../utils/testSession';
+import { getDeviceId } from '../utils/deviceId';
 
 type StudentAnswer = string | number | number[] | null;
 
@@ -43,6 +44,9 @@ type TestState =
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
 const LAST_RESULT_STORAGE_KEY = 'ujaasLastAttemptResultId';
+const AUTO_SUBMIT_PENDING_KEY = 'ujaasAutoSubmitPending';
+const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
+const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
 
 export function TestSeriesContainer({
   user,
@@ -67,6 +71,19 @@ export function TestSeriesContainer({
   const [loadingAnalysisAttemptId, setLoadingAnalysisAttemptId] = useState<string | null>(null);
   const pendingSubTabRef = useRef<string | null>(null);
   const analyticsRequestRef = useRef(0);
+  const previousResultsSubTabRef = useRef<string | null>(null);
+  const previousResultsScrollRef = useRef<number | null>(null);
+  const lastNonResultsSubTabRef = useRef<string | null>(null);
+  const previousResultsStateRef = useRef<TestState | null>(null);
+  const analyticsOriginRef = useRef<'results' | 'list'>('list');
+  const isAliveRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isAliveRef.current = false;
+      analyticsRequestRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -78,6 +95,7 @@ export function TestSeriesContainer({
 
   const patchAttemptSummary = useCallback(async (testId: string) => {
     const summary = await fetchMyTestAttemptSummary(testId);
+    if (!isAliveRef.current) return summary;
     setStudentTests((prev) => prev.map((test) => (
       test.id === testId
         ? {
@@ -100,13 +118,14 @@ export function TestSeriesContainer({
     analyticsRequestRef.current = requestId;
 
     try {
+      if (!isAliveRef.current) return;
       setLoadingAnalysisAttemptId(attemptId);
       const result = await fetchAttemptResult(attemptId);
-      if (analyticsRequestRef.current !== requestId) {
+      if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
       const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
-      if (analyticsRequestRef.current !== requestId) {
+      if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
@@ -115,7 +134,7 @@ export function TestSeriesContainer({
       pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } finally {
-      if (analyticsRequestRef.current === requestId) {
+      if (analyticsRequestRef.current === requestId && isAliveRef.current) {
         setLoadingAnalysisAttemptId(null);
       }
     }
@@ -130,6 +149,24 @@ export function TestSeriesContainer({
 
     try {
       const session = JSON.parse(stored) as { testId: string };
+      const pendingAutoSubmit = localStorage.getItem(AUTO_SUBMIT_PENDING_KEY);
+      if (pendingAutoSubmit) {
+        const pending = JSON.parse(pendingAutoSubmit) as { testId?: string; attemptId?: string };
+        if (pending?.testId === session.testId) {
+          const summary = await fetchMyTestAttemptSummary(session.testId).catch(() => null);
+          const latestAttemptId = summary?.history?.[0]?.id;
+          if (latestAttemptId) {
+            localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+            localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+            if (pending?.attemptId) {
+              localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${pending.attemptId}`);
+              localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${pending.attemptId}`);
+            }
+            await openAttemptAnalytics(latestAttemptId);
+            return;
+          }
+        }
+      }
       const payload = await startMyTestAttempt(session.testId);
       const fullTest = apiTestToPublished(payload.test);
       const nextState = mode === 'overview'
@@ -143,6 +180,7 @@ export function TestSeriesContainer({
           serverNow: payload.serverNow,
         };
 
+      if (!isAliveRef.current) return;
       setTestState(nextState);
     } catch {
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
@@ -151,13 +189,17 @@ export function TestSeriesContainer({
   }, [onNavigateSubTab]);
 
   const loadAttemptResults = useCallback(async () => {
+    if (!isAliveRef.current) return [];
     setIsLoadingResults(true);
     try {
       const results = await fetchMyAttemptResults();
+      if (!isAliveRef.current) return results;
       setAttemptResults(results);
       return results;
     } finally {
-      setIsLoadingResults(false);
+      if (isAliveRef.current) {
+        setIsLoadingResults(false);
+      }
     }
   }, []);
 
@@ -166,6 +208,9 @@ export function TestSeriesContainer({
   }, [loadAttemptResults]);
 
   useEffect(() => {
+    if (subTab && subTab !== 'Results') {
+      lastNonResultsSubTabRef.current = subTab;
+    }
     const syncFromRoute = async () => {
       if (subTab && pendingSubTabRef.current === subTab) {
         pendingSubTabRef.current = null;
@@ -221,6 +266,12 @@ export function TestSeriesContainer({
           return;
         }
 
+        if (!previousResultsSubTabRef.current) {
+          previousResultsSubTabRef.current = lastNonResultsSubTabRef.current || 'list';
+        }
+        if (!previousResultsStateRef.current) {
+          previousResultsStateRef.current = testState;
+        }
         await loadAttemptResults();
         setTestState({ mode: 'viewResults' });
       }
@@ -236,16 +287,34 @@ export function TestSeriesContainer({
     const token = localStorage.getItem('ujaasToken');
 
     const handleBeforeUnload = () => {
+      const hasAnswer = localStorage.getItem(`${ANSWER_FLAG_PREFIX}${attemptId}`) === '1';
+      if (!hasAnswer) return;
+      let cachedAnswers: Record<string, StudentAnswer> | undefined;
+      const storedAnswers = localStorage.getItem(`${ANSWER_STORAGE_PREFIX}${attemptId}`);
+      if (storedAnswers) {
+        try {
+          cachedAnswers = JSON.parse(storedAnswers);
+        } catch {
+          cachedAnswers = undefined;
+        }
+      }
+      localStorage.setItem(AUTO_SUBMIT_PENDING_KEY, JSON.stringify({
+        testId: testState.test.id,
+        attemptId,
+        at: Date.now(),
+      }));
       void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/submit`, {
         method: 'POST',
         keepalive: true,
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-Device-Id': getDeviceId(),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           autoSubmitted: true,
+          ...(cachedAnswers ? { answers: cachedAnswers } : {}),
         }),
       });
     };
@@ -258,11 +327,13 @@ export function TestSeriesContainer({
     if (loadingOverviewTestId) return;
 
     try {
+      if (!isAliveRef.current) return;
       setLoadingOverviewTestId(test.id);
       setIsLoadingOverview(true);
       const fullApiTest = await fetchTestById(test.id);
       const fullTest = apiTestToPublished(fullApiTest);
 
+      if (!isAliveRef.current) return;
       setStudentTests((prev) => prev.map((item) => (
         item.id === fullTest.id
           ? {
@@ -279,8 +350,10 @@ export function TestSeriesContainer({
     } catch (error: any) {
       window.alert(error?.message || 'Unable to load test overview');
     } finally {
-      setIsLoadingOverview(false);
-      setLoadingOverviewTestId(null);
+      if (isAliveRef.current) {
+        setIsLoadingOverview(false);
+        setLoadingOverviewTestId(null);
+      }
     }
   };
 
@@ -288,6 +361,7 @@ export function TestSeriesContainer({
     if (testState.mode !== 'overview' || isStartingTest) return;
 
     try {
+      if (!isAliveRef.current) return;
       setIsStartingTest(true);
       const payload: ApiActiveAttemptPayload = await startMyTestAttempt(testState.test.id);
       const fullTest = apiTestToPublished(payload.test);
@@ -299,6 +373,7 @@ export function TestSeriesContainer({
         attemptId: payload.attempt.id,
       }));
 
+      if (!isAliveRef.current) return;
       setStudentTests((prev) => prev.map((test) => (
         test.id === fullTest.id
           ? {
@@ -326,7 +401,9 @@ export function TestSeriesContainer({
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
     } finally {
-      setIsStartingTest(false);
+      if (isAliveRef.current) {
+        setIsStartingTest(false);
+      }
     }
   };
 
@@ -348,6 +425,9 @@ export function TestSeriesContainer({
     try {
       const result = await submitMyAttempt(testState.attemptId, answers, Boolean(options?.autoSubmitted));
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+      localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+      localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
+      localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
@@ -355,7 +435,31 @@ export function TestSeriesContainer({
       pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
-      window.alert(error?.message || 'Unable to submit test');
+      const message = error?.message || 'Unable to submit test';
+      const shouldRecoverToLatestAttempt = Boolean(options?.autoSubmitted)
+        && typeof message === 'string'
+        && message.toLowerCase().includes('active attempt not found');
+
+      if (shouldRecoverToLatestAttempt) {
+        try {
+          localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+          localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
+          localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
+          localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
+          const summary = await patchAttemptSummary(testState.test.id).catch(() => fetchMyTestAttemptSummary(testState.test.id));
+          const latestAttemptId = summary.history[0]?.id;
+
+          if (latestAttemptId) {
+            await loadAttemptResults().catch(() => undefined);
+            await openAttemptAnalytics(latestAttemptId);
+            return;
+          }
+        } catch (recoveryError) {
+          console.error('Failed to recover auto-submitted attempt', recoveryError);
+        }
+      }
+
+      window.alert(message);
     }
   };
 
@@ -366,6 +470,59 @@ export function TestSeriesContainer({
     setTestState({ mode: 'list' });
     window.scrollTo({ top: 0, behavior: 'auto' });
     onNavigateSubTab?.(undefined);
+  };
+
+  const handleBackFromAnalytics = () => {
+    if (analyticsOriginRef.current === 'results') {
+      analyticsOriginRef.current = 'list';
+      setTestState({ mode: 'viewResults' });
+      pendingSubTabRef.current = 'Results';
+      onNavigateSubTab?.(pendingSubTabRef.current);
+      const scrollTarget = previousResultsScrollRef.current;
+      if (scrollTarget !== null) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+        });
+      }
+      return;
+    }
+    handleBackToList();
+  };
+
+  const handleBackFromResults = () => {
+    const previousSubTab = previousResultsSubTabRef.current;
+    const previousState = previousResultsStateRef.current;
+    const previousScroll = previousResultsScrollRef.current;
+
+    previousResultsSubTabRef.current = null;
+    previousResultsStateRef.current = null;
+    previousResultsScrollRef.current = null;
+
+    if (previousState) {
+      setTestState(previousState);
+      if (previousState.mode === 'analytics' && previousState.result?.attempt_id) {
+        onNavigateSubTab?.(`Analysis-${previousState.result.attempt_id}`);
+      } else if (previousState.mode === 'overview') {
+        onNavigateSubTab?.(`Overview-${slugifyText(previousState.test.title)}`);
+      } else if (previousState.mode === 'taking') {
+        onNavigateSubTab?.(`Test-${slugifyText(previousState.test.title)}`);
+      } else {
+        onNavigateSubTab?.(previousSubTab === 'list' ? undefined : previousSubTab || undefined);
+      }
+      if (previousScroll !== null) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: previousScroll, behavior: 'auto' });
+        });
+      }
+      return;
+    }
+
+    if (previousSubTab && previousSubTab !== 'Results') {
+      onNavigateSubTab?.(previousSubTab === 'list' ? undefined : previousSubTab);
+      return;
+    }
+
+    handleBackToList();
   };
 
   const currentTests = useMemo(() => studentTests, [studentTests]);
@@ -386,6 +543,7 @@ export function TestSeriesContainer({
     return (
       <StudentTestTaking
         testId={testState.test.id}
+        attemptId={testState.attemptId}
         testTitle={testState.test.title}
         duration={testState.test.duration}
         format={testState.test.format}
@@ -396,6 +554,7 @@ export function TestSeriesContainer({
         deadlineAt={testState.deadlineAt}
         serverNow={testState.serverNow}
         onSaveProgress={handleSaveProgress}
+        outerPaddingClassName="p-2 pb-3"
       />
     );
   }
@@ -409,7 +568,7 @@ export function TestSeriesContainer({
           void openAttemptAnalytics(attemptId);
         }}
         loadingAttemptId={loadingAnalysisAttemptId}
-        onClose={handleBackToList}
+        onClose={handleBackFromAnalytics}
       />
     );
   }
@@ -418,10 +577,12 @@ export function TestSeriesContainer({
     return (
       <ViewResults
         results={attemptResults}
-        onClose={handleBackToList}
+        onClose={handleBackFromResults}
         loadingAttemptId={loadingAnalysisAttemptId}
         isLoading={isLoadingResults}
         onViewDetailedAnalytics={(attemptId) => {
+          analyticsOriginRef.current = 'results';
+          previousResultsScrollRef.current = window.scrollY;
           void openAttemptAnalytics(attemptId);
         }}
       />
@@ -430,14 +591,19 @@ export function TestSeriesContainer({
 
   return (
     <TestSeriesSection
+      loading={currentTests.length === 0 && isLoadingResults}
       onStartTest={handleStartTest}
       onViewAnalytics={(attemptId) => {
         if (attemptId) {
+          analyticsOriginRef.current = 'list';
           void openAttemptAnalytics(attemptId);
         }
       }}
       onViewResults={() => {
+        previousResultsScrollRef.current = window.scrollY;
+        previousResultsStateRef.current = testState;
         void loadAttemptResults();
+        previousResultsSubTabRef.current = pendingSubTabRef.current || subTab || 'list';
         setTestState({ mode: 'viewResults' });
         pendingSubTabRef.current = 'Results';
         onNavigateSubTab?.(pendingSubTabRef.current);

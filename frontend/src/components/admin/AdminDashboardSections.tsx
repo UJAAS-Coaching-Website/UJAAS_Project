@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight, Edit, Eye, Megaphone, MessageSquare, Plus, Trash2 } from 'lucide-react';
 
@@ -30,12 +30,12 @@ export function AdminBatchSelectionTab({
   batches,
   onSelectBatch,
   onAddBatch,
-  onUploadNotice,
+  onOpenNotices,
 }: {
   batches: BatchInfo[];
   onSelectBatch: (batch: string) => void;
   onAddBatch: () => void;
-  onUploadNotice: () => void;
+  onOpenNotices: () => void;
 }) {
   const sortedBatches = [...batches].sort((a, b) => {
     if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
@@ -52,11 +52,11 @@ export function AdminBatchSelectionTab({
           </div>
           <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
             <button
-              onClick={onUploadNotice}
+              onClick={onOpenNotices}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
             >
               <Megaphone className="w-5 h-5" />
-              Upload Notice
+              Notices
             </button>
             <button
               onClick={onAddBatch}
@@ -165,6 +165,7 @@ export function AdminStudentsDirectoryTab({
   onDeleteStudent,
   onViewStudent,
   renderStars,
+  onSearchStudents,
 }: {
   students: StudentDirectoryStudent[];
   onAddStudent: () => void;
@@ -172,14 +173,23 @@ export function AdminStudentsDirectoryTab({
   onDeleteStudent: (id: string) => void;
   onViewStudent: (student: StudentDirectoryStudent) => void;
   renderStars: (rating: number) => React.ReactNode;
+  onSearchStudents?: (query: string) => void;
 }) {
   const STUDENTS_PER_PAGE = 20;
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const filtered = students
-    .filter((student) => student.name.toLowerCase().includes(query.toLowerCase()) || student.rollNumber.toLowerCase().includes(query.toLowerCase()))
+  useEffect(() => {
+    if (!onSearchStudents) return;
+    const timer = window.setTimeout(() => {
+      onSearchStudents(query);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [onSearchStudents, query]);
+
+  const filtered = (onSearchStudents ? students : students
+    .filter((student) => student.name.toLowerCase().includes(query.toLowerCase()) || student.rollNumber.toLowerCase().includes(query.toLowerCase())))
     .sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':

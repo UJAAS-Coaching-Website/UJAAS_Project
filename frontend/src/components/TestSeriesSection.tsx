@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { useIsMobileViewport } from '../hooks/useViewport';
+import { TestSeriesSkeleton } from './ui/content-skeletons';
 import {
   FileText,
   Clock,
@@ -36,6 +37,7 @@ interface TestSeries {
 }
 
 interface TestSeriesProps {
+  loading?: boolean;
   onStartTest: (test: import('../App').PublishedTest) => Promise<void>;
   onViewAnalytics: (attemptId?: string | null) => void;
   onViewResults: () => void;
@@ -47,6 +49,7 @@ interface TestSeriesProps {
 }
 
 export function TestSeriesSection({ 
+  loading = false,
   onStartTest, 
   onViewAnalytics, 
   onViewResults,
@@ -58,6 +61,11 @@ export function TestSeriesSection({
 }: TestSeriesProps) {
   const isMobileViewport = useIsMobileViewport();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'pending' | 'upcoming'>('all');
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [selectedFilter]);
 
   const formatSchedule = (date?: string, time?: string) => {
     if (!date && !time) return 'Not scheduled';
@@ -145,6 +153,8 @@ export function TestSeriesSection({
     return statusFilter;
   });
 
+  const visibleTests = filteredTests.slice(0, visibleCount);
+
   const stats = useMemo(() => {
     const total = allTests.length;
     const completed = allTests.filter((test) => test.status === 'completed').length;
@@ -155,6 +165,10 @@ export function TestSeriesSection({
 
     return { total, completed, pending, avgScore };
   }, [allTests, attemptResults]);
+
+  if (loading) {
+    return <TestSeriesSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -281,7 +295,7 @@ export function TestSeriesSection({
 
       {/* Test Cards Grid */}
       <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTests.map((test) => (
+        {visibleTests.map((test) => (
           (() => {
             const isLoadingOverview = loadingOverviewTestId === test.id;
             const isLoadingAnalysis = Boolean(
@@ -441,6 +455,18 @@ export function TestSeriesSection({
           })()
         ))}
       </div>
+
+      {/* Load More */}
+      {filteredTests.length > visibleCount && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={() => setVisibleCount((c) => c + 12)}
+            className="px-8 py-3 bg-white border border-gray-200 text-teal-600 rounded-2xl shadow-sm hover:bg-teal-50 font-bold transition-colors"
+          >
+            Load More Tests
+          </button>
+        </div>
+      )}
 
       {/* Empty State */}
       {filteredTests.length === 0 && (

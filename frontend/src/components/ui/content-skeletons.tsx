@@ -2,13 +2,10 @@ import { Skeleton } from "./skeleton";
 
 export function SubjectCardSkeleton() {
   return (
-    <div className="rounded-3xl border border-white bg-white/80 p-6 shadow-lg">
-      <div className="flex flex-col items-center gap-4">
-        <Skeleton className="h-16 w-16 rounded-2xl" />
-        <div className="w-full space-y-2 text-center">
-          <Skeleton className="mx-auto h-4 w-24" />
-          <Skeleton className="mx-auto h-3 w-16" />
-        </div>
+    <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 flex items-center md:flex-col md:items-center gap-3 md:gap-4">
+      <Skeleton className="h-12 w-12 md:h-16 md:w-16 rounded-xl md:rounded-2xl shrink-0" />
+      <div className="min-w-0 flex-1 md:flex-none md:w-full md:text-center space-y-2">
+        <Skeleton className="h-4 w-24 md:mx-auto" />
       </div>
     </div>
   );
@@ -53,20 +50,21 @@ export function NoteCardSkeleton() {
 
 export function DppCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white bg-white/80 p-5 shadow-lg">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-6 w-28 rounded-full" />
+    <div className="rounded-2xl border border-white bg-white/80 p-4 shadow-lg">
+      <div className="flex flex-col gap-3">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-24 rounded-full" />
           </div>
-          <Skeleton className="h-5 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="h-4 w-24" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-10 w-28 rounded-xl" />
-          <Skeleton className="h-10 w-24 rounded-xl" />
+        <div className="mt-1 grid grid-cols-2 gap-2">
+          <Skeleton className="h-9 w-full rounded-xl" />
+          <Skeleton className="h-9 w-full rounded-xl" />
         </div>
       </div>
     </div>
@@ -156,14 +154,57 @@ export function TableRowsSkeleton({
 
 export function DashboardHeroSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-200 via-gray-200 to-slate-300 p-8 shadow-2xl">
-      <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center">
-        <Skeleton className="h-24 w-24 rounded-full" />
-        <div className="flex-1 space-y-3">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-4 w-72" />
-          <Skeleton className="h-4 w-60" />
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-200 via-gray-200 to-slate-300 p-5 md:p-8 shadow-2xl">
+      <div className="relative flex flex-row items-center gap-4 md:gap-6">
+        <Skeleton className="h-16 w-16 md:h-24 md:w-24 shrink-0 rounded-full" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-8 md:h-9 w-48 md:w-64" />
+          <Skeleton className="h-4 md:h-5 w-40 md:w-56" />
+
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function TestSeriesSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="rounded-2xl p-5 md:p-6 bg-white shadow-lg border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48 md:w-64" />
+          <Skeleton className="h-4 w-64 md:w-80" />
+        </div>
+        <Skeleton className="h-10 w-full md:w-32 rounded-xl" />
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-4 gap-2 lg:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-lg md:rounded-xl px-1.5 py-2 md:p-5 bg-white shadow-md border border-gray-100 flex flex-col md:items-start items-center text-center md:text-left">
+            <Skeleton className="mb-1 md:mb-3 h-6 w-6 md:h-12 md:w-12 rounded-lg" />
+            <Skeleton className="h-4 md:h-8 w-8 md:w-16" />
+            <Skeleton className="mt-1 h-2 md:h-4 w-12 md:w-20" />
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="rounded-xl md:rounded-2xl p-4 md:p-6 bg-white shadow-lg border border-gray-100">
+        <Skeleton className="mb-2 md:mb-3 h-3 md:h-4 w-12 md:w-16" />
+        <div className="flex flex-row flex-nowrap overflow-hidden md:flex-wrap gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 md:h-10 flex-1 min-w-[3rem] md:flex-none md:w-24 rounded-lg" />
+          ))}
+        </div>
+      </div>
+
+      {/* Test Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <TestCardSkeleton key={`test-card-skeleton-${i}`} />
+        ))}
       </div>
     </div>
   );

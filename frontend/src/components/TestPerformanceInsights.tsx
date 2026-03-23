@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Users,
@@ -25,6 +25,7 @@ export interface StudentPerformance {
   studentName: string;
   attemptCount: number;
   latestSubmittedAt: string;
+  firstSubmittedAt?: string;
   score: number;
   totalMarks: number;
   accuracy: number;
@@ -58,18 +59,20 @@ export function TestPerformanceInsights({
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const searchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadAnalysis = async () => {
       setIsLoading(true);
       try {
-        const analysis = await fetchTestAnalysis(testId);
+        const analysis = await fetchTestAnalysis(testId, searchQuery);
         setPerformances(
           analysis.performances.map((perf) => ({
             studentId: perf.studentId,
             studentName: perf.studentName,
             attemptCount: perf.attemptCount,
             latestSubmittedAt: perf.latestSubmittedAt,
+            firstSubmittedAt: (perf as any).firstSubmittedAt,
             score: perf.score,
             totalMarks: perf.totalMarks,
             accuracy: perf.accuracy,
@@ -89,21 +92,25 @@ export function TestPerformanceInsights({
       }
     };
 
-    void loadAnalysis();
-  }, [testId]);
+    if (searchTimerRef.current) {
+      window.clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = window.setTimeout(() => {
+      void loadAnalysis();
+    }, 250);
+
+    return () => {
+      if (searchTimerRef.current) {
+        window.clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [testId, searchQuery]);
 
   const rankedPerformances = useMemo(() => {
-    return [...performances]
-      .sort((a, b) => b.score - a.score)
-      .map((p, index) => ({
-        ...p,
-        rank: index + 1,
-      }));
+    return [...performances].sort((a, b) => (a.rank || 0) - (b.rank || 0));
   }, [performances]);
 
-  const filteredPerformances = rankedPerformances.filter((p) =>
-    p.studentName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPerformances = rankedPerformances;
 
   const getSubmissionStatus = (submittedAt: string, timeSpentInSeconds: number) => {
     if (!scheduledDateTime) return null;
@@ -165,19 +172,19 @@ export function TestPerformanceInsights({
     const currentAttempt = attempts[selectedAttemptIndex] || attempts[0];
     return (
       <div className="fixed inset-0 bg-white z-[10005] overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{selectedStudent.studentName}</h2>
-                <p className="text-sm text-gray-600">All attempts for this test</p>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">{selectedStudent.studentName}</h2>
+                <p className="text-xs sm:text-sm text-gray-600">All attempts for this test</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {attempts.map((attempt: any, index: number) => (
                   <button
                     key={attempt.attempt_id}
                     onClick={() => setSelectedAttemptIndex(index)}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
                       index === selectedAttemptIndex
                         ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -208,11 +215,11 @@ export function TestPerformanceInsights({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="min-h-screen bg-gray-50 py-8"
+      className="min-h-screen bg-gray-50"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
@@ -221,17 +228,17 @@ export function TestPerformanceInsights({
                 <ArrowLeft className="w-6 h-6 text-gray-600" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{testTitle}</h1>
-                <p className="text-gray-500">Performance Insights & Student Attempts</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{testTitle}</h1>
+                <p className="text-sm sm:text-base text-gray-500">Performance Insights & Student Attempts</p>
               </div>
             </div>
             {(testQuestions || testId) && (
               <button
                 onClick={handleDownloadTestPDF}
                 disabled={isDownloadingPdf}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+                className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-blue-600 text-white rounded-xl text-sm sm:text-base font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
               >
-                <Download className="w-5 h-5" />
+                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                 {isDownloadingPdf ? 'Preparing PDF...' : 'Download Test Paper'}
               </button>
             )}
@@ -244,11 +251,11 @@ export function TestPerformanceInsights({
                 placeholder="Search by student name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-6 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
+                className="w-full px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
               />
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm border border-blue-100 whitespace-nowrap">
-              <Users className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-3 py-2 sm:px-4 bg-blue-50 text-blue-700 rounded-xl font-bold text-xs sm:text-sm border border-blue-100 whitespace-nowrap">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               {performances.length} Students
             </div>
           </div>
@@ -261,23 +268,24 @@ export function TestPerformanceInsights({
         ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-gray-50/50 border-b border-gray-100">
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Latest Submission</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Rank</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Student Name</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Attempts</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">First Submission</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Score</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Accuracy</th>
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filteredPerformances.map((perf) => {
-                    const status = getSubmissionStatus(perf.latestSubmittedAt, perf.timeSpent);
-                    const submissionDateTime = formatSubmissionTime(perf.latestSubmittedAt);
+                    const submissionTimestamp = perf.firstSubmittedAt || perf.latestSubmittedAt;
+                    const status = getSubmissionStatus(submissionTimestamp, perf.timeSpent);
+                    const submissionDateTime = formatSubmissionTime(submissionTimestamp);
                     return (
                       <tr
                         key={perf.studentId}
@@ -287,9 +295,9 @@ export function TestPerformanceInsights({
                         }}
                         className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                       >
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
                           <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm ${
                               perf.rank === 1
                                 ? 'bg-yellow-100 text-yellow-700'
                                 : perf.rank === 2
@@ -302,24 +310,25 @@ export function TestPerformanceInsights({
                             #{perf.rank}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-gray-900">{perf.studentName}</div>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <div className="font-bold text-gray-900 text-xs sm:text-sm">{perf.studentName}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="font-semibold text-gray-700">{perf.attemptCount}</div>
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <div className="font-semibold text-gray-700 text-xs sm:text-sm">{perf.attemptCount}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {submissionDateTime.date}
-                            <Clock className="w-3.5 h-3.5 ml-1" />
-                            {submissionDateTime.time}
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <div className="flex items-center text-[11px] sm:text-sm text-gray-600">
+                            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span className="ml-1">{submissionDateTime.date}</span>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <span>{submissionDateTime.time}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
                           {status && (
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase tracking-wider ${
                                 status === 'late' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                               }`}
                             >
@@ -327,21 +336,21 @@ export function TestPerformanceInsights({
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="font-bold text-gray-900">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <span className="font-bold text-gray-900 text-xs sm:text-sm">
                             {perf.score} / {perf.totalMarks}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
                           <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4 text-green-500" />
-                            <span className="font-bold text-gray-700">{perf.accuracy}%</span>
+                            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500" />
+                            <span className="font-bold text-gray-700 text-xs sm:text-sm">{perf.accuracy}%</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <button className="flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700">
+                        <td className="px-3 py-3 sm:px-6 sm:py-4">
+                          <button className="flex items-center gap-1 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700">
                             View Details
-                            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:translate-x-1" />
                           </button>
                         </td>
                       </tr>
@@ -355,7 +364,7 @@ export function TestPerformanceInsights({
                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Search className="w-10 h-10 text-gray-300" />
                 </div>
-                <p className="text-gray-500">No students found matching your search.</p>
+                <p className="text-sm sm:text-base text-gray-500">No students found matching your search.</p>
               </div>
             )}
           </div>

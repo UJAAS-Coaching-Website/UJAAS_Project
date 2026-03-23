@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./base";
+import { getDeviceId } from "../utils/deviceId";
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -10,6 +11,10 @@ function getAuthHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${token}` };
 }
 
+function getDeviceHeaders(): Record<string, string> {
+    return { "X-Device-Id": getDeviceId() };
+}
+
 async function runRequest(path: string, options: RequestInit = {}): Promise<Response> {
     return fetch(`${API_BASE_URL}${path}`, {
         ...options,
@@ -17,6 +22,7 @@ async function runRequest(path: string, options: RequestInit = {}): Promise<Resp
         cache: "no-store",
         headers: {
             "Content-Type": "application/json",
+            ...getDeviceHeaders(),
             ...getAuthHeaders(),
             ...(options.headers || {}),
         },
@@ -208,6 +214,12 @@ export async function submitMyDppAttempt(id: string, answers: Record<string, str
     });
 }
 
+export async function closeMyDppSession(id: string): Promise<void> {
+    await request(`/api/dpps/${id}/session/close`, {
+        method: "POST",
+    });
+}
+
 export async function fetchDppAttemptResult(attemptId: string): Promise<ApiDppAttemptResult> {
     return request<ApiDppAttemptResult>(`/api/dpps/attempts/${attemptId}/result`);
 }
@@ -219,8 +231,11 @@ export async function fetchDppAttemptQuestionExplanation(
     return request<ApiDppQuestionExplanation>(`/api/dpps/attempts/${attemptId}/questions/${questionId}/explanation`);
 }
 
-export async function fetchDppAnalysis(dppId: string): Promise<ApiDppAnalysis> {
-    return request<ApiDppAnalysis>(`/api/dpps/${dppId}/attempts/analysis`);
+export async function fetchDppAnalysis(dppId: string, search?: string): Promise<ApiDppAnalysis> {
+    const query = search && search.trim().length > 0
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : "";
+    return request<ApiDppAnalysis>(`/api/dpps/${dppId}/attempts/analysis${query}`);
 }
 
 export async function createDpp(payload: CreateDppPayload): Promise<ApiDpp> {

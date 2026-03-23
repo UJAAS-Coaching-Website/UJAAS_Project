@@ -8,6 +8,7 @@ import Cropper from 'react-easy-crop';
 interface EditableAvatarProps {
   user: AuthUser;
   onAvatarUpdate: (newAvatarUrl: string | null) => void;
+  size?: 'sm' | 'md';
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -47,7 +48,7 @@ async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob | n
   });
 }
 
-export function EditableAvatar({ user, onAvatarUpdate }: EditableAvatarProps) {
+export function EditableAvatar({ user, onAvatarUpdate, size = 'md' }: EditableAvatarProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -133,12 +134,20 @@ export function EditableAvatar({ user, onAvatarUpdate }: EditableAvatarProps) {
     }
   };
 
+  const avatarClasses =
+    size === 'sm'
+      ? 'w-16 h-16 text-2xl border-2'
+      : 'w-24 h-24 text-4xl border-4';
+
+  const cameraClasses = size === 'sm' ? 'w-6 h-6 border' : 'w-8 h-8 border-2';
+  const cameraIconClasses = size === 'sm' ? 'w-3 h-3' : 'w-4 h-4';
+
   return (
     <>
       <div className="relative group inline-block">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30 overflow-hidden relative"
+          className={`${avatarClasses} bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center font-bold border-white/30 overflow-hidden relative`}
         >
           {isUploading ? (
             <Loader2 className="w-8 h-8 animate-spin text-white" />
@@ -162,13 +171,13 @@ export function EditableAvatar({ user, onAvatarUpdate }: EditableAvatarProps) {
           whileTap={{ scale: 0.9 }}
           onClick={handleClick}
           disabled={isUploading}
-          className="absolute bottom-0 right-0 w-8 h-8 bg-white text-teal-600 rounded-full flex items-center justify-center shadow-lg border-2 border-teal-500 hover:bg-teal-50 transition-colors z-10"
+          className={`absolute bottom-0 right-0 ${cameraClasses} bg-white text-teal-600 rounded-full flex items-center justify-center shadow-lg border-teal-500 hover:bg-teal-50 transition-colors z-[1]`}
           title={user.avatarUrl ? "Manage Profile Picture" : "Upload Profile Picture"}
         >
           {isUploading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className={`${cameraIconClasses} animate-spin`} />
           ) : (
-            <Camera className="w-4 h-4" />
+            <Camera className={cameraIconClasses} />
           )}
         </motion.button>
 

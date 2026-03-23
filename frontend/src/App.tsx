@@ -170,7 +170,7 @@ export const adminTabs = [
   'rankings',
   'create-test',
   'create-dpp',
-  'upload-notice',
+  'notices',
   'upload-notes',
   'profile',
   'preview-test',
@@ -206,33 +206,50 @@ function DashboardLoadingShell({ role }: { role: User['role'] }) {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="space-y-6">
-          <DashboardHeroSkeleton />
-
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
-            ))}
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: role === 'student' ? 4 : 6 }).map((_, index) => (
-              <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
-            ))}
-          </div>
-
-          {showManagementRows ? (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
-              <TableRowsSkeleton rows={6} columns={role === 'admin' ? 5 : 4} />
+        {showManagementRows ? (
+          <div className="space-y-6">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-64" />
+                  <Skeleton className="h-5 w-96 max-w-full" />
+                </div>
+                <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
+                  <Skeleton className="h-12 w-40 rounded-xl" />
+                  <Skeleton className="h-12 w-40 rounded-xl" />
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <TestCardSkeleton key={`dashboard-test-skeleton-${index}`} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div key={`admin-batch-skeleton-${index}`} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-8 w-48" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <DashboardHeroSkeleton />
+
+            <div className="grid gap-4 grid-cols-2">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -336,6 +353,8 @@ function App() {
   const [publishedTests, setPublishedTests] = useState<PublishedTest[]>([]);
 
   const [selectedPreviewTest, setSelectedPreviewTest] = useState<PublishedTest | null>(null);
+
+  const shouldBlockNonDesktop = Boolean(user && (user.role === 'admin' || user.role === 'faculty') && isMobile);
 
   const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => {
     showBatchToast('saving', 'Publishing test to database...');
@@ -548,6 +567,13 @@ function App() {
   const [adminBatch, setAdminBatch] = useState<AdminBatch | null>(null);
   const [adminLandingSection, setAdminLandingSection] = useState<AdminLandingSection>('batches');
   const { batchSaveToast, setBatchSaveToast, showBatchToast } = useBatchSaveToast();
+  const handleStudentNotificationNavigate = useCallback((tab: 'home' | 'test-series', subTab?: string) => {
+    if (!user || user.role !== 'student') return;
+    setActiveTab(tab);
+    setStudentSubTab(subTab);
+    const path = subTab ? `/student/${tab}/${subTab}` : `/student/${tab}`;
+    window.history.pushState({ tab, subTab }, '', path);
+  }, [user]);
   const {
     notifications,
     handleMarkAsRead,
@@ -559,8 +585,19 @@ function App() {
       console.log("🌟 Review Notification Clicked! Triggering modal...");
       setReviewModalTrigger((prev) => prev + 1);
     },
+    onNavigate: handleStudentNotificationNavigate,
     persistNotifications: safeSetLocalStorage,
   });
+
+  const handleSearchAdminStudents = useCallback(async (query: string) => {
+    if (!user || user.role !== 'admin') return;
+    try {
+      const results = await apiFetchStudents(query);
+      setAdminStudents(results);
+    } catch (error) {
+      console.warn('Could not search students from API:', error);
+    }
+  }, [user]);
 
   const refreshAdminBatchDependencies = async () => {
     const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
@@ -967,7 +1004,7 @@ function App() {
         path = tabToPath(role, tab, adminBatch);
       } else if (tab === 'profile') {
         path = `/${role}/profile`;
-      } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'upload-notice' || tab === 'upload-notes') {
+      } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'notices' || tab === 'upload-notes') {
         path = `/${role}/${adminLandingSection}/${tab}`;
       } else {
         path = user.role === 'faculty' ? facultySectionToPath(adminLandingSection) : adminSectionToPath(adminLandingSection);
@@ -1265,6 +1302,15 @@ function App() {
     } catch {
       // Proceed with local cleanup even if API call fails.
     }
+    // Hard clear all global React states to prevent cross-login stale data mounts
+    setAdminBatches([]);
+    setPublishedTests([]);
+    setAdminFaculties([]);
+    setAdminStudents([]);
+    setAdminSubjects([]);
+    setSelectedPreviewTest(null);
+    setResumeDraftId(null);
+    
     setUser(null);
     setAdminBatch(null);
     setAdminLandingSection('batches');
@@ -1302,6 +1348,26 @@ function App() {
       );
     }
     return <AuthLoadingShell isMobile={isMobile} />;
+  }
+
+  if (shouldBlockNonDesktop) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-xl rounded-3xl border border-white/70 bg-white/80 p-8 text-center shadow-2xl backdrop-blur">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 shadow-sm">
+            <img src={logo} alt="UJAAS Logo" className="h-9 w-9 object-contain" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Desktop View Required</h1>
+          <p className="mt-3 text-sm text-gray-600 sm:text-base">
+            The admin and faculty dashboards are optimized for desktop only. Please enable Desktop Site
+            in your browser or open this page on a laptop/desktop to continue.
+          </p>
+          <div className="mt-6 rounded-2xl bg-teal-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-teal-700 sm:text-sm">
+            Tip: Browser menu → “Desktop site”
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (<>
@@ -1553,6 +1619,7 @@ function App() {
               selectedPreviewTest={selectedPreviewTest}
               subjectCatalog={adminSubjects}
               onRemoveSubjectFromBatch={handleRemoveSubjectFromBatch}
+              onSearchStudents={handleSearchAdminStudents}
             />
             </Suspense>
           </motion.div>

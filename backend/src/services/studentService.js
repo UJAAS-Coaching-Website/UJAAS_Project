@@ -14,7 +14,7 @@ function generateInitialPassword(name) {
 /**
  * Get all students with user info, batch assignment, and aggregated ratings.
  */
-export async function getAllStudents() {
+export async function getAllStudents(search) {
     const batchModel = await getStudentBatchModel();
     
     const batchJoinSubquery = batchModel === 'single'
@@ -43,6 +43,17 @@ export async function getAllStudents() {
         '{}'
     )`;
 
+    const params = [];
+    let searchClause = "";
+    if (search && String(search).trim()) {
+        params.push(`%${String(search).trim()}%`);
+        searchClause = ` AND (
+            u.name ILIKE $${params.length}
+            OR u.login_id ILIKE $${params.length}
+            OR s.roll_number ILIKE $${params.length}
+        )`;
+    }
+
     const result = await pool.query(`
         SELECT
             u.id,
@@ -64,8 +75,9 @@ export async function getAllStudents() {
         JOIN students s ON s.user_id = u.id
         LEFT JOIN batches b ON b.id = ${batchJoinSubquery}
         WHERE u.role = 'student'
+        ${searchClause}
         ORDER BY u.name
-    `);
+    `, params);
     
     return result.rows.map(row => {
         const ratings = row.ratings || {};

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { checkCache, invalidateCache } from "../middleware/redisCache.js";
 import {
     listBatches,
     getBatch,
@@ -46,31 +47,31 @@ const timetableUpload = multer({
 router.use(authenticate);
 
 // Batch CRUD (Read-only for all, write for admin)
-router.get("/", listBatches);
-router.get("/:id", getBatch);
-router.post("/", requireRole("admin"), handleCreateBatch);
-router.put("/:id", requireRole("admin"), handleUpdateBatch);
-router.delete("/:id", requireRole("admin"), handleDeleteBatch);
-router.delete("/:id/permanent", requireRole("admin"), handlePermanentDeleteBatch);
+router.get("/", checkCache('global:batches:list', 600), listBatches);
+router.get("/:id", checkCache(req => `batch:${req.params.id}:details`, 600), getBatch);
+router.post("/", requireRole("admin"), invalidateCache(['global:batches:list']), handleCreateBatch);
+router.put("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleUpdateBatch);
+router.delete("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleDeleteBatch);
+router.delete("/:id/permanent", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handlePermanentDeleteBatch);
 
 // Student assignment (Admin only)
-router.get("/:id/students", requireRole("admin"), handleGetBatchStudents);
-router.post("/:id/students", requireRole("admin"), handleAssignStudent);
-router.delete("/:id/students/:studentId", requireRole("admin"), handleRemoveStudent);
+router.get("/:id/students", requireRole("admin"), checkCache(req => `batch:${req.params.id}:students`, 600), handleGetBatchStudents);
+router.post("/:id/students", requireRole("admin"), invalidateCache(req => [`batch:${req.params.id}:students`, `admin:students:*`]), handleAssignStudent);
+router.delete("/:id/students/:studentId", requireRole("admin"), invalidateCache(req => [`batch:${req.params.id}:students`, `admin:students:*`]), handleRemoveStudent);
 
 // Faculty assignment (Admin only)
-router.get("/:id/faculty", requireRole("admin"), handleGetBatchFaculty);
-router.post("/:id/faculty", requireRole("admin"), handleAssignFaculty);
-router.delete("/:id/faculty/:facultyId", requireRole("admin"), handleRemoveFaculty);
+router.get("/:id/faculty", requireRole("admin"), checkCache(req => `batch:${req.params.id}:faculty`, 600), handleGetBatchFaculty);
+router.post("/:id/faculty", requireRole("admin"), invalidateCache(req => [`batch:${req.params.id}:faculty`, `admin:faculty:*`]), handleAssignFaculty);
+router.delete("/:id/faculty/:facultyId", requireRole("admin"), invalidateCache(req => [`batch:${req.params.id}:faculty`, `admin:faculty:*`]), handleRemoveFaculty);
 
 // Batch Notifications (Admin and Faculty)
 router.post("/:id/notifications", requireAnyRole("admin", "faculty"), handleCreateBatchNotification);
 
 // Batch subject removal (Admin only)
-router.delete("/:id/subjects/:subjectId", requireRole("admin"), handleRemoveBatchSubject);
+router.delete("/:id/subjects/:subjectId", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleRemoveBatchSubject);
 
 // Batch timetable upload/delete (Admin only)
-router.post("/:id/timetable", requireRole("admin"), (req, res) => {
+router.post("/:id/timetable", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), (req, res) => {
     timetableUpload.single("image")(req, res, (error) => {
         if (error instanceof multer.MulterError) {
             if (error.code === "LIMIT_FILE_SIZE") {

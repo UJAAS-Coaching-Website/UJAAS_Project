@@ -11,7 +11,7 @@ import {
 
 export async function listStudents(req, res) {
     try {
-        const students = await getAllStudents();
+        const students = await getAllStudents(req.query.search);
         return res.status(200).json(students);
     } catch (error) {
         console.error("listStudents error:", error.message);
