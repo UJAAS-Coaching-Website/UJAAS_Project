@@ -35,7 +35,7 @@ const upload = multer({
 
 router.use(authenticate);
 
-router.get("/", checkCache(req => `questions:query:${JSON.stringify(req.query)}`, 3600), handleGetQuestionBank);
+router.get("/", checkCache(req => `questions:query:${req.user?.sub}:${JSON.stringify(req.query)}`, 3600), handleGetQuestionBank);
 router.post("/upload", invalidateCache(['questions:query:*']), (req, res, next) => {
     upload.single("file")(req, res, (error) => {
         if (error instanceof multer.MulterError) {

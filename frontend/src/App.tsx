@@ -1302,6 +1302,15 @@ function App() {
     } catch {
       // Proceed with local cleanup even if API call fails.
     }
+    // Hard clear all global React states to prevent cross-login stale data mounts
+    setAdminBatches([]);
+    setPublishedTests([]);
+    setAdminFaculties([]);
+    setAdminStudents([]);
+    setAdminSubjects([]);
+    setSelectedPreviewTest(null);
+    setResumeDraftId(null);
+    
     setUser(null);
     setAdminBatch(null);
     setAdminLandingSection('batches');

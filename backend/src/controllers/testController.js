@@ -94,7 +94,7 @@ export async function handleCreateTest(req, res) {
             status: status || 'upcoming',
             batchIds,
             questions,
-            createdBy: req.user?.id || null,
+            createdBy: req.user?.sub || null,
         });
 
         // Trigger Notification if not a draft
