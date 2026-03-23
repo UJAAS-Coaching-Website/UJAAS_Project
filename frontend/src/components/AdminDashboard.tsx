@@ -321,6 +321,7 @@ export function AdminDashboard({
     designation: f.designation,
     phone: f.phone,
     rating: f.rating,
+    reviewCount: Number(f.reviewCount ?? f.review_count ?? 0),
     joinDate: f.joining_date
   }));
   const subjectOptions = Array.from(new Set([
@@ -1197,6 +1198,83 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   const isActionPending = (action: string) => pendingAction === action;
   const isActionInFlight = pendingAction !== null;
 
+  const [newFacultyImageFile, setNewFacultyImageFile] = useState<File | null>(null);
+  const [newFacultyPreview, setNewFacultyPreview] = useState<string>('');
+  const newFacultyInputRef = useRef<HTMLInputElement>(null);
+
+  const [editFacultyImageFile, setEditFacultyImageFile] = useState<File | null>(null);
+  const [editFacultyPreview, setEditFacultyPreview] = useState<string>('');
+  const [editFacultyImageRemoved, setEditFacultyImageRemoved] = useState(false);
+  const editFacultyInputRef = useRef<HTMLInputElement>(null);
+
+  const [newAchieverImageFile, setNewAchieverImageFile] = useState<File | null>(null);
+  const [newAchieverPreview, setNewAchieverPreview] = useState<string>('');
+  const newAchieverInputRef = useRef<HTMLInputElement>(null);
+
+  const [newVisionImageFile, setNewVisionImageFile] = useState<File | null>(null);
+  const [newVisionPreview, setNewVisionPreview] = useState<string>('');
+  const newVisionInputRef = useRef<HTMLInputElement>(null);
+
+  const [editVisionImageFile, setEditVisionImageFile] = useState<File | null>(null);
+  const [editVisionPreview, setEditVisionPreview] = useState<string>('');
+  const [editVisionImageRemoved, setEditVisionImageRemoved] = useState(false);
+  const editVisionInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+      if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
+      if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+      if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+      if (editVisionPreview.startsWith('blob:')) URL.revokeObjectURL(editVisionPreview);
+    };
+  }, [newFacultyPreview, editFacultyPreview, newAchieverPreview, newVisionPreview, editVisionPreview]);
+
+  useEffect(() => {
+    if (!isAddingFaculty) {
+      setNewFacultyImageFile(null);
+      setNewFacultyPreview('');
+    }
+  }, [isAddingFaculty]);
+
+  useEffect(() => {
+    if (!isAddingAchiever) {
+      setNewAchieverImageFile(null);
+      setNewAchieverPreview('');
+    }
+  }, [isAddingAchiever]);
+
+  useEffect(() => {
+    if (!isAddingVision) {
+      setNewVisionImageFile(null);
+      setNewVisionPreview('');
+    }
+  }, [isAddingVision]);
+
+  useEffect(() => {
+    if (editingFacultyIndex === null) {
+      setEditFacultyImageFile(null);
+      setEditFacultyPreview('');
+      setEditFacultyImageRemoved(false);
+      return;
+    }
+    setEditFacultyImageFile(null);
+    setEditFacultyImageRemoved(false);
+    setEditFacultyPreview(data.faculty[editingFacultyIndex]?.image || '');
+  }, [editingFacultyIndex, data.faculty]);
+
+  useEffect(() => {
+    if (editingVisionIndex === null) {
+      setEditVisionImageFile(null);
+      setEditVisionPreview('');
+      setEditVisionImageRemoved(false);
+      return;
+    }
+    setEditVisionImageFile(null);
+    setEditVisionImageRemoved(false);
+    setEditVisionPreview(data.visions[editingVisionIndex]?.image || '');
+  }, [editingVisionIndex, data.visions]);
+
   const runLandingAction = async <T,>(action: string, task: () => Promise<T>) => {
     setPendingAction(action);
     try {
@@ -1291,9 +1369,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newFacultyImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'faculty');
       if (url === null) return false;
       
@@ -1309,6 +1389,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingFaculty(false);
+        setNewFacultyImageFile(null);
+        setNewFacultyPreview('');
       }
       return saved;
     });
@@ -1319,12 +1401,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     if (editingFacultyIndex === null) return;
     await runLandingAction('update-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
       const existing = data.faculty[editingFacultyIndex].image;
       
       let url = existing;
-      if (file && file.size > 0) {
-        const uploaded = await uploadAndGetUrl(file, 'faculty');
+      if (editFacultyImageRemoved && !editFacultyImageFile) {
+        window.alert('Please upload a new image.');
+        return false;
+      }
+      if (editFacultyImageFile) {
+        const uploaded = await uploadAndGetUrl(editFacultyImageFile, 'faculty');
         if (uploaded === null) return false;
         url = uploaded;
         await conditionallyDeleteImage(existing);
@@ -1341,6 +1426,9 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       const saved = await safeUpdate({ ...data, faculty: next });
       if (saved) {
         setEditingFacultyIndex(null);
+        setEditFacultyImageFile(null);
+        setEditFacultyPreview('');
+        setEditFacultyImageRemoved(false);
       }
       return saved;
     });
@@ -1350,9 +1438,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-achiever', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newAchieverImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'achiever');
       if (url === null) return false;
       
@@ -1367,6 +1457,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingAchiever(false);
+        setNewAchieverImageFile(null);
+        setNewAchieverPreview('');
       }
       return saved;
     });
@@ -1376,9 +1468,11 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     e.preventDefault();
     await runLandingAction('add-vision', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
-
-      if (!file || file.size === 0) return false;
+      const file = newVisionImageFile;
+      if (!file) {
+        window.alert('Please upload an image.');
+        return false;
+      }
       const url = await uploadAndGetUrl(file, 'vision');
       if (url === null) return false;
 
@@ -1394,6 +1488,8 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       });
       if (saved) {
         setIsAddingVision(false);
+        setNewVisionImageFile(null);
+        setNewVisionPreview('');
       }
       return saved;
     });
@@ -1404,12 +1500,15 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     if (editingVisionIndex === null) return;
     await runLandingAction('update-vision', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
-      const file = formData.get('imageFile') as File;
       const existing = data.visions[editingVisionIndex].image;
 
       let url = existing;
-      if (file && file.size > 0) {
-        const uploaded = await uploadAndGetUrl(file, 'vision');
+      if (editVisionImageRemoved && !editVisionImageFile) {
+        window.alert('Please upload a new image.');
+        return false;
+      }
+      if (editVisionImageFile) {
+        const uploaded = await uploadAndGetUrl(editVisionImageFile, 'vision');
         if (uploaded === null) return false;
         url = uploaded;
         await conditionallyDeleteImage(existing);
@@ -1426,6 +1525,9 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       const saved = await safeUpdate({ ...data, visions: next });
       if (saved) {
         setEditingVisionIndex(null);
+        setEditVisionImageFile(null);
+        setEditVisionPreview('');
+        setEditVisionImageRemoved(false);
       }
       return saved;
     });
@@ -1487,7 +1589,65 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               </select>
               <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
               <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="imageFile" type="file" accept="image/*" required className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+                <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                  {newFacultyPreview ? (
+                    <img src={newFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                      No image
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => newFacultyInputRef.current?.click()}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                      disabled={isActionInFlight}
+                    >
+                      {newFacultyPreview ? 'Change Image' : 'Upload Image'}
+                    </button>
+                    {newFacultyPreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                          setNewFacultyPreview('');
+                          setNewFacultyImageFile(null);
+                        }}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                        disabled={isActionInFlight}
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                    {!newFacultyPreview && (
+                      <p className="text-xs text-gray-500">Image is required.</p>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={newFacultyInputRef}
+                  name="imageFile"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (!file) return;
+                    if (file.size > maxImageUploadSizeBytes) {
+                      window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                      e.currentTarget.value = '';
+                      return;
+                    }
+                    if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                    setNewFacultyImageFile(file);
+                    setNewFacultyPreview(URL.createObjectURL(file));
+                  }}
+                  disabled={isActionInFlight}
+                />
+              </div>
               <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
             </form>
           )}
@@ -1506,7 +1666,70 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
               </select>
               <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
               <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="imageFile" type="file" accept="image/*" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+                <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                  {!editFacultyPreview && !editFacultyImageRemoved ? (
+                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                      No image
+                    </div>
+                  ) : editFacultyPreview ? (
+                    <img src={editFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                      Image removed
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => editFacultyInputRef.current?.click()}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                      disabled={isActionInFlight}
+                    >
+                      {editFacultyPreview ? 'Change Image' : 'Upload Image'}
+                    </button>
+                    {editFacultyPreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditFacultyImageRemoved(true);
+                          setEditFacultyPreview('');
+                          setEditFacultyImageFile(null);
+                        }}
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                        disabled={isActionInFlight}
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                    {editFacultyImageRemoved && (
+                      <p className="text-xs text-red-500">Please upload a new image to continue.</p>
+                    )}
+                  </div>
+                </div>
+                <input
+                  ref={editFacultyInputRef}
+                  name="imageFile"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (!file) return;
+                    if (file.size > maxImageUploadSizeBytes) {
+                      window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                      e.currentTarget.value = '';
+                      return;
+                    }
+                    if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
+                    setEditFacultyImageFile(file);
+                    setEditFacultyPreview(URL.createObjectURL(file));
+                    setEditFacultyImageRemoved(false);
+                  }}
+                  disabled={isActionInFlight}
+                />
+              </div>
               <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-faculty') ? 'Updating...' : 'Update'}</button>
               <button type="button" onClick={() => setEditingFacultyIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
@@ -1558,7 +1781,65 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="achievement" required placeholder="Achievement" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="year" placeholder="Year (optional)" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <input name="imageFile" type="file" accept="image/*" required className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Achiever Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newAchieverPreview ? (
+                  <img src={newAchieverPreview} alt="Achiever preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newAchieverInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newAchieverPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newAchieverPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+                        setNewAchieverPreview('');
+                        setNewAchieverImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {!newAchieverPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={newAchieverInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newAchieverPreview.startsWith('blob:')) URL.revokeObjectURL(newAchieverPreview);
+                  setNewAchieverImageFile(file);
+                  setNewAchieverPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
             <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-achiever') ? 'Adding Achiever...' : 'Save'}</button>
           </form>
         )}
@@ -1610,7 +1891,62 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <textarea name="vision" required placeholder="Vision Text" className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">Square Image</label>
-              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newVisionPreview ? (
+                  <img src={newVisionPreview} alt="Vision preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newVisionInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newVisionPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newVisionPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+                        setNewVisionPreview('');
+                        setNewVisionImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {!newVisionPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={newVisionInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newVisionPreview.startsWith('blob:')) URL.revokeObjectURL(newVisionPreview);
+                  setNewVisionImageFile(file);
+                  setNewVisionPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
             </div>
             <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-vision') ? 'Saving Vision Tile...' : 'Save Vision Tile'}</button>
           </form>
@@ -1621,8 +1957,64 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             <input name="designation" required defaultValue={data.visions[editingVisionIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <textarea name="vision" required defaultValue={data.visions[editingVisionIndex].vision} className="md:col-span-2 px-4 py-2 rounded-lg border border-gray-200" rows={4} disabled={isActionInFlight} />
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image (Optional)</label>
-              <input name="imageFile" type="file" accept="image/*" required className="w-full px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight} />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Change Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {editVisionPreview ? (
+                  <img src={editVisionPreview} alt="Vision preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    {editVisionImageRemoved ? 'Image removed' : 'No image'}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editVisionInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {editVisionPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {editVisionPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditVisionImageRemoved(true);
+                        setEditVisionPreview('');
+                        setEditVisionImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
+                      disabled={isActionInFlight}
+                    >
+                      Remove Image
+                    </button>
+                  )}
+                  {editVisionImageRemoved && (
+                    <p className="text-xs text-red-500">Please upload a new image to continue.</p>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={editVisionInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (editVisionPreview.startsWith('blob:')) URL.revokeObjectURL(editVisionPreview);
+                  setEditVisionImageFile(file);
+                  setEditVisionPreview(URL.createObjectURL(file));
+                  setEditVisionImageRemoved(false);
+                }}
+                disabled={isActionInFlight}
+              />
             </div>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-vision') ? 'Updating Vision Tile...' : 'Update Vision Tile'}</button>
