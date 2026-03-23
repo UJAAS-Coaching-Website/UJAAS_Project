@@ -38,7 +38,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
-import UploadNoticeModal from './UploadNoticeModal';
+import { NoticesManagement } from './NoticesManagement';
 import { triggerReviewSession } from '../api/facultyReviews';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
@@ -117,8 +117,8 @@ interface AdminDashboardProps {
   onSearchStudents?: (query: string) => void;
 }
 
-export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notice' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
@@ -377,7 +377,6 @@ export function AdminDashboard({
     query: null
   });
 
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
 
   const fallbackForceTestLiveNow = async (testId: string): Promise<import('../App').PublishedTest> => {
@@ -857,6 +856,18 @@ export function AdminDashboard({
             </div>
           ) : activeTab === 'profile' ? (
             <AdminProfile user={user} onLogout={onLogout} />
+          ) : activeTab === 'notices' ? (
+            <NoticesManagement
+              batches={batches.map((b) => ({
+                id: b.id || '',
+                name: b.label,
+                slug: b.slug,
+                is_active: b.is_active !== false,
+                subjects: b.subjects,
+              }) as ApiBatch)}
+              userRole="admin"
+              onBack={() => onNavigate('home')}
+            />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -871,7 +882,7 @@ export function AdminDashboard({
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   onAddBatch={openAddBatch}
-                  onUploadNotice={() => setIsNoticeModalOpen(true)}
+                  onOpenNotices={() => onNavigate('notices')}
                 />
               )}
               {adminSection === 'students' && (
@@ -1009,17 +1020,6 @@ export function AdminDashboard({
           onAssign={handleAssignExistingStudentToBatch}
         />
 
-        <UploadNoticeModal
-          isOpen={isNoticeModalOpen}
-          onClose={() => setIsNoticeModalOpen(false)}
-          batches={batches.map(b => ({
-            id: b.id || '',
-            name: b.label,
-            slug: b.slug,
-            is_active: b.isActive !== false
-          }))}
-          userRole="admin"
-        />
         <AnimatePresence>
           {ratingModal.open && (
             <StudentRatingsModal

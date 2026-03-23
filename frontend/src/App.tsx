@@ -170,7 +170,7 @@ export const adminTabs = [
   'rankings',
   'create-test',
   'create-dpp',
-  'upload-notice',
+  'notices',
   'upload-notes',
   'profile',
   'preview-test',
@@ -1004,7 +1004,7 @@ function App() {
         path = tabToPath(role, tab, adminBatch);
       } else if (tab === 'profile') {
         path = `/${role}/profile`;
-      } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'upload-notice' || tab === 'upload-notes') {
+      } else if (tab === 'create-test' || tab === 'create-dpp' || tab === 'notices' || tab === 'upload-notes') {
         path = `/${role}/${adminLandingSection}/${tab}`;
       } else {
         path = user.role === 'faculty' ? facultySectionToPath(adminLandingSection) : adminSectionToPath(adminLandingSection);

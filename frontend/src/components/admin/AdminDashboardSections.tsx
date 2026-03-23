@@ -30,12 +30,12 @@ export function AdminBatchSelectionTab({
   batches,
   onSelectBatch,
   onAddBatch,
-  onUploadNotice,
+  onOpenNotices,
 }: {
   batches: BatchInfo[];
   onSelectBatch: (batch: string) => void;
   onAddBatch: () => void;
-  onUploadNotice: () => void;
+  onOpenNotices: () => void;
 }) {
   const sortedBatches = [...batches].sort((a, b) => {
     if ((a.is_active !== false) === (b.is_active !== false)) return a.label.localeCompare(b.label);
@@ -52,11 +52,11 @@ export function AdminBatchSelectionTab({
           </div>
           <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
             <button
-              onClick={onUploadNotice}
+              onClick={onOpenNotices}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap"
             >
               <Megaphone className="w-5 h-5" />
-              Upload Notice
+              Notices
             </button>
             <button
               onClick={onAddBatch}

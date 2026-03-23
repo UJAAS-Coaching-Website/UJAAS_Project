@@ -101,6 +101,91 @@ export async function deleteNotificationForStudent(studentId, notificationId) {
     );
 }
 
+export async function getNoticesForSender(senderId) {
+    const result = await pool.query(
+        `SELECT
+            n.id,
+            n.title,
+            n.message,
+            n.created_at,
+            COALESCE(
+                json_agg(nb.batch_id) FILTER (WHERE nb.batch_id IS NOT NULL),
+                '[]'
+            ) AS batch_ids
+         FROM notifications n
+         LEFT JOIN notification_batches nb ON nb.notification_id = n.id
+         WHERE n.sender_id = $1
+           AND n.type = 'notice'
+         GROUP BY n.id
+         ORDER BY n.created_at DESC`,
+        [senderId]
+    );
+
+    return result.rows;
+}
+
+export async function updateNoticeForSender(notificationId, senderId, { title, message, batchIds }) {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const existing = await client.query(
+            `SELECT id
+             FROM notifications
+             WHERE id = $1
+               AND sender_id = $2
+               AND type = 'notice'`,
+            [notificationId, senderId]
+        );
+
+        if (existing.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        await client.query(
+            `UPDATE notifications
+             SET title = $2, message = $3
+             WHERE id = $1`,
+            [notificationId, title, message]
+        );
+
+        await client.query(
+            `DELETE FROM notification_batches
+             WHERE notification_id = $1`,
+            [notificationId]
+        );
+
+        for (const batchId of batchIds) {
+            await client.query(
+                `INSERT INTO notification_batches (notification_id, batch_id)
+                 VALUES ($1, $2)`,
+                [notificationId, batchId]
+            );
+        }
+
+        await client.query("COMMIT");
+        return { id: notificationId };
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+export async function deleteNoticeForSender(notificationId, senderId) {
+    const result = await pool.query(
+        `DELETE FROM notifications
+         WHERE id = $1
+           AND sender_id = $2
+           AND type = 'notice'`,
+        [notificationId, senderId]
+    );
+
+    return result.rowCount > 0;
+}
+
 /**
  * Automatically clean up expired faculty review notifications
  */

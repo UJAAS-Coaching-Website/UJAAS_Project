@@ -1,5 +1,5 @@
-import React, { useState, FormEvent } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, FormEvent } from 'react';
+import { motion } from 'motion/react';
 import { Megaphone, X, Loader2, Check } from 'lucide-react';
 import { ApiBatch } from '../api/batches';
 import { broadcastNotice } from '../api/facultyReviews';
@@ -11,15 +11,37 @@ interface UploadNoticeModalProps {
   onClose: () => void;
   batches: ApiBatch[];
   userRole: 'admin' | 'faculty';
+  initialNotice?: {
+    id?: string;
+    title: string;
+    message: string;
+    batchIds: string[];
+  };
+  onSubmit?: (payload: { batchIds: string[]; title: string; message: string }) => Promise<void>;
+  onSubmitted?: () => void;
 }
 
-const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, batches, userRole }) => {
+const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, batches, userRole, initialNotice, onSubmit, onSubmitted }) => {
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeMessage, setNoticeMessage] = useState('');
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const isEditing = Boolean(initialNotice?.id);
 
   useBodyScrollLock(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialNotice) {
+      setNoticeTitle(initialNotice.title || '');
+      setNoticeMessage(initialNotice.message || '');
+      setSelectedBatchIds(initialNotice.batchIds || []);
+      return;
+    }
+    setNoticeTitle('');
+    setNoticeMessage('');
+    setSelectedBatchIds([]);
+  }, [isOpen, initialNotice]);
 
   if (!isOpen) return null;
 
@@ -50,16 +72,25 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
 
     setIsSending(true);
     try {
-      await broadcastNotice({
-        batchIds: selectedBatchIds,
-        title: noticeTitle.trim(),
-        message: noticeMessage.trim()
-      });
+      if (onSubmit) {
+        await onSubmit({
+          batchIds: selectedBatchIds,
+          title: noticeTitle.trim(),
+          message: noticeMessage.trim()
+        });
+      } else {
+        await broadcastNotice({
+          batchIds: selectedBatchIds,
+          title: noticeTitle.trim(),
+          message: noticeMessage.trim()
+        });
+      }
 
-      toast.success(`Notice broadcasted successfully to ${selectedBatchIds.length} batches.`);
+      toast.success(isEditing ? 'Notice updated successfully.' : `Notice broadcasted successfully to ${selectedBatchIds.length} batches.`);
       setNoticeTitle('');
       setNoticeMessage('');
       setSelectedBatchIds([]);
+      onSubmitted?.();
       onClose();
     } catch (error: any) {
       console.error('Failed to send notices:', error);
@@ -92,7 +123,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
               <Megaphone className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Upload Batch Notice</h3>
+              <h3 className="text-xl font-bold">{isEditing ? 'Edit Notice' : 'Post Batch Notice'}</h3>
               <p className="text-xs text-teal-50 opacity-80">Send announcements to selected batches</p>
             </div>
           </div>
@@ -188,7 +219,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
             ) : (
               <>
                 <Megaphone className="w-5 h-5" />
-                Post Notice
+                {isEditing ? 'Update Notice' : 'Post Notice'}
               </>
             )}
           </button>

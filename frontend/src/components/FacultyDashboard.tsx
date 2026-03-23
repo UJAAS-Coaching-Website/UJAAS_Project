@@ -30,7 +30,7 @@ import {
   Check,
   Megaphone
 } from 'lucide-react';
-import UploadNoticeModal from './UploadNoticeModal';
+import { NoticesManagement } from './NoticesManagement';
 import { StudentRating } from './StudentRating';
 import { StudentRankingsEnhanced } from './StudentRankingsEnhanced';
 import { FacultyProfile } from './FacultyProfile';
@@ -48,6 +48,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import { NotesManagementTab } from './NotesManagementTab';
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
+import { ApiBatch } from '../api/batches';
 import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks } from '../utils/studentRemarks';
@@ -79,7 +80,7 @@ interface FacultyDashboardProps {
   onUpdateStudentRating: (studentId: string, data: any) => Promise<void>;
 }
 
-export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
+export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type FacultySection = 'batches' | 'students' | 'test-series';
 type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
@@ -276,7 +277,6 @@ export function FacultyDashboard({
     batch: null
   });
   const [performanceInsightsTestId, setPerformanceInsightsTestId] = useState<string | null>(null);
-  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   useBodyScrollLock(
     studentModal.open ||
@@ -602,6 +602,20 @@ export function FacultyDashboard({
             <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
             <FacultyProfile user={user as any} onLogout={onLogout} />
+          ) : activeTab === 'notices' ? (
+            <NoticesManagement
+              batches={batches
+                .filter(b => b.facultyAssigned?.includes(user.name))
+                .map(b => ({
+                  id: b.id || '',
+                  name: b.label,
+                  slug: b.slug,
+                  is_active: b.is_active !== false,
+                  subjects: b.subjects,
+                }) as ApiBatch)}
+              userRole="faculty"
+              onBack={() => onNavigate('home')}
+            />
           ) : !selectedBatch ? (
             /* GLOBAL CONTEXT */
             <>
@@ -610,7 +624,7 @@ export function FacultyDashboard({
                   batches={batches}
                   onSelectBatch={onSelectBatch}
                   facultyName={user.name}
-                  onUploadNotice={() => setIsNoticeModalOpen(true)}
+                  onOpenNotices={() => onNavigate('notices')}
                 />
               )}
               {adminSection === 'test-series' && (
@@ -699,21 +713,6 @@ export function FacultyDashboard({
             />
           )}
         </AnimatePresence>
-
-        <UploadNoticeModal
-          isOpen={isNoticeModalOpen}
-          onClose={() => setIsNoticeModalOpen(false)}
-          batches={batches
-            .filter(b => b.facultyAssigned?.includes(user.name))
-            .map(b => ({
-              id: b.id || '',
-              name: b.label,
-              slug: b.slug,
-              is_active: b.is_active !== false
-            }))
-          }
-          userRole="faculty"
-        />
 
         <BatchTimetableModal
           open={showFullTimetable}

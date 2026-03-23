@@ -21,12 +21,12 @@ export function FacultyBatchSelectionTab({
   batches,
   onSelectBatch,
   facultyName,
-  onUploadNotice,
+  onOpenNotices,
 }: {
   batches: BatchInfo[];
   onSelectBatch: (batch: string) => void;
   facultyName: string;
-  onUploadNotice: () => void;
+  onOpenNotices: () => void;
 }) {
   const facultyBatches = batches.filter((batch) => batch.facultyAssigned?.includes(facultyName));
   const sortedBatches = [...facultyBatches].sort((a, b) => {
@@ -42,9 +42,9 @@ export function FacultyBatchSelectionTab({
             <h2 className="text-3xl font-bold text-gray-900">Batch Management</h2>
             <p className="text-gray-600">Open one of your assigned batches to review students, attendance, and academic content.</p>
           </div>
-          <button onClick={onUploadNotice} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap">
+          <button onClick={onOpenNotices} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md whitespace-nowrap">
             <Megaphone className="w-5 h-5" />
-            Upload Notice
+            Notices
           </button>
         </div>
       </div>
