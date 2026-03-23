@@ -98,6 +98,12 @@ export function NotificationCenter({
     }
   };
 
+  const getNotificationRowStyle = (read: boolean) => ({
+    background: read
+      ? 'var(--theme-surface)'
+      : 'color-mix(in srgb, var(--state-info-bg) 30%, var(--theme-surface) 70%)',
+  });
+
   const toggleExpandedNotification = (id: string) => {
     setExpandedNotifications((prev) => ({
       ...prev,
@@ -113,14 +119,15 @@ export function NotificationCenter({
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="Open notifications"
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition"
+        className="relative rounded-lg p-2 transition"
+        style={{ color: 'var(--theme-text-secondary)' }}
       >
-        <Bell className="w-5 h-5 text-gray-700" />
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg"
+            className="theme-alert-badge absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-xs font-bold text-white shadow-lg"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </motion.span>
@@ -146,15 +153,19 @@ export function NotificationCenter({
                 exit={isMobile ? { opacity: 0, y: 24 } : { opacity: 0, y: -20, scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 onClick={(event) => event.stopPropagation()}
-                style={
-                  isMobile
-                    ? undefined
+                style={{
+                  ...(isMobile
+                    ? {}
                     : {
                         top: desktopPanelTop,
                         right: desktopPanelRight,
-                      }
-                }
-                className={`z-layer-3000 bg-white overflow-hidden ${
+                      }),
+                  background: 'var(--theme-surface-elevated)',
+                  borderColor: isMobile ? undefined : 'var(--theme-border)',
+                  color: 'var(--theme-text-primary)',
+                  backdropFilter: 'blur(18px)',
+                }}
+                className={`z-layer-3000 overflow-hidden ${
                   isMobile
                     ? 'fixed inset-0 flex h-[100dvh] w-full flex-col'
                     : 'fixed flex w-96 max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-gray-200 shadow-2xl'
@@ -187,14 +198,15 @@ export function NotificationCenter({
                       ? 'pb-[max(1rem,env(safe-area-inset-bottom))]'
                       : 'max-h-[22.5rem]'
                   }`}
+                  style={{ background: 'var(--theme-surface)' }}
                 >
                   {notifications.length === 0 ? (
                     <div className="p-8 text-center">
-                      <Bell className="mx-auto mb-3 w-12 h-12 text-gray-300" />
-                      <p className="text-gray-600">No notifications yet</p>
+                      <Bell className="theme-text-muted mx-auto mb-3 h-12 w-12" />
+                      <p className="theme-text-secondary">No notifications yet</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
                       {notifications.map((notification) => (
                         (() => {
                           const isExpanded = Boolean(expandedNotifications[notification.id]);
@@ -206,9 +218,8 @@ export function NotificationCenter({
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
-                          className={`cursor-pointer p-4 transition hover:bg-gray-50 ${
-                            !notification.read ? 'bg-blue-50' : ''
-                          }`}
+                          className="cursor-pointer p-4 transition"
+                          style={getNotificationRowStyle(notification.read)}
                           onClick={() => {
                             if (notification.onClick) {
                               onMarkAsRead(notification.id);
@@ -226,14 +237,14 @@ export function NotificationCenter({
 
                             <div className="min-w-0 flex-1">
                               <div className="mb-1 flex items-start justify-between gap-2">
-                                <h4 className="text-sm font-semibold text-gray-900">
+                                <h4 className="theme-text-primary text-sm font-semibold">
                                   {notification.title}
                                 </h4>
                                 {!notification.read && !notification.isSticky && (
                                   <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
                                 )}
                               </div>
-                              <p className={`mb-2 text-sm text-gray-600 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
+                              <p className={`theme-text-secondary mb-2 text-sm ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
                                 {notification.message}
                               </p>
                               {shouldShowReadMore && (
@@ -249,14 +260,15 @@ export function NotificationCenter({
                                 </button>
                               )}
                               <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">{notification.time}</span>
+                                <span className="theme-text-muted text-xs">{notification.time}</span>
                                 {!notification.isSticky && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onDelete(notification.id);
                                     }}
-                                    className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                    className="rounded p-1 transition"
+                                    style={{ color: 'var(--theme-text-muted)' }}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>

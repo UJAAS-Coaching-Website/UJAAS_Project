@@ -414,7 +414,7 @@ export function StudentDashboard({
                       }}
                       className={`flex min-w-0 items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium transition-all rounded-lg whitespace-nowrap ${
                         (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
-                          ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                          ? 'theme-accent-tab bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                           : 'text-gray-600 hover:bg-gray-100 bg-gray-50'
                         }`}
                       style={{ fontSize: '12px', width: 'calc((100% - 1rem) / 3)' }}
@@ -463,7 +463,7 @@ export function StudentDashboard({
                     }}
                     className={`flex items-center gap-2 px-4 py-2 font-medium transition-all rounded-lg ${
                       (activeTab === tab.id || (activeTab === 'batch-detail' && tab.id === 'home'))
-                        ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                        ? 'theme-accent-tab bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                         : 'text-gray-600 hover:bg-gray-100'
                       }`}
                   >

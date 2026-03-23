@@ -187,7 +187,7 @@ export function TestSeriesSection({
               </div>
               <div className="flex shrink-0 items-center">
                 <motion.button
-                  className={`${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
+                  className={`theme-accent-button ${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
                     isLoadingResults
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
                       : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
@@ -207,7 +207,7 @@ export function TestSeriesSection({
               </div>
               <div className="flex items-center gap-4">
                 <motion.button
-                  className={`${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
+                  className={`theme-accent-button ${isMobileViewport ? 'px-4 py-2 text-sm rounded-lg' : 'px-6 py-3 rounded-xl'} font-semibold shadow-lg transition-all ${
                     isLoadingResults
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white cursor-wait'
                       : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white hover:shadow-xl'
@@ -241,7 +241,7 @@ export function TestSeriesSection({
             transition={{ delay: index * 0.1 }}
             className={`${isMobileViewport ? 'min-w-0 rounded-lg px-1.5 py-2 text-center' : 'rounded-xl p-5'} bg-white shadow-md border border-gray-100`}
           >
-            <div className={`${isMobileViewport ? 'mx-auto mb-1 h-6 w-6 rounded-lg' : 'mb-3 h-12 w-12 rounded-lg'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
+            <div className={`theme-accent-icon ${isMobileViewport ? 'mx-auto mb-1 h-6 w-6 rounded-lg' : 'mb-3 h-12 w-12 rounded-lg'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
               <stat.icon className={`${isMobileViewport ? 'h-3 w-3' : 'h-6 w-6'} text-white`} />
             </div>
             <p className={`${isMobileViewport ? 'text-base leading-none' : 'text-3xl'} font-bold text-gray-900`}>{stat.value}</p>
@@ -275,7 +275,7 @@ export function TestSeriesSection({
                   onClick={() => setSelectedFilter(filter.id as any)}
                   className={`${isMobileViewport ? 'min-w-0 flex-1 px-1 py-1.5 text-[10px]' : 'px-4 py-2'} rounded-lg font-medium transition-all ${
                     selectedFilter === filter.id
-                      ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
+                      ? 'theme-accent-tab bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -401,7 +401,7 @@ export function TestSeriesSection({
                     }
                   }}
                   disabled={test.status === 'upcoming' || isLoadingAnalysis || isLoadingOverview}
-                  className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                className={`theme-accent-button w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
                     test.status === 'upcoming'
                       ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : isLoadingOverview

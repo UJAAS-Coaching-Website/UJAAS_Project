@@ -729,8 +729,8 @@ export function TestPreviewAndReview({
                           && correctOptionIndices.every((value, valueIndex) => selectedMsqValues[valueIndex] === value)
                           : false;
 
-                        let optionToneClasses = 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50';
-                        let controlToneClasses = isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300';
+                        let optionToneClasses = 'theme-option';
+                        let controlToneClasses = isSelected ? 'theme-control-selected' : 'theme-control-neutral';
                         let badgeLabel: string | null = null;
                         let badgeClasses = '';
 
@@ -738,32 +738,32 @@ export function TestPreviewAndReview({
                           const isWrongSelectedOption = isSelected && !isCorrectOption;
 
                           if (isWrongSelectedOption) {
-                            optionToneClasses = 'border-red-500 bg-red-50 shadow-md ring-1 ring-red-200';
-                            controlToneClasses = 'border-red-500 bg-red-500';
+                            optionToneClasses = 'theme-option-incorrect shadow-md';
+                            controlToneClasses = 'theme-control-incorrect';
                             badgeLabel = question.type === 'MSQ' ? 'Wrong Answer' : 'Wrong';
-                            badgeClasses = 'text-red-700 bg-red-100';
+                            badgeClasses = 'theme-badge-danger';
                           } else if (isCorrectOption) {
-                            optionToneClasses = 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200';
-                            controlToneClasses = 'border-green-500 bg-green-500';
+                            optionToneClasses = 'theme-option-correct shadow-md';
+                            controlToneClasses = 'theme-control-correct';
 
                             if (question.type === 'MCQ') {
                               if (isUnattempted) {
                                 badgeLabel = 'Unattempted';
-                                badgeClasses = 'text-green-700 bg-green-100';
+                                badgeClasses = 'theme-badge-success';
                               } else if (isSelected) {
                                 badgeLabel = 'Right Answer';
-                                badgeClasses = 'text-green-700 bg-green-100';
+                                badgeClasses = 'theme-badge-success';
                               }
                             } else if (isAllCorrectMsq) {
                               badgeLabel = 'Right Answer';
-                              badgeClasses = 'text-green-700 bg-green-100';
+                              badgeClasses = 'theme-badge-success';
                             }
                           }
                         } else if (isAnyPreview && isCorrectOption) {
-                          optionToneClasses = 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200';
-                          controlToneClasses = 'border-green-500 bg-green-500';
+                          optionToneClasses = 'theme-option-correct shadow-md';
+                          controlToneClasses = 'theme-control-correct';
                           badgeLabel = 'CORRECT';
-                          badgeClasses = 'text-green-600 bg-green-100';
+                          badgeClasses = 'theme-badge-success';
                         }
 
                         return (
@@ -783,7 +783,7 @@ export function TestPreviewAndReview({
                                 : correctOptionIndices.includes(index)
                                   ? optionToneClasses
                                   : isSelected
-                                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                                    ? 'theme-option-selected shadow-md'
                                     : optionToneClasses
                                 }`}
                             >
@@ -791,9 +791,9 @@ export function TestPreviewAndReview({
                                 <div className={`w-6 h-6 border-2 flex items-center justify-center flex-shrink-0 ${isMsq ? 'rounded-md' : 'rounded-full'} ${isStudentReviewMode
                                   ? controlToneClasses
                                   : correctOptionIndices.includes(index)
-                                    ? controlToneClasses
+                                  ? controlToneClasses
                                     : isSelected
-                                      ? 'border-blue-500 bg-blue-500'
+                                      ? 'theme-control-selected'
                                       : controlToneClasses
                                   }`}>
                                   {(isSelected || correctOptionIndices.includes(index)) && (
@@ -801,7 +801,7 @@ export function TestPreviewAndReview({
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <span className="text-gray-900 font-medium text-sm sm:text-base">{option}</span>
+                                  <span className="theme-text-primary font-medium text-sm sm:text-base">{option}</span>
                                   {question.optionImages?.[index] && (
                                     <div className="mt-1.5 sm:mt-2 rounded-lg overflow-hidden border border-gray-100 inline-block">
                                       <img src={question.optionImages[index]} alt={`Option ${index}`} className="max-h-32 w-auto object-contain" />
@@ -1191,13 +1191,19 @@ export function TestPreviewAndReview({
               {/* Stats - only for students */}
               {!isAnyPreview && (
                 <div className="space-y-3 mb-6">
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Answered</span>
-                    <span className="text-lg font-bold text-green-600">{answeredCount}</span>
+                  <div
+                    className="flex items-center justify-between rounded-lg p-3"
+                    style={{ background: 'var(--state-success-bg)' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: 'var(--state-success-text)' }}>Answered</span>
+                    <span className="text-lg font-bold" style={{ color: 'var(--state-success-text)' }}>{answeredCount}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm font-medium text-gray-700">Not Answered</span>
-                    <span className="text-lg font-bold text-gray-600">{notAnsweredCount}</span>
+                  <div
+                    className="flex items-center justify-between rounded-lg p-3"
+                    style={{ background: 'var(--state-neutral-bg)' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: 'var(--state-neutral-text)' }}>Not Answered</span>
+                    <span className="text-lg font-bold" style={{ color: 'var(--theme-text-secondary)' }}>{notAnsweredCount}</span>
                   </div>
                 </div>
               )}
@@ -1222,14 +1228,14 @@ export function TestPreviewAndReview({
                         key={q.id}
                         onClick={() => setCurrentQuestion(q.globalIndex)}
                         className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
-                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
+                          ? 'theme-palette-current scale-110 z-10'
                           : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            ? 'theme-palette-answered'
                             : isAnyPreview && hasExplanationContent(q) && !hideExplanations
-                              ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                              ? 'theme-palette-explanation'
                               : !isAnyPreview && flaggedQuestions.has(q.id)
-                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                ? 'theme-palette-review'
+                                : 'theme-palette-neutral'
                           }`}
                       >
                         {q.globalIndex + 1}
@@ -1246,34 +1252,34 @@ export function TestPreviewAndReview({
 
               {/* Legend - Review Mode */}
               {isAnyPreview && !hideExplanations && (
-                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                <div className="mt-6 space-y-2 border-t pt-6" style={{ borderColor: 'var(--theme-border)' }}>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-teal-50 border border-teal-200 rounded" />
-                    <span className="text-xs text-gray-600">With Explanation</span>
+                    <div className="theme-palette-explanation h-4 w-4 rounded" />
+                    <span className="theme-text-secondary text-xs">With Explanation</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 rounded relative">
+                    <div className="theme-legend-dot-neutral w-4 h-4 rounded relative">
                       <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
                     </div>
-                    <span className="text-xs text-gray-600">Needs Explanation</span>
+                    <span className="theme-text-secondary text-xs">Needs Explanation</span>
                   </div>
                 </div>
               )}
 
               {/* Legend - only for students */}
               {!isAnyPreview && (
-                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                <div className="mt-6 space-y-2 border-t pt-6" style={{ borderColor: 'var(--theme-border)' }}>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 rounded" />
-                    <span className="text-xs text-gray-600">Answered</span>
+                    <div className="theme-legend-dot-answered h-4 w-4 rounded" />
+                    <span className="theme-text-secondary text-xs">Answered</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-100 rounded" />
-                    <span className="text-xs text-gray-600">Not Answered</span>
+                    <div className="theme-legend-dot-neutral h-4 w-4 rounded" />
+                    <span className="theme-text-secondary text-xs">Not Answered</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
-                    <span className="text-xs text-gray-600">Current</span>
+                    <div className="theme-legend-dot-current h-4 w-4 rounded" />
+                    <span className="theme-text-secondary text-xs">Current</span>
                   </div>
                 </div>
               )}

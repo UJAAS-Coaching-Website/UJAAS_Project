@@ -91,7 +91,7 @@ export function ViewResults({
             key={stat.label}
             className={`${isMobileViewport ? 'min-w-0 rounded-lg px-1.5 py-2 text-center' : 'rounded-xl p-5'} bg-white shadow-md border border-gray-100`}
           >
-            <div className={`${isMobileViewport ? 'mx-auto mb-1 h-6 w-6 rounded-lg' : 'mb-3 h-12 w-12 rounded-lg'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
+            <div className={`theme-accent-icon ${isMobileViewport ? 'mx-auto mb-1 h-6 w-6 rounded-lg' : 'mb-3 h-12 w-12 rounded-lg'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center`}>
               <stat.icon className={`${isMobileViewport ? 'h-3 w-3' : 'h-6 w-6'} text-white`} />
             </div>
             <p className={`${isMobileViewport ? 'text-base leading-none' : 'text-3xl'} font-bold text-gray-900`}>{stat.value}</p>

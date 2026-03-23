@@ -114,7 +114,7 @@ export function StudentDashboardHome({
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className={`${isMobileViewport ? 'p-5' : 'p-8'} bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl text-white shadow-2xl relative overflow-hidden`}>
+      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className={`theme-accent-surface ${isMobileViewport ? 'p-5' : 'p-8'} bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 rounded-3xl text-white shadow-2xl relative overflow-hidden`}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24" />
         <div className={`relative flex ${isMobileViewport ? 'flex-row items-center' : 'flex-col md:flex-row items-start md:items-center'} gap-4 md:gap-6`}>
@@ -135,16 +135,16 @@ export function StudentDashboardHome({
           { label: 'DPP Completed', value: dppProgress.loading ? 'Loading...' : `${completedCount}/${totalDpps}`, icon: ClipboardList, gradient: 'from-green-500 to-emerald-500', bgGradient: 'from-green-50 to-emerald-50', percentage: dppPercentage, stars: false, onClick: undefined },
           { label: 'Performance Rating', value: `${currentRating.toFixed(1)}/5.0`, icon: Star, gradient: 'from-yellow-500 to-orange-500', bgGradient: 'from-yellow-50 to-orange-50', percentage: (currentRating / 5) * 100, stars: true, onClick: onOpenPerformance },
         ].map((stat, index) => (
-          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} onClick={stat.onClick} className={`bg-gradient-to-br ${stat.bgGradient} rounded-2xl ${isMobileViewport ? 'p-4' : 'p-6'} shadow-lg border border-white relative overflow-hidden group ${stat.onClick ? 'cursor-pointer' : ''}`}>
+          <motion.div key={index} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }} onClick={stat.onClick} className={`rounded-2xl ${isMobileViewport ? 'p-4' : 'p-6'} shadow-lg border border-white relative overflow-hidden group ${stat.onClick ? 'cursor-pointer' : ''}`} style={{ background: 'var(--theme-surface-elevated)', borderColor: 'var(--theme-border)' }}>
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
             <div className="relative">
               <div className={`${isMobileViewport ? 'flex items-center gap-2 mb-2' : 'mb-3'}`}>
-                <motion.div className={`${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg shrink-0`}>
+                <motion.div className={`theme-accent-icon ${isMobileViewport ? 'w-9 h-9 rounded-lg' : 'w-12 h-12 rounded-xl'} bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg shrink-0`}>
                   <stat.icon className={`${isMobileViewport ? 'w-4 h-4' : 'w-6 h-6'} text-white`} />
                 </motion.div>
-                <p className={`${isMobileViewport ? 'mb-0 text-2xl' : 'mb-1 text-3xl'} font-bold text-gray-900`} style={isMobileViewport && stat.value === 'Loading...' ? { fontSize: '1.1rem', lineHeight: '1.2' } : undefined}>{stat.value}</p>
+                <p className={`theme-text-primary ${isMobileViewport ? 'mb-0 text-2xl' : 'mb-1 text-3xl'} font-bold`} style={isMobileViewport && stat.value === 'Loading...' ? { fontSize: '1.1rem', lineHeight: '1.2' } : undefined}>{stat.value}</p>
               </div>
-              <p className={`${isMobileViewport ? 'text-xs' : 'text-sm'} text-gray-600 font-medium mb-3`}>{stat.label}</p>
+              <p className={`theme-text-secondary ${isMobileViewport ? 'text-xs' : 'text-sm'} font-medium mb-3`}>{stat.label}</p>
               {stat.stars ? <div className="mt-2">{renderPerformanceStars(currentRating)}</div> : <div className="mt-3 w-full bg-white/50 rounded-full h-1.5"><motion.div initial={{ width: 0 }} animate={{ width: `${stat.percentage}%` }} transition={{ delay: 0.5 + index * 0.1, duration: 1 }} className={`h-1.5 rounded-full bg-gradient-to-r ${stat.gradient}`} /></div>}
             </div>
           </motion.div>
@@ -204,13 +204,13 @@ function StudentAssignedBatchContent({
   }
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 md:gap-4 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border border-white relative overflow-hidden">
+      <div className="flex items-center gap-3 md:gap-4 p-5 md:p-8 rounded-2xl md:rounded-3xl shadow-lg border relative overflow-hidden" style={{ background: 'var(--theme-surface-elevated)', borderColor: 'var(--theme-border)' }}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/60 rounded-full -mr-32 -mt-32" />
         <div className="relative z-10 min-w-0 flex-1">
-          <h2 className={`${isMobileViewport ? 'text-lg' : 'text-3xl'} font-bold tracking-tight text-slate-900`}>{user.studentDetails?.batch}</h2>
+          <h2 className={`theme-text-primary ${isMobileViewport ? 'text-lg' : 'text-3xl'} font-bold tracking-tight`}>{user.studentDetails?.batch}</h2>
         </div>
-        <button onClick={onViewTimetable} className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 ${isMobileViewport ? 'px-3 py-1.5 text-xs rounded-lg' : 'px-4 py-2 rounded-xl'} bg-white text-slate-700 font-bold transition-all shadow-sm border border-teal-100 hover:bg-teal-50`}>
-          <Calendar className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} text-teal-600`} />
+        <button onClick={onViewTimetable} className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 ${isMobileViewport ? 'px-3 py-1.5 text-xs rounded-lg' : 'px-4 py-2 rounded-xl'} font-bold transition-all shadow-sm border`} style={{ background: 'var(--theme-surface)', color: 'var(--theme-text-secondary)', borderColor: 'var(--theme-border)' }}>
+          <Calendar className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'}`} style={{ color: 'var(--state-info-border)' }} />
           Time Table
         </button>
       </div>

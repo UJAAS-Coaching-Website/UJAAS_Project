@@ -98,6 +98,12 @@ export function StudentNotificationSheet({
     }
   };
 
+  const getNotificationRowStyle = (read: boolean) => ({
+    background: read
+      ? 'var(--theme-surface)'
+      : 'color-mix(in srgb, var(--state-info-bg) 30%, var(--theme-surface) 70%)',
+  });
+
   const toggleExpandedNotification = (id: string) => {
     setExpandedNotifications((prev) => ({
       ...prev,
@@ -113,14 +119,15 @@ export function StudentNotificationSheet({
         onClick={() => setOpen(true)}
         aria-label="Open notifications"
         aria-expanded={open}
-        className="relative rounded-lg p-2 transition hover:bg-gray-100"
+        className="relative rounded-lg p-2 transition"
+        style={{ color: 'var(--theme-text-secondary)' }}
       >
-        <Bell className="w-5 h-5 text-gray-700" />
+        <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-xs font-bold text-white shadow-lg"
+            className="theme-alert-badge absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-xs font-bold text-white shadow-lg"
           >
             {unreadCount > 9 ? '9+' : unreadCount}
           </motion.span>
@@ -151,8 +158,12 @@ export function StudentNotificationSheet({
                   top: isMobile ? '0' : `${desktopPosition.top}px`,
                   height: isMobile ? '100dvh' : 'auto',
                   maxHeight: isMobile ? '100dvh' : 'calc(100dvh - 5rem)',
+                  background: 'var(--theme-surface-elevated)',
+                  border: isMobile ? '0' : '1px solid var(--theme-border)',
+                  color: 'var(--theme-text-primary)',
+                  backdropFilter: 'blur(18px)',
                 }}
-                className={`student-notification-scroll fixed z-layer-modal flex min-h-0 flex-col bg-white shadow-2xl ${
+                className={`student-notification-scroll fixed z-layer-modal flex min-h-0 flex-col shadow-2xl ${
                   isMobile ? 'overflow-y-auto overscroll-contain rounded-none border-0' : 'overflow-hidden rounded-3xl'
                 }`}
               >
@@ -196,7 +207,7 @@ export function StudentNotificationSheet({
                   )}
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col bg-white">
+                <div className="flex min-h-0 flex-1 flex-col" style={{ background: 'var(--theme-surface)' }}>
                   <div
                     style={
                       isMobile
@@ -215,11 +226,11 @@ export function StudentNotificationSheet({
                   >
                     {notifications.length === 0 ? (
                       <div className="flex h-full min-h-56 flex-col items-center justify-center p-8 text-center">
-                        <Bell className="mb-3 h-12 w-12 text-gray-300" />
-                        <p className="text-gray-600">No notifications yet</p>
+                        <Bell className="theme-text-muted mb-3 h-12 w-12" />
+                        <p className="theme-text-secondary">No notifications yet</p>
                       </div>
                     ) : (
-                        <div className="divide-y divide-gray-100">
+                        <div className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
                           {notifications.map((notification) => (
                             (() => {
                               const isExpanded = Boolean(expandedNotifications[notification.id]);
@@ -230,9 +241,8 @@ export function StudentNotificationSheet({
                             key={notification.id}
                             role="button"
                             tabIndex={0}
-                            className={`block w-full p-4 text-left transition hover:bg-gray-50 ${
-                              !notification.read ? 'bg-blue-50' : ''
-                            }`}
+                            className="block w-full p-4 text-left transition"
+                            style={getNotificationRowStyle(notification.read)}
                             onClick={() => {
                               if (notification.onClick) {
                                 onMarkAsRead(notification.id);
@@ -264,7 +274,7 @@ export function StudentNotificationSheet({
 
                               <div className="min-w-0 flex-1">
                                 <div className="mb-1 flex items-start justify-between gap-2">
-                                  <h4 className="text-sm font-semibold text-gray-900">
+                                  <h4 className="theme-text-primary text-sm font-semibold">
                                     {notification.title}
                                   </h4>
                                   {!notification.read && !notification.isSticky && (
@@ -272,7 +282,7 @@ export function StudentNotificationSheet({
                                   )}
                                 </div>
 
-                                <p className={`mb-2 text-sm text-gray-600 ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
+                                <p className={`theme-text-secondary mb-2 text-sm ${isExpanded ? 'whitespace-pre-wrap break-words' : 'line-clamp-2'}`}>
                                   {notification.message}
                                 </p>
                                 {shouldShowReadMore && (
@@ -289,7 +299,7 @@ export function StudentNotificationSheet({
                                 )}
 
                                 <div className="flex items-center justify-between gap-3">
-                                  <span className="text-xs text-gray-500">{notification.time}</span>
+                                  <span className="theme-text-muted text-xs">{notification.time}</span>
                                   {!notification.isSticky && (
                                     <button
                                       type="button"
@@ -297,7 +307,8 @@ export function StudentNotificationSheet({
                                         event.stopPropagation();
                                         onDelete(notification.id);
                                       }}
-                                      className="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                      className="rounded p-1 transition"
+                                      style={{ color: 'var(--theme-text-muted)' }}
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
