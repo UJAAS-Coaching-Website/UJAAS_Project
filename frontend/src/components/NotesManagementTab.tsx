@@ -510,7 +510,7 @@ export function NotesManagementTab({
           explanationImage: question.explanation_img || undefined,
           metadata: { section: question.section || undefined },
         })) as any}
-        onSubmit={() => {}}
+        onSubmit={() => { }}
         onExit={() => setPreviewDpp(null)}
         onSave={async (_dppId, updatedQuestions, updatedTitle) => {
           const updated = await updateDpp(previewDpp.id, {
@@ -524,12 +524,12 @@ export function NotesManagementTab({
           setApiDpps((prev) => prev.map((item) => (
             item.id === updated.id
               ? {
-                  ...item,
-                  title: updated.title,
-                  instructions: updated.instructions,
-                  question_count: updated.question_count,
-                  questions: updated.questions,
-                }
+                ...item,
+                title: updated.title,
+                instructions: updated.instructions,
+                question_count: updated.question_count,
+                questions: updated.questions,
+              }
               : item
           )));
           toast.success('DPP preview changes saved.');
@@ -547,98 +547,98 @@ export function NotesManagementTab({
     <div className="space-y-6">
       {/* Header Area */}
       {headerMode !== 'hidden' && (headerMode === 'full' || currentView !== 'root') && (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`${variant === 'admin' ? 'bg-white rounded-2xl p-4 border border-gray-100' : 'bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white'}`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {currentView !== 'root' && (<button onClick={goBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>)}
-            <div>
-              {headerMode === 'full' ? (
-                currentView === 'root' ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-6 h-6 text-emerald-600" />
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`${variant === 'admin' ? 'bg-white rounded-2xl p-4 border border-gray-100' : 'bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-white'}`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {currentView !== 'root' && (<button onClick={goBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-gray-700" /></button>)}
+              <div>
+                {headerMode === 'full' ? (
+                  currentView === 'root' ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                        <BookOpen className="w-6 h-6 text-emerald-600" />
+                      </div>
+                      <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
+                        Academic Content
+                      </h2>
                     </div>
+                  ) : (
                     <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
-                      Academic Content
+                      {selectedSubject}
                     </h2>
-                  </div>
+                  )
                 ) : (
-                  <h2 className={`font-bold text-gray-900 ${variant === 'admin' ? 'text-xl' : 'text-2xl'}`}>
-                    {selectedSubject}
+                  <h2 className={`font-bold text-gray-900 ${variant === 'student' ? 'text-xl md:text-lg' : 'text-lg'}`}>
+                    {currentView === 'subject' ? selectedSubject : selectedChapterObj?.name}
                   </h2>
-                )
-              ) : (
-                <h2 className={`font-bold text-gray-900 ${variant === 'student' ? 'text-xl md:text-lg' : 'text-lg'}`}>
-                  {currentView === 'subject' ? selectedSubject : selectedChapterObj?.name}
-                </h2>
-              )}
-              <div className={`flex items-center gap-2 ${variant === 'student' ? 'text-xs md:text-sm text-gray-400 md:text-gray-500 mt-1' : 'text-sm text-gray-500'}`}>
-                {selectedSubject && (
-                  <>
-                    <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
-                    <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
-                  </>
                 )}
-                {selectedChapterObj && (
-                  <>
-                    <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
-                    <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapterObj.name}</span>
-                  </>
-                )}
+                <div className={`flex items-center gap-2 ${variant === 'student' ? 'text-xs md:text-sm text-gray-400 md:text-gray-500 mt-1' : 'text-sm text-gray-500'}`}>
+                  {selectedSubject && (
+                    <>
+                      <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
+                      <span className={currentView === 'subject' ? 'text-teal-600 font-semibold' : ''}>{selectedSubject}</span>
+                    </>
+                  )}
+                  {selectedChapterObj && (
+                    <>
+                      <ChevronRight className={`${variant === 'student' ? 'w-3.5 h-3.5 md:w-4 md:h-4' : 'w-4 h-4'}`} />
+                      <span className={currentView === 'chapter' ? 'text-teal-600 font-semibold' : ''}>{selectedChapterObj.name}</span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          {headerMode === 'full' && (
-          <div className="flex items-center gap-3">
-            {currentView === 'root' && (
-              <>
-                <button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm">
-                  <Calendar className="w-4 h-4" />Time Table
-                </button>
-                {variant === 'admin' && isCurrentBatchActive && (
+            {headerMode === 'full' && (
+              <div className="flex items-center gap-3">
+                {currentView === 'root' && (
                   <>
-                    <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
-                      <Plus className="w-4 h-4" />Add Subject
+                    <button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm">
+                      <Calendar className="w-4 h-4" />Time Table
                     </button>
+                    {variant === 'admin' && isCurrentBatchActive && (
+                      <>
+                        <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
+                          <Plus className="w-4 h-4" />Add Subject
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
-              </>
-            )}
-            {currentView === 'subject' && canManageContent && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
-            {currentView === 'chapter' && canManageContent && (
-              <div className="flex items-center gap-3">
-                <button onClick={() => {
-                  localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
-                  localStorage.setItem('uploadTargetChapterName', selectedChapterObj!.name);
-                  localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
-                    batchLabel: selectedBatch,
-                    selectedSubject,
-                    chapterId: selectedChapterObj!.id,
-                    chapterName: selectedChapterObj!.name,
-                    currentView,
-                    activeContentType,
-                  }));
-                  onNavigate('upload-notes');
-                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
-                <button onClick={() => {
-                  localStorage.setItem('createDppTargetChapterId', selectedChapterObj!.id);
-                  localStorage.setItem('createDppTargetChapterName', selectedChapterObj!.name);
-                  localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
-                    batchLabel: selectedBatch,
-                    selectedSubject,
-                    chapterId: selectedChapterObj!.id,
-                    chapterName: selectedChapterObj!.name,
-                    currentView,
-                    activeContentType,
-                  }));
-                  onNavigate('create-dpp');
-                }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
+                {currentView === 'subject' && canManageContent && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}
+                {currentView === 'chapter' && canManageContent && (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => {
+                      localStorage.setItem('uploadTargetChapterId', selectedChapterObj!.id);
+                      localStorage.setItem('uploadTargetChapterName', selectedChapterObj!.name);
+                      localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+                        batchLabel: selectedBatch,
+                        selectedSubject,
+                        chapterId: selectedChapterObj!.id,
+                        chapterName: selectedChapterObj!.name,
+                        currentView,
+                        activeContentType,
+                      }));
+                      onNavigate('upload-notes');
+                    }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Upload className="w-5 h-5" />Upload Notes</button>
+                    <button onClick={() => {
+                      localStorage.setItem('createDppTargetChapterId', selectedChapterObj!.id);
+                      localStorage.setItem('createDppTargetChapterName', selectedChapterObj!.name);
+                      localStorage.setItem(NOTES_RETURN_CONTEXT_KEY, JSON.stringify({
+                        batchLabel: selectedBatch,
+                        selectedSubject,
+                        chapterId: selectedChapterObj!.id,
+                        chapterName: selectedChapterObj!.name,
+                        currentView,
+                        activeContentType,
+                      }));
+                      onNavigate('create-dpp');
+                    }} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Create DPP</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-          )}
-        </div>
-      </motion.div>
+        </motion.div>
       )}
 
       {!isCurrentBatchActive && headerMode === 'full' && (
@@ -648,7 +648,7 @@ export function NotesManagementTab({
       )}
 
       {currentView === 'root' && (
-        <div className={`grid gap-4 md:gap-6 ${variant === 'admin' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' : variant === 'student' ? 'grid-cols-1 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
           {subjects.map((sub: { id: string; name: string; color: string }, index: number) => (
             <motion.div
               key={sub.id}
@@ -656,36 +656,30 @@ export function NotesManagementTab({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               onClick={() => navigateToSubject(sub.name)}
-              className={`${variant === 'student'
-                ? 'bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm md:shadow-lg flex items-center md:flex-col md:items-center gap-3 md:gap-4'
-                : 'bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-white flex flex-col items-center gap-4'
-              } group cursor-pointer hover:shadow-xl transition-all relative`}
+              className="bg-white border border-gray-200 rounded-xl p-4 md:p-6 shadow-sm md:shadow-lg flex items-center md:flex-col md:items-center gap-3 md:gap-4 group cursor-pointer hover:shadow-xl transition-all relative"
             >
-                {variant === 'admin' && (
-                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 z-10">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveOrDeleteSubject(sub.name);
-                      }}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                      title="Delete subject"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+              {variant === 'admin' && (
+                <div className="absolute top-2 right-2 md:top-4 md:right-4 opacity-0 group-hover:opacity-100 z-10">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveOrDeleteSubject(sub.name);
+                    }}
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                    title="Delete subject"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <div
-                className={`${variant === 'student'
-                  ? 'w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl'
-                  : 'w-16 h-16 rounded-2xl'
-                } shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white shrink-0`}
+                className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl shadow-xl flex items-center justify-center transform group-hover:rotate-6 transition-transform text-white shrink-0"
                 style={{ backgroundColor: sub.color }}
               >
-                <Folder className={`${variant === 'student' ? 'w-6 h-6 md:w-8 md:h-8' : 'w-8 h-8'}`} />
+                <Folder className="w-6 h-6 md:w-8 md:h-8" />
               </div>
-              <div className={`${variant === 'student' ? 'text-left md:text-center min-w-0 flex-1 md:flex-none' : 'text-center'}`}>
-                <h4 className={`font-bold text-gray-900 ${variant === 'student' ? 'text-base md:text-lg truncate md:whitespace-normal' : ''}`}>{sub.name}</h4>
+              <div className="text-left md:text-center min-w-0 flex-1 md:flex-none">
+                <h4 className="font-bold text-gray-900 text-base md:text-lg truncate md:whitespace-normal">{sub.name}</h4>
               </div>
             </motion.div>
           ))}
@@ -840,8 +834,8 @@ export function NotesManagementTab({
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {apiNotes.map((item) => (
-                        <tr 
-                          key={item.id} 
+                        <tr
+                          key={item.id}
                           className="hover:bg-teal-50/30 transition-colors group cursor-pointer"
                           onClick={() => window.open(item.file_url, '_blank', 'noopener,noreferrer')}
                           title="click to open"
@@ -928,8 +922,10 @@ export function NotesManagementTab({
                 ))
               )
             ) : (
-              loadingDpps ? (
-                Array.from({ length: 5 }).map((_, index) => (
+              variant !== 'student' ? (
+              <div className="grid grid-cols-3 gap-6">
+              {loadingDpps ? (
+                Array.from({ length: 6 }).map((_, index) => (
                   <DppCardSkeleton key={`dpp-skeleton-${index}`} />
                 ))
               ) : apiDpps.map((item, index) => (
@@ -938,12 +934,11 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${
-                    previewingDppId === item.id ? 'cursor-wait opacity-70' : variant !== 'student' ? 'cursor-pointer' : ''
-                  }`}
-                  onClick={variant !== 'student' ? () => { void handleOpenAdminFacultyPreview(item.id); } : undefined}
+                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : 'cursor-pointer'
+                    }`}
+                  onClick={() => { void handleOpenAdminFacultyPreview(item.id); }}
                 >
-                  <div className="flex h-full flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
+                  <div className="flex h-full flex-col gap-3">
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
@@ -957,69 +952,35 @@ export function NotesManagementTab({
                       <p className="mt-1 text-xs text-gray-500 sm:text-sm">
                         {item.chapter_name} • {new Date(item.created_at).toLocaleDateString()}
                       </p>
-                      {variant === 'student' && (
-                        <p className="mt-3 text-xs text-gray-600 sm:text-sm">
-                          Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
-                        </p>
-                      )}
-                      {variant !== 'student' && previewingDppId === item.id && (
+                      {previewingDppId === item.id && (
                         <p className="mt-3 text-sm font-semibold text-blue-600">
-                          Opening preview...
+                          Opening review...
                         </p>
                       )}
                     </div>
-                    <div className="mt-auto w-full md:w-auto md:shrink-0">
-                      {variant === 'student' ? (
-                        <>
-                          <div className="grid w-full grid-cols-2 gap-2 md:hidden">
-                            {(item.submitted_attempt_count || 0) > 0 && (
-                              <button
-                                onClick={() => handlePreviewDpp(item.id)}
-                                disabled={previewingDppId === item.id}
-                                className="w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
-                              >
-                                {previewingDppId === item.id ? 'Opening...' : 'Review'}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleAttemptDpp(item.id)}
-                              disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
-                              className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
-                            </button>
-                          </div>
-                          <div className="hidden md:flex md:w-auto md:flex-col md:items-stretch md:justify-start md:gap-3">
-                            {(item.submitted_attempt_count || 0) > 0 && (
-                              <button
-                                onClick={() => handlePreviewDpp(item.id)}
-                                disabled={previewingDppId === item.id}
-                                className="rounded-xl border border-teal-200 bg-teal-50 px-5 py-2.5 text-base font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60 md:min-w-[170px]"
-                              >
-                                {previewingDppId === item.id ? 'Opening...' : 'Review'}
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleAttemptDpp(item.id)}
-                              disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
-                              className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-5 py-2.5 text-base font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50 md:min-w-[170px]"
-                            >
-                              {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleOpenDppAnalytics(item.id, item.title);
-                          }}
-                          disabled={analyticsLoadingDppId === item.id}
-                          className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 font-bold text-blue-700 transition hover:bg-blue-100"
-                        >
-                          {analyticsLoadingDppId === item.id ? 'Loading...' : 'Analytics'}
-                        </button>
-                      )}
+                    <div className="mt-auto">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleOpenAdminFacultyPreview(item.id);
+                            }}
+                            disabled={previewingDppId === item.id}
+                            className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {previewingDppId === item.id ? 'Opening...' : 'Review'}
+                          </button>
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleOpenDppAnalytics(item.id, item.title);
+                            }}
+                            disabled={analyticsLoadingDppId === item.id}
+                            className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 font-bold text-blue-700 transition hover:bg-blue-100"
+                          >
+                            {analyticsLoadingDppId === item.id ? 'Loading...' : 'Analytics'}
+                          </button>
+                        </div>
                       {canManageContent && (
                         <button
                           onClick={(event) => {
@@ -1036,6 +997,85 @@ export function NotesManagementTab({
                   </div>
                 </motion.div>
               ))
+              }
+              </div>
+              ) : (
+              <>
+              {loadingDpps ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <DppCardSkeleton key={`dpp-skeleton-${index}`} />
+                ))
+              ) : apiDpps.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.04 }}
+                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : ''
+                    }`}
+                >
+                  <div className="flex h-full flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
+                          {item.subject_name}
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 sm:px-2.5 sm:text-xs">
+                          {item.question_count} Questions
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold text-gray-900 sm:text-lg">{item.title}</h4>
+                      <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                        {item.chapter_name} • {new Date(item.created_at).toLocaleDateString()}
+                      </p>
+                      <p className="mt-3 text-xs text-gray-600 sm:text-sm">
+                        Attempts: {item.submitted_attempt_count || 0}/{item.max_attempts || 3}
+                      </p>
+                    </div>
+                    <div className="mt-auto w-full md:w-auto md:shrink-0">
+                      <div className="grid w-full grid-cols-2 gap-2 md:hidden">
+                        {(item.submitted_attempt_count || 0) > 0 && (
+                          <button
+                            onClick={() => handlePreviewDpp(item.id)}
+                            disabled={previewingDppId === item.id}
+                            className="w-full rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {previewingDppId === item.id ? 'Opening...' : 'Review'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleAttemptDpp(item.id)}
+                          disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                          className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 text-sm font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                        </button>
+                      </div>
+                      <div className="hidden md:flex md:w-auto md:flex-col md:items-stretch md:justify-start md:gap-3">
+                        {(item.submitted_attempt_count || 0) > 0 && (
+                          <button
+                            onClick={() => handlePreviewDpp(item.id)}
+                            disabled={previewingDppId === item.id}
+                            className="rounded-xl border border-teal-200 bg-teal-50 px-5 py-2.5 text-base font-bold text-teal-700 transition hover:bg-teal-100 disabled:cursor-wait disabled:opacity-60 md:min-w-[170px]"
+                          >
+                            {previewingDppId === item.id ? 'Opening...' : 'Review'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleAttemptDpp(item.id)}
+                          disabled={loadingDppId === item.id || (item.submitted_attempt_count || 0) >= (item.max_attempts || 3)}
+                          className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-5 py-2.5 text-base font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50 md:min-w-[170px]"
+                        >
+                          {loadingDppId === item.id ? 'Loading...' : (item.submitted_attempt_count || 0) > 0 ? 'Re-attempt' : 'Attempt'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+              }
+              </>
+              )
             )}
 
             {!loadingNotes && activeContentType === 'notes' && apiNotes.length === 0 && (
