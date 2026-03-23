@@ -1100,8 +1100,12 @@ function App() {
     let isFetching = false;
     const fetchTasks: Promise<any>[] = [];
 
-    // 1. Batches & Students (Global Foundations)
-    if ((user.role === 'admin' || user.role === 'faculty') && adminBatches.length === 0) {
+    // 1. Batches & Students (Global Foundations, fetched strictly when on Batches/Home section)
+    if (
+      (user.role === 'admin' || user.role === 'faculty') &&
+      adminLandingSection === 'batches' &&
+      adminBatches.length === 0
+    ) {
       isFetching = true;
       fetchTasks.push(apiFetchBatches().then(res => setAdminBatches(res.map(apiBatchToInfo))).catch(() => {}));
       if (adminStudents.length === 0) {
