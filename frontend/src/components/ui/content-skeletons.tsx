@@ -254,3 +254,27 @@ export function ProfileSkeleton() {
     </div>
   );
 }
+
+export function QuestionBankSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 md:p-8 rounded-3xl shadow-xl border border-gray-100 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gray-50 rounded-full -mr-32 -mt-32" />
+        <div className="relative z-10 w-full space-y-2">
+          <Skeleton className="h-8 md:h-10 w-48 md:w-64" />
+          <Skeleton className="h-4 md:h-5 w-64 md:w-96 max-w-full" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-2xl md:rounded-3xl p-4 md:p-8 bg-white shadow-lg border border-gray-100 flex flex-col items-center">
+            <Skeleton className="mb-4 md:mb-6 h-12 w-12 md:h-20 md:w-20 rounded-xl md:rounded-2xl shrink-0" />
+            <Skeleton className="mb-2 h-4 md:h-6 w-3/4" />
+            <Skeleton className="h-3 md:h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

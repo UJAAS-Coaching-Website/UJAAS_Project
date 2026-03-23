@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, QuestionBankSkeleton } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -552,6 +552,7 @@ export function FacultyDashboard({
           <Suspense fallback={
             activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
             activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+            activeTab === 'question-bank' ? <QuestionBankSkeleton /> :
             (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
             <DashboardHeroSkeleton />
           }>

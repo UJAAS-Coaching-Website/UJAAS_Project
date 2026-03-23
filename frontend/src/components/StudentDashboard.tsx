@@ -25,7 +25,7 @@ import { useIsMobileViewport } from '../hooks/useViewport';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
 import { StudentDashboardHome } from './student/StudentDashboardHome';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, TestSeriesSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, TestSeriesSkeleton, QuestionBankSkeleton } from './ui/content-skeletons';
 
 interface StudentDashboardProps {
   user: User;
@@ -566,7 +566,7 @@ export function StudentDashboard({
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
-            <Suspense fallback={<div className="space-y-4"><TableRowsSkeleton rows={5} /></div>}>
+            <Suspense fallback={<QuestionBankSkeleton />}>
               <QuestionBank
                 userRole="student"
                 userBatch={user.studentDetails?.batch}
