@@ -73,6 +73,14 @@ export function TestSeriesContainer({
   const lastNonResultsSubTabRef = useRef<string | null>(null);
   const previousResultsStateRef = useRef<TestState | null>(null);
   const analyticsOriginRef = useRef<'results' | 'list'>('list');
+  const isAliveRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isAliveRef.current = false;
+      analyticsRequestRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     setStudentTests(publishedTests);
@@ -84,6 +92,7 @@ export function TestSeriesContainer({
 
   const patchAttemptSummary = useCallback(async (testId: string) => {
     const summary = await fetchMyTestAttemptSummary(testId);
+    if (!isAliveRef.current) return summary;
     setStudentTests((prev) => prev.map((test) => (
       test.id === testId
         ? {
@@ -106,13 +115,14 @@ export function TestSeriesContainer({
     analyticsRequestRef.current = requestId;
 
     try {
+      if (!isAliveRef.current) return;
       setLoadingAnalysisAttemptId(attemptId);
       const result = await fetchAttemptResult(attemptId);
-      if (analyticsRequestRef.current !== requestId) {
+      if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
       const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
-      if (analyticsRequestRef.current !== requestId) {
+      if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
@@ -121,7 +131,7 @@ export function TestSeriesContainer({
       pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } finally {
-      if (analyticsRequestRef.current === requestId) {
+      if (analyticsRequestRef.current === requestId && isAliveRef.current) {
         setLoadingAnalysisAttemptId(null);
       }
     }
@@ -149,6 +159,7 @@ export function TestSeriesContainer({
           serverNow: payload.serverNow,
         };
 
+      if (!isAliveRef.current) return;
       setTestState(nextState);
     } catch {
       localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
@@ -157,13 +168,17 @@ export function TestSeriesContainer({
   }, [onNavigateSubTab]);
 
   const loadAttemptResults = useCallback(async () => {
+    if (!isAliveRef.current) return [];
     setIsLoadingResults(true);
     try {
       const results = await fetchMyAttemptResults();
+      if (!isAliveRef.current) return results;
       setAttemptResults(results);
       return results;
     } finally {
-      setIsLoadingResults(false);
+      if (isAliveRef.current) {
+        setIsLoadingResults(false);
+      }
     }
   }, []);
 
@@ -274,11 +289,13 @@ export function TestSeriesContainer({
     if (loadingOverviewTestId) return;
 
     try {
+      if (!isAliveRef.current) return;
       setLoadingOverviewTestId(test.id);
       setIsLoadingOverview(true);
       const fullApiTest = await fetchTestById(test.id);
       const fullTest = apiTestToPublished(fullApiTest);
 
+      if (!isAliveRef.current) return;
       setStudentTests((prev) => prev.map((item) => (
         item.id === fullTest.id
           ? {
@@ -295,8 +312,10 @@ export function TestSeriesContainer({
     } catch (error: any) {
       window.alert(error?.message || 'Unable to load test overview');
     } finally {
-      setIsLoadingOverview(false);
-      setLoadingOverviewTestId(null);
+      if (isAliveRef.current) {
+        setIsLoadingOverview(false);
+        setLoadingOverviewTestId(null);
+      }
     }
   };
 
@@ -304,6 +323,7 @@ export function TestSeriesContainer({
     if (testState.mode !== 'overview' || isStartingTest) return;
 
     try {
+      if (!isAliveRef.current) return;
       setIsStartingTest(true);
       const payload: ApiActiveAttemptPayload = await startMyTestAttempt(testState.test.id);
       const fullTest = apiTestToPublished(payload.test);
@@ -315,6 +335,7 @@ export function TestSeriesContainer({
         attemptId: payload.attempt.id,
       }));
 
+      if (!isAliveRef.current) return;
       setStudentTests((prev) => prev.map((test) => (
         test.id === fullTest.id
           ? {
@@ -342,7 +363,9 @@ export function TestSeriesContainer({
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
     } finally {
-      setIsStartingTest(false);
+      if (isAliveRef.current) {
+        setIsStartingTest(false);
+      }
     }
   };
 
