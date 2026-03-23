@@ -64,7 +64,7 @@ export function AdminProfile({ user, onLogout }: AdminProfileProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden ${
+        className={`dark-mask-hero rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden ${
           isDark
             ? 'bg-gradient-to-r from-slate-900 via-cyan-950 to-blue-950'
             : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500'

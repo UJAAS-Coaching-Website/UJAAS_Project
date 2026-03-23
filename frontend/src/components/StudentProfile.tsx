@@ -184,7 +184,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-3xl ${isMobileViewport ? 'p-5' : 'p-8'} text-white shadow-2xl relative overflow-hidden ${
+        className={`dark-mask-hero rounded-3xl ${isMobileViewport ? 'p-5' : 'p-8'} text-white shadow-2xl relative overflow-hidden ${
           isDark
             ? 'bg-gradient-to-r from-slate-900 via-cyan-950 to-blue-950'
             : 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500'
@@ -532,7 +532,7 @@ function PerformanceSection({ details, user, isMobileViewport }: { details: Stud
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-3xl ${isMobileViewport ? 'p-6' : 'p-8'} shadow-xl border relative overflow-hidden ${
+        className={`dark-mask-soft rounded-3xl ${isMobileViewport ? 'p-6' : 'p-8'} shadow-xl border relative overflow-hidden ${
           isDark
             ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 border-slate-700'
             : 'bg-gradient-to-br from-yellow-50 to-orange-50 text-gray-900 border-white'

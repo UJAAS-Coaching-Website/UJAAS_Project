@@ -188,7 +188,7 @@ function DashboardLoadingShell({ role }: { role: User['role'] }) {
   const showManagementRows = role === 'admin' || role === 'faculty';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+    <div className="dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       <div className="border-b border-white bg-white/70 backdrop-blur-lg shadow-lg">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ function AuthLoadingShell({ isMobile }: { isMobile: boolean }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative overflow-hidden"
+      className="dark-mask-surface min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 relative overflow-hidden"
     >
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-200/20 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-200/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
@@ -1323,7 +1323,7 @@ function App() {
 
   if (shouldBlockNonDesktop) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center px-4 py-10">
+      <div className="dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-xl rounded-3xl border border-white/70 bg-white/80 p-8 text-center shadow-2xl backdrop-blur">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 shadow-sm">
             <img src={logo} alt="UJAAS Logo" className="h-9 w-9 object-contain" />

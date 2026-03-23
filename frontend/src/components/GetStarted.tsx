@@ -119,9 +119,9 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
   }, [shouldPaginateFaculty, faculty.length, facultyItemsPerView]);
 
   return (
-    <div className="footer-reveal-page min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+    <div className="footer-reveal-page dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
       {isNewUser && userName && (
-        <div className="sticky top-0 z-[1000] bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white py-4 px-4 shadow-lg">
+        <div className="sticky top-0 z-[1000] dark-mask-hero bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white py-4 px-4 shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Award className="w-6 h-6" />
@@ -211,7 +211,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                       {landingData.visions.map((vision) => (
                         <div key={vision.id} className={isMobile ? 'vision-mobile-slide' : 'w-full flex-shrink-0 px-4'}>
                           <div
-                            className="bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden shadow-xl border border-white"
+                            className="dark-mask-soft bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden shadow-xl border border-white"
                             style={{
                               borderRadius: isMobile ? '1rem' : '1.5rem',
                               display: 'flex',
@@ -383,7 +383,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           </div>
         </section>
 
-        <section className="py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500" style={isMobile ? { paddingTop: '1.5rem', paddingBottom: '1.5rem' } : undefined}>
+        <section className="dark-mask-hero py-8 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500" style={isMobile ? { paddingTop: '1.5rem', paddingBottom: '1.5rem' } : undefined}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-4 md:mb-6" style={isMobile ? { marginBottom: '0.75rem' } : undefined}>
               <h2 className="text-2xl md:text-4xl font-bold text-white">{isMobile ? 'Admissions Open' : 'Admissions Open'}</h2>
@@ -447,7 +447,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   >
                     {faculty.map((member, idx) => (
                       <div key={`${member.name}-${idx}`} className="px-2 md:px-3 lg:px-4" style={{ width: `${100 / faculty.length}%` }}>
-                        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition flex flex-col h-full bg-white">
+                        <div className="dark-mask-soft bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition flex flex-col h-full bg-white">
                           <div className="aspect-square bg-gradient-to-br from-teal-200 to-cyan-200 overflow-hidden shrink-0">
                             <img
                               src={member.image}
@@ -489,7 +489,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
           </div>
         </section>
 
-        <section className="py-8 bg-gradient-to-br from-teal-50 to-cyan-50">
+        <section className="dark-mask-soft py-8 bg-gradient-to-br from-teal-50 to-cyan-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-6">
               <h2 className="text-2xl md:text-4xl font-bold mb-2">
@@ -593,7 +593,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
               <p className="text-sm md:text-lg text-gray-600">Fill the form below and we'll contact you soon</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-4 md:p-8 shadow-lg">
+            <form onSubmit={handleSubmit} className="dark-mask-soft bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl p-4 md:p-8 shadow-lg">
               <div className="grid grid-cols-2 gap-3 md:gap-6">
                 <div>
                   <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">

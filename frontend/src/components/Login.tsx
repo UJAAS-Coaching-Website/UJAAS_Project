@@ -39,7 +39,7 @@ export function Login({ onLogin }: LoginProps) {
 
   return (
     <div
-      className="bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center relative overflow-hidden"
+      className="dark-mask-surface bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex items-center justify-center relative overflow-hidden"
       style={{
         minHeight: isMobile ? undefined : '100vh',
         height: isMobile ? '100dvh' : undefined,
@@ -78,7 +78,7 @@ export function Login({ onLogin }: LoginProps) {
         className="w-full max-w-md relative z-10"
       >
         <div
-          className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50"
+          className="dark-mask-soft bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50"
           style={{ padding: isMobile ? '1.25rem 1.5rem' : '2rem' }}
         >
           {/* Logo and Header */}

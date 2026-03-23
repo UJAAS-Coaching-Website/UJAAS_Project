@@ -349,7 +349,7 @@ export function StudentDashboard({
   };
 
   return (
-    <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
+    <div className="footer-reveal-page footer-reveal-page--nav dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 flex flex-col">
       {/* Navigation */}
       {!isNavbarHidden && (
         <nav
