@@ -10,6 +10,7 @@ import {
   submitQuery as apiSubmitQuery,
   updateQueryStatus as apiUpdateQueryStatus,
   deleteQuery as apiDeleteQuery,
+  setQueriesCache,
 } from './api/landing';
 import {
   fetchBatches as apiFetchBatches,
@@ -19,6 +20,7 @@ import {
   permanentlyDeleteBatch as apiPermanentlyDeleteBatch,
   uploadBatchTimetable as apiUploadBatchTimetable,
   deleteBatchTimetable as apiDeleteBatchTimetable,
+  setBatchesCache,
   type ApiBatch,
 } from './api/batches';
 import {
@@ -26,6 +28,7 @@ import {
   createFaculty as apiCreateFaculty,
   updateFaculty as apiUpdateFaculty,
   deleteFacultyApi as apiDeleteFaculty,
+  setFacultiesCache,
   type ApiFaculty,
 } from './api/faculties';
 import {
@@ -36,6 +39,7 @@ import {
   assignStudentToBatch as apiAssignStudentToBatch,
   removeStudentFromBatch as apiRemoveStudentFromBatch,
   updateStudentRating as apiUpdateStudentRating,
+  setStudentsCache,
   type ApiStudent,
 } from './api/students';
 import {
@@ -52,8 +56,10 @@ import {
   forceTestLiveNow as apiForceTestLiveNow,
   updateTestApi,
   deleteTestApi as apiDeleteTest,
+  setTestsCache,
   type ApiTest,
 } from './api/tests';
+import { clearQuestionBankCache } from './api/questionBank';
 import { formatTimeAgo } from './utils/time';
 import { mapApiTestToPublished as apiTestToPublished } from './utils/testMappings';
 import { useIsMobileViewport } from './hooks/useViewport';
@@ -1149,7 +1155,22 @@ function App() {
     }
   }, [user, activeTab, adminLandingSection]);
 
+  // Reset scroll position to top when navigating between tabs or sections
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab, studentSubTab, adminLandingSection, adminBatch]);
+
+  const clearAllApiCaches = () => {
+    setQueriesCache(null);
+    setBatchesCache(null);
+    setFacultiesCache(null);
+    setStudentsCache(null);
+    setTestsCache(null);
+    clearQuestionBankCache();
+  };
+
   const handleLogin = async (userData: User) => {
+    clearAllApiCaches();
     setUser(userData);
     setShowGetStarted(false);
 
@@ -1220,6 +1241,7 @@ function App() {
     } catch {
       // Proceed with local cleanup even if API call fails.
     }
+    clearAllApiCaches();
     // Hard clear all global React states to prevent cross-login stale data mounts
     setAdminBatches([]);
     setPublishedTests([]);
