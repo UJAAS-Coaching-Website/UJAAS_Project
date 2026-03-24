@@ -80,6 +80,33 @@ Cons
 When to choose Hostinger
 - When you have sysadmin skills and want full control.
 
+## Security and DDoS Risk (Pay-As-You-Go Guardrails)
+
+### Risk Summary (Plain English)
+- Usage-based billing can increase during abusive traffic or DDoS attacks.
+- Unprotected APIs can be overwhelmed and become slow or unavailable.
+- Database load can spike if the attack hits read-heavy endpoints.
+
+### Protection Plan (Low-Cost, High-Impact)
+1. Put Cloudflare in front of the API
+   - Blocks abusive traffic at the edge before it reaches Railway.
+   - Adds free DDoS protection and basic WAF rules.
+2. Add rate limiting in the backend
+   - Use Upstash Redis to limit requests per IP or per user.
+   - Prevents brute force and request floods.
+3. Set usage alerts and spending caps
+   - Configure Railway usage alerts.
+   - If available, set a hard spend limit to avoid surprise bills.
+4. Cache aggressively
+   - Cache read-heavy endpoints so your DB is protected during bursts.
+5. Serve large downloads from storage/CDN
+   - Keep the API light during test download spikes.
+
+### Why This Is Enough For Our Current Scale
+- Our main peak is short and read-heavy, which is easy to protect with caching and rate limits.
+- The Cloudflare edge layer absorbs most abuse before it reaches the backend.
+- Budget alerts prevent unexpected costs.
+
 ## Reasons for Each Choice (Clear, Non-Technical)
 - Vercel: Fast website loads for students in India, easy updates from GitHub, and no server costs for the frontend.
 - Railway: We can host both the API and database in one place, avoid managing servers, and keep the backend reliable.
