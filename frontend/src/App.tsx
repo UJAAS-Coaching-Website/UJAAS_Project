@@ -1056,6 +1056,9 @@ function App() {
           const loggedInUser = profileResponse.user as User;
           setUser(loggedInUser);
           setShowGetStarted(false);
+          
+          // Parse the URL and route the user to the correct tab/subTab based on the URL
+          setTabFromPath(loggedInUser);
 
           // Fetching is now handled reactively by the loadRequiredData useEffect hook
           // that listens to activeTab and adminLandingSection.
@@ -1087,12 +1090,20 @@ function App() {
     };
 
     window.addEventListener('popstate', handlePopState);
-    setTabFromPath(user);
+    
+    // On mount, if we are loading the user session, DO NOT wipe the URL.
+    // Wait until the user is actually loaded.
+    if (!loading && user) {
+      setTabFromPath(user);
+    } else if (!loading && !user) {
+      // User definitively not logged in
+      setTabFromPath(null);
+    }
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user]);
+  }, [user, loading]);
 
   // True Lazy Tab Loading Watcher Hook
   useEffect(() => {

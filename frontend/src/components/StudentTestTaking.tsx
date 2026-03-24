@@ -65,6 +65,7 @@ interface StudentTestTakingProps {
 
 const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
 const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
+const QUESTION_INDEX_PREFIX = 'ujaasTestQuestionIdx:';
 
 export function StudentTestTaking({
   testId,
@@ -93,7 +94,17 @@ export function StudentTestTaking({
   const [testTitle, setTestTitle] = useState(initialTitle);
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(() => {
+    if (!attemptId) return 0;
+    try {
+      const saved = sessionStorage.getItem(`${QUESTION_INDEX_PREFIX}${attemptId}`);
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < (initialQuestions?.length || 0)) return idx;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
   const [answers, setAnswers] = useState<Record<string, StudentAnswer>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState(() => {
     if (deadlineAt && serverNow) {
@@ -106,9 +117,31 @@ export function StudentTestTaking({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [flaggedQuestions] = useState<Set<string>>(new Set());
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
-    () => new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : [])
+    () => {
+      const initial = new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : []);
+      // Also mark the restored question as visited
+      if (initialQuestions) {
+        // Mark all answered questions as visited (they were visited in a previous session)
+        for (const q of initialQuestions) {
+          if (initialAnswers[q.id] !== undefined && initialAnswers[q.id] !== null && initialAnswers[q.id] !== '') {
+            initial.add(q.id);
+          }
+        }
+        // Restore the current question index's question as visited
+        try {
+          const saved = sessionStorage.getItem(`${QUESTION_INDEX_PREFIX}${attemptId}`);
+          if (saved !== null) {
+            const idx = parseInt(saved, 10);
+            if (!isNaN(idx) && idx >= 0 && idx < initialQuestions.length) {
+              initial.add(initialQuestions[idx].id);
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      return initial;
+    }
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -149,6 +182,14 @@ export function StudentTestTaking({
       return next;
     });
   }, [currentQuestion, questions]);
+
+  // Persist current question index to sessionStorage for refresh recovery
+  useEffect(() => {
+    if (!attemptId || isAnyPreview) return;
+    try {
+      sessionStorage.setItem(`${QUESTION_INDEX_PREFIX}${attemptId}`, String(currentQuestion));
+    } catch { /* ignore */ }
+  }, [currentQuestion, attemptId, isAnyPreview]);
 
   const handleSaveEdit = () => {
     if (editForm.id) {
@@ -240,6 +281,8 @@ export function StudentTestTaking({
       await onSubmit(answers, { autoSubmitted: true });
       setShowSubmitDialog(false);
       setShowExitConfirm(false);
+      // Clean up persisted question index on successful submit
+      try { sessionStorage.removeItem(`${QUESTION_INDEX_PREFIX}${attemptId}`); } catch { /* ignore */ }
     } finally {
       setIsSubmitting(false);
     }
@@ -253,6 +296,8 @@ export function StudentTestTaking({
       await onSubmit(answers, { autoSubmitted });
       setShowSubmitDialog(false);
       setShowExitConfirm(false);
+      // Clean up persisted question index on successful submit
+      try { sessionStorage.removeItem(`${QUESTION_INDEX_PREFIX}${attemptId}`); } catch { /* ignore */ }
     } finally {
       setIsSubmitting(false);
     }
@@ -347,6 +392,19 @@ export function StudentTestTaking({
   const isOptionSelected = (questionId: string, optionIndex: number) => {
     const answer = answers[questionId];
     return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
+  };
+
+  const toggleFlag = (questionId: string) => {
+    if (isAnyPreview) return;
+    setFlaggedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(questionId)) {
+        next.delete(questionId);
+      } else {
+        next.add(questionId);
+      }
+      return next;
+    });
   };
 
   const selectAnswer = (questionId: string, value: StudentAnswer) => {
@@ -958,6 +1016,16 @@ export function StudentTestTaking({
                   {!isAnyPreview && (
                     <>
                       <button
+                        onClick={() => toggleFlag(question.id)}
+                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${
+                          flaggedQuestions.has(question.id)
+                            ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
+                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {flaggedQuestions.has(question.id) ? 'Unmark Review' : 'Mark for Review'}
+                      </button>
+                      <button
                         onClick={() => selectAnswer(question.id, null)}
                         className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
                       >
@@ -1023,8 +1091,18 @@ export function StudentTestTaking({
                     {!isAnyPreview && (
                       <>
                         <button
+                          onClick={() => toggleFlag(question.id)}
+                          className={`py-2.5 rounded-xl text-xs font-medium shadow-sm transition-all ${
+                            flaggedQuestions.has(question.id)
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {flaggedQuestions.has(question.id) ? 'Unmark' : 'Mark Review'}
+                        </button>
+                        <button
                           onClick={() => selectAnswer(question.id, null)}
-                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium shadow-sm"
+                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-xs font-medium shadow-sm"
                         >
                           Clear
                         </button>

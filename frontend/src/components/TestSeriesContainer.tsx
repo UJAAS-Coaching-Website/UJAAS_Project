@@ -149,24 +149,8 @@ export function TestSeriesContainer({
 
     try {
       const session = JSON.parse(stored) as { testId: string };
-      const pendingAutoSubmit = localStorage.getItem(AUTO_SUBMIT_PENDING_KEY);
-      if (pendingAutoSubmit) {
-        const pending = JSON.parse(pendingAutoSubmit) as { testId?: string; attemptId?: string };
-        if (pending?.testId === session.testId) {
-          const summary = await fetchMyTestAttemptSummary(session.testId).catch(() => null);
-          const latestAttemptId = summary?.history?.[0]?.id;
-          if (latestAttemptId) {
-            localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
-            localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
-            if (pending?.attemptId) {
-              localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${pending.attemptId}`);
-              localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${pending.attemptId}`);
-            }
-            await openAttemptAnalytics(latestAttemptId);
-            return;
-          }
-        }
-      }
+      // Clear any stale auto-submit marker from previous versions
+      localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
       const payload = await startMyTestAttempt(session.testId);
       const fullTest = apiTestToPublished(payload.test);
       const nextState = mode === 'overview'
@@ -280,6 +264,7 @@ export function TestSeriesContainer({
     void syncFromRoute();
   }, [subTab, testState.mode, hydrateActiveAttempt, loadAttemptResults, onNavigateSubTab, openAttemptAnalytics]);
 
+  // Save progress eagerly on beforeunload so answers persist across refresh
   useEffect(() => {
     if (testState.mode !== 'taking') return;
 
@@ -298,25 +283,20 @@ export function TestSeriesContainer({
           cachedAnswers = undefined;
         }
       }
-      localStorage.setItem(AUTO_SUBMIT_PENDING_KEY, JSON.stringify({
-        testId: testState.test.id,
-        attemptId,
-        at: Date.now(),
-      }));
-      void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/submit`, {
-        method: 'POST',
-        keepalive: true,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Device-Id': getDeviceId(),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          autoSubmitted: true,
-          ...(cachedAnswers ? { answers: cachedAnswers } : {}),
-        }),
-      });
+      if (cachedAnswers) {
+        // Fire-and-forget progress save (NOT submit) so answers survive refresh
+        void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/progress`, {
+          method: 'PATCH',
+          keepalive: true,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Device-Id': getDeviceId(),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ answers: cachedAnswers }),
+        });
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
