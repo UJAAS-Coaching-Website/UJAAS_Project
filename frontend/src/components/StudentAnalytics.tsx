@@ -96,6 +96,7 @@ export function StudentAnalytics({
     : '0.0';
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (!showReview) return;
@@ -131,17 +132,24 @@ export function StudentAnalytics({
     return `${hrs}h ${mins}m ${secs}s`;
   };
 
-  const handleDownloadTestPDF = () => {
-    void printTestPaperPdf({
-      title: result.testTitle,
-      testId: result.testId,
-      duration: result.duration,
-      totalMarks: result.totalMarks,
-      totalQuestions: result.totalQuestions,
-      instructions: result.instructions,
-      questions: result.questions,
-      logoSrc: logo,
-    });
+  const handleDownloadTestPDF = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      await printTestPaperPdf({
+        title: result.testTitle,
+        testId: result.testId,
+        duration: result.duration,
+        totalMarks: result.totalMarks,
+        totalQuestions: result.totalQuestions,
+        instructions: result.instructions,
+        questions: result.questions,
+        logoSrc: logo,
+      });
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   return (
@@ -171,13 +179,14 @@ export function StudentAnalytics({
                 {!hideDownload && (
                   <button
                     onClick={handleDownloadTestPDF}
+                    disabled={isDownloadingPdf}
                     className={`flex items-center justify-center ${isMobileViewport ? 'gap-1.5' : 'gap-2'} ${
                       isMobileViewport ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-2xl'
-                    } bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-200 transition-all`}
+                    } ${isDownloadingPdf ? 'bg-blue-200 text-blue-800 cursor-wait shadow-inner' : 'bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-200'} transition-all`}
                     aria-label="Download"
                   >
-                    <Download className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
-                    <span className="text-sm sm:text-base font-medium">Download</span>
+                    <Download className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} ${isDownloadingPdf ? 'animate-bounce' : ''}`} />
+                    <span className="text-sm sm:text-base font-medium">{isDownloadingPdf ? 'Preparing PDF...' : 'Download'}</span>
                   </button>
                 )}
                 <button

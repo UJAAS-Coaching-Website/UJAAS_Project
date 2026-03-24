@@ -68,7 +68,13 @@ export interface FetchQuestionBankParams {
   sort?: "name_asc" | "name_desc" | "newest" | "oldest" | "difficulty_asc" | "difficulty_desc";
 }
 
-export async function apiFetchQuestionBank(params: FetchQuestionBankParams = {}): Promise<ApiQuestionBankListResponse> {
+const questionBankCache: Record<string, ApiQuestionBankListResponse> = {};
+
+export function clearQuestionBankCache() {
+  Object.keys(questionBankCache).forEach(k => delete questionBankCache[k]);
+}
+
+export async function apiFetchQuestionBank(params: FetchQuestionBankParams = {}, forceRefresh = false): Promise<ApiQuestionBankListResponse> {
   const searchParams = new URLSearchParams();
   if (params.batch_id) searchParams.set("batch_id", params.batch_id);
   if (params.subject_name) searchParams.set("subject_name", params.subject_name);
@@ -76,7 +82,15 @@ export async function apiFetchQuestionBank(params: FetchQuestionBankParams = {})
   if (params.sort) searchParams.set("sort", params.sort);
 
   const query = searchParams.toString();
-  return request<ApiQuestionBankListResponse>(`/api/question-bank${query ? `?${query}` : ""}`);
+  const cacheKey = query || 'default';
+
+  if (questionBankCache[cacheKey] && !forceRefresh) {
+    return questionBankCache[cacheKey];
+  }
+
+  const res = await request<ApiQuestionBankListResponse>(`/api/question-bank${query ? `?${query}` : ""}`);
+  questionBankCache[cacheKey] = res;
+  return res;
 }
 
 export async function apiUploadQuestionBank(formData: FormData): Promise<ApiQuestionBankFile> {
@@ -88,6 +102,7 @@ export async function apiUploadQuestionBank(formData: FormData): Promise<ApiQues
   if (!response.ok) {
     throw new Error((data as any)?.message || "Upload failed");
   }
+  clearQuestionBankCache();
   return data as ApiQuestionBankFile;
 }
 
@@ -95,5 +110,6 @@ export async function apiDeleteQuestionBankFromBatch(fileId: string, batchId: st
   await request<void>(`/api/question-bank/${fileId}/batches/${batchId}`, {
     method: "DELETE",
   });
+  clearQuestionBankCache();
 }
 import { API_BASE_URL } from "./base";

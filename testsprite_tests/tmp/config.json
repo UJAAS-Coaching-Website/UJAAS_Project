@@ -3,18 +3,18 @@
   "type": "frontend",
   "scope": "codebase",
   "localEndpoint": "http://localhost:3000",
-  "loginUser": "UJAAS-2026-007",
-  "loginPassword": "ashish@123",
+  "loginUser": "admin@ujaas.com",
+  "loginPassword": "password123",
   "executionArgs": {
     "projectName": "UJAAS_Project",
     "projectPath": "C:\\Users\\manis\\pvt LTD\\UJAAS_Project",
     "testIds": [],
-    "additionalInstruction": "Frontend rerun. Use login credentials UJAAS-2026-007 / ashish@123. Prioritize stable student flows in test plan.",
+    "additionalInstruction": "",
     "serverMode": "development",
     "envs": {
-      "API_KEY": "sk-user-RI9MhaT9_8wngITNDkoh6yk2IvAqodpcN4i9iMaPZ6q6JftbbivDtw4BvdANOVAVsg-teiv3xofHH9VDOwwVU10emRmbqiqTZuo5qZA-O8Fzy_ZLwJHKezmJuGMawWmx4WI"
+      "API_KEY": "sk-user-wqEYeYl7ejRILDhUKPRucH9DwbdLvHj_MiS2TJZsr6nSBhGPW8P1_3lVb6SdzdiGt4s8HA63mvNANrpjGCS02O0XWEv7flYshQgymXCinOr9ywkUcX6dKt7i80XM_Esql2M"
     }
   },
-  "serverPort": 56953,
-  "proxy": "http://5618f769-4fe5-4c88-9de7-355d4f0e0689:M3HLN6MgEfqZpGXFOZfSqb02A07uCnCp@tun.testsprite.com:8080"
+  "serverPort": 62512,
+  "proxy": "http://a39bc6b7-9654-42a0-9024-a61f4c64d409:E32vyAp2kq56XphzBpfzJdtAXldOdM1l@tun.testsprite.com:8080"
 }

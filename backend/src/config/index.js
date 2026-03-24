@@ -8,6 +8,7 @@ export const databaseUrl = process.env.DATABASE_URL;
 export const corsOrigin = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(",").map((v) => v.trim())
     : true;
+export const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
 
 export const accessCookieName = "ujaas_token";
 export const refreshCookieName = "ujaas_refresh";

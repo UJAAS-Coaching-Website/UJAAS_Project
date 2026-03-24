@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent, type FormEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, DashboardLoadingShell } from './ui/content-skeletons';
 import { createPortal } from 'react-dom';
 import { User, LandingData, Tab } from '../App';
 import {
@@ -66,7 +66,7 @@ import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
 const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminBatchSelectionTab })));
 const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
-const AdminStudentsDirectoryTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminStudentsDirectoryTab })));
+const AdminStudentsTab = lazy(() => import('./admin/AdminStudentsTab').then(m => ({ default: m.AdminStudentsTab })));
 import { formatIndianMobileInput } from '../utils/phone';
 
 interface AdminDashboardProps {
@@ -120,6 +120,7 @@ interface AdminDashboardProps {
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
   onRefreshFaculties: () => void;
   onSearchStudents?: (query: string) => void;
+  isDataLoading?: boolean;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -171,11 +172,11 @@ type StudentFormState = {
   name: string;
   rollNumber: string;
   batch: Batch;
+  email: string;
   phoneNumber: string;
   dateOfBirth: string;
   address: string;
   parentContact: string;
-  email?: string;
 };
 
 type FacultyFormState = {
@@ -284,16 +285,21 @@ export function AdminDashboard({
   onRemoveSubjectFromBatch,
   onRefreshFaculties,
   onSearchStudents,
+  isDataLoading,
 }: AdminDashboardProps) {
+  if (isDataLoading) {
+    return <DashboardLoadingShell role="admin" />;
+  }
+
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
     const subjectRatings = (s as any).subject_ratings || {};
     const subjectValues = Object.values(subjectRatings);
     const overallFromSubjects = subjectValues.length > 0
       ? subjectValues.reduce((acc: number, curr: any) => {
-          const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
-          return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
-        }, 0) / subjectValues.length
+        const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
+        return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+      }, 0) / subjectValues.length
       : null;
 
     return {
@@ -305,6 +311,7 @@ export function AdminDashboard({
       performance: 0,
       rating: overallFromSubjects ?? (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
       batch: s.assigned_batch?.name || 'Unassigned',
+      email: s.login_id?.includes('@') ? s.login_id : '',
       phoneNumber: s.phone || '',
       dateOfBirth: s.date_of_birth || '',
       address: s.address || '',
@@ -391,33 +398,33 @@ export function AdminDashboard({
 
     const fallbackUpdatedTest: import('../App').PublishedTest = existing
       ? {
-          ...existing,
-          status: 'live',
-          scheduleDate: updated.schedule_date || existing.scheduleDate,
-          scheduleTime: updated.schedule_time || existing.scheduleTime,
-        }
+        ...existing,
+        status: 'live',
+        scheduleDate: updated.schedule_date || existing.scheduleDate,
+        scheduleTime: updated.schedule_time || existing.scheduleTime,
+      }
       : {
-          id: updated.id,
-          title: updated.title,
-          format: updated.format || 'Custom',
-          batches: updated.batches.map((batch) => batch.name),
-          duration: updated.duration_minutes,
-          totalMarks: updated.total_marks,
-          questionCount: updated.question_count,
-          enrolledCount: updated.enrolled_count,
-          scheduleDate: updated.schedule_date || '',
-          scheduleTime: updated.schedule_time || '',
-          questions: [],
-          instructions: updated.instructions || undefined,
-          status: updated.status,
-          submittedAttemptCount: updated.submitted_attempt_count,
-          maxAttempts: updated.submitted_attempt_count !== undefined ? 3 : undefined,
-          hasActiveAttempt: updated.has_active_attempt,
-          activeAttemptId: updated.active_attempt_id ?? null,
-          latestAttemptId: updated.latest_attempt_id ?? null,
-          latestAttemptSubmittedAt: updated.latest_attempt_submitted_at ?? null,
-          latestAttemptTimeSpent: updated.latest_attempt_time_spent ?? null,
-        };
+        id: updated.id,
+        title: updated.title,
+        format: updated.format || 'Custom',
+        batches: updated.batches.map((batch) => batch.name),
+        duration: updated.duration_minutes,
+        totalMarks: updated.total_marks,
+        questionCount: updated.question_count,
+        enrolledCount: updated.enrolled_count,
+        scheduleDate: updated.schedule_date || '',
+        scheduleTime: updated.schedule_time || '',
+        questions: [],
+        instructions: updated.instructions || undefined,
+        status: updated.status,
+        submittedAttemptCount: updated.submitted_attempt_count,
+        maxAttempts: updated.submitted_attempt_count !== undefined ? 3 : undefined,
+        hasActiveAttempt: updated.has_active_attempt,
+        activeAttemptId: updated.active_attempt_id ?? null,
+        latestAttemptId: updated.latest_attempt_id ?? null,
+        latestAttemptSubmittedAt: updated.latest_attempt_submitted_at ?? null,
+        latestAttemptTimeSpent: updated.latest_attempt_time_spent ?? null,
+      };
 
     return fallbackUpdatedTest;
   };
@@ -576,6 +583,7 @@ export function AdminDashboard({
         const createdStudent = await onCreateStudent({
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email.trim() || undefined,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,
@@ -815,166 +823,163 @@ export function AdminDashboard({
           {/* Layered Rendering Logic */}
           <Suspense fallback={
             activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
-            activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
-            (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
-            <DashboardHeroSkeleton />
+              activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+                (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+                  <DashboardHeroSkeleton />
           }>
-          {activeTab === 'create-test' ? (
-            <CreateTestSeries
-              onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
-              batches={batches.filter((batch) => batch.is_active)}
-              onPublish={onPublishTest}
-              onSaveDraft={onSaveDraft}
-              resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
-            />
-          ) : performanceInsightsTestId ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
-              {(() => {
-                const test = publishedTests.find(t => t.id === performanceInsightsTestId);
-                const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
-                return (
-                  <TestPerformanceInsights
-                    testId={performanceInsightsTestId}
-                    testTitle={test?.title || ''}
-                    scheduledDateTime={scheduledDateTime}
-                    testQuestions={test?.questions}
-                    testDuration={test?.duration}
-                    testInstructions={test?.instructions}
-                    onClose={() => setPerformanceInsightsTestId(null)}
-                  />
-                );
-              })()}
-            </div>
-          ) : activeTab === 'preview-test' && selectedPreviewTest ? (
-            <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
-              <TestPreviewAndReview
-                testId={selectedPreviewTest.id}
-                testTitle={selectedPreviewTest.title}
-                duration={selectedPreviewTest.duration}
-                questions={selectedPreviewTest.questions}
-                onSubmit={() => onNavigate('test-series')}
-                onExit={() => onNavigate('test-series')}
-                onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
-                  await onUpdatePublishedTest(testId, {
-                    questions: updatedQuestions,
-                    title: updatedTitle,
-                    batches: updatedBatches
-                  });
-                }}
-                isPreview={true}
-                availableBatches={batches.filter((batch) => batch.is_active)}
-                initialBatches={selectedPreviewTest.batches}
+            {activeTab === 'create-test' ? (
+              <CreateTestSeries
+                onBack={() => { onClearResumeDraft(); onNavigate('test-series'); }}
+                batches={batches.filter((batch) => batch.is_active)}
+                onPublish={onPublishTest}
+                onSaveDraft={onSaveDraft}
+                resumeTest={resumeDraftId ? publishedTests.find(t => t.id === resumeDraftId) : undefined}
               />
-            </div>
-          ) : activeTab === 'profile' ? (
-            <AdminProfile user={user} onLogout={onLogout} />
-          ) : activeTab === 'notices' ? (
-            <NoticesManagement
-              batches={batches.map((b) => ({
-                id: b.id || '',
-                name: b.label,
-                slug: b.slug,
-                is_active: b.is_active !== false,
-                subjects: b.subjects,
-              }) as ApiBatch)}
-              userRole="admin"
-              onBack={() => onNavigate('home')}
-            />
-          ) : !selectedBatch ? (
-            /* GLOBAL CONTEXT */
-            <>
-              {adminSection === 'landing' && (
-                <LandingManagementTab
-                  data={landingData}
-                  onUpdate={onUpdateLandingData}
+            ) : performanceInsightsTestId ? (
+              <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
+                {(() => {
+                  const test = publishedTests.find(t => t.id === performanceInsightsTestId);
+                  const scheduledDateTime = test ? `${test.scheduleDate}T${test.scheduleTime}` : undefined;
+                  return (
+                    <TestPerformanceInsights
+                      testId={performanceInsightsTestId}
+                      testTitle={test?.title || ''}
+                      scheduledDateTime={scheduledDateTime}
+                      testQuestions={test?.questions}
+                      testDuration={test?.duration}
+                      testInstructions={test?.instructions}
+                      onClose={() => setPerformanceInsightsTestId(null)}
+                    />
+                  );
+                })()}
+              </div>
+            ) : activeTab === 'preview-test' && selectedPreviewTest ? (
+              <div className="fixed inset-0 bg-white overflow-y-auto scrollbar-hide z-layer-10002">
+                <TestPreviewAndReview
+                  testId={selectedPreviewTest.id}
+                  testTitle={selectedPreviewTest.title}
+                  duration={selectedPreviewTest.duration}
+                  questions={selectedPreviewTest.questions}
+                  onSubmit={() => onNavigate('test-series')}
+                  onExit={() => onNavigate('test-series')}
+                  onSave={async (testId, updatedQuestions, updatedTitle, updatedBatches) => {
+                    await onUpdatePublishedTest(testId, {
+                      questions: updatedQuestions,
+                      title: updatedTitle,
+                      batches: updatedBatches
+                    });
+                  }}
+                  isPreview={true}
+                  availableBatches={batches.filter((batch) => batch.is_active)}
+                  initialBatches={selectedPreviewTest.batches}
                 />
-              )}
-              {adminSection === 'batches' && (
-                <AdminBatchSelectionTab
-                  batches={batches}
-                  onSelectBatch={onSelectBatch}
-                  onAddBatch={openAddBatch}
-                  onOpenNotices={() => onNavigate('notices')}
-                />
-              )}
-              {adminSection === 'students' && (
-                <AdminStudentsDirectoryTab
-                  students={students}
-                  onAddStudent={() => openAddStudent(null)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={handleDeleteStudent}
-                  onViewStudent={openStudentRatings}
-                  renderStars={renderPerformanceStars}
-                  onSearchStudents={onSearchStudents}
-                />
-              )}
-              {adminSection === 'faculty' && (
-                <FacultyDirectoryTab
-                  faculty={faculty}
-                  onAddFaculty={openAddFaculty}
-                  onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
-                  onEditFaculty={openEditFaculty}
-                  onDeleteFaculty={handleDeleteFaculty}
-                  onRefreshFaculty={onRefreshFaculties}
-                />
-              )}
-              {adminSection === 'test-series' && (
-                <TestSeriesManagementTab
-                  onNavigate={onNavigate}
-                  selectedBatch={null as unknown as Batch}
-                  onChangeBatch={() => { }}
-                  publishedTests={publishedTests}
-                  onPreviewTest={onPreviewTest}
-                  onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
-                  onDeletePublishedTest={onDeletePublishedTest}
-                  onForceTestLiveNow={onForceTestLiveNow ?? fallbackForceTestLiveNow}
-                  onResumeDraft={onResumeDraft}
-                />
-              )}
-              {adminSection === 'queries' && (
-                <AdminQueriesManagementTab
-                  queries={queries}
-                  onViewQuery={openQueryDetails}
-                  onDeleteQuery={handleDeleteQuery}
-                />
-              )}
-            </>
-          ) : (
-            /* BATCH CONTEXT */
-            <>
-              {activeTab === 'home' && (
-                <OverviewTab
-                  selectedBatch={selectedBatch}
-                  onEditBatch={openEditBatch}
-                  onPermanentDeleteBatch={openPermanentDeleteModal}
-                  students={students}
-                  faculty={faculty}
-                  batches={batches}
-                  onNavigate={onNavigate}
-                  onClearBatch={onClearBatch}
-                  onViewTimetable={() => setShowFullTimetable(true)}
-                  onUpdateBatch={onUpdateBatch}
+              </div>
+            ) : activeTab === 'profile' ? (
+              <Suspense fallback={<ProfileSkeleton />}>
+                <AdminProfile user={user} onLogout={onLogout} />
+              </Suspense>
+            ) : activeTab === 'notices' ? (
+              <NoticesManagement
+                batches={batches.map((b) => ({
+                  id: b.id || '',
+                  name: b.label,
+                  slug: b.slug,
+                  is_active: b.is_active !== false,
+                  subjects: b.subjects,
+                }) as ApiBatch)}
+                userRole="admin"
+                onBack={() => onNavigate('home')}
+              />
+            ) : !selectedBatch ? (
+              /* GLOBAL CONTEXT */
+              <>
+                {adminSection === 'landing' && (
+                  <LandingManagementTab
+                    data={landingData}
+                    onUpdate={onUpdateLandingData}
+                  />
+                )}
+                {adminSection === 'batches' && (
+                  <AdminBatchSelectionTab
+                    batches={batches}
+                    onSelectBatch={onSelectBatch}
+                    onAddBatch={openAddBatch}
+                    onOpenNotices={() => onNavigate('notices')}
+                  />
+                )}
+                {adminSection === 'students' && (
+                  <AdminStudentsTab
+                    batches={batches}
+                    onViewStudent={openStudentRatings}
+                  />
+                )}
+                {adminSection === 'faculty' && (
+                  <FacultyDirectoryTab
+                    faculty={faculty}
+                    onAddFaculty={openAddFaculty}
+                    onViewFaculty={(f) => setFacultyModal({ open: true, initialData: f, title: 'Faculty Details' })}
+                    onEditFaculty={openEditFaculty}
+                    onDeleteFaculty={handleDeleteFaculty}
+                    onRefreshFaculty={onRefreshFaculties}
+                  />
+                )}
+                {adminSection === 'test-series' && (
+                  <TestSeriesManagementTab
+                    onNavigate={onNavigate}
+                    selectedBatch={null as unknown as Batch}
+                    onChangeBatch={() => { }}
+                    publishedTests={publishedTests}
+                    onPreviewTest={onPreviewTest}
+                    onViewInsights={(testId) => setPerformanceInsightsTestId(testId)}
+                    onDeletePublishedTest={onDeletePublishedTest}
+                    onForceTestLiveNow={onForceTestLiveNow ?? fallbackForceTestLiveNow}
+                    onResumeDraft={onResumeDraft}
+                  />
+                )}
+                {adminSection === 'queries' && (
+                  <AdminQueriesManagementTab
+                    queries={queries}
+                    onViewQuery={openQueryDetails}
+                    onDeleteQuery={handleDeleteQuery}
+                  />
+                )}
+              </>
+            ) : (
+              /* BATCH CONTEXT */
+              <>
+                {activeTab === 'home' && (
+                  <OverviewTab
+                    selectedBatch={selectedBatch}
+                    onEditBatch={openEditBatch}
+                    onPermanentDeleteBatch={openPermanentDeleteModal}
+                    students={students}
+                    faculty={faculty}
+                    batches={batches}
+                    onNavigate={onNavigate}
+                    onClearBatch={onClearBatch}
+                    onViewTimetable={() => setShowFullTimetable(true)}
+                    onUpdateBatch={onUpdateBatch}
                     subjectCatalog={subjectCatalog}
                     onRemoveSubjectFromBatch={onRemoveSubjectFromBatch}
                   />
-              )}
-              {activeTab === 'students' && (
-                <StudentsTab
-                  students={students}
-                  selectedBatch={selectedBatch}
-                  onChangeBatch={onClearBatch}
-                  onAddStudent={() => openBatchStudentPicker(selectedBatch)}
-                  onEditStudent={openEditStudent}
-                  onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
-                  onViewStudent={openStudentRatings}
-                  isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
-                />
-              )}
-              {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
-              {activeTab === 'rankings' && <StudentRankingsEnhanced />}
+                )}
+                {activeTab === 'students' && (
+                  <StudentsTab
+                    students={students}
+                    selectedBatch={selectedBatch}
+                    onChangeBatch={onClearBatch}
+                    onAddStudent={() => openBatchStudentPicker(selectedBatch)}
+                    onEditStudent={openEditStudent}
+                    onDeleteStudent={(id) => handleRemoveStudentFromBatch(id, selectedBatch)}
+                    onViewStudent={openStudentRatings}
+                    isBatchActive={batches.find((batch) => batch.label === selectedBatch)?.is_active !== false}
+                  />
+                )}
+                {activeTab === 'ratings' && <StudentRating students={students.filter((student) => student.batch === selectedBatch)} />}
+                {activeTab === 'rankings' && <StudentRankingsEnhanced />}
               </>
 
-          )}
+            )}
           </Suspense>
         </motion.div>
       </main>
@@ -994,15 +999,15 @@ export function AdminDashboard({
           onSubmit={handleSaveStudent}
         />
 
-          <AddFacultyModal
-            open={facultyModal.open}
-            onClose={closeFacultyModal}
-            initialData={facultyModal.initialData}
-            title={facultyModal.title}
-            onSubmit={handleSaveFaculty}
-            isInitialEditing={facultyModal.isEditing}
-            subjectOptions={subjectOptions}
-          />
+        <AddFacultyModal
+          open={facultyModal.open}
+          onClose={closeFacultyModal}
+          initialData={facultyModal.initialData}
+          title={facultyModal.title}
+          onSubmit={handleSaveFaculty}
+          isInitialEditing={facultyModal.isEditing}
+          subjectOptions={subjectOptions}
+        />
 
         <BatchFormModal
           open={batchModal.open}
@@ -1120,11 +1125,10 @@ export function AdminDashboard({
                           <button
                             key={s}
                             onClick={() => handleQueryStatusChange(queryModal.query!.id, s)}
-                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                              queryModal.query?.status === s
+                            className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${queryModal.query?.status === s
                                 ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
+                              }`}
                           >
                             {s.charAt(0).toUpperCase() + s.slice(1)}
                           </button>
@@ -1342,7 +1346,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       window.alert('Image is too large. Please upload an image smaller than 600 KB.');
       return null;
     }
-    
+
     setIsSaving(true);
     try {
       return await uploadLandingImage(file, itemRole);
@@ -1394,7 +1398,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       }
       const url = await uploadAndGetUrl(file, 'faculty');
       if (url === null) return false;
-      
+
       const saved = await safeUpdate({
         ...data,
         faculty: [...data.faculty, {
@@ -1420,7 +1424,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
     await runLandingAction('update-faculty', async () => {
       const formData = new FormData(e.currentTarget as HTMLFormElement);
       const existing = data.faculty[editingFacultyIndex].image;
-      
+
       let url = existing;
       if (editFacultyImageRemoved && !editFacultyImageFile) {
         window.alert('Please upload a new image.');
@@ -1463,7 +1467,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
       }
       const url = await uploadAndGetUrl(file, 'achiever');
       if (url === null) return false;
-      
+
       const saved = await safeUpdate({
         ...data,
         achievers: [...data.achievers, {
@@ -1596,159 +1600,159 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
             {isAddingFaculty ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />} {isAddingFaculty ? 'Cancel' : 'Add Faculty'}
           </button>
         </div>
-          {isAddingFaculty && (
-            <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                {subjectOptions.map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-              </select>
-              <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
-                <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
-                  {newFacultyPreview ? (
-                    <img src={newFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
-                  ) : (
-                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                      No image
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2">
+        {isAddingFaculty && (
+          <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+              {subjectOptions.map((subject) => (
+                <option key={subject} value={subject}>{subject}</option>
+              ))}
+            </select>
+            <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {newFacultyPreview ? (
+                  <img src={newFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newFacultyInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {newFacultyPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {newFacultyPreview && (
                     <button
                       type="button"
-                      onClick={() => newFacultyInputRef.current?.click()}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                      onClick={() => {
+                        if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                        setNewFacultyPreview('');
+                        setNewFacultyImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
                       disabled={isActionInFlight}
                     >
-                      {newFacultyPreview ? 'Change Image' : 'Upload Image'}
+                      Remove Image
                     </button>
-                    {newFacultyPreview && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
-                          setNewFacultyPreview('');
-                          setNewFacultyImageFile(null);
-                        }}
-                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
-                        disabled={isActionInFlight}
-                      >
-                        Remove Image
-                      </button>
-                    )}
-                    {!newFacultyPreview && (
-                      <p className="text-xs text-gray-500">Image is required.</p>
-                    )}
-                  </div>
+                  )}
+                  {!newFacultyPreview && (
+                    <p className="text-xs text-gray-500">Image is required.</p>
+                  )}
                 </div>
-                <input
-                  ref={newFacultyInputRef}
-                  name="imageFile"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (!file) return;
-                    if (file.size > maxImageUploadSizeBytes) {
-                      window.alert('Image is too large. Please upload an image smaller than 600 KB.');
-                      e.currentTarget.value = '';
-                      return;
-                    }
-                    if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
-                    setNewFacultyImageFile(file);
-                    setNewFacultyPreview(URL.createObjectURL(file));
-                  }}
-                  disabled={isActionInFlight}
-                />
               </div>
-              <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
-            </form>
-          )}
-          {editingFacultyIndex !== null && (
-            <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-                <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
-                  .map((subject) => subject.trim())
-                  .filter(Boolean)
-                  .sort((a, b) => a.localeCompare(b))
-                  .map((subject) => (
+              <input
+                ref={newFacultyInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (newFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(newFacultyPreview);
+                  setNewFacultyImageFile(file);
+                  setNewFacultyPreview(URL.createObjectURL(file));
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
+            <button type="submit" disabled={isActionInFlight} className="md:col-span-2 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('add-faculty') ? 'Adding Faculty...' : 'Save'}</button>
+          </form>
+        )}
+        {editingFacultyIndex !== null && (
+          <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
+              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+              {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
+                .map((subject) => subject.trim())
+                .filter(Boolean)
+                .sort((a, b) => a.localeCompare(b))
+                .map((subject) => (
                   <option key={subject} value={subject}>{subject}</option>
                 ))}
-              </select>
-              <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
-                <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
-                  {!editFacultyPreview && !editFacultyImageRemoved ? (
-                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                      No image
-                    </div>
-                  ) : editFacultyPreview ? (
-                    <img src={editFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
-                  ) : (
-                    <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                      Image removed
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2">
+            </select>
+            <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Faculty Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 sm:items-center rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                {!editFacultyPreview && !editFacultyImageRemoved ? (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    No image
+                  </div>
+                ) : editFacultyPreview ? (
+                  <img src={editFacultyPreview} alt="Faculty preview" className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                    Image removed
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => editFacultyInputRef.current?.click()}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                    disabled={isActionInFlight}
+                  >
+                    {editFacultyPreview ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  {editFacultyPreview && (
                     <button
                       type="button"
-                      onClick={() => editFacultyInputRef.current?.click()}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white font-semibold shadow-md hover:shadow-lg transition"
+                      onClick={() => {
+                        setEditFacultyImageRemoved(true);
+                        setEditFacultyPreview('');
+                        setEditFacultyImageFile(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
                       disabled={isActionInFlight}
                     >
-                      {editFacultyPreview ? 'Change Image' : 'Upload Image'}
+                      Remove Image
                     </button>
-                    {editFacultyPreview && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditFacultyImageRemoved(true);
-                          setEditFacultyPreview('');
-                          setEditFacultyImageFile(null);
-                        }}
-                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition"
-                        disabled={isActionInFlight}
-                      >
-                        Remove Image
-                      </button>
-                    )}
-                    {editFacultyImageRemoved && (
-                      <p className="text-xs text-red-500">Please upload a new image to continue.</p>
-                    )}
-                  </div>
+                  )}
+                  {editFacultyImageRemoved && (
+                    <p className="text-xs text-red-500">Please upload a new image to continue.</p>
+                  )}
                 </div>
-                <input
-                  ref={editFacultyInputRef}
-                  name="imageFile"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (!file) return;
-                    if (file.size > maxImageUploadSizeBytes) {
-                      window.alert('Image is too large. Please upload an image smaller than 600 KB.');
-                      e.currentTarget.value = '';
-                      return;
-                    }
-                    if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
-                    setEditFacultyImageFile(file);
-                    setEditFacultyPreview(URL.createObjectURL(file));
-                    setEditFacultyImageRemoved(false);
-                  }}
-                  disabled={isActionInFlight}
-                />
               </div>
-              <div className="md:col-span-2 flex gap-3">
+              <input
+                ref={editFacultyInputRef}
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (!file) return;
+                  if (file.size > maxImageUploadSizeBytes) {
+                    window.alert('Image is too large. Please upload an image smaller than 600 KB.');
+                    e.currentTarget.value = '';
+                    return;
+                  }
+                  if (editFacultyPreview.startsWith('blob:')) URL.revokeObjectURL(editFacultyPreview);
+                  setEditFacultyImageFile(file);
+                  setEditFacultyPreview(URL.createObjectURL(file));
+                  setEditFacultyImageRemoved(false);
+                }}
+                disabled={isActionInFlight}
+              />
+            </div>
+            <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={isActionInFlight} className="flex-1 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70">{isActionPending('update-faculty') ? 'Updating...' : 'Update'}</button>
               <button type="button" onClick={() => setEditingFacultyIndex(null)} disabled={isActionInFlight} className="flex-1 py-3 bg-gray-200 rounded-xl disabled:cursor-not-allowed disabled:opacity-70">Cancel</button>
             </div>
@@ -2187,8 +2191,8 @@ function OverviewTab({
             <ChevronLeft className="w-5 h-5 text-white" />
           </button>
           <div>
-          <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
-          <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
+            <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
+            <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -2428,8 +2432,8 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
           <p className="text-gray-500">Manage all faculties and subject experts</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <button 
-            onClick={handleTriggerReview} 
+          <button
+            onClick={handleTriggerReview}
             disabled={isTriggering}
             className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-xl font-bold shadow-sm flex items-center gap-2 hover:bg-orange-50 transition disabled:opacity-50"
           >
@@ -2549,93 +2553,93 @@ function TestSeriesManagementTab({
           {publishedTests.map((originalTest) => {
             const test = testOverrides[originalTest.id] || originalTest;
             return (
-            <div key={test.id} className="h-full">
-            <div
-              onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
-              className={`h-full bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
-                <div className="flex items-center gap-2">
-                  {test.status === 'draft' && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200">Draft</span>
-                  )}
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
-                    test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                    }`}>{test.format}</span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete Test Series"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
-              <div className="space-y-2 mb-6 flex-1">
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{test.scheduleDate ? new Date(test.scheduleDate).toLocaleDateString() : 'No date'} {test.scheduleTime ? `at ${test.scheduleTime}` : ''}</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
-                {test.status === 'draft' && (
-                  <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {test.status === 'draft' ? (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
-                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    <Edit className="w-4 h-4" /> Resume Editing
-                  </button>
-                ) : (
-                  <>
-                    <div className="flex gap-2">
+              <div key={test.id} className="h-full">
+                <div
+                  onClick={() => test.status === 'draft' ? undefined : onViewInsights(test.id)}
+                  className={`h-full bg-white/80 backdrop-blur-lg rounded-3xl p-6 shadow-xl border border-white flex flex-col group relative ${test.status === 'draft' ? 'opacity-80 border-dashed border-amber-300' : 'cursor-pointer hover:shadow-2xl hover:scale-[1.02]'} transition-all`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600"><FileText className="w-6 h-6" /></div>
+                    <div className="flex items-center gap-2">
+                      {test.status === 'draft' && (
+                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200">Draft</span>
+                      )}
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${test.format === 'JEE MAIN' ? 'bg-orange-100 text-orange-700' :
+                        test.format === 'NEET' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                        }`}>{test.format}</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
-                        className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(test.id, test.title); }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Test Series"
                       >
-                        <Eye className="w-4 h-4" /> Preview
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
-                        className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                      >
-                        <BarChart3 className="w-4 h-4" /> Performance
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    {test.status === 'upcoming' && (
-                      <button
-                        disabled={forceLiveLoadingTestId === test.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleForceLiveNow(test.id, test.title);
-                        }}
-                        className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 ${
-                          forceLiveLoadingTestId === test.id
-                            ? 'cursor-wait'
-                            : 'hover:shadow-lg'
-                        }`}
-                      >
-                        {forceLiveLoadingTestId === test.id ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            Setting Live...
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-4 h-4" /> Set Live Now
-                          </>
-                        )}
-                      </button>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">{test.title}</h3>
+                  <div className="space-y-2 mb-6 flex-1">
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Calendar className="w-4 h-4" />{test.scheduleDate ? new Date(test.scheduleDate).toLocaleDateString() : 'No date'} {test.scheduleTime ? `at ${test.scheduleTime}` : ''}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
+                    {test.status === 'draft' && (
+                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
                     )}
-                  </>
-                )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {test.status === 'draft' ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onResumeDraft(test.id); }}
+                        className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Edit className="w-4 h-4" /> Resume Editing
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onPreviewTest(test.id); }}
+                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" /> Preview
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onViewInsights(test.id); }}
+                            className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                          >
+                            <BarChart3 className="w-4 h-4" /> Performance
+                          </button>
+                        </div>
+                        {test.status === 'upcoming' && (
+                          <button
+                            disabled={forceLiveLoadingTestId === test.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleForceLiveNow(test.id, test.title);
+                            }}
+                            className={`w-full py-3 text-white rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 ${forceLiveLoadingTestId === test.id
+                                ? 'cursor-wait'
+                                : 'hover:shadow-lg'
+                              }`}
+                          >
+                            {forceLiveLoadingTestId === test.id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                Setting Live...
+                              </>
+                            ) : (
+                              <>
+                                <Clock className="w-4 h-4" /> Set Live Now
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            </div>
-          )})}
+            )
+          })}
         </div>
       ) : (
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-12 shadow-lg border border-white text-center">
@@ -2671,6 +2675,7 @@ function AddStudentModal({
     name: initial?.name ?? '',
     rollNumber: initial?.rollNumber ?? '',
     batch: initial?.batch ?? batch ?? '',
+    email: initial?.email ?? '',
     phoneNumber: formatIndianMobileInput(initial?.phoneNumber ?? ''),
     dateOfBirth: initial?.dateOfBirth ?? '',
     address: initial?.address ?? '',
@@ -2754,6 +2759,18 @@ function AddStudentModal({
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>
+            </label>
+
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Email {requiredMark}</span>
+              <input
+                type="email"
+                required
+                value={formState.email}
+                onChange={handleChange('email')}
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                placeholder="student@email.com"
+              />
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
@@ -2919,22 +2936,22 @@ function AddFacultyModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <label className="space-y-2 text-sm font-medium text-gray-700 block">
-                <span className="block">Subject {isEditing && requiredMark}</span>
-                <select
-                  required={isEditing}
-                  disabled={!isEditing}
-                  value={formState.subject}
-                  onChange={handleChange('subject')}
-                  className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
-                >
-                  <option value="">{mergedSubjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-                  {mergedSubjectOptions.map((subject) => (
-                    <option key={subject} value={subject}>{subject}</option>
-                  ))}
-                </select>
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="space-y-2 text-sm font-medium text-gray-700 block">
+              <span className="block">Subject {isEditing && requiredMark}</span>
+              <select
+                required={isEditing}
+                disabled={!isEditing}
+                value={formState.subject}
+                onChange={handleChange('subject')}
+                className={`w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 ${!isEditing ? 'bg-gray-50 text-gray-600' : ''}`}
+              >
+                <option value="">{mergedSubjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
+                {mergedSubjectOptions.map((subject) => (
+                  <option key={subject} value={subject}>{subject}</option>
+                ))}
+              </select>
+            </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
               <span className="block">Designation</span>
@@ -3290,30 +3307,30 @@ function BatchFormModal({
 
   useEffect(() => {
     if (!open) return;
-      if (mode === 'edit' && batchLabel) {
-        const current = batches.find((batch) => batch.label === batchLabel);
-        const assignments = (current?.facultyAssigned ?? [])
-          .map((name) => {
-            const found = faculty.find((item) => item.name === name);
-            return found ? { subject: found.subject, faculty: found.name } : null;
-          })
-          .filter((item): item is { subject: string; faculty: string } => !!item);
-        const assignedSubjects = new Set(assignments.map((item) => item.subject));
-        const subjectOnlyAssignments = (current?.subjects ?? [])
-          .filter((subject) => subject && !assignedSubjects.has(subject))
-          .map((subject) => ({ subject, faculty: '' }));
-        setFormState({
-          name: current?.label ?? batchLabel,
-          subject: '',
-          faculty: '',
-          assignments: [...assignments, ...subjectOnlyAssignments],
-        });
-      } else {
-        setFormState({ name: '', subject: '', faculty: '', assignments: [] });
-      }
-      setSelectedFacultyNames([]);
-      setError(null);
-    }, [open, mode, batchLabel, batches, faculty]);
+    if (mode === 'edit' && batchLabel) {
+      const current = batches.find((batch) => batch.label === batchLabel);
+      const assignments = (current?.facultyAssigned ?? [])
+        .map((name) => {
+          const found = faculty.find((item) => item.name === name);
+          return found ? { subject: found.subject, faculty: found.name } : null;
+        })
+        .filter((item): item is { subject: string; faculty: string } => !!item);
+      const assignedSubjects = new Set(assignments.map((item) => item.subject));
+      const subjectOnlyAssignments = (current?.subjects ?? [])
+        .filter((subject) => subject && !assignedSubjects.has(subject))
+        .map((subject) => ({ subject, faculty: '' }));
+      setFormState({
+        name: current?.label ?? batchLabel,
+        subject: '',
+        faculty: '',
+        assignments: [...assignments, ...subjectOnlyAssignments],
+      });
+    } else {
+      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+    }
+    setSelectedFacultyNames([]);
+    setError(null);
+  }, [open, mode, batchLabel, batches, faculty]);
 
   if (!open) return null;
 
@@ -3355,8 +3372,28 @@ function BatchFormModal({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const selectedSubjects = Array.from(new Set(formState.assignments.map((item) => item.subject)));
-    const selectedFaculty = Array.from(new Set(formState.assignments.map((item) => item.faculty).filter((name) => name.trim().length > 0)));
+    const normalizedTypedSubject = formState.subject.trim();
+    const inlineAssignments =
+      normalizedTypedSubject.length > 0
+        ? selectedFacultyNames.length > 0
+          ? selectedFacultyNames.map((name) => ({ subject: normalizedTypedSubject, faculty: name }))
+          : [{ subject: normalizedTypedSubject, faculty: '' }]
+        : [];
+    const effectiveAssignments = [...formState.assignments, ...inlineAssignments];
+    const selectedSubjects = Array.from(
+      new Set(
+        effectiveAssignments
+          .map((item) => item.subject.trim())
+          .filter((subject) => subject.length > 0)
+      )
+    );
+    const selectedFaculty = Array.from(
+      new Set(
+        effectiveAssignments
+          .map((item) => item.faculty.trim())
+          .filter((name) => name.length > 0)
+      )
+    );
     if (!formState.name.trim()) {
       setError('Batch name is required.');
       return;
@@ -3512,11 +3549,11 @@ function BatchFormModal({
             </div>
           </div>
 
-            {formState.assignments.length > 0 && (
-              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
-                <p className="text-sm font-medium text-gray-700">Selected</p>
-                <div className="space-y-1">
-                  {formState.assignments.map((item, index) => (
+          {formState.assignments.length > 0 && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-gray-700">Selected</p>
+              <div className="space-y-1">
+                {formState.assignments.map((item, index) => (
                   <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
                       {item.subject} — <span className="font-semibold">{item.faculty ? item.faculty : 'Unassigned'}</span>
@@ -3534,10 +3571,10 @@ function BatchFormModal({
                       Remove
                     </button>
                   </div>
-                  ))}
-                </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
 
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -3685,7 +3722,7 @@ function StudentRatingsModal({
           score: performance ? `${performance.score}/${performance.totalMarks}` : '-',
           rank: rankDisplay,
           accuracy: performance ? `${Math.round(performance.accuracy)}%` : '-',
-          status: attempted ? 'Attempted' : 'Not Attempted',
+          status: attempted ? ('Attempted' as const) : ('Not Attempted' as const),
         };
       });
 

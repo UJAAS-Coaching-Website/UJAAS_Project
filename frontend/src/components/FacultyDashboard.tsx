@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, QuestionBankSkeleton, DashboardLoadingShell } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
   LogOut,
@@ -80,6 +80,7 @@ interface FacultyDashboardProps {
   selectedPreviewTest: import('../App').PublishedTest | null;
   adminStudents?: import('../api/students').ApiStudent[];
   onUpdateStudentRating: (studentId: string, data: any) => Promise<void>;
+  isDataLoading?: boolean;
 }
 
 export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -198,8 +199,13 @@ export function FacultyDashboard({
   onUpdatePublishedTest,
   selectedPreviewTest,
   adminStudents,
-  onUpdateStudentRating
+  onUpdateStudentRating,
+  isDataLoading
 }: FacultyDashboardProps) {
+  if (isDataLoading) {
+    return <DashboardLoadingShell role="faculty" />;
+  }
+
   const [students, setStudents] = useState<Student[]>([]);
   const [faculty, setFaculty] = useState<Faculty[]>([]);
 
@@ -552,6 +558,7 @@ export function FacultyDashboard({
           <Suspense fallback={
             activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
             activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+            activeTab === 'question-bank' ? <QuestionBankSkeleton /> :
             (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
             <DashboardHeroSkeleton />
           }>
@@ -609,7 +616,9 @@ export function FacultyDashboard({
           ) : activeTab === 'upload-notes' ? (
             <UploadNotes onBack={() => onNavigate('home')} />
           ) : activeTab === 'profile' ? (
-            <FacultyProfile user={user as any} onLogout={onLogout} />
+            <Suspense fallback={<ProfileSkeleton />}>
+              <FacultyProfile user={user as any} onLogout={onLogout} />
+            </Suspense>
           ) : activeTab === 'notices' ? (
             <NoticesManagement
               batches={batches
@@ -1331,7 +1340,7 @@ function StudentRatingsModal({
           score: performance ? `${performance.score}/${performance.totalMarks}` : '-',
           rank: rankDisplay,
           accuracy: performance ? `${Math.round(performance.accuracy)}%` : '-',
-          status: attempted ? 'Attempted' : 'Not Attempted',
+          status: (attempted ? 'Attempted' : 'Not Attempted') as 'Attempted' | 'Not Attempted',
         };
       });
 

@@ -62,7 +62,7 @@ import { useLandingContent } from './hooks/useLandingContent';
 import { useStudentNotifications } from './hooks/useStudentNotifications';
 import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import logo from './assets/logo.svg';
-import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './components/ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, SubjectCardSkeleton, TableRowsSkeleton, TestCardSkeleton, DashboardLoadingShell } from './components/ui/content-skeletons';
 import { Skeleton } from './components/ui/skeleton';
 import { BatchSaveToast } from './components/BatchSaveToast';
 
@@ -113,7 +113,9 @@ export interface LandingContact {
 export interface LandingQuery {
   id: string;
   name: string;
-  email: string;
+  batch: string;
+  email?: string;
+  loginId?: string;
   phone: string;
   course: string;
   courseId?: string;
@@ -184,76 +186,6 @@ export type Tab = StudentTab | AdminTab | FacultyTab | 'add-student';
 
 export type AdminLandingSection = AdminSection | FacultySection;
 
-function DashboardLoadingShell({ role }: { role: User['role'] }) {
-  const showManagementRows = role === 'admin' || role === 'faculty';
-
-  return (
-    <div className="dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
-      <div className="border-b border-white bg-white/70 backdrop-blur-lg shadow-lg">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="UJAAS Logo" className="h-10 w-10 object-contain opacity-80" />
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <Skeleton className="h-10 w-10 rounded-full" />
-          </div>
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {showManagementRows ? (
-          <div className="space-y-6">
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-3">
-                  <Skeleton className="h-9 w-64" />
-                  <Skeleton className="h-5 w-96 max-w-full" />
-                </div>
-                <div className="flex flex-wrap lg:justify-end lg:pl-6 gap-3">
-                  <Skeleton className="h-12 w-40 rounded-xl" />
-                  <Skeleton className="h-12 w-40 rounded-xl" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={`admin-batch-skeleton-${index}`} className="p-8 bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl border border-white flex items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <Skeleton className="h-3 w-16" />
-                    <Skeleton className="h-8 w-48" />
-                  </div>
-                  <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <DashboardHeroSkeleton />
-
-            <div className="grid gap-4 grid-cols-2">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <StatCardSkeleton key={`dashboard-stat-skeleton-${index}`} />
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <SubjectCardSkeleton key={`dashboard-card-skeleton-${index}`} />
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
 
 function AuthLoadingShell({ isMobile }: { isMobile: boolean }) {
   return (
@@ -560,6 +492,7 @@ function App() {
 
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isGlobalDataLoading, setIsGlobalDataLoading] = useState(false);
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
   const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
@@ -1124,38 +1057,8 @@ function App() {
           setUser(loggedInUser);
           setShowGetStarted(false);
 
-          const apiTests = await apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; });
-          setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-
-          if (loggedInUser.role === 'admin') {
-            try {
-              const { queries: dbQueries } = await fetchQueries();
-              setQueries(dbQueries as LandingQuery[]);
-            } catch {
-              console.warn('Could not fetch queries from API');
-            }
-          }
-
-          if (loggedInUser.role === 'admin' || loggedInUser.role === 'faculty') {
-            const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
-            setAdminBatches(apiBatches.map(apiBatchToInfo));
-
-            const fetchTasks: Promise<any>[] = [];
-            if (loggedInUser.role === 'admin') {
-              fetchTasks.push(fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }));
-            }
-            fetchTasks.push(apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }));
-
-              const results = await Promise.all(fetchTasks);
-              if (loggedInUser.role === 'admin') {
-                setAdminFaculties(results[0]);
-                setAdminStudents(results[1]);
-                await refreshAdminSubjects();
-              } else {
-                setAdminFaculties([]);
-                setAdminStudents(results[0]);
-              }
-            }
+          // Fetching is now handled reactively by the loadRequiredData useEffect hook
+          // that listens to activeTab and adminLandingSection.
         } else {
           setUser(null);
           // If no user, set empty batches
@@ -1190,6 +1093,50 @@ function App() {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [user]);
+
+  // True Lazy Tab Loading Watcher Hook
+  useEffect(() => {
+    if (!user) return;
+    let isFetching = false;
+    const fetchTasks: Promise<any>[] = [];
+
+    // 1. Batches & Students (Global Foundations, fetched strictly when on Batches/Home section)
+    if (
+      (user.role === 'admin' || user.role === 'faculty') &&
+      adminLandingSection === 'batches' &&
+      adminBatches.length === 0
+    ) {
+      isFetching = true;
+      fetchTasks.push(apiFetchBatches().then(res => setAdminBatches(res.map(apiBatchToInfo))).catch(() => {}));
+      if (adminStudents.length === 0) {
+        fetchTasks.push(apiFetchStudents().then(res => setAdminStudents(res)).catch(() => {}));
+        fetchTasks.push(refreshAdminSubjects());
+      }
+    }
+
+    // 2. Faculties
+    if (user.role === 'admin' && adminLandingSection === 'faculty' && adminFaculties.length === 0) {
+      isFetching = true;
+      fetchTasks.push(fetchFaculties().then(res => setAdminFaculties(res)).catch(() => {}));
+    }
+
+    // 3. Tests
+    if ((activeTab === 'test-series' || adminLandingSection === 'test-series') && publishedTests.length === 0) {
+      isFetching = true;
+      fetchTasks.push(apiFetchTests().then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
+    }
+
+    // 4. Queries
+    if (user.role === 'admin' && adminLandingSection === 'queries' && queries.length === 0) {
+      isFetching = true;
+      fetchTasks.push(fetchQueries().then(res => setQueries(res.queries as LandingQuery[])).catch(() => {}));
+    }
+
+    if (isFetching) {
+      setIsGlobalDataLoading(true);
+      Promise.all(fetchTasks).finally(() => setIsGlobalDataLoading(false));
+    }
+  }, [user, activeTab, adminLandingSection]);
 
   const handleLogin = async (userData: User) => {
     setUser(userData);
@@ -1253,47 +1200,7 @@ function App() {
       userData.role === 'faculty' ? '/faculty' : '/admin'
     );
 
-    // Fetch batches and queries from API for admin/faculty
-    if (userData.role === 'admin' || userData.role === 'faculty' || userData.role === 'student') {
-      setLoading(true);
-      try {
-        const apiTests = await apiFetchTests().catch(e => { console.warn('Could not fetch tests from API:', e); return []; });
-        setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-
-        if (userData.role === 'admin' || userData.role === 'faculty') {
-          const apiBatches = await apiFetchBatches().catch(e => { console.warn('Could not fetch batches from API:', e); return []; });
-          setAdminBatches(apiBatches.map(apiBatchToInfo));
-
-            if (userData.role === 'admin') {
-              const [apiFaculties, apiStudents] = await Promise.all([
-                fetchFaculties().catch(e => { console.warn('Could not fetch faculties from API:', e); return []; }),
-                apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; }),
-              ]);
-
-              setAdminFaculties(apiFaculties);
-              setAdminStudents(apiStudents);
-              await refreshAdminSubjects();
-            } else {
-              setAdminFaculties([]);
-              const apiStudents = await apiFetchStudents().catch(e => { console.warn('Could not fetch students from API:', e); return []; });
-              setAdminStudents(apiStudents);
-            }
-        }
-        if (userData.role === 'admin') {
-          try {
-            const { queries: dbQueries } = await fetchQueries();
-            setQueries(dbQueries as LandingQuery[]);
-          } catch {
-            console.warn('Could not fetch queries from API');
-          }
-        }
-      } catch (error) {
-        console.warn('Error fetching batches/faculties on login:', error);
-        setAdminBatches([]);
-      } finally {
-        setLoading(false);
-      }
-    }
+    // Fetching is deferred to the Lazy Tab Loading Watcher Hook above
   };
 
   const handleLogout = async () => {
@@ -1302,6 +1209,15 @@ function App() {
     } catch {
       // Proceed with local cleanup even if API call fails.
     }
+    // Hard clear all global React states to prevent cross-login stale data mounts
+    setAdminBatches([]);
+    setPublishedTests([]);
+    setAdminFaculties([]);
+    setAdminStudents([]);
+    setAdminSubjects([]);
+    setSelectedPreviewTest(null);
+    setResumeDraftId(null);
+    
     setUser(null);
     setAdminBatch(null);
     setAdminLandingSection('batches');
@@ -1317,7 +1233,27 @@ function App() {
     if (user) {
       return <DashboardLoadingShell role={user.role} />;
     }
-
+    const route = parsePath();
+    if (route.view === 'login') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <Login onLogin={handleLogin} />
+        </Suspense>
+      );
+    }
+    if (route.view === 'get-started') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <GetStarted
+            onGetStarted={handleGetStarted}
+            isNewUser={false}
+            userName=""
+            landingData={landingData}
+            onSubmitQuery={handleAddQuery}
+          />
+        </Suspense>
+      );
+    }
     return <AuthLoadingShell isMobile={isMobile} />;
   }
 
@@ -1409,6 +1345,7 @@ function App() {
           >
             <Suspense fallback={<DashboardLoadingShell role="faculty" />}>
               <FacultyDashboard
+                isDataLoading={isGlobalDataLoading}
                 user={user}
                 activeTab={(isAdminTab(activeTab) ? activeTab : 'home') as import('./components/FacultyDashboard').FacultyTab}
                 onNavigate={navigateTab}
@@ -1443,6 +1380,7 @@ function App() {
           >
             <Suspense fallback={<DashboardLoadingShell role="admin" />}>
             <AdminDashboard
+              isDataLoading={isGlobalDataLoading}
               user={user}
               activeTab={(isAdminTab(activeTab) ? activeTab : 'home')}
               onNavigate={navigateTab}

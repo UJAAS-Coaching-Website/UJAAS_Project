@@ -25,7 +25,7 @@ import { useIsMobileViewport } from '../hooks/useViewport';
 import { downloadFileFromUrl } from '../utils/downloads';
 import { BatchTimetableModal } from './BatchTimetableModal';
 import { StudentDashboardHome } from './student/StudentDashboardHome';
-import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton } from './ui/content-skeletons';
+import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, TestSeriesSkeleton, QuestionBankSkeleton } from './ui/content-skeletons';
 
 interface StudentDashboardProps {
   user: User;
@@ -543,7 +543,7 @@ export function StudentDashboard({
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'test-series' && (
-            <Suspense fallback={<div className="space-y-4"><TestCardSkeleton /><TestCardSkeleton /></div>}>
+            <Suspense fallback={<TestSeriesSkeleton />}>
               <TestSeriesContainer
                 user={user}
                 publishedTests={publishedTests}
@@ -554,7 +554,7 @@ export function StudentDashboard({
             </Suspense>
           )}
           {activeTab === 'profile' && (
-            <Suspense fallback={<div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3"><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></div>}>
+            <Suspense fallback={<ProfileSkeleton />}>
               <StudentProfile
                 user={user}
                 onLogout={onLogout}
@@ -566,7 +566,7 @@ export function StudentDashboard({
             <StudentDashboardHome {...homeTabProps} />
           )}
           {activeTab === 'question-bank' && (
-            <Suspense fallback={<div className="space-y-4"><TableRowsSkeleton rows={5} /></div>}>
+            <Suspense fallback={<QuestionBankSkeleton />}>
               <QuestionBank
                 userRole="student"
                 userBatch={user.studentDetails?.batch}

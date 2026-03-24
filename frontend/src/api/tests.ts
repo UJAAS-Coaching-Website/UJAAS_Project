@@ -251,10 +251,16 @@ export interface CreateTestPayload {
     status?: 'draft' | 'upcoming';
 }
 
+let testsCache: ApiTest[] | null = null;
+export const getTestsCache = () => testsCache;
+export const setTestsCache = (data: ApiTest[] | null) => { testsCache = data; };
+
 // ── API Functions ──────────────────────────────────
 
-export async function fetchTests(): Promise<ApiTest[]> {
-    return request<ApiTest[]>('/api/tests');
+export async function fetchTests(forceRefresh = false): Promise<ApiTest[]> {
+    if (testsCache && !forceRefresh) return testsCache;
+    testsCache = await request<ApiTest[]>('/api/tests');
+    return testsCache;
 }
 
 export async function fetchTestById(id: string): Promise<ApiTest> {

@@ -1,90 +1,1121 @@
 [
   {
     "id": "TC001",
-    "title": "Student login success and role redirect",
-    "description": "Verify student can log in and land on student dashboard.",
-    "category": "functional",
+    "title": "Replace an invalid (too large) image with a valid image and save successfully",
+    "description": "Verifies the admin can correct a file size error by replacing the image and then saving successfully.",
+    "category": "Landing Page Management (LPM)",
     "priority": "High",
     "steps": [
-      "Open /login",
-      "Fill student credentials",
-      "Submit login",
-      "Assert student dashboard is visible"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"LPM\" option in the admin navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Course\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the \"Save\" button is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"5MB\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Cancel\" or close button to exit the Add Course form without saving"
+      }
     ]
   },
   {
     "id": "TC002",
-    "title": "Invalid login shows inline error",
-    "description": "Verify invalid credentials display login error feedback.",
-    "category": "error handling",
-    "priority": "High",
+    "title": "Verify LPM page loads and core sections are visible",
+    "description": "Verifies the LPM admin page can be opened from the admin area and shows expected management sections.",
+    "category": "Landing Page Management (LPM)",
+    "priority": "Medium",
     "steps": [
-      "Open /login",
-      "Enter invalid credentials",
-      "Submit login",
-      "Assert inline error text appears"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"LPM\" option in the admin navigation/menu"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Landing Page\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Course\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Showcase\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Achievers\" is visible"
+      }
     ]
   },
   {
     "id": "TC003",
-    "title": "Student dashboard renders tabs and cards",
-    "description": "Verify dashboard top-level sections render after login.",
-    "category": "functional",
-    "priority": "High",
+    "title": "Cancel adding a course and verify no success message is shown",
+    "description": "Verifies closing/canceling the Add Course flow does not show a success toast.",
+    "category": "Landing Page Management (LPM)",
+    "priority": "Low",
     "steps": [
-      "Login as student",
-      "Open Dashboard tab",
-      "Assert key cards and navigation tabs exist"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on the \"LPM\" option in the admin navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Course\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Cancel\" or close button to exit the Add Course form without saving"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"success\" is not visible"
+      }
     ]
   },
   {
     "id": "TC004",
-    "title": "Question bank search and sort interaction",
-    "description": "Verify student can open question bank and use search/sort controls.",
-    "category": "functional",
-    "priority": "Medium",
+    "title": "Create a new batch and verify it appears in the list",
+    "description": "Verifies an admin can create a batch with details and subject mapping and then see it listed.",
+    "category": "Batch Management",
+    "priority": "High",
     "steps": [
-      "Login as student",
-      "Navigate to Question Bank",
-      "Type into search field",
-      "Change sort option and assert list updates"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Admin dashboard\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Batches\" in the admin navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Batches\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create Batch\""
+      }
     ]
   },
   {
     "id": "TC005",
-    "title": "Student profile settings open",
-    "description": "Verify settings tab opens and password change form is reachable.",
-    "category": "functional",
-    "priority": "Medium",
+    "title": "Create batch with required fields completed and confirm success message",
+    "description": "Verifies the create batch flow completes and shows a visible success confirmation.",
+    "category": "Batch Management",
+    "priority": "High",
     "steps": [
-      "Login as student",
-      "Open Profile",
-      "Navigate to Settings",
-      "Assert password change fields are present"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Batches\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create Batch\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E Batch A\" into the batch name field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      }
     ]
   },
   {
     "id": "TC006",
-    "title": "Get started form validation",
-    "description": "Verify get-started interest form blocks invalid required fields.",
-    "category": "validation",
+    "title": "Create batch requires batch name validation",
+    "description": "Verifies that attempting to create a batch without a name shows a visible validation message and does not create the batch.",
+    "category": "Batch Management",
     "priority": "Medium",
     "steps": [
-      "Open /get-started",
-      "Try submitting empty or invalid form fields",
-      "Assert validation feedback is shown"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Login\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Batches\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create Batch\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Create\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Batch name\" is visible"
+      }
     ]
   },
   {
     "id": "TC007",
-    "title": "Student test series list loads",
-    "description": "Verify test series tab opens and list/empty state is visible.",
-    "category": "functional",
+    "title": "Admin can create a new student and view the initial password",
+    "description": "Verifies that an admin can add a student and the system displays an initial password after creation.",
+    "category": "User Directory Management (Students & Faculty)",
     "priority": "High",
     "steps": [
-      "Login as student",
-      "Navigate to Test Series",
-      "Assert list of tests or explicit empty state appears"
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Student\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Add Student\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Create student form accepts valid inputs and completes creation",
+    "description": "Verifies that required fields can be filled and the create action completes successfully.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Student\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test Student\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"test.student+e2e@example.com\" into the email field"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Student creation shows initial password to admin after successful create",
+    "description": "Verifies that after creating a student, the UI displays an initial password for the admin to copy/record.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Student\" button"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Test Student\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"test.student+pwd@example.com\" into the email field"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Student creation validation: missing email shows inline error",
+    "description": "Verifies that leaving the email field empty prevents creation and shows an inline validation message.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Student\" button"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Email Missing\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Student creation validation recovery: fill email then create succeeds",
+    "description": "Verifies that after an email-required validation error, entering an email allows successful creation and shows success feedback.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Student\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Email\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Admin can open a student detail view from the Students list",
+    "description": "Verifies that an admin can open a student record detail view from the directory list.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Students\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first student in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Student Detail\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Admin can edit and save an admin remark on a student detail",
+    "description": "Verifies that admin remark can be edited and saved from the student detail page.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first student in the list"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Admin remark updated by E2E\" into the admin remark field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Admin remark persists after reopening student detail",
+    "description": "Verifies that the saved admin remark is still visible after leaving and reopening the student detail view.",
+    "category": "User Directory Management (Students & Faculty)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Students\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first student in the list"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Back\" on the student detail page"
+      },
+      {
+        "type": "action",
+        "description": "Click on the same student in the list"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Start a faculty review session successfully and see confirmation",
+    "description": "Verifies an admin can start a new review session and receives a visible success confirmation.",
+    "category": "Faculty Review Session Control",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"ReviewSession\" in the admin navigation menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start Review Session\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Review session started\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Student sees sticky notification after admin starts review session",
+    "description": "Verifies that when a review session is active, a student can see a sticky notification on the student home area.",
+    "category": "Faculty Review Session Control",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"ReviewSession\" in the admin navigation menu"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start Review Session\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Review session started\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Admin ReviewSession page shows Start button and can open start confirmation dialog",
+    "description": "Verifies the admin can access the ReviewSession area and the start action requires confirmation before proceeding.",
+    "category": "Faculty Review Session Control",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"ReviewSession\" in the admin navigation menu"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Start Review Session\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start Review Session\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Create and publish a test series using the wizard (happy path without media upload validation)",
+    "description": "Verifies an admin can complete Setup, add at least one question, and publish the test so it appears as Live in the list.",
+    "category": "Test Series Administration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"TestSeries\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create Test\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Setup\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Wizard navigation: complete Setup and proceed to Add Questions",
+    "description": "Verifies the Setup step requires entry of key fields and allows moving to the Add Questions step.",
+    "category": "Test Series Administration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"TestSeries\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create Test\" button"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Test Title\" with \"E2E Wizard Test\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Next\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Add a question and verify autosave success indicator appears",
+    "description": "Verifies that adding a question triggers draft autosave and shows a visible success indicator.",
+    "category": "Test Series Administration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"TestSeries\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create Test\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Question\" button"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Question Text\" with \"What is 2 + 2?\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Saved\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Publish flow: proceed to Review and publish, then confirm test shows as Live",
+    "description": "Verifies the final steps (Review -> Publish) result in the test being listed as Live.",
+    "category": "Test Series Administration",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"TestSeries\" in the admin navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create Test\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Next\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Next\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Publish\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Add a new subject within a batch and verify it appears in the Subjects list",
+    "description": "Verifies an admin can add a subject inside a selected batch and see it listed under Subjects.",
+    "category": "Batch Academic Mapping (subjects, chapters, notes, timetables)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Batches\" in the admin navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click on a batch from the batches list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Subjects\" tab"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Save a subject with a unique name and verify it is visible after saving",
+    "description": "Verifies the Add Subject flow completes and the new subject name is visible on the Subjects tab.",
+    "category": "Batch Academic Mapping (subjects, chapters, notes, timetables)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Batches\" in the admin navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click on a batch from the batches list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Subjects\" tab"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Add a chapter and verify the chapter title becomes visible in the Chapters list",
+    "description": "Verifies that after saving a new chapter, the chapter title is shown in the list for the batch.",
+    "category": "Batch Academic Mapping (subjects, chapters, notes, timetables)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"Batches\" in the admin navigation/menu"
+      },
+      {
+        "type": "action",
+        "description": "Click on a batch from the batches list"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Chapters\" tab"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Submit a new public query successfully from Get Started form",
+    "description": "Verifies a user can submit the public interest form and sees visible success feedback.",
+    "category": "Query Management (Public interest form submissions)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /get-started"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test User\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"test.user@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"9999999999\" into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Sample Course\" into the course field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Submit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Validate invalid email on Get Started form and submit after correction",
+    "description": "Verifies inline email validation appears for an invalid email, and submission succeeds after correction.",
+    "category": "Query Management (Public interest form submissions)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /get-started"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test User\" into the name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"not-an-email\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Submit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"invalid email\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"test.user2@example.com\" into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Submit\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Success\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Admin can log in and reach Admin dashboard (precondition for query management)",
+    "description": "Verifies email/password login works and the user lands on an authenticated admin area.",
+    "category": "Query Management (Public interest form submissions)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Login\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/admin\""
+      }
     ]
   }
 ]
