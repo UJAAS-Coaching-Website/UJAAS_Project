@@ -1,18 +1,18 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
 
-const STORAGE_S3_REGION = process.env.STORAGE_S3_REGION || 'ap-northeast-1';
-const STORAGE_S3_ENDPOINT = process.env.STORAGE_S3_ENDPOINT || 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/s3';
-const STORAGE_S3_ACCESS_KEY_ID = process.env.STORAGE_S3_ACCESS_KEY_ID || '1b21e916b2e5fe3d8e4357447f29f6a6';
-const STORAGE_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KEY || '346643e644142d5397c5fafe0d4376ced4c0969253eca649223905cf8133556d';
-const STORAGE_PUBLIC_BASE_URL = process.env.STORAGE_PUBLIC_BASE_URL || 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public';
+const STORAGE_S3_REGION = process.env.STORAGE_S3_REGION;
+const STORAGE_S3_ENDPOINT = process.env.STORAGE_S3_ENDPOINT;
+const STORAGE_S3_ACCESS_KEY_ID = process.env.STORAGE_S3_ACCESS_KEY_ID;
+const STORAGE_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KE;
+const STORAGE_PUBLIC_BASE_URL = process.env.STORAGE_PUBLIC_BASE_URL;
 
-const QUESTIONS_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTIONS || 'questions';
+const QUESTIONS_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTIONS;
 const NOTES_BUCKET_NAME = process.env.STORAGE_BUCKET_NOTES || 'notes';
-const QUESTION_BANK_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTION_BANK || 'question-bank';
-const LANDING_PAGE_BUCKET_NAME = process.env.STORAGE_BUCKET_LANDING_PAGE || 'landing-page';
-const TIMETABLES_BUCKET_NAME = process.env.STORAGE_BUCKET_TIMETABLES || 'timetables';
-const AVATARS_BUCKET_NAME = process.env.STORAGE_BUCKET_AVATARS || 'avatar';
+const QUESTION_BANK_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTION_BANK;
+const LANDING_PAGE_BUCKET_NAME = process.env.STORAGE_BUCKET_LANDING_PAGE;
+const TIMETABLES_BUCKET_NAME = process.env.STORAGE_BUCKET_TIMETABLES;
+const AVATARS_BUCKET_NAME = process.env.STORAGE_BUCKET_AVATARS;
 
 // Initialize the S3 Client (Supabase/Railway/any S3-compatible storage)
 const s3Client = new S3Client({
