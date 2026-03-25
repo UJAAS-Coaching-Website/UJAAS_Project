@@ -1090,6 +1090,7 @@ function App() {
     safeSetLocalStorage('ujaasAdminBatches', JSON.stringify(adminBatches));
   }, [adminBatches]);
 
+
   useEffect(() => {
     const handlePopState = () => {
       setTabFromPath(user);

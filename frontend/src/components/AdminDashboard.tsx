@@ -287,6 +287,8 @@ export function AdminDashboard({
   onSearchStudents,
   isDataLoading,
 }: AdminDashboardProps) {
+  const shouldShowSectionSkeleton = Boolean(isDataLoading);
+
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
     const subjectRatings = (s as any).subject_ratings || {};
@@ -724,13 +726,6 @@ export function AdminDashboard({
 
   return (
     <div className="footer-reveal-page footer-reveal-page--nav min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col pt-16">
-      {isDataLoading && (
-        <div className="fixed inset-0 z-layer-10001 bg-white/80 backdrop-blur-sm">
-          <div className="h-full w-full flex items-center justify-center">
-            <DashboardLoadingShell role="admin" />
-          </div>
-        </div>
-      )}
       {/* Navigation */}
 
       <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-layer-navbar shadow-md transition-all">
@@ -823,6 +818,12 @@ export function AdminDashboard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
+          {shouldShowSectionSkeleton ? (
+            activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
+              activeTab === 'students' || adminSection === 'students' ? <TableRowsSkeleton /> :
+                (activeTab === 'test-series' || adminSection === 'test-series') ? <TestCardSkeleton /> :
+                  <DashboardHeroSkeleton />
+          ) : (
           {/* Layered Rendering Logic */}
           <Suspense fallback={
             activeTab === 'home' || adminSection === 'batches' ? <StatCardSkeleton /> :
@@ -984,6 +985,7 @@ export function AdminDashboard({
 
             )}
           </Suspense>
+          )}
         </motion.div>
       </main>
 
