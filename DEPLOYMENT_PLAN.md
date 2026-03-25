@@ -123,8 +123,11 @@ When to choose Hostinger
 
 ### 1) Prepare the Repo
 1. Confirm production environment variables required by the backend. Check `backend/.env` for keys used in code.
-2. Confirm frontend build outputs to `dist/` (Vite default).
+2. Confirm frontend build outputs to `dist/` (this repo is configured to output `dist/`).
 3. Ensure migrations are ready in `backend/scripts/`.
+4. Create `.env.example` files so required variables are explicit for deploys:
+   - `backend/.env.example`
+   - `frontend/.env.example`
 
 ### 2) Create Upstash Redis
 1. Create a new Upstash Redis database for production.
@@ -177,6 +180,7 @@ When to choose Hostinger
 4. Output directory:
    - `dist`
 5. Set frontend environment variables that point to the Railway API base URL.
+   - `VITE_API_URL`
 
 ### 8) Connect GoDaddy Custom Domain to Vercel
 1. Add the domain in Vercel.
