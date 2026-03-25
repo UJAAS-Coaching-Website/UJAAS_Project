@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./load-env.js";
 import { checkDb } from "../src/server.js";
 
 async function run() {
