@@ -1603,12 +1603,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         {isAddingFaculty && (
           <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-              {subjectOptions.map((subject) => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
+            <input
+              name="subject"
+              required
+              placeholder="Subject"
+              className="px-4 py-2 rounded-lg border border-gray-200"
+              disabled={isActionInFlight}
+            />
             <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <div className="md:col-span-2">
@@ -1676,16 +1677,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         {editingFacultyIndex !== null && (
           <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-              {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
-                .map((subject) => subject.trim())
-                .filter(Boolean)
-                .sort((a, b) => a.localeCompare(b))
-                .map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-            </select>
+            <input
+              name="subject"
+              required
+              defaultValue={data.faculty[editingFacultyIndex].subject}
+              className="px-4 py-2 rounded-lg border border-gray-200"
+              disabled={isActionInFlight}
+            />
             <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <div className="md:col-span-2">
