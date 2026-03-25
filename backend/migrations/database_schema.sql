@@ -90,18 +90,9 @@ CREATE SCHEMA vault;
 --
 -- Name: pg_graphql; Type: EXTENSION; Schema: -; Owner: -
 --
-
-CREATE EXTENSION IF NOT EXISTS pg_graphql WITH SCHEMA graphql;
-
-
 --
 -- Name: EXTENSION pg_graphql; Type: COMMENT; Schema: -; Owner: -
---
 
-COMMENT ON EXTENSION pg_graphql IS 'pg_graphql: GraphQL support';
-
-
---
 -- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -
 --
 
