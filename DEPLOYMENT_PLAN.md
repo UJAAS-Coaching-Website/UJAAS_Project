@@ -1,12 +1,12 @@
-# Deployment Plan: Vercel + Railway + Upstash
+﻿# Deployment Plan: Vercel + Railway + Upstash
 
 This document is a clear, explainable deployment plan for the current stack:
-Frontend: Vite + React. Backend: Node/Express. Database: PostgreSQL. Cache: Upstash Redis. Storage: S3-compatible.
+Frontend: Vite + React. Backend: Node/Express. Database: PostgreSQL. Cache: Upstash Redis. Storage: Railway buckets.
 
 It also includes a comparison with Hostinger so you can explain why these choices were made.
 
 ## Executive Summary (Why This Stack)
-- We will use Vercel for the frontend, Railway for backend + PostgreSQL, and Upstash for Redis caching.
+- We will use Vercel for the frontend, Railway for backend + PostgreSQL + buckets, and Upstash for Redis caching.
 - This choice fits our budget, avoids server management, and is production-ready for India users.
 - Our traffic pattern is short, read-heavy peaks (test start), which Railway + Upstash handles well.
 - If peaks become sustained and CPU-heavy for many hours, a higher fixed tier (Render) or a larger VPS can be considered, but with higher cost and more ops.
@@ -14,10 +14,10 @@ It also includes a comparison with Hostinger so you can explain why these choice
 ## Full Conversation Summary (What We Decided and Why)
 - Stack checked: Vite/React frontend, Node/Express backend, PostgreSQL via `pg`, Redis via Upstash, S3-compatible storage.
 - Supabase is not suitable for production because it requires VPN access in India.
-- Budget is ₹1,000–₹1,200/month.
+- Budget is INR 1,000-INR 1,200/month.
 - Users are India-only (Gujarat), mostly read-only.
 - Peak traffic: ~500 concurrent at test start, with a large download burst then uploads later.
-- Decision: Vercel (frontend) + Railway (backend + Postgres) + Upstash (cache).
+- Decision: Vercel (frontend) + Railway (backend + Postgres + buckets) + Upstash (cache).
 
 ## Peak Traffic Detailing (500 Concurrent Users)
 - Peak event: test start when ~500 users download at once.
@@ -116,8 +116,8 @@ When to choose Hostinger
 - Vercel hosts the static frontend build from `frontend/`.
 - Railway hosts the API from `backend/`.
 - Railway provides a managed PostgreSQL database.
+- Railway provides object storage buckets for file uploads/downloads.
 - Upstash provides Redis caching.
-- Optional: S3-compatible storage remains as-is if file uploads are needed.
 
 ## Deployment Plan (Step-by-Step)
 
@@ -137,8 +137,9 @@ When to choose Hostinger
 1. Create a Railway project.
 2. Add a **Node service** for the backend.
 3. Add a **PostgreSQL database** to the same project.
-4. Choose the closest region available to India (usually Singapore).
-5. Copy the Railway `DATABASE_URL` once the database is provisioned.
+4. Add a **Railway bucket** for object storage (if your app uses uploads/downloads).
+5. Choose the closest region available to India (usually Singapore).
+6. Copy the Railway `DATABASE_URL` once the database is provisioned.
 
 ### 4) Configure Backend on Railway
 1. Set environment variables in the Railway service.
@@ -146,7 +147,7 @@ When to choose Hostinger
    - `DATABASE_URL`
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
-   - Any S3 keys if file uploads are enabled
+   - Any Railway bucket credentials if file uploads are enabled
 3. Set the start command to match your `package.json`:
    - `npm start`
 
@@ -211,7 +212,7 @@ Notes:
 |---|---|---|---|---|
 | Railway | Hobby $5 minimum usage | Included, usage-based Postgres | $5 minimum (usage-based) | Subscription covers the first $5 of usage, then pay for extra resources. |
 | Render | Web Service Starter $7 (512 MB RAM, 0.5 CPU) | Postgres Basic-256mb $6 | $13 (plus storage) | Fixed service tier + fixed DB tier. |
-| Hostinger (VPS) | KVM 1 ₹599/mo promo, renew ₹999/mo | Included (self-managed Postgres on VPS) | ₹599–₹999/mo | 1 vCPU, 4 GB RAM, 50 GB NVMe; you manage OS and DB. |
+| Hostinger (VPS) | KVM 1 INR 599/mo promo, renew INR 999/mo | Included (self-managed Postgres on VPS) | INR 599-INR 999/mo | 1 vCPU, 4 GB RAM, 50 GB NVMe; you manage OS and DB. |
 
 ### Scaling Prices (RAM, CPU, Storage)
 | Provider | RAM pricing | CPU pricing | Storage pricing | Scaling model |
@@ -225,7 +226,7 @@ Notes:
 |---|---|---|---|
 | Railway | Increase RAM/CPU on the same service | Linear cost based on usage | You pay only for extra RAM/CPU you allocate. |
 | Render | Upgrade from Starter to Standard | $25/month for 2 GB RAM, 1 CPU | Fixed jump to the next tier. |
-| Hostinger (VPS) | Upgrade from KVM 1 to KVM 2 | ₹799 promo, renew ₹1,199 | More vCPU/RAM/storage in a bigger VPS. |
+| Hostinger (VPS) | Upgrade from KVM 1 to KVM 2 | INR 799 promo, renew INR 1,199 | More vCPU/RAM/storage in a bigger VPS. |
 
 ### Why Railway Still Fits Our Budget Best
 - We can scale in small steps and pay only for what we use.
