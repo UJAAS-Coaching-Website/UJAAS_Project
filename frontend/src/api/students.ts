@@ -107,34 +107,41 @@ export async function fetchStudent(id: string): Promise<ApiStudent> {
 export async function createStudent(
     data: CreateStudentPayload
 ): Promise<ApiStudent> {
-    return request<ApiStudent>("/api/students", {
+    const result = await request<ApiStudent>("/api/students", {
         method: "POST",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function updateStudent(
     id: string,
     data: UpdateStudentPayload
 ): Promise<ApiStudent> {
-    return request<ApiStudent>(`/api/students/${id}`, {
+    const result = await request<ApiStudent>(`/api/students/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function deleteStudent(id: string): Promise<void> {
     await request(`/api/students/${id}`, { method: "DELETE" });
+    studentsCache = null;
 }
 
 export async function assignStudentToBatch(
     studentId: string,
     batchId: string
 ): Promise<ApiStudent> {
-    return request<ApiStudent>(`/api/students/${studentId}/batches`, {
+    const result = await request<ApiStudent>(`/api/students/${studentId}/batches`, {
         method: "POST",
         body: JSON.stringify({ batchId }),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function removeStudentFromBatch(
@@ -144,15 +151,18 @@ export async function removeStudentFromBatch(
     await request(`/api/students/${studentId}/batches/${batchId}`, {
         method: "DELETE",
     });
+    studentsCache = null;
 }
 
 export async function updateStudentRating(
     studentId: string,
     data: UpdateStudentRatingPayload
 ): Promise<any> {
-    return request<any>(`/api/students/${studentId}/rating`, {
+    const result = await request<any>(`/api/students/${studentId}/rating`, {
         method: "PUT",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
 import { API_BASE_URL } from "./base";

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middleware/auth.js";
+import { invalidateCache } from "../middleware/redisCache.js";
 import { 
     startReviewSession, 
     getFacultiesToRate, 
@@ -33,7 +34,7 @@ router.get("/to-rate", authenticate, requireRole("student"), async (req, res) =>
 });
 
 // Student: Submit their ratings
-router.post("/submit", authenticate, requireRole("student"), async (req, res) => {
+router.post("/submit", authenticate, requireRole("student"), invalidateCache(['admin:faculty:*']), async (req, res) => {
     try {
         const { ratings } = req.body;
         if (!ratings || !Array.isArray(ratings)) {
