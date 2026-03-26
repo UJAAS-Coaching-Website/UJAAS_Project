@@ -68,6 +68,8 @@ const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections
 const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
 const AdminStudentsTab = lazy(() => import('./admin/AdminStudentsTab').then(m => ({ default: m.AdminStudentsTab })));
 import { formatIndianMobileInput } from '../utils/phone';
+import { fetchBatches as apiFetchBatches } from '../api/batches';
+import { fetchSubjects as apiFetchSubjects } from '../api/subjects';
 
 interface AdminDashboardProps {
   user: User;
@@ -334,13 +336,6 @@ export function AdminDashboard({
     reviewCount: Number(f.reviewCount ?? f.review_count ?? 0),
     joinDate: f.joining_date
   }));
-  const subjectOptions = Array.from(new Set([
-    ...batches.flatMap((batch) => batch.subjects ?? []),
-    ...faculty.map((item) => item.subject),
-  ]))
-    .map((subject) => subject.trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(null);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -1003,7 +998,6 @@ export function AdminDashboard({
           title={facultyModal.title}
           onSubmit={handleSaveFaculty}
           isInitialEditing={facultyModal.isEditing}
-          subjectOptions={subjectOptions}
         />
 
         <BatchFormModal
@@ -2687,11 +2681,37 @@ function AddStudentModal({
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
+  const [backendBatches, setBackendBatches] = useState<BatchInfo[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setFormState(createInitialState(defaultBatch, initialData));
   }, [open, defaultBatch, initialData]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!active) return;
+        const mapped: BatchInfo[] = items.map((batch) => ({
+          id: batch.id,
+          label: batch.name,
+          slug: batch.slug,
+          subjects: batch.subjects ?? [],
+        }));
+        setBackendBatches(mapped);
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendBatches([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -2710,6 +2730,7 @@ function AddStudentModal({
   };
 
   const requiredMark = <span className="text-red-500">*</span>;
+  const dropdownBatches = backendBatches.length > 0 ? backendBatches : batches;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -2759,7 +2780,7 @@ function AddStudentModal({
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
               >
                 <option value="" disabled>Select batch</option>
-                {batches.map((batch) => (
+                {dropdownBatches.map((batch) => (
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>
@@ -2848,7 +2869,6 @@ function AddFacultyModal({
   title,
   onSubmit,
   isInitialEditing,
-  subjectOptions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -2856,7 +2876,6 @@ function AddFacultyModal({
   title?: string;
   onSubmit?: (data: FacultyFormState) => void;
   isInitialEditing?: boolean;
-  subjectOptions: string[];
 }) {
   const [isEditing, setIsEditing] = useState(isInitialEditing ?? !initialData?.id);
   const [formState, setFormState] = useState<FacultyFormState>({
@@ -2871,6 +2890,7 @@ function AddFacultyModal({
     reviewCount: initialData?.reviewCount ?? 0,
     password: '',
   });
+  const [backendSubjectOptions, setBackendSubjectOptions] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -2889,6 +2909,30 @@ function AddFacultyModal({
     });
   }, [open, initialData, isInitialEditing]);
 
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchSubjects()
+      .then((subjects) => {
+        if (!active) return;
+        const normalized = subjects
+          .map((subject) => subject.name)
+          .filter((name) => typeof name === 'string' && name.trim().length > 0)
+          .map((name) => name.trim())
+          .sort((a, b) => a.localeCompare(b));
+        setBackendSubjectOptions(Array.from(new Set(normalized)));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendSubjectOptions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -2900,7 +2944,7 @@ function AddFacultyModal({
         : raw;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
-  const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
+  const mergedSubjectOptions = Array.from(new Set([...backendSubjectOptions, formState.subject]))
     .map((subject) => subject.trim())
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));

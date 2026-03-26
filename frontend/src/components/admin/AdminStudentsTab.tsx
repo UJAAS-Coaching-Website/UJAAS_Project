@@ -10,6 +10,7 @@ import {
   removeStudentFromBatch as apiRemoveStudentFromBatch,
   type ApiStudent,
 } from '../../api/students';
+import { fetchBatches as apiFetchBatches } from '../../api/batches';
 import { formatIndianMobileInput } from '../../utils/phone';
 import { TableRowsSkeleton } from '../ui/content-skeletons';
 import { generateInitialPassword } from '../../utils/passwords';
@@ -70,11 +71,35 @@ function AddStudentModal({
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
+  const [backendBatches, setBackendBatches] = useState<{ label: string; id?: string; slug: string }[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setFormState(createInitialState(defaultBatch, initialData));
   }, [open, defaultBatch, initialData]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!active) return;
+        setBackendBatches(items.map((batch) => ({
+          label: batch.name,
+          id: batch.id,
+          slug: batch.slug,
+        })));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendBatches([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -93,6 +118,7 @@ function AddStudentModal({
   };
 
   const requiredMark = <span className="text-red-500">*</span>;
+  const dropdownBatches = backendBatches.length > 0 ? backendBatches : batches;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -121,7 +147,7 @@ function AddStudentModal({
               <span className="block">Batch {requiredMark}</span>
               <select required value={formState.batch} onChange={handleChange('batch')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white">
                 <option value="" disabled>Select batch</option>
-                {batches.map((batch) => (
+                {dropdownBatches.map((batch) => (
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>

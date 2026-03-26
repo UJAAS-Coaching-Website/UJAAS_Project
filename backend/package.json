@@ -14,7 +14,8 @@
     "db:seed": "node scripts/seed.js",
     "test:cache-consistency": "node scripts/cache-consistency-smoke.js",
     "cleanup:cache-test-subjects": "node scripts/cleanup-cache-test-subjects.js",
-    "test:batch-student-lifecycle": "node scripts/test-batch-student-lifecycle.js"
+    "test:batch-student-lifecycle": "node scripts/test-batch-student-lifecycle.js",
+    "test:new-test-student-visibility": "node scripts/test-new-test-student-visibility.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",
