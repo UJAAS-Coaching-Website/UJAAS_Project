@@ -4,15 +4,10 @@ import crypto from 'crypto';
 const STORAGE_S3_REGION = process.env.STORAGE_S3_REGION;
 const STORAGE_S3_ENDPOINT = process.env.STORAGE_S3_ENDPOINT;
 const STORAGE_S3_ACCESS_KEY_ID = process.env.STORAGE_S3_ACCESS_KEY_ID;
-const STORAGE_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KE;
+const STORAGE_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KEY;
 const STORAGE_PUBLIC_BASE_URL = process.env.STORAGE_PUBLIC_BASE_URL;
 
-const QUESTIONS_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTIONS;
-const NOTES_BUCKET_NAME = process.env.STORAGE_BUCKET_NOTES || 'notes';
-const QUESTION_BANK_BUCKET_NAME = process.env.STORAGE_BUCKET_QUESTION_BANK;
-const LANDING_PAGE_BUCKET_NAME = process.env.STORAGE_BUCKET_LANDING_PAGE;
-const TIMETABLES_BUCKET_NAME = process.env.STORAGE_BUCKET_TIMETABLES;
-const AVATARS_BUCKET_NAME = process.env.STORAGE_BUCKET_AVATARS;
+const BUCKET_NAME = process.env.STORAGE_BUCKET_NAME;
 
 // Initialize the S3 Client (Supabase/Railway/any S3-compatible storage)
 const s3Client = new S3Client({
@@ -50,9 +45,9 @@ export async function uploadAvatarToStorage(fileBuffer, userId) {
       .webp({ quality: 80 })
       .toBuffer();
 
-    const objectKey = `${userId}/avatar-${Date.now()}.webp`;
+    const objectKey = `avatars/${userId}/avatar-${Date.now()}.webp`;
 
-    return await uploadBufferToBucket(AVATARS_BUCKET_NAME, objectKey, processedBuffer, 'image/webp');
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, processedBuffer, 'image/webp');
   } catch (error) {
     console.error('Avatar storage upload error:', error);
     throw new Error('Failed to process and upload avatar.');
@@ -159,10 +154,10 @@ export async function uploadImageToStorage(fileBuffer, originalName, mimeType, c
   const randomId = crypto.randomUUID();
   
   // Construct the secure, flat-folder path (e.g., tests/123/question-abc.jpg)
-  const objectKey = `${context}/${contextId}/${itemRole}-${randomId}.${ext}`;
+  const objectKey = `questions/${context}/${contextId}/${itemRole}-${randomId}.${ext}`;
 
   try {
-    return await uploadBufferToBucket(QUESTIONS_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Storage upload error:', error);
     throw new Error('Failed to upload image to storage.');
@@ -174,10 +169,10 @@ export async function uploadLandingPageImageToStorage(fileBuffer, originalName, 
   const ext = extMatch ? extMatch[1] : 'jpg';
 
   const randomId = crypto.randomUUID();
-  const objectKey = `${itemRole}/${randomId}.${ext}`;
+  const objectKey = `landing-page/${itemRole}/${randomId}.${ext}`;
 
   try {
-    return await uploadBufferToBucket(LANDING_PAGE_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Landing page storage upload error:', error);
     throw new Error('Failed to upload landing page image to storage.');
@@ -187,6 +182,7 @@ export async function uploadLandingPageImageToStorage(fileBuffer, originalName, 
 export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, chapterContext, noteId) {
   const sanitizedFileName = sanitizeFileName(originalName);
   const objectKey = [
+    'notes',
     'batches',
     chapterContext.batch_id,
     'chapters',
@@ -197,7 +193,7 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
   ].join('/');
 
   try {
-    return await uploadBufferToBucket(NOTES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Notes storage upload error:', error);
     throw new Error('Failed to upload note to storage.');
@@ -207,6 +203,7 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
 export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, mimeType, subjectName, fileId, title) {
   const sanitizedFileName = buildSanitizedFileNameWithSourceExtension(title, originalName);
   const objectKey = [
+    'question-bank',
     'subjects',
     sanitizePathSegment(subjectName),
     'files',
@@ -215,7 +212,7 @@ export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, 
   ].join('/');
 
   try {
-    return await uploadBufferToBucket(QUESTION_BANK_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Question bank storage upload error:', error);
     throw new Error('Failed to upload question bank file to storage.');
@@ -224,10 +221,10 @@ export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, 
 
 export async function uploadTimetableToStorage(fileBuffer, originalName, mimeType, batchId) {
   const sanitizedFileName = sanitizeFileName(originalName);
-  const objectKey = ['batches', sanitizePathSegment(batchId), sanitizedFileName].join('/');
+  const objectKey = ['timetables', 'batches', sanitizePathSegment(batchId), sanitizedFileName].join('/');
 
   try {
-    return await uploadBufferToBucket(TIMETABLES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Timetable storage upload error:', error);
     throw new Error('Failed to upload timetable to storage.');
@@ -241,7 +238,7 @@ export async function uploadTimetableToStorage(fileBuffer, originalName, mimeTyp
  */
 export async function deleteImageFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, QUESTIONS_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Storage delete error:', error);
     throw new Error('Failed to delete image from storage.');
@@ -250,7 +247,7 @@ export async function deleteImageFromStorage(imageUrl) {
 
 export async function deleteAvatarFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, AVATARS_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Avatar storage delete error:', error);
     throw new Error('Failed to delete avatar from storage.');
@@ -259,7 +256,7 @@ export async function deleteAvatarFromStorage(imageUrl) {
 
 export async function deleteLandingPageImageFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, LANDING_PAGE_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Landing page storage delete error:', error);
     throw new Error('Failed to delete landing page image from storage.');
@@ -268,7 +265,7 @@ export async function deleteLandingPageImageFromStorage(imageUrl) {
 
 export async function deleteNoteFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, NOTES_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Notes storage delete error:', error);
     throw new Error('Failed to delete note from storage.');
@@ -277,7 +274,7 @@ export async function deleteNoteFromStorage(fileUrl) {
 
 export async function deleteQuestionBankFileFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, QUESTION_BANK_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Question bank storage delete error:', error);
     throw new Error('Failed to delete question bank file from storage.');
@@ -286,7 +283,7 @@ export async function deleteQuestionBankFileFromStorage(fileUrl) {
 
 export async function deleteTimetableFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, TIMETABLES_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Timetable storage delete error:', error);
     throw new Error('Failed to delete timetable from storage.');
@@ -302,11 +299,11 @@ export async function deleteTimetableFromStorage(fileUrl) {
  */
 export async function deleteAllImagesForContext(context, contextId) {
   try {
-    const prefix = `${context}/${contextId}/`;
+    const prefix = `questions/${context}/${contextId}/`;
 
     // List all objects under this prefix
     const listCommand = new ListObjectsV2Command({
-      Bucket: QUESTIONS_BUCKET_NAME,
+      Bucket: BUCKET_NAME,
       Prefix: prefix
     });
 
@@ -319,7 +316,7 @@ export async function deleteAllImagesForContext(context, contextId) {
 
     // Batch delete all objects
     const deleteCommand = new DeleteObjectsCommand({
-      Bucket: QUESTIONS_BUCKET_NAME,
+      Bucket: BUCKET_NAME,
       Delete: {
         Objects: listResult.Contents.map(obj => ({ Key: obj.Key })),
         Quiet: true

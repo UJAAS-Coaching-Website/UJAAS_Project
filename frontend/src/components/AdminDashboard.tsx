@@ -1355,7 +1355,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   };
 
   const conditionallyDeleteImage = async (url: string) => {
-    if (url && url.includes('landing-page')) {
+    if (url && url.includes('/landing-page/')) {
       try {
         await deleteLandingImage(url);
       } catch (e) {

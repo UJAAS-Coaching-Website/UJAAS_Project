@@ -108,7 +108,7 @@ router.delete('/', authenticate, requireAnyRole('admin', 'faculty'), async (req,
       return res.status(400).json({ status: 'error', message: 'No imageUrl provided.' });
     }
 
-    if (imageUrl.includes('landing-page')) {
+    if (imageUrl.includes('/landing-page/')) {
       await deleteLandingPageImageFromStorage(imageUrl);
     } else {
       await deleteImageFromStorage(imageUrl);
