@@ -3346,10 +3346,14 @@ function BatchFormModal({
       if (selectedFacultyIds.length === 0) {
         const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject && !item.facultyId);
         if (alreadyExists) {
-          return prev;
+          return {
+            ...prev,
+            subject: '',
+          };
         }
         return {
           ...prev,
+          subject: '',
           assignments: [...prev.assignments, { subject: prev.subject, facultyId: null, facultyName: '', faculty: '' }],
         };
       }
@@ -3359,13 +3363,17 @@ function BatchFormModal({
         .filter((item) => !prev.assignments.some((assignment) => assignment.subject === prev.subject && assignment.facultyId === item.id))
         .map((item) => ({ subject: prev.subject, facultyId: item.id, facultyName: item.name, faculty: item.name }));
       if (additions.length === 0) {
-        return prev;
+        return {
+          ...prev,
+          subject: '',
+        };
       }
       const withoutPlaceholder = prev.assignments.filter(
         (item) => !(item.subject === prev.subject && !item.facultyId)
       );
       return {
         ...prev,
+        subject: '',
         assignments: [...withoutPlaceholder, ...additions],
       };
     });
