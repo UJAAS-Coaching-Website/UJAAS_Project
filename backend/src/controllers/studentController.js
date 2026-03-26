@@ -92,6 +92,10 @@ export async function handleUpdateStudentRating(req, res) {
     try {
         const { id } = req.params;
         const { subject, attendance, total_classes, tests, dppPerformance, behavior, remarks } = req.body;
+
+        if (!subject || !String(subject).trim()) {
+            return res.status(400).json({ message: "subject is required" });
+        }
         
         const rating = await updateStudentRating(id, subject, {
             attendance,
@@ -105,6 +109,11 @@ export async function handleUpdateStudentRating(req, res) {
         return res.status(200).json(rating);
     } catch (error) {
         console.error("handleUpdateStudentRating error:", error.message);
-        return res.status(500).json({ message: "failed to update student rating", error: error.message });
+
+        if (error?.message === "Student is not assigned to any batch") {
+            return res.status(400).json({ message: error.message });
+        }
+
+        return res.status(500).json({ message: error?.message || "failed to update student rating" });
     }
 }

@@ -24,7 +24,16 @@ router.get("/", requireAnyRole("admin", "faculty"), checkCache(req => `admin:stu
 router.get("/:id", requireAnyRole("admin", "faculty"), checkCache(req => `admin:students:${req.params.id}`, 1800), getStudent);
 
 // Rating update allowed for admin and faculty
-router.put("/:id/rating", requireAnyRole("admin", "faculty"), invalidateCache(req => [`admin:students:*`]), handleUpdateStudentRating);
+router.put(
+    "/:id/rating",
+    requireAnyRole("admin", "faculty"),
+    invalidateCache((req) => [
+        `admin:students:${req.params.id}`,
+        "admin:students:query:*",
+        "admin:students:*",
+    ]),
+    handleUpdateStudentRating
+);
 
 // Write operations restricted to admin
 router.post(

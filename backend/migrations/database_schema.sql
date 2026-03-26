@@ -494,10 +494,10 @@ CREATE TABLE public.refresh_tokens (
 CREATE TABLE public.student_ratings (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     student_id uuid,
-    attendance integer DEFAULT 0 NOT NULL,
-    test_performance integer DEFAULT 0 NOT NULL,
-    dpp_performance integer DEFAULT 0 NOT NULL,
-    behavior integer DEFAULT 0 NOT NULL,
+    attendance numeric(5,2) DEFAULT 0 NOT NULL,
+    test_performance numeric(5,2) DEFAULT 0 NOT NULL,
+    dpp_performance numeric(5,2) DEFAULT 0 NOT NULL,
+    behavior numeric(5,2) DEFAULT 0 NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     batch_subject_id uuid,
     remarks text

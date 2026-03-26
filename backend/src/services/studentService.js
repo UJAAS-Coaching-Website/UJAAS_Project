@@ -26,12 +26,12 @@ export async function getAllStudents(search) {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', COALESCE(r.attendance, 0),
+                    'attendance', COALESCE(r.attendance, 0)::float,
                     'total_classes', COALESCE(bs.total_classes, 0),
                     'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
-                    'tests', COALESCE(r.test_performance, 0),
-                    'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', COALESCE(r.behavior, 0),
+                    'tests', COALESCE(r.test_performance, 0)::float,
+                    'dppPerformance', COALESCE(r.dpp_performance, 0)::float,
+                    'behavior', COALESCE(r.behavior, 0)::float,
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
@@ -115,12 +115,12 @@ export async function getStudentById(id) {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', COALESCE(r.attendance, 0),
+                    'attendance', COALESCE(r.attendance, 0)::float,
                     'total_classes', COALESCE(bs.total_classes, 0),
                     'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
-                    'tests', COALESCE(r.test_performance, 0),
-                    'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', COALESCE(r.behavior, 0),
+                    'tests', COALESCE(r.test_performance, 0)::float,
+                    'dppPerformance', COALESCE(r.dpp_performance, 0)::float,
+                    'behavior', COALESCE(r.behavior, 0)::float,
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
@@ -382,14 +382,14 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
             );
         }
         
-        const result = await client.query(
-            `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
-             VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), $7, NOW())
+          const result = await client.query(
+                `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
+                 VALUES ($1, $2, COALESCE($3::numeric, 0), COALESCE($4::numeric, 0), COALESCE($5::numeric, 0), COALESCE($6::numeric, 0), $7, NOW())
              ON CONFLICT (student_id, batch_subject_id) DO UPDATE SET
-                attendance = CASE WHEN $3 IS NOT NULL THEN $3 ELSE student_ratings.attendance END,
-                test_performance = CASE WHEN $4 IS NOT NULL THEN $4 ELSE student_ratings.test_performance END,
-                dpp_performance = CASE WHEN $5 IS NOT NULL THEN $5 ELSE student_ratings.dpp_performance END,
-                behavior = CASE WHEN $6 IS NOT NULL THEN $6 ELSE student_ratings.behavior END,
+                     attendance = CASE WHEN $3 IS NOT NULL THEN $3::numeric ELSE student_ratings.attendance END,
+                     test_performance = CASE WHEN $4 IS NOT NULL THEN $4::numeric ELSE student_ratings.test_performance END,
+                     dpp_performance = CASE WHEN $5 IS NOT NULL THEN $5::numeric ELSE student_ratings.dpp_performance END,
+                     behavior = CASE WHEN $6 IS NOT NULL THEN $6::numeric ELSE student_ratings.behavior END,
                 remarks = CASE WHEN $7 IS NOT NULL THEN $7 ELSE student_ratings.remarks END,
                 updated_at = NOW()
              RETURNING id`,
@@ -412,8 +412,10 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
                 bs.total_classes,
                 CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END as attendance_rating,
                 sub.name as subject,
-                r.test_performance as tests,
-                r.dpp_performance as "dppPerformance"
+                r.test_performance::float as tests,
+                r.dpp_performance::float as "dppPerformance",
+                r.attendance::float as attendance,
+                r.behavior::float as behavior
             FROM student_ratings r
             JOIN batch_subjects bs ON bs.id = r.batch_subject_id
             JOIN subjects sub ON sub.id = bs.subject_id

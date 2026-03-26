@@ -902,6 +902,7 @@ export function AdminDashboard({
                 {adminSection === 'students' && (
                   <AdminStudentsTab
                     batches={batches}
+                    studentsData={adminStudents}
                     onViewStudent={(s) => openStudentRatings(apiToLocalStudent(s))}
                   />
                 )}
@@ -3842,6 +3843,11 @@ function StudentRatingsModal({
   const handlePrintStudentDetails = () => {
     const profileValues = getProfileValuesForPrint();
     const currentBatchInfo = batches.find(b => b.label === student.batch);
+    const renderStarsForPrint = (value: number) => {
+      const normalized = Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
+      const rounded = Math.round(normalized);
+      return `${'&#9733;'.repeat(rounded)}${'&#9734;'.repeat(5 - rounded)}`;
+    };
 
     const detailsRows = [
       ['Student Name', profileValues.name || 'Not provided'],
@@ -3864,6 +3870,7 @@ function StudentRatingsModal({
         ? `<div class="subjects-grid">${Object.entries(student.subjectRatings)
           .map(([subject, r]) => {
             const subjectAverage = calculateSubjectRating(r);
+            const attendanceRating = getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating);
             const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
 
             const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
@@ -3884,10 +3891,10 @@ function StudentRatingsModal({
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td>Attendance</td><td>${r.attendance.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>Test Performance</td><td>${r.tests.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>DPP Performance</td><td>${r.dppPerformance.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>Class Behaviour</td><td>${r.behavior.toFixed(1)} / 5.0</td></tr>
+                      <tr><td>Attendance</td><td class="star-rating">${renderStarsForPrint(attendanceRating)}</td></tr>
+                      <tr><td>Test Performance</td><td class="star-rating">${renderStarsForPrint(r.tests)}</td></tr>
+                      <tr><td>DPP Performance</td><td class="star-rating">${renderStarsForPrint(r.dppPerformance)}</td></tr>
+                      <tr><td>Class Behaviour</td><td class="star-rating">${renderStarsForPrint(r.behavior)}</td></tr>
                     </tbody>
                   </table>
                   ${subjectRemark ? `
@@ -4004,6 +4011,11 @@ function StudentRatingsModal({
             }
             .value {
               width: 65%;
+            }
+            .star-rating {
+              letter-spacing: 1px;
+              color: #f59e0b;
+              font-size: 12px;
             }
             .highlight-rating td {
               background: #fef2f2 !important;

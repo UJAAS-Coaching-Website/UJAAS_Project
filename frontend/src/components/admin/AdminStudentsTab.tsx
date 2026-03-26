@@ -14,6 +14,7 @@ import { fetchBatches as apiFetchBatches } from '../../api/batches';
 import { formatIndianMobileInput } from '../../utils/phone';
 import { TableRowsSkeleton } from '../ui/content-skeletons';
 import { generateInitialPassword } from '../../utils/passwords';
+import { getAttendanceRatingValue } from '../../utils/profile';
 
 type StudentDirectoryStudent = {
   id: string;
@@ -184,7 +185,7 @@ function AddStudentModal({
 }
 
 // --- Main Tab Component ---
-export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void }) {
+export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void, studentsData?: ApiStudent[] }) {
   const [students, setStudents] = useState<ApiStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -194,10 +195,14 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentDirectoryStudent; title?: string }>({ open: false });
 
-  const loadStudents = async (searchQuery?: string) => {
+  const loadStudents = async (searchQuery?: string, forceRefresh = false) => {
     try {
+      if (!searchQuery && studentsData && studentsData.length > 0 && !forceRefresh) {
+        setStudents(studentsData);
+        return;
+      }
       if (!searchQuery && students.length === 0) setLoading(true);
-      const res = await apiFetchStudents(searchQuery);
+      const res = await apiFetchStudents(searchQuery, forceRefresh);
       setStudents(res);
     } catch (e) {
       console.error('Failed to fetch students:', e);
@@ -212,6 +217,12 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
   }, []);
 
   useEffect(() => {
+    if (!studentsData || studentsData.length === 0 || query.length > 0) return;
+    setStudents(studentsData);
+    setLoading(false);
+  }, [studentsData, query]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       if (query.length > 0) loadStudents(query);
       else loadStudents();
@@ -220,12 +231,38 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  const computeStudentRating = (student: ApiStudent): number => {
+    const subjectRatings = (student as any).subject_ratings || {};
+    const subjectValues = Object.values(subjectRatings) as any[];
+
+    if (subjectValues.length > 0) {
+      return subjectValues.reduce((acc, curr) => {
+        const attendanceRating = getAttendanceRatingValue(
+          curr.attendance,
+          curr.total_classes,
+          curr.attendanceRating ?? curr.attendance_rating
+        );
+        const tests = Number(curr.tests || 0);
+        const dpp = Number(curr.dppPerformance ?? curr.dpp_performance ?? 0);
+        const behavior = Number(curr.behavior || 0);
+        return acc + (attendanceRating + tests + dpp + behavior) / 4;
+      }, 0) / subjectValues.length;
+    }
+
+    return (
+      Number(student.rating_attendance || 0) +
+      Number(student.rating_assignments || 0) +
+      Number(student.rating_participation || 0) +
+      Number(student.rating_behavior || 0)
+    ) / 4;
+  };
+
   // Convert ApiStudent to the format expected by the rendering logic
   const formattedStudents = students.map(s => ({
     id: s.id,
     name: s.name,
     rollNumber: s.roll_number || '',
-    rating: s.rating_assignments || 0, // Fallback to a single rating for simplicity in the list
+    rating: computeStudentRating(s),
     batch: s.assigned_batch?.name || 'Unassigned',
     email: s.login_id || '',
     phoneNumber: s.phone || '',
@@ -290,7 +327,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
         const loginId = (createdStudent as any)?.login_id || data.rollNumber || 'Not provided';
         window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
-      loadStudents(); // Refresh
+      loadStudents(undefined, true); // Refresh
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
@@ -301,7 +338,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
         await apiDeleteStudent(id);
-        loadStudents(); // Refresh
+        loadStudents(undefined, true); // Refresh
       } catch (error: any) {
         window.alert(`Error deleting student: ${error.message}`);
       }
