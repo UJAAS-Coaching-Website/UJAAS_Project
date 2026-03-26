@@ -29,17 +29,19 @@ export const checkCache = (keyGenerator, ttlSeconds = 3600) => {
         return res.json(cachedData);
       }
       
-      // Override res.json to cache the response before sending
+      // Override res.json to cache the response before sending.
+      // This closes a stale-write race where older reads could overwrite newer state.
       const originalJson = res.json.bind(res);
       
-      res.json = (body) => {
+      res.json = async (body) => {
         // Only cache successful requests
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          // Asynchronously cache it so we don't block the response
-          // 'EX' signifies expire time in seconds
-          redis.set(key, JSON.stringify(body), { ex: ttlSeconds }).catch(err => {
+          try {
+            // 'EX' signifies expire time in seconds
+            await redis.set(key, JSON.stringify(body), { ex: ttlSeconds });
+          } catch (err) {
             console.error(`Failed to cache key ${key}:`, err);
-          });
+          }
         }
         return originalJson(body);
       };
@@ -63,22 +65,45 @@ export const invalidateCache = (patterns) => {
       return next();
     }
 
-    res.on('finish', () => {
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        const resolvedPatterns = typeof patterns === 'function' ? patterns(req) : patterns;
-        
-        import('../utils/cacheInvalidator.js').then(({ flushPattern, invalidateKey }) => {
-          const exactKeys = resolvedPatterns.filter(p => !p.includes('*'));
-          const wildcards = resolvedPatterns.filter(p => p.includes('*'));
+    let invalidated = false;
 
-          if (exactKeys.length > 0) {
-            invalidateKey(...exactKeys);
-          }
-          
-          wildcards.forEach(p => flushPattern(p));
-        }).catch(err => console.error('Error importing cacheInvalidator:', err));
+    const performInvalidation = async () => {
+      if (invalidated || !(res.statusCode >= 200 && res.statusCode < 300)) {
+        return;
       }
-    });
+
+      invalidated = true;
+      const resolvedPatterns = typeof patterns === 'function' ? patterns(req) : patterns;
+
+      try {
+        const { flushPattern, invalidateKey } = await import('../utils/cacheInvalidator.js');
+        const exactKeys = resolvedPatterns.filter((p) => !p.includes('*'));
+        const wildcards = resolvedPatterns.filter((p) => p.includes('*'));
+
+        const tasks = [];
+        if (exactKeys.length > 0) {
+          tasks.push(invalidateKey(...exactKeys));
+        }
+
+        wildcards.forEach((p) => tasks.push(flushPattern(p)));
+        await Promise.all(tasks);
+      } catch (err) {
+        console.error('Error running cache invalidation:', err);
+      }
+    };
+
+    const originalJson = res.json.bind(res);
+    const originalSend = res.send.bind(res);
+
+    res.json = async (body) => {
+      await performInvalidation();
+      return originalJson(body);
+    };
+
+    res.send = async (body) => {
+      await performInvalidation();
+      return originalSend(body);
+    };
 
     next();
   };

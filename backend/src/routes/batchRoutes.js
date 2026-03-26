@@ -50,9 +50,9 @@ router.use(authenticate);
 router.get("/", checkCache('global:batches:list', 600), listBatches);
 router.get("/:id", checkCache(req => `batch:${req.params.id}:details`, 600), getBatch);
 router.post("/", requireRole("admin"), invalidateCache(['global:batches:list', 'subjects:list']), handleCreateBatch);
-router.put("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`, 'subjects:list']), handleUpdateBatch);
-router.delete("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleDeleteBatch);
-router.delete("/:id/permanent", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handlePermanentDeleteBatch);
+router.put("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`, 'subjects:list', 'admin:students:*']), handleUpdateBatch);
+router.delete("/:id", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`, 'admin:students:*']), handleDeleteBatch);
+router.delete("/:id/permanent", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`, 'admin:students:*', 'student:*']), handlePermanentDeleteBatch);
 
 // Student assignment (Admin only)
 router.get("/:id/students", requireRole("admin"), checkCache(req => `batch:${req.params.id}:students`, 600), handleGetBatchStudents);
@@ -65,7 +65,12 @@ router.post("/:id/faculty", requireRole("admin"), invalidateCache(req => [`batch
 router.delete("/:id/faculty/:facultyId", requireRole("admin"), invalidateCache(req => [`batch:${req.params.id}:faculty`, `admin:faculty:*`]), handleRemoveFaculty);
 
 // Batch Notifications (Admin and Faculty)
-router.post("/:id/notifications", requireAnyRole("admin", "faculty"), handleCreateBatchNotification);
+router.post(
+    "/:id/notifications",
+    requireAnyRole("admin", "faculty"),
+    invalidateCache((req) => [`batch:${req.params.id}:*`]),
+    handleCreateBatchNotification,
+);
 
 // Batch subject removal (Admin only)
 router.delete("/:id/subjects/:subjectId", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleRemoveBatchSubject);

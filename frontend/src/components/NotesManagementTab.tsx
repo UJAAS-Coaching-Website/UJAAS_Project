@@ -455,6 +455,16 @@ export function NotesManagementTab({
       } else {
         toast.success(`Subject "${subjectName}" removed from this batch.`);
       }
+
+      if (selectedSubject?.toLowerCase() === subjectName.toLowerCase()) {
+        setSelectedSubject(null);
+        setSelectedChapterObj(null);
+        setCurrentView('root');
+        setApiChapters([]);
+        setApiNotes([]);
+        setApiDpps([]);
+      }
+
       return;
     }
 

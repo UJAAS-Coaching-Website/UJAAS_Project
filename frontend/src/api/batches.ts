@@ -247,5 +247,6 @@ export async function createBatchNotification(
         method: "POST",
         body: JSON.stringify(data),
     });
+    batchesCache = null;
 }
 import { API_BASE_URL } from "./base";

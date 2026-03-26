@@ -11,8 +11,8 @@ router.use(authenticate, requireRole("admin"));
 // Faculty CRUD
 // Faculty CRUD
 router.get("/", checkCache('admin:faculty:list', 3600), listFaculties);
-router.post("/", invalidateCache(['admin:faculty:list']), handleCreateFaculty);
-router.put("/:id", invalidateCache(req => ['admin:faculty:list', `admin:faculty:${req.params.id}`]), handleUpdateFaculty);
-router.delete("/:id", invalidateCache(req => ['admin:faculty:list', `admin:faculty:${req.params.id}`]), handleDeleteFaculty);
+router.post("/", invalidateCache(['admin:faculty:list', 'batch:*:faculty']), handleCreateFaculty);
+router.put("/:id", invalidateCache(req => ['admin:faculty:list', `admin:faculty:${req.params.id}`, 'batch:*:faculty']), handleUpdateFaculty);
+router.delete("/:id", invalidateCache(req => ['admin:faculty:list', `admin:faculty:${req.params.id}`, 'batch:*:faculty']), handleDeleteFaculty);
 
 export default router;

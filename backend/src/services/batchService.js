@@ -244,6 +244,16 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds, t
     try {
         await client.query("BEGIN");
 
+        const existingBatchResult = await client.query(
+            `SELECT is_active FROM batches WHERE id = $1 LIMIT 1`,
+            [id]
+        );
+        if (existingBatchResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+        const wasActive = existingBatchResult.rows[0]?.is_active === true;
+
         let newSlug = null;
         if (name) {
             const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch';
@@ -266,6 +276,16 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds, t
              WHERE id = $1`,
             [id, name || null, newSlug, is_active !== undefined ? is_active : null, timetable_url !== undefined ? (timetable_url || null) : null]
         );
+
+        const isNowInactive = is_active === false;
+        if (wasActive && isNowInactive) {
+            const batchModel = await getStudentBatchModel();
+            if (batchModel === "single") {
+                await client.query(`UPDATE students SET assigned_batch_id = NULL WHERE assigned_batch_id = $1`, [id]);
+            } else {
+                await client.query(`DELETE FROM student_batches WHERE batch_id = $1`, [id]);
+            }
+        }
 
         if (subjects !== undefined) {
             // Optional: delete old links if needed, or just add new ones. 
@@ -311,12 +331,36 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds, t
 }
 
 export async function deleteBatch(id) {
-    const deletedSuffix = `-deleted-${Date.now()}`;
-    const result = await pool.query(
-        "UPDATE batches SET is_active = false, slug = slug || $2 WHERE id = $1 RETURNING id",
-        [id, deletedSuffix]
-    );
-    return result.rowCount > 0;
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        const deletedSuffix = `-deleted-${Date.now()}`;
+        const result = await client.query(
+            "UPDATE batches SET is_active = false, slug = slug || $2 WHERE id = $1 RETURNING id",
+            [id, deletedSuffix]
+        );
+
+        if (result.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return false;
+        }
+
+        const batchModel = await getStudentBatchModel();
+        if (batchModel === "single") {
+            await client.query(`UPDATE students SET assigned_batch_id = NULL WHERE assigned_batch_id = $1`, [id]);
+        } else {
+            await client.query(`DELETE FROM student_batches WHERE batch_id = $1`, [id]);
+        }
+
+        await client.query("COMMIT");
+        return true;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 export async function permanentlyDeleteBatch(id) {
@@ -389,9 +433,44 @@ export async function permanentlyDeleteBatch(id) {
             await client.query(`DELETE FROM tests WHERE id = ANY($1::uuid[])`, [exclusiveTestIds]);
         }
 
+        let deletedStudentsCount = 0;
         if (batchModel === "single") {
-            await client.query(`UPDATE students SET assigned_batch_id = NULL WHERE assigned_batch_id = $1`, [id]);
+            const studentsInBatch = await client.query(
+                `SELECT user_id FROM students WHERE assigned_batch_id = $1`,
+                [id]
+            );
+            const studentIds = studentsInBatch.rows.map((row) => row.user_id).filter(Boolean);
+
+            if (studentIds.length > 0) {
+                const deletedStudents = await client.query(
+                    `DELETE FROM users WHERE role = 'student' AND id = ANY($1::uuid[]) RETURNING id`,
+                    [studentIds]
+                );
+                deletedStudentsCount = deletedStudents.rowCount;
+            }
         } else {
+            const orphanStudents = await client.query(
+                `SELECT sb.student_id
+                 FROM student_batches sb
+                 WHERE sb.batch_id = $1
+                   AND NOT EXISTS (
+                     SELECT 1
+                     FROM student_batches sb2
+                     WHERE sb2.student_id = sb.student_id
+                       AND sb2.batch_id <> $1
+                   )`,
+                [id]
+            );
+            const orphanStudentIds = orphanStudents.rows.map((row) => row.student_id).filter(Boolean);
+
+            if (orphanStudentIds.length > 0) {
+                const deletedStudents = await client.query(
+                    `DELETE FROM users WHERE role = 'student' AND id = ANY($1::uuid[]) RETURNING id`,
+                    [orphanStudentIds]
+                );
+                deletedStudentsCount = deletedStudents.rowCount;
+            }
+
             await client.query(`DELETE FROM student_batches WHERE batch_id = $1`, [id]);
         }
 
@@ -406,6 +485,7 @@ export async function permanentlyDeleteBatch(id) {
             deletedChapters: Number(chapterCountResult.rows[0]?.count ?? 0),
             deletedNotes: Number(notesCountResult.rows[0]?.count ?? 0),
             deletedDpps: Number(dppCountResult.rows[0]?.count ?? 0),
+            deletedStudents: deletedStudentsCount,
             removedTimetableReference: batch.timetable_url ? 1 : 0,
         };
     } catch (error) {
