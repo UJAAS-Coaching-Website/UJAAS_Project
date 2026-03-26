@@ -72,6 +72,7 @@ export interface UpdateStudentPayload {
     address?: string;
     dateOfBirth?: string;
     parentContact?: string;
+    adminRemark?: string;
 }
 
 export interface UpdateStudentRatingPayload {

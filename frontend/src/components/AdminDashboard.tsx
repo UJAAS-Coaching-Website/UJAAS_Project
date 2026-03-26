@@ -153,6 +153,7 @@ interface Student {
   }>;
   subjectRemarks?: Record<string, string>;
   adminRemark?: string;
+  email?: string;
 }
 
 interface Faculty {
@@ -425,10 +426,7 @@ export function AdminDashboard({
     return fallbackUpdatedTest;
   };
 
-  // Remarks are stored locally; load from localStorage
-  useEffect(() => {
-    // Apply stored remarks to students rendered from API
-  }, [adminStudents]);
+
 
   const selectedBatchInfo = selectedBatch
     ? batches.find((batch) => batch.label === selectedBatch)
@@ -698,16 +696,17 @@ export function AdminDashboard({
   const handleSaveAdminRemark = async (studentId: string, remark: string) => {
     const cleanedRemark = remark.trim();
     try {
-      // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
-      // but we can store it in the local storage bridge we have.
+      await onUpdateStudent(studentId, { adminRemark: cleanedRemark });
       setRatingModal((prev) =>
         prev.student?.id === studentId
           ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
           : prev
       );
+      // Optional: keep writing to local storage as a fallback, but primary is now backend
       writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
     } catch (error: any) {
       console.error(error);
+      window.alert(`Error saving remark: ${error.message}`);
     }
   };
 
@@ -906,7 +905,7 @@ export function AdminDashboard({
                 {adminSection === 'students' && (
                   <AdminStudentsTab
                     batches={batches}
-                    onViewStudent={openStudentRatings}
+                    onViewStudent={(s) => openStudentRatings(apiToLocalStudent(s))}
                   />
                 )}
                 {adminSection === 'faculty' && (
@@ -935,8 +934,8 @@ export function AdminDashboard({
                 {adminSection === 'queries' && (
                   <AdminQueriesManagementTab
                     queries={queries}
-                    onViewQuery={openQueryDetails}
-                    onDeleteQuery={handleDeleteQuery}
+                    onViewQuery={(query: import('../App').LandingQuery) => openQueryDetails(query)}
+                    onDeleteQuery={(id: string) => void handleDeleteQuery(id)}
                   />
                 )}
               </>
