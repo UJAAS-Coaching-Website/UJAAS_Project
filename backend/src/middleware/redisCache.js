@@ -59,20 +59,23 @@ export const checkCache = (keyGenerator, ttlSeconds = 3600) => {
  */
 export const invalidateCache = (patterns) => {
   return async (req, res, next) => {
-    // Skip if Redis not configured
     if (!process.env.UPSTASH_REDIS_REST_URL) {
       return next();
     }
 
-    // Attach listener to response to wait for successful completion
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        // Resolve dynamic patterns
         const resolvedPatterns = typeof patterns === 'function' ? patterns(req) : patterns;
         
-        // Dynamically import cacheInvalidator to avoid circular deps if any
-        import('../utils/cacheInvalidator.js').then(({ flushPattern }) => {
-          resolvedPatterns.forEach(p => flushPattern(p));
+        import('../utils/cacheInvalidator.js').then(({ flushPattern, invalidateKey }) => {
+          const exactKeys = resolvedPatterns.filter(p => !p.includes('*'));
+          const wildcards = resolvedPatterns.filter(p => p.includes('*'));
+
+          if (exactKeys.length > 0) {
+            invalidateKey(...exactKeys);
+          }
+          
+          wildcards.forEach(p => flushPattern(p));
         }).catch(err => console.error('Error importing cacheInvalidator:', err));
       }
     });

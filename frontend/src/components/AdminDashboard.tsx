@@ -2186,7 +2186,7 @@ function OverviewTab({
           </button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
-            <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
+            <p className="text-teal-50/90 font-medium">Batch Management & Performance Overview</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -2229,6 +2229,12 @@ function OverviewTab({
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 text-base truncate">{t.name}</h4>
+                    {t.rating !== undefined && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {renderPerformanceStars(t.rating)}
+                        <span className="text-[10px] font-bold text-gray-700">({t.rating.toFixed(1)})</span>
+                      </div>
+                    )}
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
                   </div>
                 </div>

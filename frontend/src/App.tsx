@@ -1055,7 +1055,10 @@ function App() {
         ]);
 
         if (apiLanding) {
-          setLandingData(apiLanding as unknown as LandingData);
+          const newData = apiLanding as unknown as LandingData;
+          if (JSON.stringify(newData) !== JSON.stringify(landingData)) {
+            setLandingData(newData);
+          }
         }
 
         if (profileResponse && profileResponse.user) {
