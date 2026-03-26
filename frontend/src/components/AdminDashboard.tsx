@@ -2756,10 +2756,9 @@ function AddStudentModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Email {requiredMark}</span>
+              <span className="block">Email (Optional)</span>
               <input
                 type="email"
-                required
                 value={formState.email}
                 onChange={handleChange('email')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2768,10 +2767,9 @@ function AddStudentModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {requiredMark}</span>
+              <span className="block">Phone Number (Optional)</span>
               <input
                 type="tel"
-                required
                 value={formState.phoneNumber}
                 onChange={handleChange('phoneNumber')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2780,10 +2778,9 @@ function AddStudentModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Date of Birth {requiredMark}</span>
+              <span className="block">Date of Birth (Optional)</span>
               <input
                 type="date"
-                required
                 value={formState.dateOfBirth}
                 onChange={handleChange('dateOfBirth')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2973,10 +2970,9 @@ function AddFacultyModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {isEditing && requiredMark}</span>
+              <span className="block">Phone Number {isEditing && '(Optional)'}</span>
               <input
                 type="tel"
-                required={isEditing}
                 readOnly={!isEditing}
                 value={formState.phone}
                 onChange={handleChange('phone')}
