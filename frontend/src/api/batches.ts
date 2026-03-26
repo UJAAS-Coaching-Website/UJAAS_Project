@@ -63,6 +63,7 @@ function normalizeBatch(batch: ApiBatch): ApiBatch {
 export interface ApiBatchFaculty {
     id: string;
     name: string;
+    subject?: string | null;
 }
 
 export interface ApiBatch {

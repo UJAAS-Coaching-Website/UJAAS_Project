@@ -28,6 +28,57 @@ async function columnExists(tableName, columnName, client = pool) {
     return result.rows[0]?.exists === true;
 }
 
+function createInvalidFacultyAssignmentError(details = {}) {
+    const error = new Error("selected faculty could not be assigned to this batch");
+    error.code = "INVALID_BATCH_FACULTY_ASSIGNMENT";
+    error.details = details;
+    return error;
+}
+
+async function resolveValidatedFacultyAssignments(client, batchId, facultyIds) {
+    const uniqueFacultyIds = Array.from(new Set((facultyIds ?? []).filter(Boolean)));
+    const assignments = [];
+
+    for (const facultyId of uniqueFacultyIds) {
+        const facultyResult = await client.query(
+            `SELECT f.user_id, f.subject_id
+             FROM faculties f
+             JOIN users u ON u.id = f.user_id
+             WHERE f.user_id = $1 AND u.role = 'faculty'
+             LIMIT 1`,
+            [facultyId]
+        );
+
+        if (facultyResult.rowCount === 0) {
+            throw createInvalidFacultyAssignmentError({ facultyId, reason: "not_found" });
+        }
+
+        const subjectId = facultyResult.rows[0]?.subject_id;
+        if (!subjectId) {
+            throw createInvalidFacultyAssignmentError({ facultyId, reason: "missing_subject" });
+        }
+
+        const batchSubjectResult = await client.query(
+            `SELECT id
+             FROM batch_subjects
+             WHERE batch_id = $1 AND subject_id = $2
+             LIMIT 1`,
+            [batchId, subjectId]
+        );
+
+        if (batchSubjectResult.rowCount === 0) {
+            throw createInvalidFacultyAssignmentError({ facultyId, reason: "subject_not_in_batch" });
+        }
+
+        assignments.push({
+            facultyId,
+            batchSubjectId: batchSubjectResult.rows[0].id,
+        });
+    }
+
+    return assignments;
+}
+
 /**
  * Get all batches with assigned faculty names and subjects.
  */
@@ -167,23 +218,12 @@ export async function createBatch({ name, subjects, facultyIds, timetable_url })
         }
 
         // 2. Assign Faculty
-        if (facultyIds && facultyIds.length > 0) {
-            for (const facultyId of facultyIds) {
-                const fRes = await client.query("SELECT subject_id FROM faculties WHERE user_id = $1", [facultyId]);
-                const fSubId = fRes.rows[0]?.subject_id;
-                if (fSubId) {
-                    const bsRes = await client.query(
-                        "SELECT id FROM batch_subjects WHERE batch_id = $1 AND subject_id = $2",
-                        [batch.id, fSubId]
-                    );
-                    if (bsRes.rowCount > 0) {
-                        await client.query(
-                            "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                            [facultyId, bsRes.rows[0].id]
-                        );
-                    }
-                }
-            }
+        const validatedAssignments = await resolveValidatedFacultyAssignments(client, batch.id, facultyIds);
+        for (const assignment of validatedAssignments) {
+            await client.query(
+                "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                [assignment.facultyId, assignment.batchSubjectId]
+            );
         }
 
         await client.query("COMMIT");
@@ -245,29 +285,18 @@ export async function updateBatch(id, { name, is_active, subjects, facultyIds, t
         }
 
         if (facultyIds !== undefined) {
+            const validatedAssignments = await resolveValidatedFacultyAssignments(client, id, facultyIds);
             await client.query(
                 `DELETE FROM faculty_assignments 
                  WHERE batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $1)`,
                 [id]
             );
-            
-            if (facultyIds && facultyIds.length > 0) {
-                for (const facultyId of facultyIds) {
-                    const fRes = await client.query("SELECT subject_id FROM faculties WHERE user_id = $1", [facultyId]);
-                    const fSubId = fRes.rows[0]?.subject_id;
-                    if (fSubId) {
-                        const bsRes = await client.query(
-                            "SELECT id FROM batch_subjects WHERE batch_id = $1 AND subject_id = $2",
-                            [id, fSubId]
-                        );
-                        if (bsRes.rowCount > 0) {
-                            await client.query(
-                                "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-                                [facultyId, bsRes.rows[0].id]
-                            );
-                        }
-                    }
-                }
+
+            for (const assignment of validatedAssignments) {
+                await client.query(
+                    "INSERT INTO faculty_assignments (faculty_id, batch_subject_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                    [assignment.facultyId, assignment.batchSubjectId]
+                );
             }
         }
 

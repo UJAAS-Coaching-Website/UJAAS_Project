@@ -68,7 +68,7 @@ interface FacultyDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -86,7 +86,7 @@ interface FacultyDashboardProps {
 export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; facultyAssignments?: { id: string; name: string; subject?: string | null }[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;

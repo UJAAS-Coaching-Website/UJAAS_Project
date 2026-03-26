@@ -89,8 +89,8 @@ interface AdminDashboardProps {
   onDeleteStudent: (id: string) => Promise<void>;
   onAssignStudentToBatch: (studentId: string, batchId: string) => Promise<import('../api/students').ApiStudent>;
   onRemoveStudentFromBatch: (studentId: string, batchId: string) => Promise<void>;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onCreateBatch: (label: string, subjects?: string[], facultyIds?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onUploadBatchTimetable: (batchId: string, file: File) => Promise<{ ok: boolean; error?: string; timetableUrl?: string | null }>;
   onDeleteBatchTimetable: (batchId: string) => Promise<{ ok: boolean; error?: string }>;
@@ -121,6 +121,7 @@ interface AdminDashboardProps {
   onRefreshFaculties: () => void;
   onSearchStudents?: (query: string) => void;
   isDataLoading?: boolean;
+  isFacultyDataLoading?: boolean;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -128,7 +129,7 @@ export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-s
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; facultyAssignments?: { id: string; name: string; subject?: string | null }[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;
@@ -287,6 +288,7 @@ export function AdminDashboard({
   onRefreshFaculties,
   onSearchStudents,
   isDataLoading,
+  isFacultyDataLoading,
 }: AdminDashboardProps) {
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
@@ -1009,6 +1011,7 @@ export function AdminDashboard({
           mode={batchModal.mode}
           batches={batches}
           faculty={faculty}
+          isFacultyDataLoading={Boolean(isFacultyDataLoading)}
           subjectCatalog={subjectCatalog}
           batchLabel={batchModal.batchLabel}
           onClose={closeBatchModal}
@@ -2158,14 +2161,16 @@ function OverviewTab({
   // Faculty logic
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const isBatchActive = currentBatch?.is_active !== false;
-  const assigned = currentBatch?.facultyAssigned ?? [];
-  const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
+  const assignedFacultyIds = currentBatch?.facultyAssignments?.map((item) => item.id) ?? [];
+  const assignedFaculty = faculty.filter((item) => assignedFacultyIds.includes(item.id));
 
-  const handleRemoveFacultyFromBatch = async (facultyName: string) => {
+  const handleRemoveFacultyFromBatch = async (facultyId: string, facultyName: string) => {
     if (!currentBatch) return;
     if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
-    const nextAssigned = assigned.filter((name) => name !== facultyName);
-    const result = await onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
+    const nextAssignedIds = (currentBatch.facultyAssignments ?? [])
+      .filter((item) => item.id !== facultyId)
+      .map((item) => item.id);
+    const result = await onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssignedIds);
     if (!result.ok) {
       window.alert(result.error ?? 'Unable to update batch faculty.');
     }
@@ -2239,7 +2244,7 @@ function OverviewTab({
                 </div>
                 {isBatchActive ? (
                   <button
-                    onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                    onClick={() => handleRemoveFacultyFromBatch(t.id, t.name)}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     title="Remove from batch"
                   >
@@ -3263,6 +3268,7 @@ function BatchFormModal({
   mode,
   batches,
   faculty,
+  isFacultyDataLoading,
   subjectCatalog,
   batchLabel,
   onClose,
@@ -3275,21 +3281,21 @@ function BatchFormModal({
   mode: 'create' | 'edit';
   batches: BatchInfo[];
   faculty: import('../api/faculties').ApiFaculty[];
+  isFacultyDataLoading: boolean;
   subjectCatalog: import('../api/subjects').ApiSubject[];
   batchLabel?: string;
   onClose: () => void;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onCreateBatch: (label: string, subjects?: string[], facultyIds?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
   const [formState, setFormState] = useState({
     name: '',
     subject: '',
-    faculty: '',
-    assignments: [] as { subject: string; faculty: string }[],
+    assignments: [] as { subject: string; facultyId: string | null; facultyName: string; faculty: string }[],
   });
-  const [selectedFacultyNames, setSelectedFacultyNames] = useState<string[]>([]);
+  const [selectedFacultyIds, setSelectedFacultyIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const subjects = subjectCatalog
     .map((subject) => subject.name)
@@ -3304,26 +3310,27 @@ function BatchFormModal({
     if (!open) return;
     if (mode === 'edit' && batchLabel) {
       const current = batches.find((batch) => batch.label === batchLabel);
-      const assignments = (current?.facultyAssigned ?? [])
-        .map((name) => {
-          const found = faculty.find((item) => item.name === name);
-          return found ? { subject: found.subject, faculty: found.name } : null;
-        })
-        .filter((item): item is { subject: string; faculty: string } => !!item);
+      const assignments = (current?.facultyAssignments ?? [])
+        .map((assignment) => ({
+          subject: assignment.subject ?? faculty.find((item) => item.id === assignment.id)?.subject ?? '',
+          facultyId: assignment.id,
+          facultyName: assignment.name,
+          faculty: assignment.name,
+        }))
+        .filter((item) => item.subject.trim().length > 0);
       const assignedSubjects = new Set(assignments.map((item) => item.subject));
       const subjectOnlyAssignments = (current?.subjects ?? [])
         .filter((subject) => subject && !assignedSubjects.has(subject))
-        .map((subject) => ({ subject, faculty: '' }));
+        .map((subject) => ({ subject, facultyId: null, facultyName: '', faculty: '' }));
       setFormState({
         name: current?.label ?? batchLabel,
         subject: '',
-        faculty: '',
         assignments: [...assignments, ...subjectOnlyAssignments],
       });
     } else {
-      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+      setFormState({ name: '', subject: '', assignments: [] });
     }
-    setSelectedFacultyNames([]);
+    setSelectedFacultyIds([]);
     setError(null);
   }, [open, mode, batchLabel, batches, faculty]);
 
@@ -3336,33 +3343,33 @@ function BatchFormModal({
   const addAssignment = () => {
     if (!formState.subject) return;
     setFormState((prev) => {
-      if (selectedFacultyNames.length === 0) {
-        const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject);
+      if (selectedFacultyIds.length === 0) {
+        const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject && !item.facultyId);
         if (alreadyExists) {
-          return { ...prev, faculty: '' };
+          return prev;
         }
         return {
           ...prev,
-          assignments: [...prev.assignments, { subject: prev.subject, faculty: '' }],
-          faculty: '',
+          assignments: [...prev.assignments, { subject: prev.subject, facultyId: null, facultyName: '', faculty: '' }],
         };
       }
-      const additions = selectedFacultyNames
-        .filter((name) => !prev.assignments.some((item) => item.subject === prev.subject && item.faculty === name))
-        .map((name) => ({ subject: prev.subject, faculty: name }));
+      const additions = selectedFacultyIds
+        .map((facultyId) => facultyOptions.find((item) => item.id === facultyId))
+        .filter((item): item is typeof facultyOptions[number] => !!item)
+        .filter((item) => !prev.assignments.some((assignment) => assignment.subject === prev.subject && assignment.facultyId === item.id))
+        .map((item) => ({ subject: prev.subject, facultyId: item.id, facultyName: item.name, faculty: item.name }));
       if (additions.length === 0) {
-        return { ...prev, faculty: '' };
+        return prev;
       }
       const withoutPlaceholder = prev.assignments.filter(
-        (item) => !(item.subject === prev.subject && item.faculty.trim().length === 0)
+        (item) => !(item.subject === prev.subject && !item.facultyId)
       );
       return {
         ...prev,
         assignments: [...withoutPlaceholder, ...additions],
-        faculty: '',
       };
     });
-    setSelectedFacultyNames([]);
+    setSelectedFacultyIds([]);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -3370,9 +3377,12 @@ function BatchFormModal({
     const normalizedTypedSubject = formState.subject.trim();
     const inlineAssignments =
       normalizedTypedSubject.length > 0
-        ? selectedFacultyNames.length > 0
-          ? selectedFacultyNames.map((name) => ({ subject: normalizedTypedSubject, faculty: name }))
-          : [{ subject: normalizedTypedSubject, faculty: '' }]
+        ? selectedFacultyIds.length > 0
+          ? selectedFacultyIds
+            .map((facultyId) => facultyOptions.find((item) => item.id === facultyId))
+            .filter((item): item is typeof facultyOptions[number] => !!item)
+            .map((item) => ({ subject: normalizedTypedSubject, facultyId: item.id, facultyName: item.name, faculty: item.name }))
+          : [{ subject: normalizedTypedSubject, facultyId: null, facultyName: '', faculty: '' }]
         : [];
     const effectiveAssignments = [...formState.assignments, ...inlineAssignments];
     const selectedSubjects = Array.from(
@@ -3385,8 +3395,8 @@ function BatchFormModal({
     const selectedFaculty = Array.from(
       new Set(
         effectiveAssignments
-          .map((item) => item.faculty.trim())
-          .filter((name) => name.length > 0)
+          .map((item) => item.facultyId)
+          .filter((facultyId): facultyId is string => Boolean(facultyId))
       )
     );
     if (!formState.name.trim()) {
@@ -3489,9 +3499,8 @@ function BatchFormModal({
                     setFormState((prev) => ({
                       ...prev,
                       subject: nextSubject,
-                      faculty: '',
                     }));
-                    setSelectedFacultyNames([]);
+                    setSelectedFacultyIds([]);
                   }}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
                   placeholder="Select or type a subject"
@@ -3508,6 +3517,8 @@ function BatchFormModal({
                 <div className={`w-full rounded-xl border border-gray-200 px-4 py-3 bg-white ${!formState.subject ? 'bg-gray-50 text-gray-400' : ''}`}>
                   {!formState.subject ? (
                     <span className="text-sm text-gray-400">Select subject first</span>
+                  ) : isFacultyDataLoading ? (
+                    <span className="text-sm text-gray-500">Loading faculty for this subject...</span>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide pr-1">
                       {facultyOptions.length === 0 && (
@@ -3517,11 +3528,11 @@ function BatchFormModal({
                         <label key={item.id} className="flex items-center gap-2 text-sm text-gray-700">
                           <input
                             type="checkbox"
-                            checked={selectedFacultyNames.includes(item.name)}
+                            checked={selectedFacultyIds.includes(item.id)}
                             onChange={(event) => {
                               const checked = event.target.checked;
-                              setSelectedFacultyNames((prev) =>
-                                checked ? [...prev, item.name] : prev.filter((name) => name !== item.name)
+                              setSelectedFacultyIds((prev) =>
+                                checked ? [...prev, item.id] : prev.filter((facultyId) => facultyId !== item.id)
                               );
                             }}
                             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
@@ -3549,7 +3560,7 @@ function BatchFormModal({
               <p className="text-sm font-medium text-gray-700">Selected</p>
               <div className="space-y-1">
                 {formState.assignments.map((item, index) => (
-                  <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+                  <div key={`${item.subject}-${item.facultyId ?? 'unassigned'}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
                       {item.subject} — <span className="font-semibold">{item.faculty ? item.faculty : 'Unassigned'}</span>
                     </span>

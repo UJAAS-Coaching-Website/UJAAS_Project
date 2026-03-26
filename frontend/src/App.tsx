@@ -249,6 +249,7 @@ function App() {
     slug: string;
     subjects?: string[];
     facultyAssigned?: string[];
+    facultyAssignments?: { id: string; name: string; subject?: string | null }[];
     is_active?: boolean;
     studentCount?: number;
     testsConducted?: number;
@@ -262,6 +263,7 @@ function App() {
     label: b.name,
     slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch',
     subjects: b.subjects ?? undefined,
+    facultyAssignments: b.faculty?.map((f) => ({ id: f.id, name: f.name, subject: f.subject ?? null })) ?? undefined,
     facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
     is_active: b.is_active,
     studentCount: b.student_count || 0,
@@ -500,6 +502,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isGlobalDataLoading, setIsGlobalDataLoading] = useState(false);
   const [showGetStarted, setShowGetStarted] = useState(true);
+  const [isAdminFacultyLoading, setIsAdminFacultyLoading] = useState(false);
   const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
   const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
   const [adminSubjects, setAdminSubjects] = useState<ApiSubject[]>([]);
@@ -538,14 +541,25 @@ function App() {
     }
   }, [user]);
 
+  const loadAdminFaculties = useCallback(async (forceRefresh = false) => {
+    setIsAdminFacultyLoading(true);
+    try {
+      const faculties = await fetchFaculties(forceRefresh);
+      setAdminFaculties(faculties);
+      return faculties;
+    } finally {
+      setIsAdminFacultyLoading(false);
+    }
+  }, []);
+
   const refreshAdminBatchDependencies = async () => {
-    const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
+    const [apiBatches, apiTests, , apiStudents] = await Promise.all([
       apiFetchBatches(),
       apiFetchTests().catch((e) => {
         console.warn('Could not fetch tests from API:', e);
         return [];
       }),
-      fetchFaculties().catch((e) => {
+      loadAdminFaculties().catch((e) => {
         console.warn('Could not fetch faculties from API:', e);
         return [];
       }),
@@ -557,7 +571,6 @@ function App() {
 
     setAdminBatches(apiBatches.map(apiBatchToInfo));
     setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-    setAdminFaculties(apiFaculties);
     setAdminStudents(apiStudents);
   };
 
@@ -627,24 +640,20 @@ function App() {
     return adminBatches.find((batch) => batch.label === label)?.slug ?? null;
   };
 
-  const addAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+  const addAdminBatch = async (label: string, subjects?: string[], facultyIds?: string[]) => {
     const trimmedLabel = label.trim();
     if (adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase())) {
       return { ok: false, error: 'A batch with this name already exists' };
     }
 
     const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
-    const facultyIds = (facultyAssigned ?? []).map(name => {
-      const fac = adminFaculties.find(f => f.name === name);
-      return fac?.id;
-    }).filter((id): id is string => !!id);
 
     try {
       showBatchToast('saving', 'Creating batch in database...');
       const apiBatch = await apiCreateBatch({
         name: trimmedLabel,
         subjects: trimmedSubjects,
-        facultyIds: facultyIds,
+        facultyIds: (facultyIds ?? []).filter(Boolean),
       });
       setAdminBatches((prev) => [...prev, apiBatchToInfo(apiBatch)]);
       showBatchToast('saved', 'Batch created in database.');
@@ -656,7 +665,7 @@ function App() {
     }
   };
 
-  const updateAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
+  const updateAdminBatch = async (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => {
     const targetLabel = oldLabel || label;
     const trimmedLabel = label.trim();
 
@@ -669,10 +678,6 @@ function App() {
     }
 
     const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
-    const facultyIds = (facultyAssigned ?? []).map(name => {
-      const fac = adminFaculties.find(f => f.name === name);
-      return fac?.id;
-    }).filter((id): id is string => !!id);
 
     if (!batchId) {
       return { ok: false, error: 'Batch not found in database.' };
@@ -683,7 +688,7 @@ function App() {
       const apiBatch = await apiUpdateBatch(batchId, {
         name: trimmedLabel,
         subjects: trimmedSubjects,
-        facultyIds: facultyIds,
+        facultyIds: (facultyIds ?? []).filter(Boolean),
       });
       setAdminBatches((prev) =>
         prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
@@ -1136,9 +1141,13 @@ function App() {
     }
 
     // 2. Faculties
-    if (user.role === 'admin' && adminLandingSection === 'faculty' && adminFaculties.length === 0) {
+    if (
+      user.role === 'admin' &&
+      (adminLandingSection === 'batches' || adminLandingSection === 'faculty') &&
+      adminFaculties.length === 0
+    ) {
       isFetching = true;
-      fetchTasks.push(fetchFaculties().then(res => setAdminFaculties(res)).catch(() => {}));
+      fetchTasks.push(loadAdminFaculties().catch(() => {}));
     }
 
     // 3. Tests
@@ -1157,7 +1166,7 @@ function App() {
       setIsGlobalDataLoading(true);
       Promise.all(fetchTasks).finally(() => setIsGlobalDataLoading(false));
     }
-  }, [user, activeTab, adminLandingSection]);
+  }, [user, activeTab, adminLandingSection, adminBatches.length, adminStudents.length, adminFaculties.length, publishedTests.length, queries.length, loadAdminFaculties]);
 
   // Reset scroll position to top when navigating between tabs or sections
   useEffect(() => {
@@ -1428,6 +1437,7 @@ function App() {
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
               adminFaculties={adminFaculties}
+              isFacultyDataLoading={isAdminFacultyLoading}
               onCreateFaculty={async (data: import('./api/faculties').CreateFacultyPayload) => {
                 showBatchToast('saving', 'Saving faculty to database...');
                 try {
@@ -1465,8 +1475,7 @@ function App() {
               }}
               onRefreshFaculties={async () => {
                 try {
-                  const refreshed = await fetchFaculties();
-                  setAdminFaculties(refreshed);
+                  await loadAdminFaculties(true);
                 } catch (err) {
                   console.error("Failed to refresh faculties:", err);
                 }
