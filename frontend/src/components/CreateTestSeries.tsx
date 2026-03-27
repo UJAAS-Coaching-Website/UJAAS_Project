@@ -191,7 +191,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const JEE_SECTION_LIMITS: Record<'Section A' | 'Section B', number> = {
     'Section A': 20,
-    'Section B': 10,
+    'Section B': 5,
   };
   const NEET_SUBJECT_LIMITS: Record<string, number> = {
     Physics: 45,
@@ -273,7 +273,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           });
         }
 
-        for (let i = 1; i <= 10; i++) {
+        for (let i = 1; i <= 5; i++) {
           demoQuestions.push({
             id: crypto.randomUUID(),
             type: 'Numerical',
@@ -446,7 +446,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   );
 
   const getRequiredCount = () => {
-    if (testData.format === 'JEE MAIN') return 90;
+    if (testData.format === 'JEE MAIN') return 75;
     if (testData.format === 'NEET') return 180;
     return 5;
   };
@@ -476,28 +476,8 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       return totalQuestionMarks;
     }
 
-    const bySubject: Record<string, { sectionA: number; sectionBMarks: number[] }> = {};
-    questions.forEach((q) => {
-      const subject = q.subject || 'General';
-      const section = (q as any).metadata?.section || 'Section A';
-      if (!bySubject[subject]) {
-        bySubject[subject] = { sectionA: 0, sectionBMarks: [] };
-      }
-      const marks = Number(q.marks ?? 0);
-      if (section === 'Section B') {
-        bySubject[subject].sectionBMarks.push(Number.isFinite(marks) ? marks : 0);
-      } else {
-        bySubject[subject].sectionA += Number.isFinite(marks) ? marks : 0;
-      }
-    });
-
-    return Object.values(bySubject).reduce((sum, subjectData) => {
-      const sectionBTop5 = subjectData.sectionBMarks
-        .sort((a, b) => b - a)
-        .slice(0, 5)
-        .reduce((acc, value) => acc + value, 0);
-      return sum + subjectData.sectionA + sectionBTop5;
-    }, 0);
+    // In the latest JEE Main pattern, Section B has 5 compulsory questions per subject.
+    return totalQuestionMarks;
   }, [questions, testData.format, totalQuestionMarks]);
 
   const marksDelta = testData.totalMarks - maxAttemptableMarks;
@@ -902,7 +882,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                   <div className="text-sm text-blue-800">
                     <p className="font-bold mb-1">Standard {testData.format} Pattern:</p>
                     {testData.format === 'JEE MAIN' ? (
-                      <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 10 Numerical Value Questions (+4, 0) - Students attempt 5'}</p>
+                      <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 5 Numerical Value Questions (+4, 0) - All are compulsory'}</p>
                     ) : (
                       <p>Physics: 45 MCQs, Chemistry: 45 MCQs, Biology: 90 MCQs (all +4, -1)</p>
                     )}

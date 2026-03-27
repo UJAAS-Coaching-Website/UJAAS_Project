@@ -146,13 +146,11 @@ export function StudentTestTaking({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
-  const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
   const autoSubmitTriggeredRef = useRef(false);
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
   const isMobileViewport = useIsMobileViewport();
 
   const isAnyPreview = isPreview || isFacultyPreview;
-  const isJeeMain = format === 'JEE MAIN';
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
 
@@ -363,32 +361,6 @@ export function StudentTestTaking({
     };
   }, [answers, isAnyPreview, onSaveProgress]);
 
-  const isSectionBQuestion = (q?: Question) =>
-    Boolean(q && isJeeMain && q.metadata?.section === 'Section B');
-
-  const sectionBAnsweredBySubject = useMemo(() => {
-    const counts: Record<string, number> = {};
-    if (!isJeeMain) return counts;
-    questions.forEach((q) => {
-      if (!isSectionBQuestion(q)) return;
-      if (isAnsweredValue(answers[q.id])) {
-        counts[q.subject] = (counts[q.subject] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [answers, questions, isJeeMain]);
-
-  const isSectionBLocked = !isAnyPreview
-    && isSectionBQuestion(question)
-    && !isAnsweredValue(answers[question?.id])
-    && (sectionBAnsweredBySubject[question?.subject || ''] || 0) >= 5;
-
-  useEffect(() => {
-    if (!isSectionBLocked) {
-      setSectionBLimitMessage(null);
-    }
-  }, [isSectionBLocked]);
-
   const isOptionSelected = (questionId: string, optionIndex: number) => {
     const answer = answers[questionId];
     return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
@@ -408,19 +380,6 @@ export function StudentTestTaking({
   };
 
   const selectAnswer = (questionId: string, value: StudentAnswer) => {
-    const targetQuestion = questions.find(q => q.id === questionId);
-    const isClearing = value === null || value === '';
-    const alreadyAnswered = isAnsweredValue(answers[questionId]);
-    if (!isClearing && !alreadyAnswered && isSectionBQuestion(targetQuestion)) {
-      const currentCount = sectionBAnsweredBySubject[targetQuestion?.subject || ''] || 0;
-      if (currentCount >= 5) {
-        setSectionBLimitMessage(
-          `Section B allows only 5 attempts in ${targetQuestion?.subject}. Clear an earlier answer to attempt this question.`
-        );
-        return;
-      }
-    }
-    setSectionBLimitMessage(null);
     setAnswers({ ...answers, [questionId]: value });
   };
 
@@ -719,11 +678,6 @@ export function StudentTestTaking({
                   </div>
 
                   {/* Options */}
-                  {!isAnyPreview && isSectionBQuestion(question) && (sectionBLimitMessage || isSectionBLocked) && (
-                    <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                      {sectionBLimitMessage || `Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`}
-                    </div>
-                  )}
                   <div className="space-y-2 sm:space-y-3">
                     {question.type !== 'Numerical' ? (
                       question.options?.map((option, index) => {
@@ -740,17 +694,13 @@ export function StudentTestTaking({
                             <button
                               onClick={() => {
                                 if (isAnyPreview) return;
-                                if (isSectionBLocked) {
-                                  setSectionBLimitMessage(`Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`);
-                                  return;
-                                }
                                 if (isMsq) {
                                   toggleMsqAnswer(question.id, index);
                                   return;
                                 }
                                 selectAnswer(question.id, index);
                               }}
-                              disabled={isAnyPreview || isSectionBLocked}
+                              disabled={isAnyPreview}
                               className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all overflow-hidden ${isCorrect ? 'border-green-500 bg-green-50 shadow-md ring-1 ring-green-200' :
                                 isSelected
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
