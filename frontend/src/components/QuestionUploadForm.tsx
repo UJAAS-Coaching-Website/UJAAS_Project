@@ -17,7 +17,7 @@ export interface Question {
   questionImage?: string;
   options?: string[];
   optionImages?: (string | undefined)[];
-  correctAnswer: number | number[] | string;
+  correctAnswer: number | number[] | string | null;
   marks?: number;
   negativeMarks?: number;
   marksDisplay?: string;
@@ -84,7 +84,7 @@ export function QuestionUploadForm({
     question: '',
     options: (fixedType || 'MCQ') === 'Numerical' ? undefined : ['', '', '', ''],
     optionImages: (fixedType || 'MCQ') === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-    correctAnswer: (fixedType || 'MCQ') === 'MSQ' ? [] : (fixedType || 'MCQ') === 'Numerical' ? '' : 0,
+    correctAnswer: (fixedType || 'MCQ') === 'MSQ' ? [] : (fixedType || 'MCQ') === 'Numerical' ? '' : null,
     difficulty: 'Medium',
     marks: defaultMarks,
     negativeMarks: defaultNegativeMarks,
@@ -92,6 +92,7 @@ export function QuestionUploadForm({
   });
   
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [marksInput, setMarksInput] = useState<string>(String(defaultMarks));
   const [negativeMarksInput, setNegativeMarksInput] = useState<string>(String(defaultNegativeMarks));
 
@@ -111,7 +112,7 @@ export function QuestionUploadForm({
         question: '',
         options: (fixedType || prev.type) === 'Numerical' ? undefined : ['', '', '', ''],
         optionImages: (fixedType || prev.type) === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-        correctAnswer: (fixedType || prev.type) === 'MSQ' ? [] : (fixedType || prev.type) === 'Numerical' ? '' : 0,
+        correctAnswer: (fixedType || prev.type) === 'MSQ' ? [] : (fixedType || prev.type) === 'Numerical' ? '' : null,
         questionImage: undefined,
         explanation: '',
         explanationImage: undefined
@@ -120,6 +121,50 @@ export function QuestionUploadForm({
       setNegativeMarksInput(String(defaultNegativeMarks));
     }
   }, [fixedType, defaultMarks, defaultNegativeMarks, fixedSubject, editingQuestion]);
+
+  useEffect(() => {
+    if (validationWarning) {
+      setValidationWarning(null);
+    }
+  }, [
+    currentQuestion.type,
+    currentQuestion.question,
+    currentQuestion.options,
+    currentQuestion.correctAnswer,
+    currentQuestion.optionImages,
+    currentQuestion.questionImage,
+  ]);
+
+  const getValidationWarning = () => {
+    if (!currentQuestion.question.trim()) {
+      return 'Question text is required.';
+    }
+
+    if (currentQuestion.type !== 'Numerical') {
+      const missingOption = (currentQuestion.options || []).some((opt, index) => {
+        const hasText = opt.trim().length > 0;
+        const hasImage = !!currentQuestion.optionImages?.[index];
+        return !hasText && !hasImage;
+      });
+      if (missingOption) {
+        return 'Please fill all options before adding the question.';
+      }
+    }
+
+    if (currentQuestion.type === 'MCQ' && typeof currentQuestion.correctAnswer !== 'number') {
+      return 'Please select one correct option for this MCQ.';
+    }
+
+    if (currentQuestion.type === 'MSQ' && (currentQuestion.correctAnswer as number[]).length === 0) {
+      return 'Please select at least one correct option for this MSQ.';
+    }
+
+    if (currentQuestion.type === 'Numerical' && String(currentQuestion.correctAnswer).trim().length === 0) {
+      return 'Please enter the correct numerical answer.';
+    }
+
+    return null;
+  };
 
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
     const file = e.target.files?.[0];
@@ -224,48 +269,37 @@ export function QuestionUploadForm({
       type,
       options: type === 'Numerical' ? undefined : ['', '', '', ''],
       optionImages: type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-      correctAnswer: type === 'MSQ' ? [] : type === 'Numerical' ? '' : 0
+      correctAnswer: type === 'MSQ' ? [] : type === 'Numerical' ? '' : null
     });
   };
 
   const handleAdd = () => {
-    const hasQuestionContent =
-      currentQuestion.question.trim().length > 0 || !!currentQuestion.questionImage;
-    const hasValidOptions =
-      currentQuestion.type === 'Numerical'
-        ? true
-        : (currentQuestion.options || []).every((opt, index) => {
-            const hasText = opt.trim().length > 0;
-            const hasImage = !!currentQuestion.optionImages?.[index];
-            return hasText || hasImage;
-          });
-    const hasValidAnswer =
-      currentQuestion.type === 'Numerical'
-        ? String(currentQuestion.correctAnswer).trim().length > 0
-        : currentQuestion.type === 'MCQ'
-        ? typeof currentQuestion.correctAnswer === 'number'
-        : (currentQuestion.correctAnswer as number[]).length > 0;
-    const isValid = hasQuestionContent && hasValidOptions && hasValidAnswer;
+    const warning = getValidationWarning();
+    if (warning) {
+      setValidationWarning(warning);
+      return;
+    }
 
-    if (isValid) {
-      onAddQuestion({
+    setValidationWarning(null);
+    onAddQuestion({
+      ...currentQuestion,
+      marksDisplay: marksInput,
+      negativeMarksDisplay: negativeMarksInput,
+    });
+    if (editingQuestion) {
+      onCancelEdit?.();
+    } else {
+      setCurrentQuestion({
         ...currentQuestion,
-        marksDisplay: marksInput,
-        negativeMarksDisplay: negativeMarksInput,
+        id: crypto.randomUUID(),
+        question: '',
+        options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
+        optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
+        correctAnswer: currentQuestion.type === 'MSQ' ? [] : currentQuestion.type === 'Numerical' ? '' : null,
+        questionImage: undefined,
+        explanation: '',
+        explanationImage: undefined
       });
-      if (editingQuestion) {
-        onCancelEdit?.();
-      } else {
-        setCurrentQuestion({
-          ...currentQuestion,
-          id: crypto.randomUUID(),
-          question: '',
-                  options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
-                  optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],
-                  questionImage: undefined,
-                  explanation: '',
-                  explanationImage: undefined
-                });      }
     }
   };
 
@@ -543,6 +577,11 @@ export function QuestionUploadForm({
         </div>
 
         <div className="pt-4 flex flex-col items-start gap-2">
+          {validationWarning && (
+            <div className="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {validationWarning}
+            </div>
+          )}
           {addDisabled && !editingQuestion && addDisabledReason && (
             <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               {addDisabledReason}
