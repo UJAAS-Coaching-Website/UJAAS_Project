@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
 import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
+import type { ApiAttemptUiState } from '../api/tests';
 import {
   Clock,
   ChevronLeft,
@@ -50,6 +51,7 @@ interface StudentTestTakingProps {
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
   initialAnswers?: Record<string, StudentAnswer>;
+  initialUiState?: ApiAttemptUiState;
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
@@ -57,7 +59,7 @@ interface StudentTestTakingProps {
   initialBatches?: string[];
   deadlineAt?: string;
   serverNow?: string;
-  onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
+  onSaveProgress?: (answers: Record<string, StudentAnswer>, uiState?: ApiAttemptUiState) => void | Promise<void>;
   enableTimer?: boolean;
   showMarksMeta?: boolean;
   outerPaddingClassName?: string;
@@ -66,6 +68,7 @@ interface StudentTestTakingProps {
 const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
 const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
 const QUESTION_INDEX_PREFIX = 'ujaasTestQuestionIdx:';
+const UI_STATE_STORAGE_PREFIX = 'ujaasTestUiState:';
 
 export function StudentTestTaking({
   testId,
@@ -78,6 +81,7 @@ export function StudentTestTaking({
   onExit,
   onSave,
   initialAnswers = {},
+  initialUiState,
   initialTimeSpent = 0,
   isPreview = false,
   isFacultyPreview = false,
@@ -103,6 +107,10 @@ export function StudentTestTaking({
         if (!isNaN(idx) && idx >= 0 && idx < (initialQuestions?.length || 0)) return idx;
       }
     } catch { /* ignore */ }
+    const uiIndex = Number(initialUiState?.currentQuestionIndex);
+    if (Number.isFinite(uiIndex) && uiIndex >= 0 && uiIndex < (initialQuestions?.length || 0)) {
+      return uiIndex;
+    }
     return 0;
   });
   const [answers, setAnswers] = useState<Record<string, StudentAnswer>>(initialAnswers);
@@ -117,10 +125,15 @@ export function StudentTestTaking({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(
+    () => new Set((initialUiState?.flaggedQuestionIds || []).filter(Boolean))
+  );
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
     () => {
-      const initial = new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : []);
+      const initial = new Set((initialUiState?.visitedQuestionIds || []).filter(Boolean));
+      if (initialQuestions && initialQuestions[0]) {
+        initial.add(initialQuestions[0].id);
+      }
       // Also mark the restored question as visited
       if (initialQuestions) {
         // Mark all answered questions as visited (they were visited in a previous session)
@@ -186,6 +199,32 @@ export function StudentTestTaking({
   }, [questions, currentSubject, currentSection]);
 
   useEffect(() => {
+    const validIds = new Set(questions.map((q) => q.id));
+    setFlaggedQuestions((prev) => {
+      const filtered = new Set(Array.from(prev).filter((id) => validIds.has(id)));
+      if (filtered.size === prev.size) return prev;
+      return filtered;
+    });
+    setVisitedQuestions((prev) => {
+      const filtered = new Set(Array.from(prev).filter((id) => validIds.has(id)));
+      if (filtered.size === prev.size) return prev;
+      return filtered;
+    });
+    setCurrentQuestion((prev) => {
+      if (questions.length === 0) return 0;
+      if (prev < 0) return 0;
+      if (prev >= questions.length) return questions.length - 1;
+      return prev;
+    });
+  }, [questions]);
+
+  const uiStatePayload = useMemo<ApiAttemptUiState>(() => ({
+    flaggedQuestionIds: Array.from(flaggedQuestions),
+    visitedQuestionIds: Array.from(visitedQuestions),
+    currentQuestionIndex: currentQuestion,
+  }), [flaggedQuestions, visitedQuestions, currentQuestion]);
+
+  useEffect(() => {
     if (isEditing) {
       setEditForm(questions[currentQuestion]);
     }
@@ -201,6 +240,26 @@ export function StudentTestTaking({
       return next;
     });
   }, [currentQuestion, questions]);
+
+  useEffect(() => {
+    if (!attemptId || initialUiState) return;
+    try {
+      const stored = localStorage.getItem(`${UI_STATE_STORAGE_PREFIX}${attemptId}`);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as ApiAttemptUiState;
+      if (Array.isArray(parsed.flaggedQuestionIds)) {
+        setFlaggedQuestions(new Set(parsed.flaggedQuestionIds.filter(Boolean)));
+      }
+      if (Array.isArray(parsed.visitedQuestionIds)) {
+        setVisitedQuestions(new Set(parsed.visitedQuestionIds.filter(Boolean)));
+      }
+      if (Number.isFinite(Number(parsed.currentQuestionIndex))) {
+        setCurrentQuestion(Number(parsed.currentQuestionIndex));
+      }
+    } catch {
+      // ignore malformed local state
+    }
+  }, [attemptId, initialUiState]);
 
   // Persist current question index to sessionStorage for refresh recovery
   useEffect(() => {
@@ -285,10 +344,10 @@ export function StudentTestTaking({
   useEffect(() => {
     if (isAnyPreview || !onSaveProgress || isSubmitting || autoSubmitTriggeredRef.current) return;
     const saveTimer = setTimeout(() => {
-      void onSaveProgress(answers);
+      void onSaveProgress(answers, uiStatePayload);
     }, 800);
     return () => clearTimeout(saveTimer);
-  }, [answers, isAnyPreview, isSubmitting, onSaveProgress]);
+  }, [answers, uiStatePayload, isAnyPreview, isSubmitting, onSaveProgress]);
 
   const handleAutoSubmit = async () => {
     if (isSubmitting || autoSubmitTriggeredRef.current) return;
@@ -341,12 +400,14 @@ export function StudentTestTaking({
     if (!attemptId) return;
     const key = `${ANSWER_FLAG_PREFIX}${attemptId}`;
     const answersKey = `${ANSWER_STORAGE_PREFIX}${attemptId}`;
+    const uiStateKey = `${UI_STATE_STORAGE_PREFIX}${attemptId}`;
     try {
       if (Object.keys(answers || {}).length > 0) {
         localStorage.setItem(answersKey, JSON.stringify(answers));
       } else {
         localStorage.removeItem(answersKey);
       }
+      localStorage.setItem(uiStateKey, JSON.stringify(uiStatePayload));
     } catch {
       // ignore storage failures
     }
@@ -355,14 +416,14 @@ export function StudentTestTaking({
     } else {
       localStorage.removeItem(key);
     }
-  }, [attemptId, hasAnyAnswer, answers]);
+  }, [attemptId, hasAnyAnswer, answers, uiStatePayload]);
 
   useEffect(() => {
     if (isAnyPreview || !onSaveProgress) return;
 
     const flushProgress = () => {
       try {
-        void onSaveProgress(answers);
+        void onSaveProgress(answers, uiStatePayload);
       } catch {
         // ignore
       }
@@ -380,7 +441,7 @@ export function StudentTestTaking({
       window.removeEventListener('pagehide', flushProgress);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [answers, isAnyPreview, onSaveProgress]);
+  }, [answers, uiStatePayload, isAnyPreview, onSaveProgress]);
 
   const isOptionSelected = (questionId: string, optionIndex: number) => {
     const answer = answers[questionId];

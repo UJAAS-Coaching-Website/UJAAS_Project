@@ -137,6 +137,12 @@ export interface ApiAttempt {
     answers: Record<string, string | number | number[] | null>;
 }
 
+export interface ApiAttemptUiState {
+    flaggedQuestionIds: string[];
+    visitedQuestionIds: string[];
+    currentQuestionIndex: number;
+}
+
 export interface ApiAttemptHistoryEntry {
     id: string;
     attempt_no: number;
@@ -336,11 +342,12 @@ export async function startMyTestAttempt(testId: string): Promise<ApiActiveAttem
 
 export async function saveMyAttemptProgress(
     attemptId: string,
-    answers: Record<string, string | number | number[] | null>
+    answers: Record<string, string | number | number[] | null>,
+    uiState?: ApiAttemptUiState
 ): Promise<ApiAttempt> {
     return request<ApiAttempt>(`/api/tests/attempts/${attemptId}/progress`, {
         method: 'PATCH',
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, uiState }),
     });
 }
 

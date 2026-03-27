@@ -14,6 +14,7 @@ import {
   startMyTestAttempt,
   saveMyAttemptProgress,
   submitMyAttempt,
+  type ApiAttemptUiState,
   type ApiActiveAttemptPayload,
   type ApiAttemptResult,
   type ApiAttemptHistoryEntry,
@@ -36,6 +37,7 @@ type TestState =
     test: PublishedTest;
     attemptId: string;
     initialAnswers: Record<string, StudentAnswer>;
+    initialUiState?: ApiAttemptUiState;
     deadlineAt: string;
     serverNow: string;
   }
@@ -47,6 +49,31 @@ const LAST_RESULT_STORAGE_KEY = 'ujaasLastAttemptResultId';
 const AUTO_SUBMIT_PENDING_KEY = 'ujaasAutoSubmitPending';
 const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
 const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
+const UI_STATE_STORAGE_PREFIX = 'ujaasTestUiState:';
+
+function extractAttemptAnswersAndUiState(rawAnswers: Record<string, StudentAnswer> | null | undefined) {
+  const source = rawAnswers && typeof rawAnswers === 'object' ? rawAnswers : {};
+  const uiStateRaw = (source as any)._uiState;
+  const answers = Object.fromEntries(
+    Object.entries(source).filter(([key]) => key !== '_uiState')
+  ) as Record<string, StudentAnswer>;
+
+  const uiState: ApiAttemptUiState | undefined = uiStateRaw && typeof uiStateRaw === 'object'
+    ? {
+      flaggedQuestionIds: Array.isArray(uiStateRaw.flaggedQuestionIds)
+        ? uiStateRaw.flaggedQuestionIds.filter((value: unknown) => typeof value === 'string')
+        : [],
+      visitedQuestionIds: Array.isArray(uiStateRaw.visitedQuestionIds)
+        ? uiStateRaw.visitedQuestionIds.filter((value: unknown) => typeof value === 'string')
+        : [],
+      currentQuestionIndex: Number.isFinite(Number(uiStateRaw.currentQuestionIndex))
+        ? Number(uiStateRaw.currentQuestionIndex)
+        : 0,
+    }
+    : undefined;
+
+  return { answers, uiState };
+}
 
 export function TestSeriesContainer({
   user,
@@ -153,13 +180,15 @@ export function TestSeriesContainer({
       localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
       const payload = await startMyTestAttempt(session.testId);
       const fullTest = apiTestToPublished(payload.test);
+      const { answers, uiState } = extractAttemptAnswersAndUiState(payload.attempt.answers as Record<string, StudentAnswer>);
       const nextState = mode === 'overview'
         ? { mode: 'overview' as const, test: fullTest }
         : {
           mode: 'taking' as const,
           test: fullTest,
           attemptId: payload.attempt.id,
-          initialAnswers: payload.attempt.answers || {},
+          initialAnswers: answers,
+          initialUiState: uiState,
           deadlineAt: payload.attempt.deadline_at,
           serverNow: payload.serverNow,
         };
@@ -273,7 +302,6 @@ export function TestSeriesContainer({
 
     const handleBeforeUnload = () => {
       const hasAnswer = localStorage.getItem(`${ANSWER_FLAG_PREFIX}${attemptId}`) === '1';
-      if (!hasAnswer) return;
       let cachedAnswers: Record<string, StudentAnswer> | undefined;
       const storedAnswers = localStorage.getItem(`${ANSWER_STORAGE_PREFIX}${attemptId}`);
       if (storedAnswers) {
@@ -283,20 +311,32 @@ export function TestSeriesContainer({
           cachedAnswers = undefined;
         }
       }
-      if (cachedAnswers) {
-        // Fire-and-forget progress save (NOT submit) so answers survive refresh
-        void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/progress`, {
-          method: 'PATCH',
-          keepalive: true,
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Device-Id': getDeviceId(),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ answers: cachedAnswers }),
-        });
+      let cachedUiState: ApiAttemptUiState | undefined;
+      const storedUiState = localStorage.getItem(`${UI_STATE_STORAGE_PREFIX}${attemptId}`);
+      if (storedUiState) {
+        try {
+          cachedUiState = JSON.parse(storedUiState) as ApiAttemptUiState;
+        } catch {
+          cachedUiState = undefined;
+        }
       }
+
+      if (!hasAnswer && !cachedUiState) return;
+      const answersPayload = cachedAnswers || {};
+      const uiStatePayload = cachedUiState;
+
+      // Fire-and-forget progress save (NOT submit) so answers and UI state survive refresh
+      void fetch(`${API_BASE_URL}/api/tests/attempts/${attemptId}/progress`, {
+        method: 'PATCH',
+        keepalive: true,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': getDeviceId(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ answers: answersPayload, uiState: uiStatePayload }),
+      });
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -345,6 +385,7 @@ export function TestSeriesContainer({
       setIsStartingTest(true);
       const payload: ApiActiveAttemptPayload = await startMyTestAttempt(testState.test.id);
       const fullTest = apiTestToPublished(payload.test);
+      const { answers, uiState } = extractAttemptAnswersAndUiState(payload.attempt.answers as Record<string, StudentAnswer>);
 
       await preloadTestAssets(fullTest.questions);
 
@@ -372,7 +413,8 @@ export function TestSeriesContainer({
         mode: 'taking',
         test: fullTest,
         attemptId: payload.attempt.id,
-        initialAnswers: payload.attempt.answers || {},
+        initialAnswers: answers,
+        initialUiState: uiState,
         deadlineAt: payload.attempt.deadline_at,
         serverNow: payload.serverNow,
       });
@@ -387,10 +429,10 @@ export function TestSeriesContainer({
     }
   };
 
-  const handleSaveProgress = async (answers: Record<string, StudentAnswer>) => {
+  const handleSaveProgress = async (answers: Record<string, StudentAnswer>, uiState?: ApiAttemptUiState) => {
     if (testState.mode !== 'taking') return;
     try {
-      await saveMyAttemptProgress(testState.attemptId, answers);
+      await saveMyAttemptProgress(testState.attemptId, answers, uiState);
     } catch (error) {
       console.error('Failed to save attempt progress', error);
     }
@@ -408,6 +450,7 @@ export function TestSeriesContainer({
       localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
       localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
       localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
+      localStorage.removeItem(`${UI_STATE_STORAGE_PREFIX}${testState.attemptId}`);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
@@ -426,6 +469,7 @@ export function TestSeriesContainer({
           localStorage.removeItem(AUTO_SUBMIT_PENDING_KEY);
           localStorage.removeItem(`${ANSWER_FLAG_PREFIX}${testState.attemptId}`);
           localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
+          localStorage.removeItem(`${UI_STATE_STORAGE_PREFIX}${testState.attemptId}`);
           const summary = await patchAttemptSummary(testState.test.id).catch(() => fetchMyTestAttemptSummary(testState.test.id));
           const latestAttemptId = summary.history[0]?.id;
 
@@ -531,6 +575,7 @@ export function TestSeriesContainer({
         onSubmit={handleCompleteTest}
         onExit={handleBackToList}
         initialAnswers={testState.initialAnswers}
+        initialUiState={testState.initialUiState}
         deadlineAt={testState.deadlineAt}
         serverNow={testState.serverNow}
         onSaveProgress={handleSaveProgress}

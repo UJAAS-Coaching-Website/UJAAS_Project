@@ -799,7 +799,32 @@ export async function startOrResumeStudentAttempt(testId, studentId, deviceId) {
     }
 }
 
-export async function saveStudentAttemptProgress(attemptId, studentId, answers, deviceId) {
+function normalizeAttemptUiState(uiState, existingUiState = null) {
+    const source = uiState && typeof uiState === "object" ? uiState : existingUiState;
+    if (!source || typeof source !== "object") {
+        return null;
+    }
+
+    const flaggedQuestionIds = Array.isArray(source.flaggedQuestionIds)
+        ? Array.from(new Set(source.flaggedQuestionIds.filter((value) => typeof value === "string" && value.trim().length > 0)))
+        : [];
+
+    const visitedQuestionIds = Array.isArray(source.visitedQuestionIds)
+        ? Array.from(new Set(source.visitedQuestionIds.filter((value) => typeof value === "string" && value.trim().length > 0)))
+        : [];
+
+    const currentQuestionIndex = Number.isFinite(Number(source.currentQuestionIndex))
+        ? Number(source.currentQuestionIndex)
+        : 0;
+
+    return {
+        flaggedQuestionIds,
+        visitedQuestionIds,
+        currentQuestionIndex,
+    };
+}
+
+export async function saveStudentAttemptProgress(attemptId, studentId, answers, uiState, deviceId) {
     if (!deviceId) {
         const error = new Error("device id required");
         error.code = "DEVICE_ID_REQUIRED";
@@ -807,7 +832,7 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
     }
 
     const lookup = await pool.query(`
-        SELECT device_id
+        SELECT device_id, answers
         FROM test_attempts
         WHERE id = $1
           AND student_id = $2
@@ -825,6 +850,19 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
         throw error;
     }
 
+    const existingAnswers = (lookup.rows[0]?.answers && typeof lookup.rows[0].answers === "object")
+        ? lookup.rows[0].answers
+        : {};
+
+    const normalizedAnswers = (answers && typeof answers === "object")
+        ? Object.fromEntries(Object.entries(answers).filter(([key]) => key !== "_uiState"))
+        : {};
+
+    const normalizedUiState = normalizeAttemptUiState(uiState, existingAnswers._uiState || null);
+    const persistedAnswers = normalizedUiState
+        ? { ...normalizedAnswers, _uiState: normalizedUiState }
+        : normalizedAnswers;
+
     const result = await pool.query(`
         UPDATE test_attempts
         SET
@@ -834,7 +872,7 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
           AND student_id = $2
           AND submitted_at IS NULL
         RETURNING id, test_id, student_id, attempt_no, started_at, deadline_at, submitted_at, auto_submitted, time_spent, score, correct_answers, wrong_answers, unattempted, answers
-    `, [attemptId, studentId, JSON.stringify(answers || {}), deviceId]);
+        `, [attemptId, studentId, JSON.stringify(persistedAnswers || {}), deviceId]);
 
     return mapAttemptRow(result.rows[0]);
 }

@@ -288,7 +288,13 @@ export async function startMyTestAttempt(req, res) {
 export async function saveMyAttemptProgress(req, res) {
     try {
         const deviceId = getDeviceIdFromRequest(req);
-        const attempt = await saveStudentAttemptProgress(req.params.attemptId, req.user.sub, req.body?.answers || {}, deviceId);
+        const attempt = await saveStudentAttemptProgress(
+            req.params.attemptId,
+            req.user.sub,
+            req.body?.answers || {},
+            req.body?.uiState || null,
+            deviceId
+        );
         if (!attempt) {
             return res.status(404).json({ message: "active attempt not found" });
         }
