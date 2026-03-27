@@ -31,6 +31,15 @@ type AnalyticsQuestionOptions = {
   includeNegativeMarks?: boolean;
 };
 
+function normalizeSectionLabel(value: string | null | undefined) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return undefined;
+  const compact = raw.toLowerCase().replace(/\s+/g, '');
+  if (compact === 'sectiona' || compact === 'a') return 'Section A';
+  if (compact === 'sectionb' || compact === 'b') return 'Section B';
+  return raw;
+}
+
 export function parseQuestionCorrectAnswer(type: string, correctAnswer: string) {
   if (type === 'MCQ') {
     return Number(correctAnswer);
@@ -65,7 +74,7 @@ export function mapApiQuestionToPublishedQuestion(question: ApiQuestionLike) {
     explanation: question.explanation || undefined,
     explanationImage: question.explanation_img || undefined,
     difficulty: question.difficulty || undefined,
-    metadata: { section: question.section || undefined },
+    metadata: { section: normalizeSectionLabel(question.section) },
   };
 }
 
@@ -84,7 +93,7 @@ export function mapApiQuestionToAnalyticsQuestion(
     subject: question.subject,
     marks: question.marks,
     type: question.type,
-    metadata: { section: question.section || undefined },
+    metadata: { section: normalizeSectionLabel(question.section) },
     explanation: question.explanation || undefined,
     explanationImage: question.explanation_img || undefined,
     userAnswer: question.user_answer,

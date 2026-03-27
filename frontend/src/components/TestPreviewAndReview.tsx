@@ -185,6 +185,14 @@ export function TestPreviewAndReview({
   const isStudentReviewMode = disableEditing && Boolean(reviewAttemptId) && Boolean(loadQuestionExplanation);
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
+  const resolveSection = (q: any) => {
+    const raw = String(q?.metadata?.section ?? q?.section ?? 'Default').trim();
+    if (!raw) return 'Default';
+    const compact = raw.toLowerCase().replace(/\s+/g, '');
+    if (compact === 'sectiona' || compact === 'a') return 'Section A';
+    if (compact === 'sectionb' || compact === 'b') return 'Section B';
+    return raw;
+  };
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
@@ -193,12 +201,12 @@ export function TestPreviewAndReview({
   // Group questions by subject and section for navigation
   const subjects = Array.from(new Set(questions.map(q => q?.subject).filter(Boolean)));
   const currentSubject = question?.subject;
-  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
-  const currentSection = (question as any)?.metadata?.section || 'Default';
+  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => resolveSection(q)))).sort();
+  const currentSection = resolveSection(question);
   const scopedPaletteQuestions = useMemo(() => {
     return questions
       .map((q, index) => ({ q, globalIndex: index }))
-      .filter(({ q }) => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
+      .filter(({ q }) => q.subject === currentSubject && resolveSection(q) === currentSection)
       .sort((a, b) => {
         const aOrder = Number((a.q as any).order_index);
         const bOrder = Number((b.q as any).order_index);
@@ -655,7 +663,7 @@ export function TestPreviewAndReview({
                   <button
                     key={sec}
                     onClick={() => {
-                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
+                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && resolveSection(q) === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
                     className={`flex-1 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold border-2 transition-all ${currentSection === sec
@@ -665,7 +673,7 @@ export function TestPreviewAndReview({
                   >
                     {sec}
                     <span className="ml-2 text-[10px] sm:text-xs opacity-60">
-                      ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
+                      ({questions.filter(q => q.subject === currentSubject && resolveSection(q) === sec).length})
                     </span>
                   </button>
                 ))}
