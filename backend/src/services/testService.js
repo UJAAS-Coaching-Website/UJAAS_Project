@@ -71,7 +71,6 @@ export async function getAllTests() {
         single: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -103,7 +102,6 @@ export async function getAllTests() {
         legacy: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -144,7 +142,6 @@ export async function getTestsForStudent(studentId) {
         single: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -229,7 +226,6 @@ export async function getTestsForStudent(studentId) {
         legacy: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -324,7 +320,6 @@ export async function getTestById(id) {
         single: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -356,7 +351,6 @@ export async function getTestById(id) {
         legacy: `
         SELECT
             t.id,
-            t.xmin::text AS version,
             t.title,
             t.format,
             ${TEST_DURATION_EXPR} AS duration_minutes,
@@ -1506,7 +1500,7 @@ export async function syncScheduledTestStatuses() {
 export async function updateTest(id, {
     title, format, durationMinutes, totalMarks,
     scheduleDate, scheduleTime, instructions,
-    batchIds, questions, partialQuestions = false, expectedVersion = null
+    batchIds, questions, partialQuestions = false
 }) {
     const client = await pool.connect();
     const imageUrlsToDelete = new Set();
@@ -1515,10 +1509,9 @@ export async function updateTest(id, {
         await ensureActiveBatchIds(batchIds, client);
 
         const existingTestResult = await client.query(
-            `SELECT title, format, duration_minutes, total_marks, scheduled_at, schedule_time, instructions, xmin::text AS version
+            `SELECT title, format, duration_minutes, total_marks, scheduled_at, schedule_time, instructions
              FROM tests
-             WHERE id = $1
-             FOR UPDATE`,
+             WHERE id = $1`,
             [id]
         );
 
@@ -1528,14 +1521,6 @@ export async function updateTest(id, {
         }
 
         const existingTest = existingTestResult.rows[0];
-        if (expectedVersion !== null && expectedVersion !== undefined) {
-            const currentVersion = String(existingTest.version);
-            if (String(expectedVersion) !== currentVersion) {
-                const error = new Error("draft was modified on another device. refresh and try again");
-                error.code = "EDIT_CONFLICT";
-                throw error;
-            }
-        }
 
         const normalizedScheduleDate = scheduleDate || "";
         const existingScheduleDate = existingTest.scheduled_at
@@ -1570,11 +1555,8 @@ export async function updateTest(id, {
         const existingBatchIds = new Set(existingBatchResult.rows.map((row) => row.batch_id));
         const nextBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
 
-        let nonMetadataMutation = false;
-
         const batchIdsToDelete = Array.from(existingBatchIds).filter((batchId) => !nextBatchIds.includes(batchId));
         if (batchIdsToDelete.length > 0) {
-            nonMetadataMutation = true;
             await client.query(
                 `DELETE FROM test_target_batches
                  WHERE test_id = $1
@@ -1585,7 +1567,6 @@ export async function updateTest(id, {
 
         const batchIdsToInsert = nextBatchIds.filter((batchId) => !existingBatchIds.has(batchId));
         if (batchIdsToInsert.length > 0) {
-            nonMetadataMutation = true;
             const batchValues = batchIdsToInsert.map((_, i) => `($1, $${i + 2})`).join(", ");
             await client.query(
                 `INSERT INTO test_target_batches (test_id, batch_id) VALUES ${batchValues} ON CONFLICT DO NOTHING`,
@@ -1617,7 +1598,6 @@ export async function updateTest(id, {
                 .filter((questionId) => !nextQuestionIds.has(questionId));
 
         if (questionIdsToDelete.length > 0) {
-            nonMetadataMutation = true;
             for (const questionRow of existingQuestionResult.rows) {
                 if (!questionIdsToDelete.includes(questionRow.id)) {
                     continue;
@@ -1643,7 +1623,6 @@ export async function updateTest(id, {
             if (question.id && existingQuestionMap.has(question.id)) {
                 const existingQuestion = existingQuestionMap.get(question.id);
                 if (existingQuestion && questionsDiffer(existingQuestion, question)) {
-                    nonMetadataMutation = true;
                     const oldUrls = collectQuestionImageUrls(existingQuestion);
                     const nextUrls = new Set(collectQuestionImageUrls(question));
 
@@ -1658,18 +1637,7 @@ export async function updateTest(id, {
                 continue;
             }
 
-            nonMetadataMutation = true;
             await insertQuestion(client, id, question);
-        }
-
-        // Ensure version advances for question/batch-only saves as well.
-        if (!metadataChanged && nonMetadataMutation) {
-            await client.query(
-                `UPDATE tests
-                 SET title = title
-                 WHERE id = $1`,
-                [id]
-            );
         }
 
         await client.query("COMMIT");

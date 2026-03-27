@@ -29,7 +29,6 @@ interface CreateTestSeriesProps {
   batches: BatchInfo[];
   onPublish?: (test: {
     id?: string;
-    version?: string;
     title: string;
     format: 'JEE MAIN' | 'NEET' | 'Custom';
     batches: string[];
@@ -41,7 +40,7 @@ interface CreateTestSeriesProps {
     instructions: string;
     requiresSaveBeforePublish?: boolean;
   }) => Promise<void> | void;
-  onSaveDraft?: (test: any) => Promise<{ id: string; version?: string }>;
+  onSaveDraft?: (test: any) => Promise<string>;
   resumeTest?: import('../App').PublishedTest;
 }
 
@@ -113,7 +112,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const draftIdRef = useRef<string | null>(resumeTest?.id || null);
-  const draftVersionRef = useRef<string | null>(resumeTest?.version || null);
   const testDataRef = useRef(testData);
   const questionsRef = useRef<Question[]>(questions);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -165,7 +163,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
         const resumedQuestions = source.questions || [];
         setQuestions(resumedQuestions);
         questionsRef.current = resumedQuestions;
-        draftVersionRef.current = source.version || null;
 
         if (source.title && source.batches?.length) {
           setStep(2);
@@ -311,17 +308,26 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     };
 
     let nextQuestions: Question[] = [];
+    let savedQuestionsPayload: Question[] = [];
     setQuestions(prev => {
       const exists = prev.findIndex(q => q.id === question.id);
-      if (exists > -1) {
+      const isExplicitEdit = Boolean(editingQuestion && editingQuestion.id === question.id);
+
+      if (exists > -1 && isExplicitEdit) {
         nextQuestions = [...prev];
         nextQuestions[exists] = enrichedQuestion;
+        savedQuestionsPayload = [enrichedQuestion];
       } else {
-        nextQuestions = [...prev, enrichedQuestion];
+        // In add mode, never replace by matching id; collisions should append as new question.
+        const questionToAppend = exists > -1
+          ? { ...enrichedQuestion, id: crypto.randomUUID() }
+          : enrichedQuestion;
+        nextQuestions = [...prev, questionToAppend];
+        savedQuestionsPayload = [questionToAppend];
       }
       // Auto-save with the new list/delta
       if (draftIdRef.current) {
-        void handleSaveDraftClick(undefined, [enrichedQuestion], { partialQuestions: true });
+        void handleSaveDraftClick(undefined, savedQuestionsPayload, { partialQuestions: true });
       } else {
         void handleSaveDraftClick(undefined, nextQuestions);
       }
@@ -457,7 +463,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
         await onPublish({
           id: draftId || undefined,
-          version: draftVersionRef.current || undefined,
           title: testData.title,
           format: testData.format,
           batches: testData.selectedBatches,
@@ -520,20 +525,16 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           questions: overrideQuestions ?? currentQuestions,
           instructions: metadataToSave.instructions,
           partialQuestions: Boolean(options?.partialQuestions && draftIdRef.current),
-          expectedVersion: draftVersionRef.current || undefined,
         };
 
-        const saveResult = await onSaveDraft(dataToSave);
-        if (saveResult?.id) {
-          draftIdRef.current = saveResult.id;
-          setDraftId(saveResult.id);
-        }
-        if (saveResult?.version) {
-          draftVersionRef.current = saveResult.version;
+        const newId = await onSaveDraft(dataToSave);
+        if (newId) {
+          draftIdRef.current = newId;
+          setDraftId(newId);
         }
         setLastSavedMetadataSnapshot(getMetadataSnapshot(metadataToSave));
         setIsDraftDirty(false);
-        return saveResult?.id || draftIdRef.current || undefined;
+        return newId || draftIdRef.current || undefined;
       } catch (error) {
         console.error("Failed to save draft:", error);
         return undefined;

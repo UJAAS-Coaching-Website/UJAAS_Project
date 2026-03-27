@@ -110,7 +110,6 @@ export function mapApiTestToPublished(test: ApiTest): PublishedTest {
 
   return {
     id: test.id,
-    version: test.version !== undefined && test.version !== null ? String(test.version) : undefined,
     title: test.title,
     format: test.format || 'Custom',
     batches: test.batches.map((batch) => batch.name),
