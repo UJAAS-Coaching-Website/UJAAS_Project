@@ -298,18 +298,35 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     if (!editingQuestion && addDisabled) {
       return;
     }
-    const enrichedQuestion = {
-      ...question,
-      subject: activeSubject,
-      metadata: {
-        section: testData.format === 'JEE MAIN' ? activeSection : undefined
-      },
-      order_index: filteredQuestions.length,
-    };
-
     let nextQuestions: Question[] = [];
     let savedQuestionsPayload: Question[] = [];
     setQuestions(prev => {
+      const scopedQuestions = prev.filter((q) => {
+        if (q.subject !== activeSubject) return false;
+        if (testData.format !== 'JEE MAIN') return true;
+        return ((q as any).metadata?.section || 'Section A') === activeSection;
+      });
+
+      const maxScopedOrderIndex = scopedQuestions.reduce((maxValue, q) => {
+        const value = Number((q as any).order_index);
+        if (!Number.isFinite(value)) return maxValue;
+        return Math.max(maxValue, value);
+      }, -1);
+
+      const incomingOrderIndex = Number((question as any).order_index);
+      const resolvedOrderIndex = Number.isFinite(incomingOrderIndex)
+        ? incomingOrderIndex
+        : maxScopedOrderIndex + 1;
+
+      const enrichedQuestion = {
+        ...question,
+        subject: activeSubject,
+        metadata: {
+          section: testData.format === 'JEE MAIN' ? activeSection : undefined
+        },
+        order_index: resolvedOrderIndex,
+      };
+
       const exists = prev.findIndex(q => q.id === question.id);
       const isExplicitEdit = Boolean(editingQuestion && editingQuestion.id === question.id);
 
