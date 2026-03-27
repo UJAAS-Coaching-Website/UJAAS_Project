@@ -1,10 +1,15 @@
 import { pool } from "../db/index.js";
+import { deleteLandingPageImageFromStorage } from "./storageService.js";
 
 const DEFAULT_CONTACT = {
     phone: "+91 98765 43210", 
     email: "info@ujaas.com", 
     address: "123 Education St, Delhi"
 };
+
+function isManagedLandingImageUrl(imageUrl) {
+    return typeof imageUrl === "string" && imageUrl.includes("/landing-page/");
+}
 
 export async function getLandingData() {
     const data = {
@@ -35,8 +40,22 @@ export async function getLandingData() {
 
 export async function updateFullLandingData(data) {
     const client = await pool.connect();
+    let previousImageUrls = [];
+    let currentImageUrls = [];
     try {
         await client.query("BEGIN");
+
+        const [prevFaculty, prevAchievers, prevVisions] = await Promise.all([
+            client.query("SELECT image_url FROM landing_faculty WHERE image_url IS NOT NULL"),
+            client.query("SELECT image_url FROM landing_achievers WHERE image_url IS NOT NULL"),
+            client.query("SELECT image_url FROM landing_visions WHERE image_url IS NOT NULL"),
+        ]);
+
+        previousImageUrls = [
+            ...prevFaculty.rows.map((row) => row.image_url),
+            ...prevAchievers.rows.map((row) => row.image_url),
+            ...prevVisions.rows.map((row) => row.image_url),
+        ].filter(Boolean);
 
         if (data.courses && Array.isArray(data.courses)) {
             // Accept both {id, name} objects and plain strings
@@ -119,6 +138,18 @@ export async function updateFullLandingData(data) {
             }
         }
 
+        const [nextFaculty, nextAchievers, nextVisions] = await Promise.all([
+            client.query("SELECT image_url FROM landing_faculty WHERE image_url IS NOT NULL"),
+            client.query("SELECT image_url FROM landing_achievers WHERE image_url IS NOT NULL"),
+            client.query("SELECT image_url FROM landing_visions WHERE image_url IS NOT NULL"),
+        ]);
+
+        currentImageUrls = [
+            ...nextFaculty.rows.map((row) => row.image_url),
+            ...nextAchievers.rows.map((row) => row.image_url),
+            ...nextVisions.rows.map((row) => row.image_url),
+        ].filter(Boolean);
+
         await client.query("COMMIT");
     } catch (error) {
         await client.query("ROLLBACK");
@@ -126,5 +157,19 @@ export async function updateFullLandingData(data) {
     } finally {
         client.release();
     }
+
+    const currentSet = new Set(currentImageUrls);
+    const removedImageUrls = Array.from(
+        new Set(previousImageUrls.filter((imageUrl) => isManagedLandingImageUrl(imageUrl) && !currentSet.has(imageUrl)))
+    );
+
+    for (const imageUrl of removedImageUrls) {
+        try {
+            await deleteLandingPageImageFromStorage(imageUrl);
+        } catch (error) {
+            console.error("Landing image cleanup failed:", imageUrl, error?.message || error);
+        }
+    }
+
     return getLandingData();
 }

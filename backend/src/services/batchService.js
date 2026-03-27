@@ -1,5 +1,11 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
+import {
+    deleteAllImagesForContext,
+    deleteNoteFromStorage,
+    deleteQuestionBankFileFromStorage,
+    deleteTimetableFromStorage,
+} from "./storageService.js";
 
 async function tableExists(tableName, client = pool) {
     const result = await client.query(
@@ -365,6 +371,12 @@ export async function deleteBatch(id) {
 
 export async function permanentlyDeleteBatch(id) {
     const client = await pool.connect();
+    let summary = null;
+    let timetableUrlToDelete = null;
+    let noteUrlsToDelete = [];
+    let questionBankFileUrlsToDelete = [];
+    let exclusiveDppIds = [];
+    let exclusiveTestIds = [];
 
     try {
         await client.query("BEGIN");
@@ -384,6 +396,7 @@ export async function permanentlyDeleteBatch(id) {
         }
 
         const batch = batchResult.rows[0];
+        timetableUrlToDelete = batch.timetable_url || null;
         if (batch.is_active) {
             const error = new Error("only inactive batches can be deleted permanently");
             error.code = "BATCH_NOT_INACTIVE";
@@ -412,7 +425,7 @@ export async function permanentlyDeleteBatch(id) {
             client.query(`SELECT ttb.test_id, COUNT(all_links.batch_id)::int AS linked_batch_count FROM test_target_batches ttb JOIN test_target_batches all_links ON all_links.test_id = ttb.test_id WHERE ttb.batch_id = $1 GROUP BY ttb.test_id`, [id]),
         ]);
 
-        const exclusiveTestIds = [];
+        exclusiveTestIds = [];
         const sharedTestIds = [];
         for (const row of testLinkRowsResult.rows) {
             if (Number(row.linked_batch_count) > 1) {
@@ -420,6 +433,49 @@ export async function permanentlyDeleteBatch(id) {
             } else {
                 exclusiveTestIds.push(row.test_id);
             }
+        }
+
+        const dppIdsResult = await client.query(
+            `SELECT d.id
+             FROM dpps d
+             JOIN chapters c ON c.id = d.chapter_id
+             WHERE c.${chapterFilter}`,
+            [id]
+        );
+        exclusiveDppIds = dppIdsResult.rows.map((row) => row.id).filter(Boolean);
+
+        const noteUrlsResult = await client.query(
+            `SELECT n.file_url
+             FROM notes n
+             JOIN chapters c ON c.id = n.chapter_id
+             WHERE c.${chapterFilter}
+               AND n.file_url IS NOT NULL`,
+            [id]
+        );
+        noteUrlsToDelete = Array.from(new Set(noteUrlsResult.rows.map((row) => row.file_url).filter(Boolean)));
+
+        const orphanQuestionBankFilesResult = await client.query(
+            `SELECT DISTINCT qbf.id, qbf.file_url
+             FROM question_bank_files qbf
+             JOIN question_bank_batch_links qbl ON qbl.question_bank_file_id = qbf.id
+             WHERE qbl.batch_id = $1
+               AND (
+                 SELECT COUNT(*)
+                 FROM question_bank_batch_links qbl2
+                 WHERE qbl2.question_bank_file_id = qbf.id
+               ) = 1`,
+            [id]
+        );
+        const orphanQuestionBankFileIds = orphanQuestionBankFilesResult.rows.map((row) => row.id).filter(Boolean);
+        questionBankFileUrlsToDelete = Array.from(
+            new Set(orphanQuestionBankFilesResult.rows.map((row) => row.file_url).filter(Boolean))
+        );
+
+        if (orphanQuestionBankFileIds.length > 0) {
+            await client.query(
+                `DELETE FROM question_bank_files WHERE id = ANY($1::uuid[])`,
+                [orphanQuestionBankFileIds]
+            );
         }
 
         await client.query(`DELETE FROM dpp_attempts da WHERE EXISTS (SELECT 1 FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE d.id = da.dpp_id AND c.${chapterFilter})`, [id]);
@@ -478,7 +534,7 @@ export async function permanentlyDeleteBatch(id) {
 
         await client.query("COMMIT");
 
-        return {
+        summary = {
             deletedBatchId: id,
             removedStudentLinks: Number(studentLinkCountResult.rows[0]?.count ?? 0),
             removedFacultyLinks: Number(facultyLinkCountResult.rows[0]?.count ?? 0),
@@ -494,6 +550,40 @@ export async function permanentlyDeleteBatch(id) {
     } finally {
         client.release();
     }
+
+    if (timetableUrlToDelete) {
+        try {
+            await deleteTimetableFromStorage(timetableUrlToDelete);
+        } catch (error) {
+            console.error("Timetable storage cleanup failed:", error?.message || error);
+        }
+    }
+
+    for (const noteUrl of noteUrlsToDelete) {
+        try {
+            await deleteNoteFromStorage(noteUrl);
+        } catch (error) {
+            console.error("Notes storage cleanup failed:", noteUrl, error?.message || error);
+        }
+    }
+
+    for (const fileUrl of questionBankFileUrlsToDelete) {
+        try {
+            await deleteQuestionBankFileFromStorage(fileUrl);
+        } catch (error) {
+            console.error("Question-bank storage cleanup failed:", fileUrl, error?.message || error);
+        }
+    }
+
+    for (const testId of exclusiveTestIds) {
+        await deleteAllImagesForContext("tests", testId);
+    }
+
+    for (const dppId of exclusiveDppIds) {
+        await deleteAllImagesForContext("dpps", dppId);
+    }
+
+    return summary;
 }
 
 /**

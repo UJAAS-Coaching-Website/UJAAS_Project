@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel, pickStudentBatchModel } from "./studentBatchModel.js";
+import { deleteAllImagesForContext, deleteImageFromStorage } from "./storageService.js";
 import {
     mapAssessmentQuestionRow,
     mapAttemptQuestionsForResult,
@@ -1303,6 +1304,42 @@ function questionsDiffer(existingQuestion, nextQuestion) {
     );
 }
 
+function collectQuestionImageUrls(question) {
+    const urls = [];
+
+    if (typeof question?.questionImage === "string" && question.questionImage) {
+        urls.push(question.questionImage);
+    }
+
+    if (Array.isArray(question?.optionImages)) {
+        for (const value of question.optionImages) {
+            if (typeof value === "string" && value) {
+                urls.push(value);
+            }
+        }
+    }
+
+    if (typeof question?.explanationImage === "string" && question.explanationImage) {
+        urls.push(question.explanationImage);
+    }
+
+    return urls;
+}
+
+function isManagedContextImageUrl(url, context) {
+    return typeof url === "string" && url.includes(`/questions/${context}/`);
+}
+
+async function cleanupImageUrls(urlsToDelete) {
+    for (const imageUrl of urlsToDelete) {
+        try {
+            await deleteImageFromStorage(imageUrl);
+        } catch (error) {
+            console.error("Test image cleanup failed:", imageUrl, error?.message || error);
+        }
+    }
+}
+
 async function insertQuestion(client, testId, question) {
     await client.query(
         `INSERT INTO questions (
@@ -1462,6 +1499,7 @@ export async function updateTest(id, {
     batchIds, questions
 }) {
     const client = await pool.connect();
+    const imageUrlsToDelete = new Set();
     try {
         await client.query("BEGIN");
         await ensureActiveBatchIds(batchIds, client);
@@ -1553,6 +1591,19 @@ export async function updateTest(id, {
             .filter((questionId) => !nextQuestionIds.has(questionId));
 
         if (questionIdsToDelete.length > 0) {
+            for (const questionRow of existingQuestionResult.rows) {
+                if (!questionIdsToDelete.includes(questionRow.id)) {
+                    continue;
+                }
+
+                const normalized = normalizeStoredQuestion(questionRow);
+                for (const imageUrl of collectQuestionImageUrls(normalized)) {
+                    if (isManagedContextImageUrl(imageUrl, "tests")) {
+                        imageUrlsToDelete.add(imageUrl);
+                    }
+                }
+            }
+
             await client.query(
                 `DELETE FROM questions
                  WHERE test_id = $1
@@ -1565,6 +1616,15 @@ export async function updateTest(id, {
             if (question.id && existingQuestionMap.has(question.id)) {
                 const existingQuestion = existingQuestionMap.get(question.id);
                 if (existingQuestion && questionsDiffer(existingQuestion, question)) {
+                    const oldUrls = collectQuestionImageUrls(existingQuestion);
+                    const nextUrls = new Set(collectQuestionImageUrls(question));
+
+                    for (const oldUrl of oldUrls) {
+                        if (isManagedContextImageUrl(oldUrl, "tests") && !nextUrls.has(oldUrl)) {
+                            imageUrlsToDelete.add(oldUrl);
+                        }
+                    }
+
                     await updateQuestion(client, question);
                 }
                 continue;
@@ -1574,6 +1634,11 @@ export async function updateTest(id, {
         }
 
         await client.query("COMMIT");
+
+        if (imageUrlsToDelete.size > 0) {
+            await cleanupImageUrls(imageUrlsToDelete);
+        }
+
         return getTestById(id);
     } catch (error) {
         await client.query("ROLLBACK");
@@ -1587,6 +1652,8 @@ export async function updateTest(id, {
  * Delete a test (cascades to questions and test_target_batches).
  */
 export async function deleteTest(id) {
+    await deleteAllImagesForContext("tests", id);
+
     const result = await pool.query(
         "DELETE FROM tests WHERE id = $1 RETURNING id",
         [id]

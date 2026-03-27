@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { pickStudentBatchModel } from "./studentBatchModel.js";
+import { deleteAllImagesForContext, deleteImageFromStorage } from "./storageService.js";
 import {
     calculateTotalMarks,
     mapAssessmentQuestionRow,
@@ -8,6 +9,70 @@ import {
 } from "./assessmentCore.js";
 
 const MAX_DPP_ATTEMPTS = 3;
+
+function collectQuestionImageUrls(question) {
+    const urls = [];
+
+    if (typeof question?.question_img === "string" && question.question_img) {
+        urls.push(question.question_img);
+    }
+
+    if (Array.isArray(question?.option_imgs)) {
+        for (const value of question.option_imgs) {
+            if (typeof value === "string" && value) {
+                urls.push(value);
+            }
+        }
+    }
+
+    if (typeof question?.explanation_img === "string" && question.explanation_img) {
+        urls.push(question.explanation_img);
+    }
+
+    return urls;
+}
+
+function collectIncomingQuestionImageUrls(question) {
+    const urls = [];
+
+    const questionImage = question?.questionImage || question?.question_img;
+    if (typeof questionImage === "string" && questionImage) {
+        urls.push(questionImage);
+    }
+
+    const optionImages = Array.isArray(question?.optionImages)
+        ? question.optionImages
+        : Array.isArray(question?.option_imgs)
+            ? question.option_imgs
+            : [];
+
+    for (const value of optionImages) {
+        if (typeof value === "string" && value) {
+            urls.push(value);
+        }
+    }
+
+    const explanationImage = question?.explanationImage || question?.explanation_img;
+    if (typeof explanationImage === "string" && explanationImage) {
+        urls.push(explanationImage);
+    }
+
+    return urls;
+}
+
+function isManagedContextImageUrl(url, context) {
+    return typeof url === "string" && url.includes(`/questions/${context}/`);
+}
+
+async function cleanupImageUrls(urlsToDelete) {
+    for (const imageUrl of urlsToDelete) {
+        try {
+            await deleteImageFromStorage(imageUrl);
+        } catch (error) {
+            console.error("DPP image cleanup failed:", imageUrl, error?.message || error);
+        }
+    }
+}
 
 async function ensureActiveBatchForChapter(chapterId, client = pool) {
     const result = await client.query(`
@@ -806,9 +871,32 @@ export async function createDpp({ title, instructions, chapterId, createdBy, que
 
 export async function updateDpp(dppId, { title, instructions, chapterId, questions = [] }) {
     const client = await pool.connect();
+    const imageUrlsToDelete = new Set();
     try {
         await client.query("BEGIN");
         await ensureActiveBatchForChapter(chapterId, client);
+
+        const existingQuestionImagesResult = await client.query(
+            `SELECT question_img, option_imgs, explanation_img FROM questions WHERE dpp_id = $1`,
+            [dppId]
+        );
+
+        const incomingImageUrls = new Set();
+        for (const question of questions) {
+            for (const imageUrl of collectIncomingQuestionImageUrls(question)) {
+                if (isManagedContextImageUrl(imageUrl, "dpps")) {
+                    incomingImageUrls.add(imageUrl);
+                }
+            }
+        }
+
+        for (const questionRow of existingQuestionImagesResult.rows) {
+            for (const imageUrl of collectQuestionImageUrls(questionRow)) {
+                if (isManagedContextImageUrl(imageUrl, "dpps") && !incomingImageUrls.has(imageUrl)) {
+                    imageUrlsToDelete.add(imageUrl);
+                }
+            }
+        }
 
         await client.query(`
             UPDATE dpps
@@ -885,6 +973,11 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
         }
 
         await client.query("COMMIT");
+
+        if (imageUrlsToDelete.size > 0) {
+            await cleanupImageUrls(imageUrlsToDelete);
+        }
+
         return getDppByIdForUser(dppId, { role: "faculty" });
     } catch (error) {
         await client.query("ROLLBACK");
@@ -897,6 +990,8 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
 export async function deleteDpp(dppId) {
     const client = await pool.connect();
     try {
+        await deleteAllImagesForContext("dpps", dppId);
+
         await client.query("BEGIN");
         await client.query(`DELETE FROM questions WHERE dpp_id = $1`, [dppId]);
         await client.query(`DELETE FROM dpp_target_batches WHERE dpp_id = $1`, [dppId]);
