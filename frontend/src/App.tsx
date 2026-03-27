@@ -1203,6 +1203,16 @@ function App() {
     }
   }, [user, activeTab, adminLandingSection, adminBatches.length, adminStudents.length, adminFaculties.length, publishedTests.length, queries.length, loadAdminFaculties]);
 
+  useEffect(() => {
+    if (!user) return;
+    const inTestSeriesView = activeTab === 'test-series' || adminLandingSection === 'test-series';
+    if (!inTestSeriesView) return;
+
+    apiFetchTests(true)
+      .then((res) => setPublishedTests((res as ApiTest[]).map(apiTestToPublished)))
+      .catch(() => {});
+  }, [user, activeTab, adminLandingSection]);
+
   // Reset scroll position to top when navigating between tabs or sections
   useEffect(() => {
     window.scrollTo(0, 0);

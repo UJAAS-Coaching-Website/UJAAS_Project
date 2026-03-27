@@ -29,9 +29,10 @@ router.get("/:id/attempts/analysis", authenticate, requireAnyRole("admin", "facu
 router.get("/:id/attempts", authenticate, requireRole("student"), checkCache(req => `student:${req.user?.sub}:test:${req.params.id}:summary`, 600), getMyTestAttemptSummary);
 router.post("/:id/attempts/start", authenticate, requireRole("student"), invalidateCache(req => [`student:${req.user?.sub}:*`]), startMyTestAttempt);
 
-// Allow read access for admins, faculty, and students with role-aware filtering
-router.get("/", authenticate, requireAnyRole("admin", "faculty", "student"), checkCache(req => `tests:list:user:${req.user?.sub || 'anon'}:role:${req.user?.role || 'anon'}`, 600), listTests);
-router.get("/:id", authenticate, requireAnyRole("admin", "faculty", "student"), checkCache(req => `test:${req.params.id}:details`, 3600), getTest);
+// Allow read access for admins, faculty, and students with role-aware filtering.
+// Do not cache test list/details: status transitions (upcoming -> live) must be visible immediately.
+router.get("/", authenticate, requireAnyRole("admin", "faculty", "student"), listTests);
+router.get("/:id", authenticate, requireAnyRole("admin", "faculty", "student"), getTest);
 
 // Modification routes
 router.post("/", authenticate, requireRole("admin"), invalidateCache(['tests:list:*']), handleCreateTest);

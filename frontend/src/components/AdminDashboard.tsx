@@ -2546,6 +2546,10 @@ function TestSeriesManagementTab({
   const [forceLiveLoadingTestId, setForceLiveLoadingTestId] = useState<string | null>(null);
   const [testOverrides, setTestOverrides] = useState<Record<string, import('../App').PublishedTest>>({});
 
+  useEffect(() => {
+    setTestOverrides({});
+  }, [publishedTests]);
+
   const handleDelete = (testId: string, testTitle: string) => {
     if (window.confirm(`Are you sure you want to delete the test series "${testTitle}"? This action cannot be undone.`)) {
       onDeletePublishedTest(testId);

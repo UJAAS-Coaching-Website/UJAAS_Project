@@ -1,5 +1,6 @@
 import { syncScheduledTestStatuses } from "./testService.js";
 import { createMultiBatchNotification, cleanupExpiredReviewNotifications } from "./notificationService.js";
+import { flushPattern } from "../utils/cacheInvalidator.js";
 
 const DEFAULT_INTERVAL_MS = 30_000;
 
@@ -16,6 +17,12 @@ export function startTestStatusScheduler(intervalMs = DEFAULT_INTERVAL_MS) {
             const result = await syncScheduledTestStatuses();
             if (result.liveCount > 0) {
                 console.log(`Test status sync updated ${result.liveCount} tests to live`);
+
+                // Invalidate cached test lists/details so all roles see live status immediately.
+                await flushPattern("tests:list:*");
+                for (const test of result.liveTests) {
+                    await flushPattern(`test:${test.id}:*`);
+                }
                 
                 // Trigger Notifications for each live test
                 for (const test of result.liveTests) {

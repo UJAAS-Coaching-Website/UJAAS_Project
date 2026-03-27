@@ -1517,7 +1517,7 @@ export async function syncScheduledTestStatuses() {
     const liveResult = await pool.query(`
         UPDATE tests t
         SET status = 'live'
-        WHERE t.status IN ('upcoming', 'completed')
+                WHERE t.status = 'upcoming'
           AND ${TEST_SCHEDULE_TS_EXPR} IS NOT NULL
           AND NOW() >= ${TEST_SCHEDULE_TS_EXPR}
         RETURNING t.id
