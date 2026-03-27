@@ -124,7 +124,7 @@ export async function handleUpdateTest(req, res) {
         const {
             title, format, durationMinutes, totalMarks,
             scheduleDate, scheduleTime, instructions,
-            batchIds, questions
+            batchIds, questions, partialQuestions, expectedVersion
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -148,7 +148,9 @@ export async function handleUpdateTest(req, res) {
             scheduleTime,
             instructions,
             batchIds,
-            questions
+            questions,
+            partialQuestions: Boolean(partialQuestions),
+            expectedVersion: expectedVersion ?? null,
         });
 
         if (!test) {
@@ -168,6 +170,9 @@ export async function handleUpdateTest(req, res) {
 
         return res.status(200).json(test);
     } catch (error) {
+        if (error?.code === "EDIT_CONFLICT") {
+            return res.status(409).json({ message: "This draft was updated from another device. Please refresh and retry." });
+        }
         if (error?.code === "INVALID_BATCH_ASSIGNMENT") {
             return res.status(400).json({ message: error.message });
         }

@@ -99,6 +99,7 @@ export interface ApiQuestion {
 
 export interface ApiTest {
     id: string;
+    version?: string;
     title: string;
     format: string | null;
     duration_minutes: number;
@@ -249,6 +250,8 @@ export interface CreateTestPayload {
     batchIds: string[];
     questions: any[];
     status?: 'draft' | 'upcoming';
+    partialQuestions?: boolean;
+    expectedVersion?: string;
 }
 
 let testsCache: ApiTest[] | null = null;

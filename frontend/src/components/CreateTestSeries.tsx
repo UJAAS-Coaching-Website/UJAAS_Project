@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { fetchBatches as apiFetchBatches } from '../api/batches';
+import { fetchTestById } from '../api/tests';
+import { mapApiTestToPublished as mapApiTestToPublishedTest } from '../utils/testMappings';
 
 interface BatchInfo {
   label: string;
@@ -27,6 +29,7 @@ interface CreateTestSeriesProps {
   batches: BatchInfo[];
   onPublish?: (test: {
     id?: string;
+    version?: string;
     title: string;
     format: 'JEE MAIN' | 'NEET' | 'Custom';
     batches: string[];
@@ -38,7 +41,7 @@ interface CreateTestSeriesProps {
     instructions: string;
     requiresSaveBeforePublish?: boolean;
   }) => Promise<void> | void;
-  onSaveDraft?: (test: any) => Promise<string>;
+  onSaveDraft?: (test: any) => Promise<{ id: string; version?: string }>;
   resumeTest?: import('../App').PublishedTest;
 }
 
@@ -109,38 +112,92 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const [isDraftDirty, setIsDraftDirty] = useState(false);
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const draftIdRef = useRef<string | null>(resumeTest?.id || null);
+  const draftVersionRef = useRef<string | null>(resumeTest?.version || null);
+  const testDataRef = useRef(testData);
+  const questionsRef = useRef<Question[]>(questions);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isHydratingDraft, setIsHydratingDraft] = useState(false);
   const [showStep2Validation, setShowStep2Validation] = useState(false);
   const latestSavePromiseRef = useRef<Promise<string | undefined> | null>(null);
   const isDraftDirtyRef = useRef(isDraftDirty);
 
-  // Resume from draft: pre-populate data
   useEffect(() => {
-    if (resumeTest) {
-      const resumedTestData = {
-        title: resumeTest.title || '',
-        format: (resumeTest.format || 'Custom') as any,
-        selectedBatches: resumeTest.batches || [],
-        duration: resumeTest.duration || 180,
-        totalMarks: resumeTest.totalMarks || 300,
-        passingMarks: 120,
-        scheduleDate: resumeTest.scheduleDate || '',
-        scheduleTime: resumeTest.scheduleTime || '09:00',
-        instructions: resumeTest.instructions || ''
+    testDataRef.current = testData;
+  }, [testData]);
+
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
+
+  useEffect(() => {
+    draftIdRef.current = draftId;
+  }, [draftId]);
+
+  // Resume from draft: pre-populate data and hydrate full questions from API when needed.
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      if (!resumeTest) return;
+
+      const applyResumeData = (source: import('../App').PublishedTest) => {
+        const resumedTestData = {
+          title: source.title || '',
+          format: (source.format || 'Custom') as any,
+          selectedBatches: source.batches || [],
+          duration: source.duration || 180,
+          totalMarks: source.totalMarks || 300,
+          passingMarks: 120,
+          scheduleDate: source.scheduleDate || '',
+          scheduleTime: source.scheduleTime || '09:00',
+          instructions: source.instructions || ''
+        };
+        setTestData(resumedTestData);
+        testDataRef.current = resumedTestData;
+        setLastSavedMetadataSnapshot(getMetadataSnapshot(resumedTestData));
+        setIsDraftDirty(false);
+
+        const resumedQuestions = source.questions || [];
+        setQuestions(resumedQuestions);
+        questionsRef.current = resumedQuestions;
+        draftVersionRef.current = source.version || null;
+
+        if (source.title && source.batches?.length) {
+          setStep(2);
+        }
       };
-      setTestData(resumedTestData);
-      setLastSavedMetadataSnapshot(getMetadataSnapshot(resumedTestData));
-      setIsDraftDirty(false);
-      setQuestions(resumeTest.questions || []);
-      // Jump to step 2 if config is already filled
-      if (resumeTest.title && resumeTest.batches?.length) {
-        setStep(2);
+
+      applyResumeData(resumeTest);
+
+      if (!resumeTest.id) return;
+      if (Array.isArray(resumeTest.questions) && resumeTest.questions.length > 0) return;
+
+      setIsHydratingDraft(true);
+      try {
+        const apiTest = await fetchTestById(resumeTest.id);
+        if (cancelled) return;
+        const fullDraft = mapApiTestToPublishedTest(apiTest);
+        applyResumeData(fullDraft);
+      } catch (error) {
+        console.error('Failed to hydrate full draft details:', error);
+      } finally {
+        if (!cancelled) {
+          setIsHydratingDraft(false);
+        }
       }
-    }
-  }, []);
+    };
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeTest]);
 
   useEffect(() => {
     setIsDraftDirty(getMetadataSnapshot(testData) !== lastSavedMetadataSnapshot);
@@ -249,7 +306,8 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       subject: activeSubject,
       metadata: {
         section: testData.format === 'JEE MAIN' ? activeSection : undefined
-      }
+      },
+      order_index: filteredQuestions.length,
     };
 
     let nextQuestions: Question[] = [];
@@ -261,8 +319,12 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       } else {
         nextQuestions = [...prev, enrichedQuestion];
       }
-      // Auto-save with the new list
-      handleSaveDraftClick(undefined, nextQuestions);
+      // Auto-save with the new list/delta
+      if (draftIdRef.current) {
+        void handleSaveDraftClick(undefined, [enrichedQuestion], { partialQuestions: true });
+      } else {
+        void handleSaveDraftClick(undefined, nextQuestions);
+      }
       return nextQuestions;
     });
     setIsDraftDirty(true);
@@ -277,6 +339,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const handleRemoveQuestion = (id: string) => {
     const nextQuestions = questions.filter(q => q.id !== id);
     setQuestions(nextQuestions);
+    questionsRef.current = nextQuestions;
     setIsDraftDirty(true);
     // Auto-save
     handleSaveDraftClick(undefined, nextQuestions);
@@ -359,6 +422,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     }
 
     setQuestions(demoQuestions);
+    questionsRef.current = demoQuestions;
     setIsDraftDirty(true);
     handleSaveDraftClick(undefined, demoQuestions);
   };
@@ -371,6 +435,8 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           ? prev.selectedBatches.filter((b) => b !== label)
           : [...prev.selectedBatches, label],
       };
+
+        testDataRef.current = next;
 
       // Keep draft metadata in sync when batches are changed.
       if (draftId && onSaveDraft) {
@@ -391,6 +457,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
         await onPublish({
           id: draftId || undefined,
+          version: draftVersionRef.current || undefined,
           title: testData.title,
           format: testData.format,
           batches: testData.selectedBatches,
@@ -419,23 +486,30 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     }
   };
 
-  const handleSaveDraftClick = async (overrideTestData?: typeof testData, overrideQuestions?: Question[]) => {
+  const handleSaveDraftClick = async (
+    overrideTestData?: typeof testData,
+    overrideQuestions?: Question[],
+    options?: { partialQuestions?: boolean }
+  ) => {
     if (!onSaveDraft) return;
-    const savePromise = (async () => {
+    if (isHydratingDraft) return;
+    const savePromise = saveQueueRef.current.then(async () => {
       setIsSavingDraft(true);
       try {
+        const currentTestData = testDataRef.current;
+        const currentQuestions = questionsRef.current;
         const metadataToSave = {
-          title: (overrideTestData?.title ?? testData.title) || 'Untitled Draft',
-          format: overrideTestData?.format ?? testData.format,
-          selectedBatches: overrideTestData?.selectedBatches ?? testData.selectedBatches,
-          duration: overrideTestData?.duration ?? testData.duration,
-          totalMarks: overrideTestData?.totalMarks ?? testData.totalMarks,
-          scheduleDate: overrideTestData?.scheduleDate ?? testData.scheduleDate,
-          scheduleTime: overrideTestData?.scheduleTime ?? testData.scheduleTime,
-          instructions: overrideTestData?.instructions ?? testData.instructions
+          title: (overrideTestData?.title ?? currentTestData.title) || 'Untitled Draft',
+          format: overrideTestData?.format ?? currentTestData.format,
+          selectedBatches: overrideTestData?.selectedBatches ?? currentTestData.selectedBatches,
+          duration: overrideTestData?.duration ?? currentTestData.duration,
+          totalMarks: overrideTestData?.totalMarks ?? currentTestData.totalMarks,
+          scheduleDate: overrideTestData?.scheduleDate ?? currentTestData.scheduleDate,
+          scheduleTime: overrideTestData?.scheduleTime ?? currentTestData.scheduleTime,
+          instructions: overrideTestData?.instructions ?? currentTestData.instructions
         };
         const dataToSave = {
-          id: draftId || undefined,
+          id: draftIdRef.current || undefined,
           title: metadataToSave.title,
           format: metadataToSave.format,
           batches: metadataToSave.selectedBatches,
@@ -443,22 +517,32 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           totalMarks: metadataToSave.totalMarks,
           scheduleDate: metadataToSave.scheduleDate,
           scheduleTime: metadataToSave.scheduleTime,
-          questions: overrideQuestions ?? questions,
-          instructions: metadataToSave.instructions
+          questions: overrideQuestions ?? currentQuestions,
+          instructions: metadataToSave.instructions,
+          partialQuestions: Boolean(options?.partialQuestions && draftIdRef.current),
+          expectedVersion: draftVersionRef.current || undefined,
         };
 
-        const newId = await onSaveDraft(dataToSave);
-        if (newId) setDraftId(newId);
+        const saveResult = await onSaveDraft(dataToSave);
+        if (saveResult?.id) {
+          draftIdRef.current = saveResult.id;
+          setDraftId(saveResult.id);
+        }
+        if (saveResult?.version) {
+          draftVersionRef.current = saveResult.version;
+        }
         setLastSavedMetadataSnapshot(getMetadataSnapshot(metadataToSave));
         setIsDraftDirty(false);
-        return newId;
+        return saveResult?.id || draftIdRef.current || undefined;
       } catch (error) {
         console.error("Failed to save draft:", error);
         return undefined;
       } finally {
         setIsSavingDraft(false);
       }
-    })();
+    });
+
+    saveQueueRef.current = savePromise.then(() => undefined, () => undefined);
 
     latestSavePromiseRef.current = savePromise;
     const result = await savePromise;
@@ -466,6 +550,15 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       latestSavePromiseRef.current = null;
     }
     return result;
+  };
+
+  const handleBack = async () => {
+    if (latestSavePromiseRef.current) {
+      await latestSavePromiseRef.current;
+    } else if (onSaveDraft && isDraftDirtyRef.current) {
+      await handleSaveDraftClick();
+    }
+    onBack();
   };
 
   const handleContinueToAddQuestions = async () => {
@@ -600,7 +693,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           className="mb-8"
         >
           <button
-            onClick={onBack}
+            onClick={() => void handleBack()}
             className="flex items-center gap-2 text-gray-600 hover:text-teal-600 transition mb-4 font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />

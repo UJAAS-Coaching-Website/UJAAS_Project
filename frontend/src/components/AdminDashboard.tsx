@@ -2613,7 +2613,7 @@ function TestSeriesManagementTab({
                     <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
                     <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
                     {test.status === 'draft' && (
-                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
+                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{(Number.isFinite(Number(test.questionCount)) ? Number(test.questionCount) : test.questions?.length) || 0} questions added</div>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">

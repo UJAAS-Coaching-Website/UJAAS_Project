@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { API_BASE_URL } from '../api/base';
+import { getAuthHeaders } from '../api/auth';
 
 export interface Question {
   id: string;
@@ -144,6 +145,9 @@ export function QuestionUploadForm({
       const response = await fetch(`${API_BASE_URL}/api/upload`, {
         method: 'POST',
         credentials: 'include',
+        headers: {
+          ...getAuthHeaders(),
+        },
         body: formData
       });
 
@@ -202,7 +206,10 @@ export function QuestionUploadForm({
         await fetch(`${API_BASE_URL}/api/upload`, {
           method: 'DELETE',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
           body: JSON.stringify({ imageUrl })
         });
       } catch (err) {
@@ -251,7 +258,7 @@ export function QuestionUploadForm({
       } else {
         setCurrentQuestion({
           ...currentQuestion,
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           question: '',
                   options: currentQuestion.type === 'Numerical' ? undefined : ['', '', '', ''],
                   optionImages: currentQuestion.type === 'Numerical' ? undefined : [undefined, undefined, undefined, undefined],

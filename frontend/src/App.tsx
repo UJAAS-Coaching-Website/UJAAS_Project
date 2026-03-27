@@ -80,6 +80,7 @@ const GetStarted = lazy(() => import('./components/GetStarted').then((module) =>
 
 export interface User {
   id: string;
+  version?: string;
   name: string;
   email?: string | null;
   role: 'student' | 'faculty' | 'admin';
@@ -331,6 +332,7 @@ function App() {
             instructions: test.instructions,
             batchIds,
             questions: test.questions,
+            expectedVersion: test.version,
           });
         }
         const updatedApiTest = await apiUpdateTestStatus(test.id, 'upcoming');
@@ -361,7 +363,7 @@ function App() {
 
   const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
 
-  const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
+  const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; partialQuestions?: boolean; expectedVersion?: string }) => {
     showBatchToast('saving', 'Saving draft...');
     try {
       const normalize = (value: string) => value.trim().toLowerCase();
@@ -391,11 +393,13 @@ function App() {
           instructions: test.instructions,
           batchIds,
           questions: test.questions,
+          partialQuestions: Boolean((test as any).partialQuestions),
+          expectedVersion: test.expectedVersion,
         });
         const updatedApiTest = await apiFetchTestById(test.id);
         setPublishedTests(prev => prev.map(t => t.id === test.id ? apiTestToPublished(updatedApiTest) : t));
         showBatchToast('saved', 'Draft saved successfully');
-        return test.id;
+        return { id: test.id, version: updatedApiTest.version !== undefined && updatedApiTest.version !== null ? String(updatedApiTest.version) : undefined };
       } else {
         // Create new draft
         const apiTest = await apiCreateTest({
@@ -412,7 +416,7 @@ function App() {
         } as any);
         setPublishedTests(prev => [apiTestToPublished(apiTest), ...prev]);
         showBatchToast('saved', 'Draft saved successfully');
-        return apiTest.id;
+        return { id: apiTest.id, version: apiTest.version !== undefined && apiTest.version !== null ? String(apiTest.version) : undefined };
       }
     } catch (err: any) {
       showBatchToast('error', err.message || 'Failed to save draft');
@@ -476,6 +480,7 @@ function App() {
         instructions: updates.instructions !== undefined ? updates.instructions : test.instructions,
         batchIds,
         questions: updates.questions || test.questions,
+        expectedVersion: test.version,
       });
 
       setPublishedTests(prev => prev.map(t => {

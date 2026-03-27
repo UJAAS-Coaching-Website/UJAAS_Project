@@ -101,21 +101,32 @@ export function mapApiQuestionToAnalyticsQuestion(
 }
 
 export function mapApiTestToPublished(test: ApiTest): PublishedTest {
+  const questionCount = Number(test.question_count);
+  const enrolledCount = Number(test.enrolled_count);
+  const submittedAttemptCount =
+    test.submitted_attempt_count === undefined || test.submitted_attempt_count === null
+      ? undefined
+      : Number(test.submitted_attempt_count);
+
   return {
     id: test.id,
+    version: test.version !== undefined && test.version !== null ? String(test.version) : undefined,
     title: test.title,
     format: test.format || 'Custom',
     batches: test.batches.map((batch) => batch.name),
     duration: test.duration_minutes,
     totalMarks: test.total_marks,
-    questionCount: test.question_count,
-    enrolledCount: test.enrolled_count,
+    questionCount: Number.isFinite(questionCount) ? questionCount : 0,
+    enrolledCount: Number.isFinite(enrolledCount) ? enrolledCount : 0,
     scheduleDate: test.schedule_date || '',
     scheduleTime: test.schedule_time || '',
     instructions: test.instructions || undefined,
     status: test.status,
-    submittedAttemptCount: test.submitted_attempt_count,
-    maxAttempts: test.submitted_attempt_count !== undefined ? 3 : undefined,
+    submittedAttemptCount:
+      submittedAttemptCount !== undefined && Number.isFinite(submittedAttemptCount)
+        ? submittedAttemptCount
+        : undefined,
+    maxAttempts: submittedAttemptCount !== undefined ? 3 : undefined,
     hasActiveAttempt: test.has_active_attempt,
     activeAttemptId: test.active_attempt_id ?? null,
     latestAttemptId: test.latest_attempt_id ?? null,
