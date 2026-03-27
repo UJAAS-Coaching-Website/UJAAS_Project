@@ -299,10 +299,24 @@ function App() {
   const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => {
     showBatchToast('saving', 'Publishing test to database...');
     try {
-      const batchIds = adminBatches
-        .filter(b => test.batches.includes(b.label))
-        .map(b => b.id)
-        .filter(Boolean) as string[];
+      const resolveBatchIds = async (batchLabels: string[]) => {
+        const normalize = (value: string) => value.trim().toLowerCase();
+        const labelSet = new Set(batchLabels.map(normalize));
+
+        let sourceBatches = adminBatches;
+        if (sourceBatches.length === 0) {
+          const latest = await apiFetchBatches(true);
+          sourceBatches = latest.map(apiBatchToInfo);
+          setAdminBatches(sourceBatches);
+        }
+
+        return sourceBatches
+          .filter((b) => labelSet.has(normalize(b.label)))
+          .map((b) => b.id)
+          .filter(Boolean) as string[];
+      };
+
+      const batchIds = await resolveBatchIds(test.batches);
 
       if (test.id) {
         // Publishing from an existing draft — update it and change status
@@ -350,9 +364,19 @@ function App() {
   const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
     showBatchToast('saving', 'Saving draft...');
     try {
-      const batchIds = adminBatches
-        .filter(b => test.batches.includes(b.label))
-        .map(b => b.id)
+      const normalize = (value: string) => value.trim().toLowerCase();
+      const labelSet = new Set(test.batches.map(normalize));
+
+      let sourceBatches = adminBatches;
+      if (sourceBatches.length === 0) {
+        const latest = await apiFetchBatches(true);
+        sourceBatches = latest.map(apiBatchToInfo);
+        setAdminBatches(sourceBatches);
+      }
+
+      const batchIds = sourceBatches
+        .filter((b) => labelSet.has(normalize(b.label)))
+        .map((b) => b.id)
         .filter(Boolean) as string[];
 
       if (test.id) {
@@ -423,13 +447,20 @@ function App() {
 
       // We need to map batch names back to IDs if batches are updated
       let batchIds;
+      let sourceBatches = adminBatches;
+      if (sourceBatches.length === 0) {
+        const latest = await apiFetchBatches(true);
+        sourceBatches = latest.map(apiBatchToInfo);
+        setAdminBatches(sourceBatches);
+      }
+
       if (updates.batches) {
-        batchIds = adminBatches
+        batchIds = sourceBatches
           .filter(b => updates.batches!.includes(b.label))
           .map(b => b.id)
           .filter(Boolean) as string[];
       } else {
-        batchIds = adminBatches
+        batchIds = sourceBatches
           .filter(b => test.batches.includes(b.label))
           .map(b => b.id)
           .filter(Boolean) as string[];
