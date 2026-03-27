@@ -269,35 +269,44 @@ export async function fetchTestById(id: string): Promise<ApiTest> {
 }
 
 export async function createTest(data: CreateTestPayload): Promise<ApiTest> {
-    return request<ApiTest>('/api/tests', {
+    const created = await request<ApiTest>('/api/tests', {
         method: 'POST',
         body: JSON.stringify(data),
     });
+    testsCache = null;
+    return created;
 }
 
 export async function updateTestApi(id: string, data: Partial<CreateTestPayload>): Promise<ApiTest> {
-    return request<ApiTest>(`/api/tests/${id}`, {
+    const updated = await request<ApiTest>(`/api/tests/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     });
+    testsCache = null;
+    return updated;
 }
 
 export async function updateTestStatus(id: string, status: 'draft' | 'upcoming' | 'live'): Promise<ApiTest> {
-    return request<ApiTest>(`/api/tests/${id}/status`, {
+    const updated = await request<ApiTest>(`/api/tests/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
     });
+    testsCache = null;
+    return updated;
 }
 
 export async function forceTestLiveNow(id: string): Promise<ApiTest> {
-    return request<ApiTest>(`/api/tests/${id}/status`, {
+    const updated = await request<ApiTest>(`/api/tests/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'live', forceLiveNow: true }),
     });
+    testsCache = null;
+    return updated;
 }
 
 export async function deleteTestApi(id: string): Promise<void> {
     await request(`/api/tests/${id}`, { method: 'DELETE' });
+    testsCache = null;
 }
 
 export async function fetchMyAttemptResults(): Promise<ApiStudentAttemptResultListItem[]> {

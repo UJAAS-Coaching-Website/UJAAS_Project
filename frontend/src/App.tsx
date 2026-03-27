@@ -1184,9 +1184,11 @@ function App() {
     }
 
     // 3. Tests
-    if ((activeTab === 'test-series' || adminLandingSection === 'test-series') && publishedTests.length === 0) {
+    const shouldLoadTests = (activeTab === 'test-series' || adminLandingSection === 'test-series');
+    const shouldForceRefreshTests = user.role === 'student' && activeTab === 'test-series';
+    if (shouldLoadTests && (publishedTests.length === 0 || shouldForceRefreshTests)) {
       isFetching = true;
-      fetchTasks.push(apiFetchTests().then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
+      fetchTasks.push(apiFetchTests(shouldForceRefreshTests).then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
     }
 
     // 4. Queries
