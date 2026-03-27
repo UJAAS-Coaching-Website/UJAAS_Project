@@ -715,13 +715,6 @@ export function NotesManagementTab({
                     <button onClick={onViewTimetable} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition font-bold shadow-sm text-sm">
                       <Calendar className="w-4 h-4" />Time Table
                     </button>
-                    {variant === 'admin' && isCurrentBatchActive && (
-                      <>
-                        <button onClick={() => setIsAddSubjectModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-teal-50 text-teal-600 rounded-xl hover:bg-teal-100 transition font-bold shadow-sm text-sm">
-                          <Plus className="w-4 h-4" />Add Subject
-                        </button>
-                      </>
-                    )}
                   </>
                 )}
                 {currentView === 'subject' && canManageContent && (<button onClick={() => setIsAddChapterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition shadow-md font-bold"><Plus className="w-5 h-5" />Add Chapter</button>)}

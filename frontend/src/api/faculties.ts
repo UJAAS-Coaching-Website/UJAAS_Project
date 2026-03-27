@@ -42,6 +42,7 @@ export interface ApiFaculty {
     rating?: number;
     reviewCount?: number;
     joining_date?: string;
+    avatar_url?: string | null;
 }
 
 let facultiesCache: ApiFaculty[] | null = null;

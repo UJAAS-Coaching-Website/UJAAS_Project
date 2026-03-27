@@ -26,8 +26,29 @@ const upload = multer({
     }
 });
 
-router.put("/me", authenticate, requireAnyRole("student", "faculty", "admin"), invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), updateProfile);
-router.post("/avatar", authenticate, upload.single('avatar'), invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), uploadAvatar);
-router.delete("/avatar", authenticate, invalidateCache(req => [`admin:students:${req.user.sub}`, `admin:students:*`]), deleteAvatar);
+function getProfileCacheKeys(req) {
+    const userId = req.user?.sub;
+    const role = req.user?.role;
+
+    const keys = [
+        `admin:students:${userId}`,
+        "admin:students:*",
+    ];
+
+    if (role === "faculty") {
+        keys.push(
+            `admin:faculty:${userId}`,
+            "admin:faculty:list",
+            "admin:faculty:*",
+            "batch:*:faculty"
+        );
+    }
+
+    return keys;
+}
+
+router.put("/me", authenticate, requireAnyRole("student", "faculty", "admin"), invalidateCache(getProfileCacheKeys), updateProfile);
+router.post("/avatar", authenticate, upload.single('avatar'), invalidateCache(getProfileCacheKeys), uploadAvatar);
+router.delete("/avatar", authenticate, invalidateCache(getProfileCacheKeys), deleteAvatar);
 
 export default router;

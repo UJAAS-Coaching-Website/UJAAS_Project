@@ -169,6 +169,10 @@ interface Faculty {
   rating?: number;
   reviewCount?: number;
   joinDate?: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+  profileImage?: string | null;
+  profile_image?: string | null;
 }
 
 type StudentFormState = {
@@ -236,6 +240,13 @@ function renderPerformanceStars(rating: number) {
       <span className="text-sm font-bold text-gray-700 ml-1">{rating.toFixed(1)}</span>
     </div>
   );
+}
+
+function getFacultyAvatarSrc(faculty: Faculty): string | null {
+  const candidate = faculty.avatarUrl ?? faculty.avatar_url ?? faculty.profileImage ?? faculty.profile_image;
+  if (typeof candidate !== 'string') return null;
+  const trimmed = candidate.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 export function AdminDashboard({
@@ -334,7 +345,11 @@ export function AdminDashboard({
     phone: f.phone,
     rating: f.rating,
     reviewCount: Number(f.reviewCount ?? f.review_count ?? 0),
-    joinDate: f.joining_date
+    joinDate: f.joining_date,
+    avatarUrl: f.avatarUrl ?? f.avatar_url,
+    avatar_url: f.avatar_url,
+    profileImage: f.profileImage ?? f.profile_image,
+    profile_image: f.profile_image
   }));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(null);
@@ -2223,15 +2238,24 @@ function OverviewTab({
             {assignedFaculty.map(t => (
               <div key={t.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-md transition-all flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50 shrink-0 text-lg">
-                    {t.name.charAt(0)}
+                  <div className="relative w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50 shrink-0 text-lg overflow-hidden">
+                    <span>{(t.name || 'F').charAt(0).toUpperCase()}</span>
+                    {getFacultyAvatarSrc(t) && (
+                      <img
+                        src={getFacultyAvatarSrc(t) || ''}
+                        alt={`${t.name} profile`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 text-base truncate">{t.name}</h4>
                     {t.rating !== undefined && (
                       <div className="flex items-center gap-1.5 mt-1">
                         {renderPerformanceStars(t.rating)}
-                        <span className="text-[10px] font-bold text-gray-700">({t.rating.toFixed(1)})</span>
                       </div>
                     )}
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
@@ -2468,8 +2492,12 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
-            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-teal-600 transition-colors">
-              <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 overflow-hidden bg-teal-100 group-hover:bg-teal-600 transition-colors">
+              {getFacultyAvatarSrc(t) ? (
+                <img src={getFacultyAvatarSrc(t)!} alt={t.name} className="w-full h-full object-cover" />
+              ) : (
+                <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
+              )}
             </div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
             <p className="text-sm font-semibold text-teal-600 uppercase mb-1">{t.subject}</p>

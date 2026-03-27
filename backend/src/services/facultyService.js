@@ -27,6 +27,7 @@ export async function getAllFaculties() {
             u.id, 
             u.name, 
             u.login_id as email, 
+            u.avatar_url,
             s.name as subject, 
             f.subject_id,
             f.designation, 
@@ -39,9 +40,13 @@ export async function getAllFaculties() {
         LEFT JOIN subjects s ON s.id = f.subject_id
         WHERE u.role = 'faculty'
         ORDER BY u.name ASC
-    `);
+        `);
 
-    return result.rows.map(row => ({
+        if (result.rows.length > 0) {
+            console.log('📋 [DEBUG] First faculty from DB:', JSON.stringify(result.rows[0]));
+        }
+
+        return result.rows.map(row => ({
         ...row,
         rating: Number(row.rating || 0),
         reviewCount: Number(row.review_count || 0)
@@ -79,6 +84,7 @@ export async function createFaculty({ name, email, subject, phone, designation, 
             id: userId,
             name,
             email,
+            avatar_url: null,
             subject: subject || null,
             subject_id: subjectId,
             designation: designation || null,
@@ -129,7 +135,7 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
 
         // Fetch and return the updated faculty
         const result = await pool.query(`
-            SELECT u.id, u.name, u.login_id as email, s.name as subject, f.subject_id, f.designation, f.phone,
+            SELECT u.id, u.name, u.login_id as email, u.avatar_url, s.name as subject, f.subject_id, f.designation, f.phone,
                    f.rating, f.review_count,
                    TO_CHAR(f."joining-date", 'YYYY-MM-DD') AS joining_date
             FROM users u 
