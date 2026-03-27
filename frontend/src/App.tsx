@@ -533,6 +533,7 @@ function App() {
 
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLandingDataLoading, setIsLandingDataLoading] = useState(true);
   const [isGlobalDataLoading, setIsGlobalDataLoading] = useState(false);
   const [showGetStarted, setShowGetStarted] = useState(true);
   const [isAdminFacultyLoading, setIsAdminFacultyLoading] = useState(false);
@@ -1078,52 +1079,87 @@ function App() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const initializeSession = async () => {
+      const fetchLandingWithRetry = async (maxAttempts = 3) => {
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          try {
+            return await fetchLandingData();
+          } catch (error) {
+            const isLastAttempt = attempt === maxAttempts;
+            if (isLastAttempt) {
+              console.warn('Could not fetch landing data from API after retries:', error);
+              return null;
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 250 * attempt));
+          }
+        }
+        return null;
+      };
+
+      const loadLandingData = async () => {
+        const apiLanding = await fetchLandingWithRetry();
+        if (!cancelled && apiLanding) {
+          const newData = apiLanding as unknown as LandingData;
+          setLandingData(newData);
+        }
+        if (!cancelled) {
+          setIsLandingDataLoading(false);
+        }
+      };
+
+      void loadLandingData();
+
       try {
         const hasStoredToken = (() => {
           const token = localStorage.getItem('ujaasToken');
           return Boolean(token && token !== 'null' && token !== 'undefined');
         })();
 
-        const [apiLanding, profileResponse] = await Promise.all([
-          fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
-          hasStoredToken
-            ? me().catch(e => { console.warn('Could not fetch user profile:', e); return null; })
-            : Promise.resolve(null),
-        ]);
-
-        if (apiLanding) {
-          const newData = apiLanding as unknown as LandingData;
-          if (JSON.stringify(newData) !== JSON.stringify(landingData)) {
-            setLandingData(newData);
-          }
-        }
+        const profileResponse = hasStoredToken
+          ? await me().catch(e => { console.warn('Could not fetch user profile:', e); return null; })
+          : null;
 
         if (profileResponse && profileResponse.user) {
           const loggedInUser = profileResponse.user as User;
-          setUser(loggedInUser);
-          setShowGetStarted(false);
+          if (!cancelled) {
+            setUser(loggedInUser);
+            setShowGetStarted(false);
+          }
           
           // Parse the URL and route the user to the correct tab/subTab based on the URL
-          setTabFromPath(loggedInUser);
+          if (!cancelled) {
+            setTabFromPath(loggedInUser);
+          }
 
           // Fetching is now handled reactively by the loadRequiredData useEffect hook
           // that listens to activeTab and adminLandingSection.
         } else {
-          setUser(null);
-          // If no user, set empty batches
-          setAdminBatches([]);
+          if (!cancelled) {
+            setUser(null);
+            // If no user, set empty batches
+            setAdminBatches([]);
+          }
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
-        setUser(null);
-        setAdminBatches([]); // Fallback to empty on error
+        if (!cancelled) {
+          setUser(null);
+          setAdminBatches([]); // Fallback to empty on error
+        }
       }
 
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     };
 
-    initializeSession();
+    void initializeSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1340,6 +1376,7 @@ function App() {
             isNewUser={false}
             userName=""
             landingData={landingData}
+            isLandingLoading={isLandingDataLoading}
             onSubmitQuery={handleAddQuery}
           />
         </Suspense>
@@ -1385,6 +1422,7 @@ function App() {
                 isNewUser={false}
                 userName=""
                 landingData={landingData}
+                isLandingLoading={isLandingDataLoading}
                 onSubmitQuery={handleAddQuery}
               />
             </Suspense>
