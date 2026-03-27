@@ -781,7 +781,7 @@ export function StudentTestTaking({
                               value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
                               onChange={(nextValue) => selectAnswer(question.id, nextValue)}
                               placeholder="Enter numerical value"
-                              disabled={isSectionBLocked}
+                              disabled={false}
                             />
                           </div>
                         )}
