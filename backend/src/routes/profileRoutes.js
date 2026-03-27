@@ -32,7 +32,9 @@ function getProfileCacheKeys(req) {
 
     const keys = [
         `admin:students:${userId}`,
+        "admin:students:query:*",
         "admin:students:*",
+        "batch:*:students",
     ];
 
     if (role === "faculty") {

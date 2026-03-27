@@ -136,6 +136,8 @@ type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]
 interface Student {
   id: string;
   name: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
   rollNumber: string;
   enrolledCourses: string[];
   joinDate: string;
@@ -317,6 +319,8 @@ export function AdminDashboard({
     return {
       id: s.id,
       name: s.name,
+      avatarUrl: (s as any).avatarUrl ?? (s as any).avatar_url ?? null,
+      avatar_url: (s as any).avatar_url ?? null,
       rollNumber: s.roll_number,
       enrolledCourses: s.assigned_batch ? [s.assigned_batch.name] : [],
       joinDate: s.join_date || '',
@@ -4245,9 +4249,23 @@ function StudentRatingsModal({
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
-          <div>
-            <h3 className="text-xl font-bold">{student.name}</h3>
-            <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            {student.avatarUrl || student.avatar_url ? (
+              <img
+                src={(student.avatarUrl || student.avatar_url) as string}
+                alt={student.name}
+                className="w-12 h-12 rounded-full object-cover border-2 border-white/40 bg-white/20"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center font-bold text-white">
+                {student.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold truncate">{student.name}</h3>
+              <p className="text-teal-50 text-sm opacity-90 truncate">{student.batch} • {student.rollNumber}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button

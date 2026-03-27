@@ -37,6 +37,8 @@ export interface ApiStudent {
     id: string;
     name: string;
     login_id: string;
+    avatar_url?: string | null;
+    avatarUrl?: string | null;
     roll_number: string;
     phone: string | null;
     address: string | null;

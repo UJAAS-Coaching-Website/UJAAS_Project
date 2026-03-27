@@ -643,13 +643,13 @@ export async function removeFacultyFromBatch(facultyId, batchId) {
 export async function getBatchStudents(batchId) {
     const batchModel = await getStudentBatchModel();
     const result = await pool.query(batchModel === "single" ? `
-        SELECT u.id, u.name, s.roll_number, s.phone
+        SELECT u.id, u.name, u.avatar_url, s.roll_number, s.phone
         FROM students s
         JOIN users u ON u.id = s.user_id
         WHERE s.assigned_batch_id = $1
         ORDER BY u.name
     ` : `
-        SELECT u.id, u.name, s.roll_number, s.phone
+        SELECT u.id, u.name, u.avatar_url, s.roll_number, s.phone
         FROM student_batches sb
         JOIN students s ON s.user_id = sb.student_id
         JOIN users u ON u.id = sb.student_id

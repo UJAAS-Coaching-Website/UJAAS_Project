@@ -20,6 +20,8 @@ type StudentDirectoryStudent = {
   id: string;
   name: string;
   rollNumber: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
   rating: number;
   batch: string;
   email?: string;
@@ -262,6 +264,8 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     id: s.id,
     name: s.name,
     rollNumber: s.roll_number || '',
+    avatarUrl: (s as any).avatarUrl ?? (s as any).avatar_url ?? null,
+    avatar_url: (s as any).avatar_url ?? null,
     rating: computeStudentRating(s),
     batch: s.assigned_batch?.name || 'Unassigned',
     email: s.login_id || '',
@@ -409,8 +413,33 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
               {paginatedStudents.map((student) => (
                 <tr key={student.id} onClick={() => onViewStudent(student.originalObject)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                   <td className="py-4 px-4">
-                    <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{student.name}</div>
-                    <div className="text-xs text-gray-500">{student.rollNumber}</div>
+                    <div className="flex items-center gap-3">
+                      {student.avatarUrl || student.avatar_url ? (
+                        <div
+                          className="rounded-full overflow-hidden border border-gray-200 bg-gray-100 shadow-sm flex-none"
+                          style={{ width: '44px', height: '44px' }}
+                        >
+                          <img
+                            src={(student.avatarUrl || student.avatar_url) as string}
+                            alt={student.name}
+                            className="rounded-full"
+                            style={{ width: '44px', height: '44px', objectFit: 'cover' }}
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-full border border-gray-200 bg-gradient-to-br from-cyan-100 to-blue-100 text-cyan-700 font-bold text-lg leading-none flex items-center justify-center shadow-sm flex-none"
+                          style={{ width: '44px', height: '44px' }}
+                        >
+                          {student.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{student.name}</div>
+                        <div className="text-xs text-gray-500">{student.rollNumber}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap">{renderStars(student.rating)}</td>
                   <td className="py-4 px-4">
