@@ -1,34 +1,4 @@
-import { API_BASE_URL } from "./base";
-
-function getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function runRequest(
-    path: string,
-    options: RequestInit = {}
-): Promise<Response> {
-    return fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-            ...(options.headers || {}),
-        },
-    });
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await runRequest(path, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error((data as any)?.message || "Request failed");
-    }
-    return data;
-}
+import { request } from "./auth";
 
 export interface ApiFaculty {
     id: string;

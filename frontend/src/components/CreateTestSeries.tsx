@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { fetchBatches as apiFetchBatches } from '../api/batches';
 
 interface BatchInfo {
   label: string;
@@ -80,6 +81,7 @@ function getMetadataSnapshot(data: {
 }
 
 export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resumeTest }: CreateTestSeriesProps) {
+  const [apiBatches, setApiBatches] = useState<BatchInfo[]>([]);
   const [step, setStep] = useState(1);
   const [draftId, setDraftId] = useState<string | null>(resumeTest?.id || null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -157,11 +159,39 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   useBodyScrollLock(showSuccess);
 
+  const availableBatches = apiBatches.length > 0 ? apiBatches : batches;
+
+  useEffect(() => {
+    let mounted = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!mounted) return;
+        setApiBatches(
+          items
+            .filter((batch) => batch.is_active !== false)
+            .map((batch) => ({
+              label: batch.name,
+              slug: batch.slug,
+              subjects: batch.subjects ?? undefined,
+            }))
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setApiBatches([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const allWebsiteSubjects = useMemo(() => {
     const defaults = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
-    const fromBatches = batches.flatMap((batch) => batch.subjects ?? []);
+    const fromBatches = availableBatches.flatMap((batch) => batch.subjects ?? []);
     return Array.from(new Set([...defaults, ...fromBatches.map((subject) => subject.trim()).filter(Boolean)]));
-  }, [batches]);
+  }, [availableBatches]);
 
   const [customSubjects, setCustomSubjects] = useState<string[]>(allWebsiteSubjects);
 
@@ -671,7 +701,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                       Select Batches *
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {batches.map((batch) => (
+                      {availableBatches.map((batch) => (
                         <button
                           key={batch.slug}
                           onClick={() => toggleBatch(batch.label)}

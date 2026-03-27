@@ -1,30 +1,7 @@
 /**
  * Student API client — typed functions for student management.
  */
-
-function getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-            ...(options.headers || {}),
-        },
-    });
-    if (response.status === 204) return {} as T;
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error((data as any)?.message || "Request failed");
-    }
-    return data;
-}
+import { request } from "./auth";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -168,4 +145,3 @@ export async function updateStudentRating(
     studentsCache = null;
     return result;
 }
-import { API_BASE_URL } from "./base";

@@ -12,5 +12,15 @@ export const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:3
 
 export const accessCookieName = "ujaas_token";
 export const refreshCookieName = "ujaas_refresh";
-export const accessTtlSeconds = 15 * 60;
-export const refreshTtlSeconds = 7 * 24 * 60 * 60;
+
+function parsePositiveInt(value, fallback) {
+    const parsed = Number.parseInt(String(value ?? ""), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+// Keep sessions effectively persistent until explicit logout/revocation.
+// Still configurable via env for deployments that need stricter TTL.
+const persistentTtlSeconds = 10 * 365 * 24 * 60 * 60; // 10 years
+
+export const accessTtlSeconds = parsePositiveInt(process.env.ACCESS_TTL_SECONDS, persistentTtlSeconds);
+export const refreshTtlSeconds = parsePositiveInt(process.env.REFRESH_TTL_SECONDS, persistentTtlSeconds);
