@@ -364,12 +364,21 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   };
 
   const toggleBatch = (label: string) => {
-    setTestData(prev => ({
-      ...prev,
-      selectedBatches: prev.selectedBatches.includes(label)
-        ? prev.selectedBatches.filter(b => b !== label)
-        : [...prev.selectedBatches, label]
-    }));
+    setTestData((prev) => {
+      const next = {
+        ...prev,
+        selectedBatches: prev.selectedBatches.includes(label)
+          ? prev.selectedBatches.filter((b) => b !== label)
+          : [...prev.selectedBatches, label],
+      };
+
+      // Keep draft metadata in sync when batches are changed.
+      if (draftId && onSaveDraft) {
+        void handleSaveDraftClick(next);
+      }
+
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -416,14 +425,14 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       setIsSavingDraft(true);
       try {
         const metadataToSave = {
-          title: (overrideTestData?.title || testData.title) || 'Untitled Draft',
-          format: overrideTestData?.format || testData.format,
-          selectedBatches: overrideTestData?.selectedBatches || testData.selectedBatches,
-          duration: overrideTestData?.duration || testData.duration,
-          totalMarks: overrideTestData?.totalMarks || testData.totalMarks,
-          scheduleDate: overrideTestData?.scheduleDate || testData.scheduleDate,
-          scheduleTime: overrideTestData?.scheduleTime || testData.scheduleTime,
-          instructions: overrideTestData?.instructions || testData.instructions
+          title: (overrideTestData?.title ?? testData.title) || 'Untitled Draft',
+          format: overrideTestData?.format ?? testData.format,
+          selectedBatches: overrideTestData?.selectedBatches ?? testData.selectedBatches,
+          duration: overrideTestData?.duration ?? testData.duration,
+          totalMarks: overrideTestData?.totalMarks ?? testData.totalMarks,
+          scheduleDate: overrideTestData?.scheduleDate ?? testData.scheduleDate,
+          scheduleTime: overrideTestData?.scheduleTime ?? testData.scheduleTime,
+          instructions: overrideTestData?.instructions ?? testData.instructions
         };
         const dataToSave = {
           id: draftId || undefined,
@@ -434,7 +443,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           totalMarks: metadataToSave.totalMarks,
           scheduleDate: metadataToSave.scheduleDate,
           scheduleTime: metadataToSave.scheduleTime,
-          questions: overrideQuestions || questions,
+          questions: overrideQuestions ?? questions,
           instructions: metadataToSave.instructions
         };
 
