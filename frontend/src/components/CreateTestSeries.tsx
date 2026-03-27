@@ -354,10 +354,21 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     setEditingQuestion(null);
   };
 
-  const filteredQuestions = questions.filter(q =>
-    q.subject === activeSubject &&
-    (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
-  );
+  const filteredQuestions = useMemo(() => {
+    const scoped = questions.filter((q) =>
+      q.subject === activeSubject &&
+      (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
+    );
+
+    return scoped.sort((a, b) => {
+      const aOrder = Number((a as any).order_index);
+      const bOrder = Number((b as any).order_index);
+      const safeA = Number.isFinite(aOrder) ? aOrder : Number.MAX_SAFE_INTEGER;
+      const safeB = Number.isFinite(bOrder) ? bOrder : Number.MAX_SAFE_INTEGER;
+      if (safeA !== safeB) return safeA - safeB;
+      return a.id.localeCompare(b.id);
+    });
+  }, [questions, activeSubject, activeSection, testData.format]);
 
   const handleRemoveQuestion = (id: string) => {
     const nextQuestions = questions.filter(q => q.id !== id);

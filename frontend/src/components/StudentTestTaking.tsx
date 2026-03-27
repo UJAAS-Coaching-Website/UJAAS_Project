@@ -163,6 +163,19 @@ export function StudentTestTaking({
   const currentSubject = question?.subject;
   const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
   const currentSection = (question as any)?.metadata?.section || 'Default';
+  const scopedPaletteQuestions = useMemo(() => {
+    return questions
+      .map((q, index) => ({ q, globalIndex: index }))
+      .filter(({ q }) => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
+      .sort((a, b) => {
+        const aOrder = Number((a.q as any).order_index);
+        const bOrder = Number((b.q as any).order_index);
+        const safeA = Number.isFinite(aOrder) ? aOrder : a.globalIndex;
+        const safeB = Number.isFinite(bOrder) ? bOrder : b.globalIndex;
+        if (safeA !== safeB) return safeA - safeB;
+        return a.globalIndex - b.globalIndex;
+      });
+  }, [questions, currentSubject, currentSection]);
 
   useEffect(() => {
     if (isEditing) {
@@ -1082,17 +1095,15 @@ export function StudentTestTaking({
                 </div>
 
                 <div className="grid grid-cols-5 gap-2">
-                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                    .map((q) => (
+                  {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                       <motion.button
                         key={q.id}
-                        onClick={() => setCurrentQuestion(q.globalIndex)}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                        onClick={() => setCurrentQuestion(globalIndex)}
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
                           ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered'
                             ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                            : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
                               ? 'bg-green-100 text-green-700 hover:bg-green-200'
                               : isAnyPreview && hasExplanationContent(q)
                                 ? 'bg-teal-50 text-teal-700 border border-teal-200'
@@ -1103,8 +1114,8 @@ export function StudentTestTaking({
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                       >
-                        {q.globalIndex + 1}
-                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                        {localIndex + 1}
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered' && (
                           <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
                         {isAnyPreview && !hasExplanationContent(q) && (
@@ -1446,20 +1457,18 @@ export function StudentTestTaking({
                     </div>
                   </div>
                 <div className="grid grid-cols-5 gap-2 mb-6">
-                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                    .map((q) => (
+                  {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                       <motion.button
                         key={q.id}
                         onClick={() => {
-                          setCurrentQuestion(q.globalIndex);
+                          setCurrentQuestion(globalIndex);
                           setShowMobilePalette(false);
                         }}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
                           ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered'
                             ? 'bg-purple-100 text-purple-700'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                            : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
                               ? 'bg-green-100 text-green-700'
                               : isAnyPreview && hasExplanationContent(q)
                                 ? 'bg-teal-50 text-teal-700 border border-teal-200'
@@ -1470,8 +1479,8 @@ export function StudentTestTaking({
                                     : 'bg-gray-100 text-gray-600'
                           }`}
                       >
-                        {q.globalIndex + 1}
-                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                        {localIndex + 1}
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered' && (
                           <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
                         {isAnyPreview && !hasExplanationContent(q) && (

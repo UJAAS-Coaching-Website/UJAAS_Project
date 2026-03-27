@@ -18,6 +18,8 @@ const TEST_SCHEDULE_TS_EXPR = `
         ELSE (((t.scheduled_at::date)::text || ' ' || TRIM(t.schedule_time))::timestamp AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}')
     END
 `;
+const QUESTION_SECTION_ORDER_EXPR = `CASE section WHEN 'Section A' THEN 0 WHEN 'Section B' THEN 1 ELSE 2 END`;
+const QUESTION_ORDER_BY_CLAUSE = `subject ASC, ${QUESTION_SECTION_ORDER_EXPR} ASC, order_index ASC, id ASC`;
 
 async function ensureActiveBatchIds(batchIds, client = pool) {
     const normalizedBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
@@ -390,7 +392,7 @@ export async function getTestById(id) {
             explanation, explanation_img, order_index, difficulty
         FROM questions
         WHERE test_id = $1
-        ORDER BY order_index, subject
+        ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
     `, [id]);
 
     return {
@@ -563,7 +565,7 @@ async function buildAttemptResult(attemptId) {
             difficulty
         FROM questions
         WHERE test_id = $1
-        ORDER BY order_index, subject
+        ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
     `, [attempt.test_id]);
 
     const questions = mapAttemptQuestionsForResult(
@@ -889,7 +891,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
                 order_index
             FROM questions
             WHERE test_id = $1
-            ORDER BY order_index, subject
+            ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
         `, [attempt.test_id]);
 
         const metrics = scoreAttempt(questionsResult.rows, mergedAnswers, { format: attempt.format });
@@ -1204,6 +1206,9 @@ export async function createTest({
         if (questions && questions.length > 0) {
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
+                const resolvedOrderIndex = Number.isFinite(Number(q.orderIndex ?? q.order_index))
+                    ? Number(q.orderIndex ?? q.order_index)
+                    : i;
                 await client.query(
                     `INSERT INTO questions (test_id, subject, section, type, question_text, question_img, options, option_imgs, correct_ans, correct_answer, marks, neg_marks, explanation, explanation_img, order_index, difficulty)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
@@ -1222,7 +1227,7 @@ export async function createTest({
                         q.negativeMarks ?? q.neg_marks ?? 0,
                         q.explanation || null,
                         q.explanationImage || q.explanation_img || null,
-                        i,
+                        resolvedOrderIndex,
                         q.difficulty || null,
                     ]
                 );
