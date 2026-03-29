@@ -1595,6 +1595,33 @@ export async function updateTest(id, {
             );
         }
 
+        // If a test is explicitly updated with zero batches, remove it completely.
+        // This keeps DB rows and storage context aligned for orphaned tests.
+        if (Array.isArray(batchIds) && nextBatchIds.length === 0) {
+            const deletedTestResult = await client.query(
+                `DELETE FROM tests WHERE id = $1 RETURNING id, title`,
+                [id]
+            );
+
+            await client.query("COMMIT");
+
+            if (deletedTestResult.rowCount > 0) {
+                try {
+                    await deleteAllImagesForContext("tests", id);
+                } catch (error) {
+                    console.error("test image cleanup failed for orphaned test:", id, error?.message || error);
+                }
+
+                return {
+                    ...deletedTestResult.rows[0],
+                    status: "deleted",
+                    batches: [],
+                };
+            }
+
+            return null;
+        }
+
         // Diff questions by ID so draft saves only touch changed rows.
         const existingQuestionResult = await client.query(
             `SELECT
@@ -1680,11 +1707,18 @@ export async function updateTest(id, {
  * Delete a test (cascades to questions and test_target_batches).
  */
 export async function deleteTest(id) {
-    await deleteAllImagesForContext("tests", id);
-
     const result = await pool.query(
         "DELETE FROM tests WHERE id = $1 RETURNING id",
         [id]
     );
+
+    if (result.rowCount > 0) {
+        try {
+            await deleteAllImagesForContext("tests", id);
+        } catch (error) {
+            console.error("test image cleanup failed:", id, error?.message || error);
+        }
+    }
+
     return result.rowCount > 0;
 }

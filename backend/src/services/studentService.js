@@ -2,6 +2,7 @@ import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 import { ensureActiveBatchExists } from "./batchAccessService.js";
+import { deleteAvatarFromStorage } from "./storageService.js";
 
 let studentEmailColumnExistsCache = null;
 
@@ -356,10 +357,26 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
  * Delete a student.
  */
 export async function deleteStudent(id) {
+    const preDeleteResult = await pool.query(
+        "SELECT avatar_url FROM users WHERE id = $1 AND role = 'student'",
+        [id]
+    );
+
+    const avatarUrl = preDeleteResult.rows[0]?.avatar_url || null;
+
     const result = await pool.query(
         "DELETE FROM users WHERE id = $1 AND role = 'student' RETURNING id",
         [id]
     );
+
+    if (result.rowCount > 0 && avatarUrl) {
+        try {
+            await deleteAvatarFromStorage(avatarUrl);
+        } catch (error) {
+            console.error("student avatar cleanup failed:", id, error?.message || error);
+        }
+    }
+
     return result.rowCount > 0;
 }
 

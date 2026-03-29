@@ -995,13 +995,20 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
 export async function deleteDpp(dppId) {
     const client = await pool.connect();
     try {
-        await deleteAllImagesForContext("dpps", dppId);
-
         await client.query("BEGIN");
         await client.query(`DELETE FROM questions WHERE dpp_id = $1`, [dppId]);
         await client.query(`DELETE FROM dpp_target_batches WHERE dpp_id = $1`, [dppId]);
         const result = await client.query(`DELETE FROM dpps WHERE id = $1 RETURNING id`, [dppId]);
         await client.query("COMMIT");
+
+        if (result.rowCount > 0) {
+            try {
+                await deleteAllImagesForContext("dpps", dppId);
+            } catch (error) {
+                console.error("dpp image cleanup failed:", dppId, error?.message || error);
+            }
+        }
+
         return result.rowCount > 0;
     } catch (error) {
         await client.query("ROLLBACK");

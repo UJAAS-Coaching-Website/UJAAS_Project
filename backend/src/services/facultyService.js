@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
+import { deleteAvatarFromStorage } from "./storageService.js";
 
 /**
  * Helper to get or create subject ID by name
@@ -160,9 +161,25 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
  * Delete a faculty.
  */
 export async function deleteFaculty(id) {
+    const preDeleteResult = await pool.query(
+        "SELECT avatar_url FROM users WHERE id = $1 AND role = 'faculty'",
+        [id]
+    );
+
+    const avatarUrl = preDeleteResult.rows[0]?.avatar_url || null;
+
     const result = await pool.query(
         "DELETE FROM users WHERE id = $1 AND role = 'faculty' RETURNING id",
         [id]
     );
+
+    if (result.rowCount > 0 && avatarUrl) {
+        try {
+            await deleteAvatarFromStorage(avatarUrl);
+        } catch (error) {
+            console.error("faculty avatar cleanup failed:", id, error?.message || error);
+        }
+    }
+
     return result.rowCount > 0;
 }

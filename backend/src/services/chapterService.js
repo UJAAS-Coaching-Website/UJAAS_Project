@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { ensureActiveBatchExists } from "./batchAccessService.js";
+import { deleteAllImagesForContext, deleteNoteFromStorage } from "./storageService.js";
 
 async function getBatchSubjectId(batchId, subjectName, client = pool) {
     const res = await client.query(`
@@ -98,9 +99,60 @@ export const updateChapter = async (id, data) => {
 
 // Delete a chapter
 export const deleteChapter = async (id) => {
-    const result = await pool.query(
-        `DELETE FROM chapters WHERE id = $1 RETURNING *`,
-        [id]
-    );
-    return result.rows[0];
+    const client = await pool.connect();
+    let dppIds = [];
+    let noteUrls = [];
+
+    try {
+        await client.query("BEGIN");
+
+        const dppResult = await client.query(
+            `SELECT id FROM dpps WHERE chapter_id = $1`,
+            [id]
+        );
+        dppIds = dppResult.rows.map((row) => row.id).filter(Boolean);
+
+        const noteResult = await client.query(
+            `SELECT file_url
+             FROM notes
+             WHERE chapter_id = $1
+               AND file_url IS NOT NULL`,
+            [id]
+        );
+        noteUrls = Array.from(new Set(noteResult.rows.map((row) => row.file_url).filter(Boolean)));
+
+        const result = await client.query(
+            `DELETE FROM chapters WHERE id = $1 RETURNING *`,
+            [id]
+        );
+
+        await client.query("COMMIT");
+
+        if (result.rowCount === 0) {
+            return null;
+        }
+
+        for (const noteUrl of noteUrls) {
+            try {
+                await deleteNoteFromStorage(noteUrl);
+            } catch (error) {
+                console.error("chapter note storage cleanup failed:", noteUrl, error?.message || error);
+            }
+        }
+
+        for (const dppId of dppIds) {
+            try {
+                await deleteAllImagesForContext("dpps", dppId);
+            } catch (error) {
+                console.error("chapter dpp image cleanup failed:", dppId, error?.message || error);
+            }
+        }
+
+        return result.rows[0];
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 };

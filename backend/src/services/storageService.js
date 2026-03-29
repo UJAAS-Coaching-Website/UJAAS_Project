@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
+import { enqueueStorageCleanupTask } from './storageCleanupQueueService.js';
 
 const STORAGE_S3_REGION = process.env.STORAGE_S3_REGION;
 const STORAGE_S3_ENDPOINT = process.env.STORAGE_S3_ENDPOINT;
@@ -22,6 +23,34 @@ const s3Client = new S3Client({
 
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
+
+function extractObjectKeyFromStorageUrl(fileUrl, bucketName) {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    return null;
+  }
+
+  const marker = `/${bucketName}/`;
+
+  // Preferred: parse URL path and extract everything after /<bucket>/.
+  try {
+    const parsed = new URL(fileUrl);
+    const pathname = decodeURIComponent(parsed.pathname || '');
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex >= 0) {
+      return pathname.slice(markerIndex + marker.length);
+    }
+  } catch {
+    // Non-URL strings can still be handled by fallback extraction below.
+  }
+
+  // Fallback: extract from raw string if marker appears anywhere.
+  const rawIndex = fileUrl.indexOf(marker);
+  if (rawIndex >= 0) {
+    return fileUrl.slice(rawIndex + marker.length);
+  }
+
+  return null;
+}
 
 import sharp from 'sharp';
 
@@ -100,16 +129,10 @@ async function uploadBufferToBucket(bucketName, objectKey, fileBuffer, mimeType)
 }
 
 async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
-  const urlPrefix = `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/`;
-
-  if (!fileUrl?.startsWith(urlPrefix)) {
-    console.warn('Storage URL does not match expected pattern, skipping delete:', fileUrl);
+  const objectKey = extractObjectKeyFromStorageUrl(fileUrl, bucketName);
+  if (!objectKey) {
+    console.warn('Storage URL key extraction failed, skipping delete:', fileUrl);
     return;
-  }
-
-  let objectKey = fileUrl.slice(urlPrefix.length);
-  if (objectKey.startsWith(`${bucketName}/`)) {
-    objectKey = objectKey.slice(bucketName.length + 1);
   }
 
   const command = new DeleteObjectCommand({
@@ -128,6 +151,17 @@ async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
     if (isMissingObject) {
       console.warn('Storage object not found, skipping delete:', { bucketName, objectKey });
       return;
+    }
+
+    try {
+      await enqueueStorageCleanupTask({
+        type: 'delete_url',
+        url: fileUrl,
+        source: 'deleteFileFromStorageByUrl',
+        errorMessage: error?.message || String(error)
+      });
+    } catch (queueError) {
+      console.error('Failed to enqueue storage URL cleanup task:', queueError?.message || queueError);
     }
 
     throw error;
@@ -327,6 +361,17 @@ export async function deleteAllImagesForContext(context, contextId) {
     console.log(`Deleted ${listResult.Contents.length} S3 objects under: ${prefix}`);
   } catch (error) {
     console.error('Bulk S3 delete error:', error);
+    try {
+      await enqueueStorageCleanupTask({
+        type: 'delete_context',
+        context,
+        contextId,
+        source: 'deleteAllImagesForContext',
+        errorMessage: error?.message || String(error)
+      });
+    } catch (queueError) {
+      console.error('Failed to enqueue context cleanup task:', queueError?.message || queueError);
+    }
     // Don't throw — we don't want S3 cleanup failure to block test deletion
   }
 }

@@ -1152,7 +1152,7 @@ ALTER TABLE ONLY public.batch_subjects
 --
 
 ALTER TABLE ONLY public.chapters
-    ADD CONSTRAINT chapters_batch_subject_id_fkey FOREIGN KEY (batch_subject_id) REFERENCES public.batch_subjects(id);
+    ADD CONSTRAINT chapters_batch_subject_id_fkey FOREIGN KEY (batch_subject_id) REFERENCES public.batch_subjects(id) ON DELETE CASCADE;
 
 
 --
@@ -1400,7 +1400,7 @@ ALTER TABLE ONLY public.refresh_tokens
 --
 
 ALTER TABLE ONLY public.student_ratings
-    ADD CONSTRAINT student_ratings_batch_subject_id_fkey FOREIGN KEY (batch_subject_id) REFERENCES public.batch_subjects(id);
+    ADD CONSTRAINT student_ratings_batch_subject_id_fkey FOREIGN KEY (batch_subject_id) REFERENCES public.batch_subjects(id) ON DELETE CASCADE;
 
 
 --
@@ -1456,7 +1456,7 @@ ALTER TABLE ONLY public.test_target_batches
 --
 
 ALTER TABLE ONLY public.tests
-    ADD CONSTRAINT tests_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
+    ADD CONSTRAINT tests_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --

@@ -142,8 +142,19 @@ export const handleDeleteNote = async (req, res) => {
             return res.status(400).json({ message: "inactive batches cannot be used for this action" });
         }
 
-        await deleteNoteFromStorage(existingNote.file_url);
-        await noteService.deleteNote(req.params.id);
+        const deletedNote = await noteService.deleteNote(req.params.id);
+        if (!deletedNote) {
+            return res.status(404).json({ message: "Note not found." });
+        }
+
+        if (existingNote.file_url) {
+            try {
+                await deleteNoteFromStorage(existingNote.file_url);
+            } catch (error) {
+                console.error("Note storage cleanup failed:", existingNote.file_url, error?.message || error);
+            }
+        }
+
         res.json({ message: "Note deleted successfully." });
     } catch (error) {
         console.error("Error deleting note:", error);
