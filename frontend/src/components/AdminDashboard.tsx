@@ -2128,10 +2128,10 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
+            { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
             { id: 'courses', title: 'Courses', description: 'Manage available courses' },
             { id: 'faculty', title: 'Faculty', description: 'Update faculty showcase' },
             { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
-            { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
           ].map((item) => (
             <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <h3 className="text-lg font-bold mb-2">{item.title}</h3>
