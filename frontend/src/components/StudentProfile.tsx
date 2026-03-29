@@ -57,6 +57,7 @@ interface StudentDetails {
   rollNumber: string;
   batch: string;
   joinDate: string;
+  email: string;
   phone: string;
   address: string;
   dateOfBirth: string;
@@ -87,6 +88,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
         rollNumber: '',
         batch: '',
         joinDate: '',
+        email: '',
         phone: '',
         address: '',
         dateOfBirth: '',
@@ -107,6 +109,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       rollNumber: details.rollNumber || '',
       batch: details.batch || '',
       joinDate: normalizeDateForInput(details.joinDate),
+      email: (details as any).email || '',
       phone: details.phone || '',
       address: details.address || '',
       dateOfBirth: normalizeDateForInput(details.dateOfBirth),
@@ -199,12 +202,6 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
               <div>
                 <h2 className={`${isMobileViewport ? 'text-2xl' : 'text-3xl'} font-bold mb-2`}>{profileUser.name}</h2>
                 <div className={`flex flex-wrap ${isMobileViewport ? 'gap-2 text-xs' : 'gap-4 text-base'} text-indigo-100`}>
-                  {profileUser.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      <span>{profileUser.email}</span>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     <span>Roll: {studentDetails.rollNumber}</span>
@@ -248,6 +245,18 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       {activeSection === 'overview' && (
         <OverviewSection
           details={studentDetails}
+          profileName={profileUser.name}
+          profileEmail={profileUser.email || ''}
+          onProfileSaved={(next) => {
+            setProfileUser((prev: any) => ({ ...prev, email: next.email }));
+            setStudentDetails((prev) => ({
+              ...prev,
+              phone: next.phone,
+              email: next.email,
+              address: next.address,
+              dateOfBirth: next.dateOfBirth,
+            }));
+          }}
           isMobileViewport={isMobileViewport}
         />
       )}
@@ -257,10 +266,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       )}
 
       {activeSection === 'settings' && (
-        <SettingsSection onLogout={onLogout} studentDetails={studentDetails} onProfileUpdate={() => {
-          // Refresh profile after update
-          setProfileUser(prev => ({ ...prev }));
-        }} />
+        <SettingsSection onLogout={onLogout} />
       )}
     </div>
   );
@@ -312,11 +318,71 @@ function renderPerformanceStars(rating: number) {
 
 function OverviewSection({ 
   details,
+  profileName,
+  profileEmail,
+  onProfileSaved,
   isMobileViewport
 }: { 
   details: StudentDetails; 
+  profileName: string;
+  profileEmail: string;
+  onProfileSaved?: (next: { phone: string; email: string; address: string; dateOfBirth: string }) => void;
   isMobileViewport: boolean;
 }) {
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    phone: details.phone || '',
+    email: profileEmail || details.email || '',
+    address: details.address || '',
+    dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+  });
+
+  useEffect(() => {
+    setProfileDraft({
+      phone: details.phone || '',
+      email: profileEmail || details.email || '',
+      address: details.address || '',
+      dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+    });
+  }, [details.phone, details.email, details.address, details.dateOfBirth, profileEmail]);
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      await updateMyProfile({
+        name: profileName,
+        phone: profileDraft.phone,
+        email: profileDraft.email,
+        address: profileDraft.address,
+        dateOfBirth: profileDraft.dateOfBirth || null,
+        parentContact: details.parentContact || '',
+      });
+      onProfileSaved?.({
+        phone: profileDraft.phone,
+        email: profileDraft.email,
+        address: profileDraft.address,
+        dateOfBirth: profileDraft.dateOfBirth,
+      });
+      setIsEditingProfile(false);
+      window.alert('Profile updated successfully.');
+    } catch (error: any) {
+      window.alert(error?.message || 'Failed to update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setProfileDraft({
+      phone: details.phone || '',
+      email: profileEmail || details.email || '',
+      address: details.address || '',
+      dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+    });
+    setIsEditingProfile(false);
+  };
+
   return (
     <div className="space-y-6">
 
@@ -329,11 +395,40 @@ function OverviewSection({
       >
         <div className="mb-4 flex items-center justify-between sm:mb-6">
           <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Personal Information</h3>
+          {!isEditingProfile ? (
+            <button
+              type="button"
+              onClick={() => setIsEditingProfile(true)}
+              className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                disabled={isSavingProfile}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-70"
+                disabled={isSavingProfile}
+              >
+                {isSavingProfile ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6">
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
+            { label: 'Email', value: profileEmail || details.email, icon: Mail, key: 'email' },
             { label: 'Date of Birth', value: details.dateOfBirth, icon: Calendar, key: 'dateOfBirth', type: 'date' },
             { label: 'Address', value: details.address, icon: MapPin, key: 'address' },
             { label: 'Parent Contact', value: details.parentContact, icon: Phone, key: 'parentContact' },
@@ -351,9 +446,38 @@ function OverviewSection({
                 <field.icon className={isMobileViewport ? 'h-3 w-3' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'} />
                 {field.label}
               </label>
-              <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 transition group-hover:bg-indigo-50 sm:px-4 sm:text-base">
-                {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
-              </p>
+              {isEditingProfile && (field.key === 'phone' || field.key === 'email' || field.key === 'address' || field.key === 'dateOfBirth') ? (
+                field.key === 'address' ? (
+                  <textarea
+                    rows={3}
+                    value={profileDraft.address}
+                    onChange={(event) => setProfileDraft((prev) => ({ ...prev, address: event.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                  />
+                ) : (
+                  <input
+                    type={field.key === 'dateOfBirth' ? 'date' : field.key === 'email' ? 'email' : 'tel'}
+                    value={field.key === 'phone' ? profileDraft.phone : field.key === 'email' ? profileDraft.email : profileDraft.dateOfBirth}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      if (field.key === 'phone') {
+                        setProfileDraft((prev) => ({ ...prev, phone: nextValue }));
+                        return;
+                      }
+                      if (field.key === 'email') {
+                        setProfileDraft((prev) => ({ ...prev, email: nextValue }));
+                        return;
+                      }
+                      setProfileDraft((prev) => ({ ...prev, dateOfBirth: nextValue }));
+                    }}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                  />
+                )
+              ) : (
+                <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-900 transition group-hover:bg-indigo-50 sm:px-4 sm:text-base">
+                  {field.type === 'date' ? formatDateForDisplay(field.value) : (field.value || 'Not provided')}
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -579,10 +703,9 @@ function PerformanceSection({ details, user, isMobileViewport }: { details: Stud
   );
 }
 
-function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogout: () => void, studentDetails?: StudentDetails, onProfileUpdate?: () => void }) {
+function SettingsSection({ onLogout }: { onLogout: () => void }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showEditProfile, setShowEditProfile] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
     newPassword: '',
@@ -590,7 +713,7 @@ function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogo
   });
   const [isPasswordVerified, setIsPasswordVerified] = useState(false);
   const [passwordAction, setPasswordAction] = useState<'idle' | 'verifying' | 'updating'>('idle');
-  useBodyScrollLock(showLogoutConfirm || showChangePassword || showEditProfile);
+  useBodyScrollLock(showLogoutConfirm || showChangePassword);
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -602,10 +725,6 @@ function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogo
     setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
     setIsPasswordVerified(false);
     setPasswordAction('idle');
-  };
-
-  const closeEditProfile = () => {
-    setShowEditProfile(false);
   };
 
   const handlePasswordChange = (field: keyof typeof passwordForm) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -659,20 +778,8 @@ function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogo
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-3"
+        className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3"
       >
-        <motion.button
-          onClick={() => setShowEditProfile(true)}
-          className="w-full p-4 md:p-3 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-teal-200"
-        >
-          <div>
-            <h4 className="font-semibold text-gray-900 md:text-sm">Edit Profile</h4>
-            <p className="text-sm text-gray-600 md:text-xs">Update your contact info</p>
-          </div>
-          <div className="w-8 h-8 md:w-7 md:h-7 bg-teal-100 group-hover:bg-teal-200 rounded-lg flex items-center justify-center transition">
-            <Mail className="w-4 h-4 md:w-3.5 md:h-3.5 text-teal-600" />
-          </div>
-        </motion.button>
 
         <motion.button
           onClick={() => setShowChangePassword(true)}
@@ -848,173 +955,7 @@ function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogo
             modalRoot
           )}
 
-      {showEditProfile &&
-        modalRoot &&
-        createPortal(
-          <EditProfileModal
-            studentDetails={studentDetails}
-            onClose={closeEditProfile}
-            onProfileUpdate={onProfileUpdate}
-          />,
-          modalRoot
-        )}
     </div>
-  );
-}
-
-function EditProfileModal({ 
-  studentDetails, 
-  onClose, 
-  onProfileUpdate 
-}: { 
-  studentDetails?: StudentDetails; 
-  onClose: () => void; 
-  onProfileUpdate?: () => void; 
-}) {
-  const [formData, setFormData] = useState({
-    phone: studentDetails?.phone || '',
-    email: studentDetails?.email || '',
-    address: studentDetails?.address || '',
-    dateOfBirth: normalizeDateForInput(studentDetails?.dateOfBirth || ''),
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleChange = (field: keyof typeof formData) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [field]: event.target.value }));
-    setError('');
-  };
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      // Get the current user profile first to have the name
-      const currentProfile = await me();
-      const currentUser = currentProfile.user as any;
-
-      await updateMyProfile({
-        name: currentUser.name,
-        phone: formData.phone,
-        email: formData.email,
-        address: formData.address,
-        dateOfBirth: formData.dateOfBirth === '' ? null : formData.dateOfBirth,
-        parentContact: studentDetails?.parentContact || '',
-      });
-
-      window.alert('Profile updated successfully!');
-      onProfileUpdate?.();
-      onClose();
-    } catch (err: any) {
-      setError(err?.message || 'Failed to update profile');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-layer-modal p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-      >
-        {/* Header */}
-        <div className="px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white">
-          <h3 className="text-2xl font-bold">Edit Profile</h3>
-          <p className="text-teal-100 text-sm mt-1">Update your contact information</p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              onChange={handleChange('phone')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="Your phone number"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={handleChange('email')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              placeholder="your.email@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Date of Birth
-            </label>
-            <input
-              type="date"
-              value={formData.dateOfBirth}
-              onChange={handleChange('dateOfBirth')}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Address
-            </label>
-            <textarea
-              value={formData.address}
-              onChange={handleChange('address')}
-              rows={3}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 resize-none"
-              placeholder="Street, city, state, postal code"
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 pt-6 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition disabled:opacity-70"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition disabled:opacity-70 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
   );
 }
 

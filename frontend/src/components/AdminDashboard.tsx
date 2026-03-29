@@ -327,7 +327,7 @@ export function AdminDashboard({
       performance: 0,
       rating: overallFromSubjects ?? (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
       batch: s.assigned_batch?.name || 'Unassigned',
-      email: s.login_id?.includes('@') ? s.login_id : '',
+      email: s.email || '',
       phoneNumber: s.phone || '',
       dateOfBirth: s.date_of_birth || '',
       address: s.address || '',
@@ -568,6 +568,7 @@ export function AdminDashboard({
         await onUpdateStudent(data.id, {
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,
@@ -694,11 +695,13 @@ export function AdminDashboard({
   const closeStudentRatings = () => setRatingModal({ open: false });
   const handleSaveStudentProfile = async (
     studentId: string,
-    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'rollNumber' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
     try {
       await onUpdateStudent(studentId, {
         name: updates.name,
+        rollNumber: updates.rollNumber,
+        email: updates.email,
         phone: updates.phoneNumber,
         dateOfBirth: updates.dateOfBirth,
         parentContact: updates.parentContact,
@@ -3718,7 +3721,7 @@ function StudentRatingsModal({
   batches: BatchInfo[];
   onSaveProfile?: (
     studentId: string,
-    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'rollNumber' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => void;
   onSaveAdminRemark?: (studentId: string, remark: string) => void;
 }) {
@@ -3728,6 +3731,8 @@ function StudentRatingsModal({
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
+    rollNumber: '',
+    email: '',
     phoneNumber: formatIndianMobileInput(''),
     dateOfBirth: '',
     parentContact: formatIndianMobileInput(''),
@@ -3752,6 +3757,8 @@ function StudentRatingsModal({
     setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
+      rollNumber: student.rollNumber ?? '',
+      email: student.email ?? '',
       phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
       dateOfBirth: student.dateOfBirth ?? '',
       parentContact: formatIndianMobileInput(student.parentContact ?? ''),
@@ -3862,6 +3869,8 @@ function StudentRatingsModal({
   const finalRating = calculateFinalRating();
   const getProfileValuesForPrint = () => ({
     name: isEditingProfile ? profileDraft.name : student.name,
+    rollNumber: isEditingProfile ? profileDraft.rollNumber : student.rollNumber,
+    email: isEditingProfile ? profileDraft.email : student.email,
     phoneNumber: isEditingProfile ? profileDraft.phoneNumber : student.phoneNumber,
     dateOfBirth: isEditingProfile ? profileDraft.dateOfBirth : student.dateOfBirth,
     parentContact: isEditingProfile ? profileDraft.parentContact : student.parentContact,
@@ -3887,12 +3896,13 @@ function StudentRatingsModal({
 
     const detailsRows = [
       ['Student Name', profileValues.name || 'Not provided'],
+      ['Email', profileValues.email || 'Not provided'],
       ['Phone Number', profileValues.phoneNumber || 'Not provided'],
       ['Date of Birth', profileValues.dateOfBirth || 'Not provided'],
       ["Parent's Contact", profileValues.parentContact || 'Not provided'],
       ['Residential Address', profileValues.address || 'Not provided'],
       ['Batch', student.batch || 'Not provided'],
-      ['Roll Number', student.rollNumber || 'Not provided'],
+      ['Roll Number', profileValues.rollNumber || 'Not provided'],
       ['Final Average Rating', `${finalRating.toFixed(1)} / 5.0`],
     ]
       .map(
@@ -4306,6 +4316,8 @@ function StudentRatingsModal({
                         setIsEditingProfile(false);
                         setProfileDraft({
                           name: student.name ?? '',
+                          rollNumber: student.rollNumber ?? '',
+                          email: student.email ?? '',
                           phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
                           dateOfBirth: student.dateOfBirth ?? '',
                           parentContact: formatIndianMobileInput(student.parentContact ?? ''),
@@ -4343,7 +4355,29 @@ function StudentRatingsModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Roll Number</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileDraft.rollNumber}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, rollNumber: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="email"
+                      value={profileDraft.email}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-indigo-600" /> {student.email || 'Not provided'}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>
