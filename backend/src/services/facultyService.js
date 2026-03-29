@@ -159,27 +159,75 @@ export async function updateFaculty(id, { name, email, subject, phone, designati
 
 /**
  * Delete a faculty.
+ * Also deletes any subjects that are no longer linked to any faculty or batch.
  */
 export async function deleteFaculty(id) {
-    const preDeleteResult = await pool.query(
-        "SELECT avatar_url FROM users WHERE id = $1 AND role = 'faculty'",
-        [id]
-    );
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
 
-    const avatarUrl = preDeleteResult.rows[0]?.avatar_url || null;
+        // Get faculty's subject_id and avatar before deletion
+        const preDeleteResult = await client.query(
+            "SELECT f.subject_id, u.avatar_url FROM users u LEFT JOIN faculties f ON f.user_id = u.id WHERE u.id = $1 AND u.role = 'faculty'",
+            [id]
+        );
 
-    const result = await pool.query(
-        "DELETE FROM users WHERE id = $1 AND role = 'faculty' RETURNING id",
-        [id]
-    );
-
-    if (result.rowCount > 0 && avatarUrl) {
-        try {
-            await deleteAvatarFromStorage(avatarUrl);
-        } catch (error) {
-            console.error("faculty avatar cleanup failed:", id, error?.message || error);
+        if (preDeleteResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return false;
         }
-    }
 
-    return result.rowCount > 0;
+        const { subject_id: subjectId, avatar_url: avatarUrl } = preDeleteResult.rows[0];
+
+        // Delete the faculty user and cascading faculty record
+        const deleteResult = await client.query(
+            "DELETE FROM users WHERE id = $1 AND role = 'faculty' RETURNING id",
+            [id]
+        );
+
+        if (deleteResult.rowCount === 0) {
+            await client.query("ROLLBACK");
+            return false;
+        }
+
+        // If faculty had a subject, check if it should be deleted (orphaned)
+        if (subjectId) {
+            // Check if this subject is still linked to any other faculty or batch
+            const linksResult = await client.query(
+                `SELECT
+                    COALESCE(COUNT(DISTINCT f.user_id), 0)::int AS faculty_count,
+                    COALESCE(COUNT(DISTINCT bs.batch_id), 0)::int AS batch_count
+                 FROM subjects s
+                 LEFT JOIN faculties f ON f.subject_id = s.id
+                 LEFT JOIN batch_subjects bs ON bs.subject_id = s.id
+                 WHERE s.id = $1`,
+                [subjectId]
+            );
+
+            const { faculty_count, batch_count } = linksResult.rows[0] || { faculty_count: 0, batch_count: 0 };
+
+            // Delete subject only if it has no faculty and no batch links
+            if (faculty_count === 0 && batch_count === 0) {
+                await client.query("DELETE FROM subjects WHERE id = $1", [subjectId]);
+            }
+        }
+
+        await client.query("COMMIT");
+
+        // Clean up avatar from storage (best effort, don't block deletion)
+        if (avatarUrl) {
+            try {
+                await deleteAvatarFromStorage(avatarUrl);
+            } catch (error) {
+                console.error("faculty avatar cleanup failed:", id, error?.message || error);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }

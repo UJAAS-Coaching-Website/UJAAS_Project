@@ -73,7 +73,7 @@ router.post(
 );
 
 // Batch subject removal (Admin only)
-router.delete("/:id/subjects/:subjectId", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), handleRemoveBatchSubject);
+router.delete("/:id/subjects/:subjectId", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`, 'subjects:list']), handleRemoveBatchSubject);
 
 // Batch timetable upload/delete (Admin only)
 router.post("/:id/timetable", requireRole("admin"), invalidateCache(req => ['global:batches:list', `batch:${req.params.id}:*`]), (req, res) => {
