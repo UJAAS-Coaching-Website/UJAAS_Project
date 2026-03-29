@@ -7,6 +7,7 @@ import {
     deleteQuestionBankFileFromStorage,
     deleteTimetableFromStorage,
 } from "./storageService.js";
+import { enqueueStorageCleanupTask } from "./storageCleanupQueueService.js";
 
 async function tableExists(tableName, client = pool) {
     const result = await client.query(
@@ -545,6 +546,38 @@ export async function permanentlyDeleteBatch(id) {
              RETURNING id`
         );
 
+        // Enqueue storage cleanup tasks BEFORE commit to ensure they're persisted atomically.
+        // This guarantees cleanup tasks are recorded even if the process crashes after commit.
+        const enqueuedTasks = [];
+        
+        for (const testId of exclusiveTestIds) {
+            try {
+                const task = await enqueueStorageCleanupTask({
+                    type: 'delete_context',
+                    context: 'tests',
+                    contextId: testId,
+                    source: `permanentDeleteBatch:${id}`,
+                });
+                enqueuedTasks.push(task);
+            } catch (error) {
+                console.error("Failed to enqueue test image cleanup task:", testId, error?.message || error);
+            }
+        }
+
+        for (const dppId of exclusiveDppIds) {
+            try {
+                const task = await enqueueStorageCleanupTask({
+                    type: 'delete_context',
+                    context: 'dpps',
+                    contextId: dppId,
+                    source: `permanentDeleteBatch:${id}`,
+                });
+                enqueuedTasks.push(task);
+            } catch (error) {
+                console.error("Failed to enqueue DPP image cleanup task:", dppId, error?.message || error);
+            }
+        }
+
         await client.query("COMMIT");
 
         removedStorageAssetCount =
@@ -578,6 +611,8 @@ export async function permanentlyDeleteBatch(id) {
         client.release();
     }
 
+    // Attempt immediate cleanup for direct file URLs (these are fetched before transaction).
+    // If they fail, they're not queued separately as the prefix-based cleanup will catch them.
     if (timetableUrlToDelete) {
         try {
             await deleteTimetableFromStorage(timetableUrlToDelete);
@@ -602,12 +637,22 @@ export async function permanentlyDeleteBatch(id) {
         }
     }
 
+    // Attempt immediate cleanup for test/DPP images (via S3 prefix listing).
+    // These are already enqueued, so failures will be retried by the queue processor.
     for (const testId of exclusiveTestIds) {
-        await deleteAllImagesForContext("tests", testId);
+        try {
+            await deleteAllImagesForContext("tests", testId);
+        } catch (error) {
+            console.error("Test image cleanup failed (queued for retry):", testId, error?.message || error);
+        }
     }
 
     for (const dppId of exclusiveDppIds) {
-        await deleteAllImagesForContext("dpps", dppId);
+        try {
+            await deleteAllImagesForContext("dpps", dppId);
+        } catch (error) {
+            console.error("DPP image cleanup failed (queued for retry):", dppId, error?.message || error);
+        }
     }
 
     return summary;
