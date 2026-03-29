@@ -147,6 +147,7 @@ async function getDppRowById(id, client = pool) {
         JOIN batches b ON b.id = bs.batch_id
         JOIN subjects sub ON sub.id = bs.subject_id
         WHERE d.id = $1
+          AND b.is_active = true
         LIMIT 1
     `, [id]);
 
@@ -181,6 +182,7 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
         JOIN students s ON s.assigned_batch_id = dtb.batch_id
         WHERE d.id = $1
           AND s.user_id = $2
+          AND b.is_active = true
         LIMIT 1
     `,
         legacy: `
@@ -209,6 +211,7 @@ async function getStudentVisibleDppRow(dppId, studentId, client = pool) {
         JOIN student_batches sb ON sb.batch_id = dtb.batch_id
         WHERE d.id = $1
           AND sb.student_id = $2
+          AND b.is_active = true
         LIMIT 1
     `,
     }), [dppId, studentId]);
@@ -276,6 +279,7 @@ export async function listDpps({ chapterId, user }) {
             JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
             JOIN students s ON s.assigned_batch_id = dtb.batch_id
             WHERE s.user_id = $${params.length}
+              AND b.is_active = true
             ${chapterFilter}
             GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
@@ -311,6 +315,7 @@ export async function listDpps({ chapterId, user }) {
             JOIN dpp_target_batches dtb ON dtb.dpp_id = d.id
             JOIN student_batches sb ON sb.batch_id = dtb.batch_id
             WHERE sb.student_id = $${params.length}
+              AND b.is_active = true
             ${chapterFilter}
             GROUP BY d.id, c.id, b.id, bs.batch_id, sub.name
             ORDER BY d.created_at DESC, d.title
@@ -339,7 +344,7 @@ export async function listDpps({ chapterId, user }) {
             JOIN batch_subjects bs ON bs.id = c.batch_subject_id
             JOIN batches b ON b.id = bs.batch_id
             JOIN subjects sub ON sub.id = bs.subject_id
-            WHERE 1=1
+            WHERE b.is_active = true
             ${chapterFilter}
             ORDER BY d.created_at DESC, d.title
         `;

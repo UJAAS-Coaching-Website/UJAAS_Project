@@ -78,8 +78,11 @@ export interface PermanentDeleteBatchSummary {
     deletedDppAttempts: number;
     deletedExclusiveTests: number;
     unlinkedSharedTests: number;
+    deletedExclusiveSubjects: number;
+    deletedExclusiveQuestionBankFiles: number;
     deletedNotifications: number;
     removedTimetableReference: number;
+    removedStorageAssets: number;
 }
 
 let batchesCache: ApiBatch[] | null = null;

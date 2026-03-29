@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { ensureActiveBatchIds } from "./batchAccessService.js";
 
 /**
  * Creates a notification and links it to multiple batches.
@@ -6,10 +7,13 @@ import { pool } from "../db/index.js";
  * @param {string[]} batchIds - Array of batch UUIDs.
  * @param {object} params - { senderId, type, title, message, metadata, isSticky }
  */
-export async function createMultiBatchNotification(batchIds, { senderId, type, title, message, metadata = {}, isSticky = false }) {
+export async function createMultiBatchNotification(batchIds, { senderId, type, title, message, metadata = {}, isSticky = false, allowInactive = false }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const validatedBatchIds = allowInactive
+            ? Array.from(new Set((batchIds || []).filter(Boolean)))
+            : await ensureActiveBatchIds(batchIds, client);
 
         // 1. Insert the main notification
         const result = await client.query(
@@ -21,7 +25,7 @@ export async function createMultiBatchNotification(batchIds, { senderId, type, t
         const notificationId = result.rows[0].id;
 
         // 2. Link to each batch
-        for (const batchId of batchIds) {
+        for (const batchId of validatedBatchIds) {
             await client.query(
                 `INSERT INTO notification_batches (notification_id, batch_id)
                  VALUES ($1, $2)`,
@@ -128,6 +132,7 @@ export async function updateNoticeForSender(notificationId, senderId, { title, m
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const validatedBatchIds = await ensureActiveBatchIds(batchIds, client);
 
         const existing = await client.query(
             `SELECT id
@@ -156,7 +161,7 @@ export async function updateNoticeForSender(notificationId, senderId, { title, m
             [notificationId]
         );
 
-        for (const batchId of batchIds) {
+        for (const batchId of validatedBatchIds) {
             await client.query(
                 `INSERT INTO notification_batches (notification_id, batch_id)
                  VALUES ($1, $2)`,

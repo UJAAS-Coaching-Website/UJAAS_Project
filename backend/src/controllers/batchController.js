@@ -223,6 +223,9 @@ export async function handleCreateBatchNotification(req, res) {
         await createBatchNotification(batchId, { title, message, type });
         return res.status(201).json({ message: "notice sent successfully" });
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("createBatchNotification error:", error.message);
         return res.status(500).json({ message: "failed to send notice", error: error.message });
     }

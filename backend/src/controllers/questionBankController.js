@@ -118,6 +118,9 @@ export async function handleUploadQuestionBankFile(req, res) {
 
         return res.status(201).json(file);
     } catch (error) {
+        if (error?.code === "INVALID_BATCH_ASSIGNMENT" || error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("Error uploading question bank file:", error);
         return res.status(500).json({ message: error.message || "Failed to upload question bank file." });
     }

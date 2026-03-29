@@ -2,10 +2,11 @@ import { pool } from "../db/index.js";
 
 export async function getFacultyManagedChapter(chapterId, facultyUserId) {
     const result = await pool.query(`
-        SELECT c.*, bs.batch_id, s.name as subject_name
+        SELECT c.*, bs.batch_id, s.name as subject_name, b.is_active
         FROM chapters c
         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
         JOIN subjects s ON s.id = bs.subject_id
+        JOIN batches b ON b.id = bs.batch_id
         JOIN faculty_assignments fa ON fa.batch_subject_id = bs.id
         WHERE c.id = $1
           AND fa.faculty_id = $2
@@ -17,11 +18,12 @@ export async function getFacultyManagedChapter(chapterId, facultyUserId) {
 
 export async function getFacultyManagedNote(noteId, facultyUserId) {
     const result = await pool.query(`
-        SELECT n.*, s.name as subject_name, bs.batch_id
+        SELECT n.*, s.name as subject_name, bs.batch_id, b.is_active
         FROM notes n
         JOIN chapters c ON c.id = n.chapter_id
         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
         JOIN subjects s ON s.id = bs.subject_id
+        JOIN batches b ON b.id = bs.batch_id
         JOIN faculty_assignments fa ON fa.batch_subject_id = bs.id
         WHERE n.id = $1
           AND fa.faculty_id = $2
@@ -33,11 +35,12 @@ export async function getFacultyManagedNote(noteId, facultyUserId) {
 
 export async function getFacultyManagedDpp(dppId, facultyUserId) {
     const result = await pool.query(`
-        SELECT d.*, s.name as subject_name, bs.batch_id, c.name AS chapter_name
+        SELECT d.*, s.name as subject_name, bs.batch_id, c.name AS chapter_name, b.is_active
         FROM dpps d
         JOIN chapters c ON c.id = d.chapter_id
         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
         JOIN subjects s ON s.id = bs.subject_id
+        JOIN batches b ON b.id = bs.batch_id
         JOIN faculty_assignments fa ON fa.batch_subject_id = bs.id
         WHERE d.id = $1
           AND fa.faculty_id = $2

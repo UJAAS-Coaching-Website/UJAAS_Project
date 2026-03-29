@@ -1,6 +1,7 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel, pickStudentBatchModel } from "./studentBatchModel.js";
 import { deleteAllImagesForContext, deleteImageFromStorage } from "./storageService.js";
+import { ensureActiveBatchIds } from "./batchAccessService.js";
 import {
     mapAssessmentQuestionRow,
     mapAttemptQuestionsForResult,
@@ -20,29 +21,6 @@ const TEST_SCHEDULE_TS_EXPR = `
 `;
 const QUESTION_SECTION_ORDER_EXPR = `CASE section WHEN 'Section A' THEN 0 WHEN 'Section B' THEN 1 ELSE 2 END`;
 const QUESTION_ORDER_BY_CLAUSE = `subject ASC, ${QUESTION_SECTION_ORDER_EXPR} ASC, order_index ASC, id ASC`;
-
-async function ensureActiveBatchIds(batchIds, client = pool) {
-    const normalizedBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
-    if (normalizedBatchIds.length === 0) {
-        return;
-    }
-
-    const result = await client.query(
-        `SELECT id
-         FROM batches
-         WHERE id = ANY($1::uuid[])
-           AND is_active = true`,
-        [normalizedBatchIds]
-    );
-
-    if (result.rowCount !== normalizedBatchIds.length) {
-        const activeIds = new Set(result.rows.map((row) => row.id));
-        const invalidIds = normalizedBatchIds.filter((batchId) => !activeIds.has(batchId));
-        const error = new Error(`inactive or missing batches cannot be assigned: ${invalidIds.join(", ")}`);
-        error.code = "INVALID_BATCH_ASSIGNMENT";
-        throw error;
-    }
-}
 
 function mapAttemptRow(row) {
     if (!row) return null;

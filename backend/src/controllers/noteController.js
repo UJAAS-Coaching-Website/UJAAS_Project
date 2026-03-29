@@ -39,6 +39,9 @@ export const handleCreateNote = async (req, res) => {
         if (!chapter) {
             return res.status(403).json({ message: "forbidden" });
         }
+        if (chapter.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
+        }
         const note = await noteService.createNote(req.body);
 
         // Trigger Notification
@@ -74,6 +77,9 @@ export const handleUploadNote = async (req, res) => {
         const chapter = await getFacultyManagedChapter(chapter_id, req.user.sub);
         if (!chapter) {
             return res.status(403).json({ message: "forbidden" });
+        }
+        if (chapter.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
         }
 
         const noteId = crypto.randomUUID();
@@ -116,6 +122,9 @@ export const handleUpdateNote = async (req, res) => {
         if (!existingNote) {
             return res.status(403).json({ message: "forbidden" });
         }
+        if (existingNote.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
+        }
         const note = await noteService.updateNote(req.params.id, req.body);
         if (!note) return res.status(404).json({ message: "Note not found." });
         res.json(note);
@@ -129,6 +138,9 @@ export const handleDeleteNote = async (req, res) => {
     try {
         const existingNote = await getFacultyManagedNote(req.params.id, req.user.sub);
         if (!existingNote) return res.status(403).json({ message: "forbidden" });
+        if (existingNote.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
+        }
 
         await deleteNoteFromStorage(existingNote.file_url);
         await noteService.deleteNote(req.params.id);

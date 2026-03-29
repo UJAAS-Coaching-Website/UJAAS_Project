@@ -36,6 +36,9 @@ export async function handleCreateStudent(req, res) {
         const student = await createStudent(req.body);
         return res.status(201).json(student);
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("handleCreateStudent error:", error.message);
         return res.status(500).json({ message: "failed to create student", error: error.message });
     }
@@ -71,6 +74,9 @@ export async function handleAssignStudentToBatch(req, res) {
         const student = await assignStudentToBatch(id, batchId);
         return res.status(200).json(student);
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("handleAssignStudentToBatch error:", error.message);
         return res.status(500).json({ message: "failed to assign student to batch", error: error.message });
     }

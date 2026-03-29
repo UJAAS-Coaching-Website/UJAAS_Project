@@ -1,26 +1,5 @@
 import { pool } from "../db/index.js";
-
-async function ensureActiveBatchExists(batchId) {
-    const result = await pool.query(
-        `SELECT id, is_active
-         FROM batches
-         WHERE id = $1
-         LIMIT 1`,
-        [batchId]
-    );
-
-    if (result.rowCount === 0) {
-        const error = new Error("batch not found");
-        error.code = "BATCH_NOT_FOUND";
-        throw error;
-    }
-
-    if (!result.rows[0].is_active) {
-        const error = new Error("inactive batches cannot be used for this action");
-        error.code = "BATCH_INACTIVE";
-        throw error;
-    }
-}
+import { ensureActiveBatchExists } from "./batchAccessService.js";
 
 async function getBatchSubjectId(batchId, subjectName, client = pool) {
     const res = await client.query(`
@@ -53,7 +32,8 @@ export const getChapters = async (batchId, subjectName) => {
         FROM chapters c
         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
         JOIN subjects sub ON sub.id = bs.subject_id
-        WHERE 1=1
+        JOIN batches b ON b.id = bs.batch_id
+        WHERE b.is_active = true
     `;
     const params = [];
     
@@ -80,7 +60,9 @@ export const getChapterById = async (id) => {
         FROM chapters c
         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
         JOIN subjects sub ON sub.id = bs.subject_id
+        JOIN batches b ON b.id = bs.batch_id
         WHERE c.id = $1
+          AND b.is_active = true
     `, [id]);
     return result.rows[0];
 };

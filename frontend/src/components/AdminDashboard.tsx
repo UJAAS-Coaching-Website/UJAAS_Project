@@ -3509,12 +3509,12 @@ function BatchFormModal({
 
   const handleDelete = async () => {
     if (!batchLabel) return;
-    if (window.confirm(`Are you sure you want to delete the batch "${batchLabel}"?`)) {
+    if (window.confirm(`Are you sure you want to make the batch "${batchLabel}" inactive? Students will be unassigned and the batch will become unavailable for new assignments and content.`)) {
       const result = await onDeleteBatch(batchLabel);
       if (result.ok) {
         onClose();
       } else {
-        setError(result.error ?? 'Unable to delete batch.');
+        setError(result.error ?? 'Unable to make batch inactive.');
       }
     }
   };
@@ -3681,7 +3681,7 @@ function BatchFormModal({
                 onClick={handleDelete}
                 className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition sm:mr-auto"
               >
-                Delete Batch
+                Make Inactive
               </button>
             )}
             <button

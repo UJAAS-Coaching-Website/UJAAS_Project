@@ -1,6 +1,7 @@
 import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
+import { ensureActiveBatchExists } from "./batchAccessService.js";
 
 let studentEmailColumnExistsCache = null;
 
@@ -213,6 +214,9 @@ export async function createStudent({ name, rollNumber, email, phone, address, d
         await client.query("BEGIN");
         const batchModel = await getStudentBatchModel();
         const includeEmail = await hasStudentEmailColumn(client);
+        if (batchId) {
+            await ensureActiveBatchExists(batchId, client);
+        }
 
         const password = hashPassword(generateInitialPassword(name));
 
@@ -363,6 +367,7 @@ export async function deleteStudent(id) {
  * Assign a student to a batch.
  */
 export async function assignStudentToBatch(studentId, batchId) {
+    await ensureActiveBatchExists(batchId);
     const batchModel = await getStudentBatchModel();
     if (batchModel === "single") {
         await pool.query(

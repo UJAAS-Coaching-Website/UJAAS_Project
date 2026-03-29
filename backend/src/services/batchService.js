@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
+import { ensureActiveBatchExists } from "./batchAccessService.js";
 import {
     deleteAllImagesForContext,
     deleteNoteFromStorage,
@@ -377,6 +378,7 @@ export async function permanentlyDeleteBatch(id) {
     let questionBankFileUrlsToDelete = [];
     let exclusiveDppIds = [];
     let exclusiveTestIds = [];
+    let removedStorageAssetCount = 0;
 
     try {
         await client.query("BEGIN");
@@ -411,6 +413,8 @@ export async function permanentlyDeleteBatch(id) {
             chapterCountResult,
             notesCountResult,
             dppCountResult,
+            dppAttemptCountResult,
+            studentRatingsCountResult,
             studentLinkCountResult,
             facultyLinkCountResult,
             testLinkRowsResult,
@@ -418,6 +422,8 @@ export async function permanentlyDeleteBatch(id) {
             client.query(`SELECT COUNT(*)::int AS count FROM chapters WHERE ${chapterFilter}`, [id]),
             client.query(`SELECT COUNT(*)::int AS count FROM notes n JOIN chapters c ON c.id = n.chapter_id WHERE c.${chapterFilter}`, [id]),
             client.query(`SELECT COUNT(*)::int AS count FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE c.${chapterFilter}`, [id]),
+            client.query(`SELECT COUNT(*)::int AS count FROM dpp_attempts da WHERE EXISTS (SELECT 1 FROM dpps d JOIN chapters c ON c.id = d.chapter_id WHERE d.id = da.dpp_id AND c.${chapterFilter})`, [id]),
+            client.query(`SELECT COUNT(*)::int AS count FROM student_ratings WHERE batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $1)`, [id]),
             batchModel === "single"
                 ? client.query(`SELECT COUNT(*)::int AS count FROM students WHERE assigned_batch_id = $1`, [id])
                 : client.query(`SELECT COUNT(*)::int AS count FROM student_batches WHERE batch_id = $1`, [id]),
@@ -489,50 +495,64 @@ export async function permanentlyDeleteBatch(id) {
             await client.query(`DELETE FROM tests WHERE id = ANY($1::uuid[])`, [exclusiveTestIds]);
         }
 
-        let deletedStudentsCount = 0;
+        // These references do not cascade from batch_subjects, so remove them before deleting the batch.
+        await client.query(
+            `DELETE FROM student_ratings
+             WHERE batch_subject_id IN (SELECT id FROM batch_subjects WHERE batch_id = $1)`,
+            [id]
+        );
+        await client.query(
+            `DELETE FROM chapters
+             WHERE ${chapterFilter}`,
+            [id]
+        );
+
         if (batchModel === "single") {
-            const studentsInBatch = await client.query(
-                `SELECT user_id FROM students WHERE assigned_batch_id = $1`,
+            await client.query(
+                `UPDATE students
+                 SET assigned_batch_id = NULL
+                 WHERE assigned_batch_id = $1`,
                 [id]
             );
-            const studentIds = studentsInBatch.rows.map((row) => row.user_id).filter(Boolean);
-
-            if (studentIds.length > 0) {
-                const deletedStudents = await client.query(
-                    `DELETE FROM users WHERE role = 'student' AND id = ANY($1::uuid[]) RETURNING id`,
-                    [studentIds]
-                );
-                deletedStudentsCount = deletedStudents.rowCount;
-            }
         } else {
-            const orphanStudents = await client.query(
-                `SELECT sb.student_id
-                 FROM student_batches sb
-                 WHERE sb.batch_id = $1
-                   AND NOT EXISTS (
-                     SELECT 1
-                     FROM student_batches sb2
-                     WHERE sb2.student_id = sb.student_id
-                       AND sb2.batch_id <> $1
-                   )`,
-                [id]
-            );
-            const orphanStudentIds = orphanStudents.rows.map((row) => row.student_id).filter(Boolean);
-
-            if (orphanStudentIds.length > 0) {
-                const deletedStudents = await client.query(
-                    `DELETE FROM users WHERE role = 'student' AND id = ANY($1::uuid[]) RETURNING id`,
-                    [orphanStudentIds]
-                );
-                deletedStudentsCount = deletedStudents.rowCount;
-            }
-
             await client.query(`DELETE FROM student_batches WHERE batch_id = $1`, [id]);
         }
 
         await client.query(`DELETE FROM batches WHERE id = $1`, [id]);
 
+        const deletedExclusiveSubjectsResult = await client.query(
+            `DELETE FROM subjects s
+             WHERE NOT EXISTS (
+                 SELECT 1
+                 FROM batch_subjects bs
+                 WHERE bs.subject_id = s.id
+             )
+               AND NOT EXISTS (
+                 SELECT 1
+                 FROM faculties f
+                 WHERE f.subject_id = s.id
+             )
+             RETURNING id`
+        );
+
+        const deletedNotificationsResult = await client.query(
+            `DELETE FROM notifications n
+             WHERE NOT EXISTS (
+                 SELECT 1
+                 FROM notification_batches nb
+                 WHERE nb.notification_id = n.id
+             )
+             RETURNING id`
+        );
+
         await client.query("COMMIT");
+
+        removedStorageAssetCount =
+            (batch.timetable_url ? 1 : 0) +
+            noteUrlsToDelete.length +
+            questionBankFileUrlsToDelete.length +
+            exclusiveDppIds.length +
+            exclusiveTestIds.length;
 
         summary = {
             deletedBatchId: id,
@@ -541,8 +561,15 @@ export async function permanentlyDeleteBatch(id) {
             deletedChapters: Number(chapterCountResult.rows[0]?.count ?? 0),
             deletedNotes: Number(notesCountResult.rows[0]?.count ?? 0),
             deletedDpps: Number(dppCountResult.rows[0]?.count ?? 0),
-            deletedStudents: deletedStudentsCount,
+            deletedDppAttempts: Number(dppAttemptCountResult.rows[0]?.count ?? 0),
+            deletedStudentRatings: Number(studentRatingsCountResult.rows[0]?.count ?? 0),
+            deletedExclusiveTests: exclusiveTestIds.length,
+            unlinkedSharedTests: sharedTestIds.length,
+            deletedExclusiveSubjects: deletedExclusiveSubjectsResult.rowCount,
+            deletedExclusiveQuestionBankFiles: orphanQuestionBankFileIds.length,
+            deletedNotifications: deletedNotificationsResult.rowCount,
             removedTimetableReference: batch.timetable_url ? 1 : 0,
+            removedStorageAssets: removedStorageAssetCount,
         };
     } catch (error) {
         await client.query("ROLLBACK");
@@ -687,6 +714,7 @@ export async function createBatchNotification(batchId, { title, message, type = 
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        await ensureActiveBatchExists(batchId, client);
         const batchModel = await getStudentBatchModel();
 
         const batchSubquery = batchModel === 'single'

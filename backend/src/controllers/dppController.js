@@ -172,6 +172,9 @@ export async function handleCreateDpp(req, res) {
         if (!chapter) {
             return res.status(403).json({ message: "forbidden" });
         }
+        if (chapter.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
+        }
 
         const dpp = await createDpp({
             title: title.trim(),
@@ -208,11 +211,17 @@ export async function handleUpdateDpp(req, res) {
         if (!managedDpp) {
             return res.status(403).json({ message: "forbidden" });
         }
+        if (managedDpp.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
+        }
 
         const chapterId = req.body?.chapter_id || managedDpp.chapter_id;
         const chapter = await getFacultyManagedChapter(chapterId, req.user.sub);
         if (!chapter) {
             return res.status(403).json({ message: "forbidden" });
+        }
+        if (chapter.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
         }
 
         const updated = await updateDpp(req.params.id, {
@@ -248,6 +257,9 @@ export async function handleDeleteDpp(req, res) {
         const managedDpp = await getFacultyManagedDpp(req.params.id, req.user.sub);
         if (!managedDpp) {
             return res.status(403).json({ message: "forbidden" });
+        }
+        if (managedDpp.is_active === false) {
+            return res.status(400).json({ message: "inactive batches cannot be used for this action" });
         }
 
         const deleted = await deleteDpp(req.params.id);

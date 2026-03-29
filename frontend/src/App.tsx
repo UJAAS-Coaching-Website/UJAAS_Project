@@ -749,18 +749,18 @@ function App() {
     }
 
     try {
-      showBatchToast('saving', 'Deleting batch from database...');
+      showBatchToast('saving', 'Making batch inactive...');
       await apiDeleteBatch(batch.id);
-      setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
+      await refreshAdminBatchDependencies();
       if (adminBatch === label) {
         setAdminBatch(null);
       }
-      showBatchToast('saved', 'Batch deleted from database.');
+      showBatchToast('saved', 'Batch made inactive.');
       return { ok: true };
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete batch in API:', err);
-      showBatchToast('error', 'Failed to delete batch from database');
-      return { ok: false, error: 'Failed to delete batch from database' };
+      showBatchToast('error', err?.message || 'Failed to make batch inactive');
+      return { ok: false, error: err?.message || 'Failed to make batch inactive' };
     }
   };
 
@@ -809,6 +809,7 @@ function App() {
       }
 
       await refreshAdminBatchDependencies();
+      await refreshAdminSubjects();
       showBatchToast('saved', 'Batch permanently deleted');
       return { ok: true };
     } catch (error: any) {
