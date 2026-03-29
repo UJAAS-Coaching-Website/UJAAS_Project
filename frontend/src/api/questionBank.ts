@@ -112,4 +112,14 @@ export async function apiDeleteQuestionBankFromBatch(fileId: string, batchId: st
   });
   clearQuestionBankCache();
 }
+
+/**
+ * Fetch fresh accessible batches for the current faculty user.
+ * This bypasses cache to ensure the faculty gets the latest batch list when adding to question bank.
+ */
+export async function apiFetchFacultyAccessibleBatches(): Promise<ApiQuestionBankBatchSummary[]> {
+  const response = await apiFetchQuestionBank({}, true); // forceRefresh=true to bypass cache
+  return response.accessibleBatches || [];
+}
+
 import { API_BASE_URL } from "./base";

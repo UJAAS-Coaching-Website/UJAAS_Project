@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { File, FileText, Image as ImageIcon, Loader2, Upload, X } from 'lucide-react';
 import {
   apiUploadQuestionBank,
+  apiFetchFacultyAccessibleBatches,
   type ApiQuestionBankBatchSummary,
   type ApiQuestionBankFile,
 } from '../../api/questionBank';
@@ -32,7 +33,7 @@ function formatFileSize(bytes: number) {
 
 export function QuestionBankUploadModal({
   userSubject,
-  availableBatches,
+  availableBatches: fallbackBatches,
   onClose,
   onUploaded,
 }: {
@@ -48,6 +49,27 @@ export function QuestionBankUploadModal({
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [batches, setBatches] = useState<ApiQuestionBankBatchSummary[]>(fallbackBatches);
+  const [loadingBatches, setLoadingBatches] = useState(false);
+
+  // Fetch fresh batches from backend when modal opens to avoid stale data
+  useEffect(() => {
+    const loadBatches = async () => {
+      setLoadingBatches(true);
+      try {
+        const freshBatches = await apiFetchFacultyAccessibleBatches();
+        setBatches(freshBatches);
+      } catch (error) {
+        console.error('Failed to fetch accessible batches:', error);
+        // Fall back to passed batches on error
+        setBatches(fallbackBatches);
+      } finally {
+        setLoadingBatches(false);
+      }
+    };
+    
+    void loadBatches();
+  }, [fallbackBatches]);
 
   const isFormValid = title.trim().length > 0 && selectedBatchIds.length > 0 && !!selectedFile;
   const allowedMimeTypes = new Set([
@@ -197,23 +219,29 @@ export function QuestionBankUploadModal({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Publish to Batches *</label>
-                <div className="flex flex-wrap gap-2">
-                  {availableBatches.map((batch) => (
-                    <button
-                      key={batch.id}
-                      type="button"
-                      onClick={() => toggleBatch(batch.id)}
-                      className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                        selectedBatchIds.includes(batch.id)
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                      }`}
-                    >
-                      {batch.name}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Publish to Batches * {loadingBatches && <Loader2 className="w-4 h-4 inline animate-spin" />}</label>
+                {batches.length === 0 ? (
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    {loadingBatches ? 'Loading batches...' : 'No batches available for you.'}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {batches.map((batch) => (
+                      <button
+                        key={batch.id}
+                        type="button"
+                        onClick={() => toggleBatch(batch.id)}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                          selectedBatchIds.includes(batch.id)
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                        }`}
+                      >
+                        {batch.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
