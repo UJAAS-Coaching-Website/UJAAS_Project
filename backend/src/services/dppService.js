@@ -994,8 +994,25 @@ export async function updateDpp(dppId, { title, instructions, chapterId, questio
 
 export async function deleteDpp(dppId) {
     const client = await pool.connect();
+    const imageUrlsToDelete = new Set();
     try {
         await client.query("BEGIN");
+
+        const questionImageRowsResult = await client.query(
+            `SELECT question_img, option_imgs, explanation_img
+             FROM questions
+             WHERE dpp_id = $1`,
+            [dppId]
+        );
+
+        for (const row of questionImageRowsResult.rows) {
+            for (const imageUrl of collectQuestionImageUrls(row)) {
+                if (isManagedContextImageUrl(imageUrl, "dpps")) {
+                    imageUrlsToDelete.add(imageUrl);
+                }
+            }
+        }
+
         await client.query(`DELETE FROM questions WHERE dpp_id = $1`, [dppId]);
         await client.query(`DELETE FROM dpp_target_batches WHERE dpp_id = $1`, [dppId]);
         const result = await client.query(`DELETE FROM dpps WHERE id = $1 RETURNING id`, [dppId]);
@@ -1003,6 +1020,9 @@ export async function deleteDpp(dppId) {
 
         if (result.rowCount > 0) {
             try {
+                if (imageUrlsToDelete.size > 0) {
+                    await cleanupImageUrls(imageUrlsToDelete);
+                }
                 await deleteAllImagesForContext("dpps", dppId);
             } catch (error) {
                 console.error("dpp image cleanup failed:", dppId, error?.message || error);

@@ -1707,6 +1707,25 @@ export async function updateTest(id, {
  * Delete a test (cascades to questions and test_target_batches).
  */
 export async function deleteTest(id) {
+    const imageUrlsToDelete = new Set();
+
+    const questionImageRowsResult = await pool.query(
+        `SELECT id, subject, section, type, question_text, question_img, options, option_imgs,
+                correct_ans, correct_answer, marks, neg_marks, explanation, explanation_img, order_index, difficulty
+         FROM questions
+         WHERE test_id = $1`,
+        [id]
+    );
+
+    for (const row of questionImageRowsResult.rows) {
+        const normalized = normalizeStoredQuestion(row);
+        for (const imageUrl of collectQuestionImageUrls(normalized)) {
+            if (isManagedContextImageUrl(imageUrl, "tests")) {
+                imageUrlsToDelete.add(imageUrl);
+            }
+        }
+    }
+
     const result = await pool.query(
         "DELETE FROM tests WHERE id = $1 RETURNING id",
         [id]
@@ -1714,6 +1733,9 @@ export async function deleteTest(id) {
 
     if (result.rowCount > 0) {
         try {
+            if (imageUrlsToDelete.size > 0) {
+                await cleanupImageUrls(imageUrlsToDelete);
+            }
             await deleteAllImagesForContext("tests", id);
         } catch (error) {
             console.error("test image cleanup failed:", id, error?.message || error);

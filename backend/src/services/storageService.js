@@ -348,17 +348,61 @@ export async function deleteAllImagesForContext(context, contextId) {
       return;
     }
 
-    // Batch delete all objects
-    const deleteCommand = new DeleteObjectsCommand({
-      Bucket: BUCKET_NAME,
-      Delete: {
-        Objects: listResult.Contents.map(obj => ({ Key: obj.Key })),
-        Quiet: true
-      }
-    });
+    const keys = listResult.Contents.map((obj) => obj.Key).filter(Boolean);
+    if (keys.length === 0) {
+      console.log(`No S3 object keys found under prefix: ${prefix}`);
+      return;
+    }
 
-    await s3Client.send(deleteCommand);
-    console.log(`Deleted ${listResult.Contents.length} S3 objects under: ${prefix}`);
+    // Try bulk delete first.
+    try {
+      const deleteCommand = new DeleteObjectsCommand({
+        Bucket: BUCKET_NAME,
+        Delete: {
+          Objects: keys.map((key) => ({ Key: key })),
+          Quiet: true,
+        },
+      });
+
+      const bulkResult = await s3Client.send(deleteCommand);
+      const failedKeys = (bulkResult?.Errors || []).map((entry) => entry?.Key).filter(Boolean);
+
+      if (failedKeys.length > 0) {
+        for (const key of failedKeys) {
+          try {
+            await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+          } catch (singleError) {
+            const isMissingObject =
+              singleError?.Code === 'NoSuchKey' ||
+              singleError?.name === 'NoSuchKey' ||
+              singleError?.$metadata?.httpStatusCode === 404;
+
+            if (!isMissingObject) {
+              throw singleError;
+            }
+          }
+        }
+      }
+
+      console.log(`Deleted ${keys.length} S3 objects under: ${prefix}`);
+    } catch (bulkError) {
+      // Fall back to one-by-one delete for providers that reject mixed-key bulk requests.
+      for (const key of keys) {
+        try {
+          await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+        } catch (singleError) {
+          const isMissingObject =
+            singleError?.Code === 'NoSuchKey' ||
+            singleError?.name === 'NoSuchKey' ||
+            singleError?.$metadata?.httpStatusCode === 404;
+
+          if (!isMissingObject) {
+            throw bulkError;
+          }
+        }
+      }
+      console.log(`Deleted ${keys.length} S3 objects under: ${prefix} (fallback mode)`);
+    }
   } catch (error) {
     console.error('Bulk S3 delete error:', error);
     try {
