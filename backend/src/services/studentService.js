@@ -2,6 +2,27 @@ import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
 
+let studentEmailColumnExistsCache = null;
+
+async function hasStudentEmailColumn(client = pool) {
+    if (studentEmailColumnExistsCache !== null) {
+        return studentEmailColumnExistsCache;
+    }
+
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'students'
+              AND column_name = 'email'
+        ) AS exists`
+    );
+
+    studentEmailColumnExistsCache = result.rows[0]?.exists === true;
+    return studentEmailColumnExistsCache;
+}
+
 /**
  * Generate initial password from student name: firstname@123
  * (Keep local helper if used elsewhere in this file)
@@ -16,6 +37,7 @@ function generateInitialPassword(name) {
  */
 export async function getAllStudents(search) {
     const batchModel = await getStudentBatchModel();
+    const includeEmail = await hasStudentEmailColumn();
     
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
@@ -51,6 +73,7 @@ export async function getAllStudents(search) {
             u.name ILIKE $${params.length}
             OR u.login_id ILIKE $${params.length}
             OR s.roll_number ILIKE $${params.length}
+            ${includeEmail ? `OR s.email ILIKE $${params.length}` : ""}
         )`;
     }
 
@@ -61,6 +84,7 @@ export async function getAllStudents(search) {
             u.login_id,
             u.avatar_url,
             s.roll_number,
+            ${includeEmail ? "s.email," : "NULL::text AS email,"}
             s.phone,
             s.address,
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
@@ -106,6 +130,7 @@ export async function getAllStudents(search) {
  */
 export async function getStudentById(id) {
     const batchModel = await getStudentBatchModel();
+    const includeEmail = await hasStudentEmailColumn();
 
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
@@ -140,6 +165,7 @@ export async function getStudentById(id) {
             u.login_id,
             u.avatar_url,
             s.roll_number,
+            ${includeEmail ? "s.email," : "NULL::text AS email,"}
             s.phone,
             s.address,
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
@@ -186,10 +212,15 @@ export async function createStudent({ name, rollNumber, email, phone, address, d
     try {
         await client.query("BEGIN");
         const batchModel = await getStudentBatchModel();
+        const includeEmail = await hasStudentEmailColumn(client);
 
         const password = hashPassword(generateInitialPassword(name));
 
-        const loginId = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : rollNumber;
+        const normalizedEmail = typeof email === "string" && email.trim()
+            ? email.trim().toLowerCase()
+            : null;
+
+        const loginId = rollNumber;
 
         const userResult = await client.query(
             `INSERT INTO users (name, login_id, role, password_hash, created_at)
@@ -200,17 +231,33 @@ export async function createStudent({ name, rollNumber, email, phone, address, d
         const userId = userResult.rows[0].id;
 
         if (batchModel === "single") {
-            await client.query(
-                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
-                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE, $7)`,
-                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
-            );
+            if (includeEmail) {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, email, phone, address, dob, parent_contact, join_date, assigned_batch_id)
+                     VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, $7, CURRENT_DATE, $8)`,
+                    [userId, rollNumber, normalizedEmail, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
+                );
+            } else {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
+                     VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE, $7)`,
+                    [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
+                );
+            }
         } else {
-            await client.query(
-                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
-                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
-                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
-            );
+            if (includeEmail) {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, email, phone, address, dob, parent_contact, join_date)
+                     VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, $7, CURRENT_DATE)`,
+                    [userId, rollNumber, normalizedEmail, phone || null, address || null, dateOfBirth || "", parentContact || null]
+                );
+            } else {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
+                     VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
+                    [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
+                );
+            }
             if (batchId) {
                 await client.query(
                     `INSERT INTO student_batches (student_id, batch_id)
@@ -238,22 +285,54 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const includeEmail = await hasStudentEmailColumn(client);
+
+        const hasEmailInput = Object.prototype.hasOwnProperty.call(arguments[1] || {}, "email");
+        const normalizedEmail = hasEmailInput
+            ? (typeof arguments[1].email === "string" && arguments[1].email.trim()
+                ? arguments[1].email.trim().toLowerCase()
+                : null)
+            : undefined;
 
         if (name) {
             await client.query(`UPDATE users SET name = $1 WHERE id = $2`, [name, id]);
         }
 
-        await client.query(
-            `UPDATE students
-             SET roll_number = COALESCE($2, roll_number),
-                 phone = COALESCE($3, phone),
-                 address = COALESCE($4, address),
-                 dob = COALESCE(NULLIF($5, '')::date, dob),
-                 parent_contact = COALESCE($6, parent_contact),
-                 admin_remark = COALESCE($7, admin_remark)
-             WHERE user_id = $1`,
-            [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null, adminRemark || null]
-        );
+        if (includeEmail) {
+            await client.query(
+                `UPDATE students
+                 SET roll_number = COALESCE($2, roll_number),
+                     email = CASE WHEN $3::text IS NULL THEN email ELSE $3 END,
+                     phone = COALESCE($4, phone),
+                     address = COALESCE($5, address),
+                     dob = COALESCE(NULLIF($6, '')::date, dob),
+                     parent_contact = COALESCE($7, parent_contact),
+                     admin_remark = COALESCE($8, admin_remark)
+                 WHERE user_id = $1`,
+                [
+                    id,
+                    rollNumber || null,
+                    hasEmailInput ? (normalizedEmail ?? "") : null,
+                    phone || null,
+                    address || null,
+                    dateOfBirth || "",
+                    parentContact || null,
+                    adminRemark || null,
+                ]
+            );
+        } else {
+            await client.query(
+                `UPDATE students
+                 SET roll_number = COALESCE($2, roll_number),
+                     phone = COALESCE($3, phone),
+                     address = COALESCE($4, address),
+                     dob = COALESCE(NULLIF($5, '')::date, dob),
+                     parent_contact = COALESCE($6, parent_contact),
+                     admin_remark = COALESCE($7, admin_remark)
+                 WHERE user_id = $1`,
+                [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null, adminRemark || null]
+            );
+        }
 
         if (rollNumber) {
             await client.query(`UPDATE users SET login_id = $1 WHERE id = $2`, [rollNumber, id]);

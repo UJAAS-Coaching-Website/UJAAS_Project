@@ -64,7 +64,7 @@ export async function deleteAvatar(req, res) {
 }
 
 export async function updateProfile(req, res) {
-    const { name, phone, address, dateOfBirth, parentContact } = req.body || {};
+    const { name, phone, address, dateOfBirth, parentContact, email } = req.body || {};
     const normalizedName = String(name ?? "").trim();
 
     if (!normalizedName) {
@@ -78,6 +78,7 @@ export async function updateProfile(req, res) {
             address,
             dateOfBirth,
             parentContact,
+            email,
         });
 
         if (!user) {

@@ -268,7 +268,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     avatar_url: (s as any).avatar_url ?? null,
     rating: computeStudentRating(s),
     batch: s.assigned_batch?.name || 'Unassigned',
-    email: s.login_id || '',
+    email: s.email || s.login_id || '',
     phoneNumber: s.phone || '',
     dateOfBirth: s.date_of_birth || '',
     address: s.address || '',
@@ -303,6 +303,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
         await apiUpdateStudent(data.id, {
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,

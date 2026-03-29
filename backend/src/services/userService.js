@@ -266,7 +266,7 @@ export async function fetchUserProfileById(userId) {
     }
 }
 
-export async function updateStudentProfile(userId, { name, phone, address, dateOfBirth, parentContact }) {
+export async function updateStudentProfile(userId, { name, phone, address, dateOfBirth, parentContact, email }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -276,23 +276,51 @@ export async function updateStudentProfile(userId, { name, phone, address, dateO
             [name, userId]
         );
 
-        const updateResult = await client.query(
-            `
-      UPDATE students
-      SET
-        phone = $1,
-        address = $2,
-        dob = NULLIF($3, '')::date,
-        parent_contact = $4
-          WHERE user_id = $5
-          RETURNING user_id
-          `,
-            [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", userId]
-        );
+        const hasEmailColumn = await columnExists("students", "email", client);
 
-        if (updateResult.rowCount === 0) {
-            await client.query("ROLLBACK");
-            return null;
+        if (hasEmailColumn) {
+            const normalizedEmail = typeof email === "string" && email.trim()
+                ? email.trim().toLowerCase()
+                : null;
+
+            const updateResult = await client.query(
+                `
+          UPDATE students
+          SET
+            phone = $1,
+            address = $2,
+            dob = NULLIF($3, '')::date,
+            parent_contact = $4,
+            email = $5
+              WHERE user_id = $6
+              RETURNING user_id
+              `,
+                [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", normalizedEmail, userId]
+            );
+
+            if (updateResult.rowCount === 0) {
+                await client.query("ROLLBACK");
+                return null;
+            }
+        } else {
+            const updateResult = await client.query(
+                `
+          UPDATE students
+          SET
+            phone = $1,
+            address = $2,
+            dob = NULLIF($3, '')::date,
+            parent_contact = $4
+              WHERE user_id = $5
+              RETURNING user_id
+              `,
+                [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", userId]
+            );
+
+            if (updateResult.rowCount === 0) {
+                await client.query("ROLLBACK");
+                return null;
+            }
         }
 
         await client.query("COMMIT");

@@ -42,6 +42,7 @@ export interface UpdateProfilePayload {
   name: string;
   phone: string;
   address: string;
+  email: string;
   dateOfBirth: string | null;
   parentContact: string;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { changeMyPassword, me, verifyMyPassword } from '../api/auth';
+import { changeMyPassword, me, verifyMyPassword, updateMyProfile } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
@@ -257,7 +257,10 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       )}
 
       {activeSection === 'settings' && (
-        <SettingsSection onLogout={onLogout} />
+        <SettingsSection onLogout={onLogout} studentDetails={studentDetails} onProfileUpdate={() => {
+          // Refresh profile after update
+          setProfileUser(prev => ({ ...prev }));
+        }} />
       )}
     </div>
   );
@@ -576,9 +579,10 @@ function PerformanceSection({ details, user, isMobileViewport }: { details: Stud
   );
 }
 
-function SettingsSection({ onLogout }: { onLogout: () => void }) {
+function SettingsSection({ onLogout, studentDetails, onProfileUpdate }: { onLogout: () => void, studentDetails?: StudentDetails, onProfileUpdate?: () => void }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
     newPassword: '',
@@ -586,7 +590,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
   });
   const [isPasswordVerified, setIsPasswordVerified] = useState(false);
   const [passwordAction, setPasswordAction] = useState<'idle' | 'verifying' | 'updating'>('idle');
-  useBodyScrollLock(showLogoutConfirm || showChangePassword);
+  useBodyScrollLock(showLogoutConfirm || showChangePassword || showEditProfile);
 
   const handleLogout = () => {
     setShowLogoutConfirm(false);
@@ -598,6 +602,10 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
     setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
     setIsPasswordVerified(false);
     setPasswordAction('idle');
+  };
+
+  const closeEditProfile = () => {
+    setShowEditProfile(false);
   };
 
   const handlePasswordChange = (field: keyof typeof passwordForm) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -651,8 +659,21 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3"
+        className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-3"
       >
+        <motion.button
+          onClick={() => setShowEditProfile(true)}
+          className="w-full p-4 md:p-3 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-teal-200"
+        >
+          <div>
+            <h4 className="font-semibold text-gray-900 md:text-sm">Edit Profile</h4>
+            <p className="text-sm text-gray-600 md:text-xs">Update your contact info</p>
+          </div>
+          <div className="w-8 h-8 md:w-7 md:h-7 bg-teal-100 group-hover:bg-teal-200 rounded-lg flex items-center justify-center transition">
+            <Mail className="w-4 h-4 md:w-3.5 md:h-3.5 text-teal-600" />
+          </div>
+        </motion.button>
+
         <motion.button
           onClick={() => setShowChangePassword(true)}
           className="w-full p-4 md:p-3 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border border-gray-200"
@@ -826,7 +847,174 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
             </motion.div>,
             modalRoot
           )}
+
+      {showEditProfile &&
+        modalRoot &&
+        createPortal(
+          <EditProfileModal
+            studentDetails={studentDetails}
+            onClose={closeEditProfile}
+            onProfileUpdate={onProfileUpdate}
+          />,
+          modalRoot
+        )}
     </div>
+  );
+}
+
+function EditProfileModal({ 
+  studentDetails, 
+  onClose, 
+  onProfileUpdate 
+}: { 
+  studentDetails?: StudentDetails; 
+  onClose: () => void; 
+  onProfileUpdate?: () => void; 
+}) {
+  const [formData, setFormData] = useState({
+    phone: studentDetails?.phone || '',
+    email: studentDetails?.email || '',
+    address: studentDetails?.address || '',
+    dateOfBirth: normalizeDateForInput(studentDetails?.dateOfBirth || ''),
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleChange = (field: keyof typeof formData) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [field]: event.target.value }));
+    setError('');
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Get the current user profile first to have the name
+      const currentProfile = await me();
+      const currentUser = currentProfile.user as any;
+
+      await updateMyProfile({
+        name: currentUser.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        dateOfBirth: formData.dateOfBirth === '' ? null : formData.dateOfBirth,
+        parentContact: studentDetails?.parentContact || '',
+      });
+
+      window.alert('Profile updated successfully!');
+      onProfileUpdate?.();
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-layer-modal p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="px-6 py-6 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white">
+          <h3 className="text-2xl font-bold">Edit Profile</h3>
+          <p className="text-teal-100 text-sm mt-1">Update your contact information</p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={handleChange('phone')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="Your phone number"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={handleChange('email')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+              placeholder="your.email@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={handleChange('dateOfBirth')}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Address
+            </label>
+            <textarea
+              value={formData.address}
+              onChange={handleChange('address')}
+              rows={3}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 resize-none"
+              placeholder="Street, city, state, postal code"
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 pt-6 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition disabled:opacity-70"
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }
 

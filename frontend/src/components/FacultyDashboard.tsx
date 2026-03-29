@@ -94,6 +94,7 @@ interface Student {
   avatarUrl?: string | null;
   avatar_url?: string | null;
   rollNumber: string;
+  email?: string;
   enrolledCourses: string[];
   joinDate: string;
   performance: number;
@@ -249,6 +250,7 @@ export function FacultyDashboard({
           avatarUrl: (api as any).avatarUrl ?? (api as any).avatar_url ?? null,
           avatar_url: (api as any).avatar_url ?? null,
           rollNumber: api.roll_number,
+          email: api.email || '',
           enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
           joinDate: api.join_date || new Date().toISOString().split('T')[0],
           performance: (overallFromSubjects ?? (((api.rating_attendance || 0) + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4)) * 20,
@@ -1441,6 +1443,10 @@ function StudentRatingsModal({
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Roll Number</p>
                   <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-indigo-600" /> {student.email || 'Not provided'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>

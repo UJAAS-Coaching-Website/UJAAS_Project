@@ -17,6 +17,7 @@ export interface ApiStudent {
     avatar_url?: string | null;
     avatarUrl?: string | null;
     roll_number: string;
+    email?: string | null;
     phone: string | null;
     address: string | null;
     date_of_birth: string | null;
@@ -47,6 +48,7 @@ export interface CreateStudentPayload {
 export interface UpdateStudentPayload {
     name?: string;
     rollNumber?: string;
+    email?: string;
     phone?: string;
     address?: string;
     dateOfBirth?: string;
