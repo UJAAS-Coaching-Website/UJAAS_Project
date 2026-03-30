@@ -78,8 +78,12 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
     // Build order clause based on sort field
     let orderClause = "ORDER BY u.name ASC";
     if (sortField === 'roll_number') {
-           // Sort roll_number numerically by casting to integer
-           orderClause = `ORDER BY (s.roll_number::INTEGER) ${order}`;
+        // Sort by numeric value when digits exist, with text fallback for stable ordering.
+        orderClause = `
+            ORDER BY
+                NULLIF(regexp_replace(COALESCE(s.roll_number, ''), '[^0-9]', '', 'g'), '')::BIGINT ${order} NULLS LAST,
+                s.roll_number ${order}
+        `;
     } else if (sortField === 'rating') {
         orderClause = `ORDER BY (
             COALESCE((SELECT AVG(

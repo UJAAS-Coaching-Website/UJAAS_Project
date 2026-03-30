@@ -404,7 +404,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
           <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search students..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
+              <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search by name or roll number..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
             </div>
             <select value={`${sortBy}-${sortOrder}`} onChange={(event) => handleSortChange(event.target.value)} className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}>
               <option value="name-asc">Sort: A to Z</option>
