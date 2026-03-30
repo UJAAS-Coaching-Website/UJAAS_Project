@@ -190,33 +190,55 @@ function AddStudentModal({
 export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void, studentsData?: ApiStudent[] }) {
   const [students, setStudents] = useState<ApiStudent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
+  const [sortBy, setSortBy] = useState<'name' | 'roll_number' | 'rating'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const STUDENTS_PER_PAGE = 20;
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentDirectoryStudent; title?: string }>({ open: false });
 
-  const loadStudents = async (searchQuery?: string, forceRefresh = false) => {
+  // Helper function to parse combined sort option and update both sort states
+  const handleSortChange = (value: string) => {
+    const sortMap: Record<string, { field: 'name' | 'roll_number' | 'rating'; order: 'asc' | 'desc' }> = {
+      'name-asc': { field: 'name', order: 'asc' },
+      'name-desc': { field: 'name', order: 'desc' },
+      'roll_number-asc': { field: 'roll_number', order: 'asc' },
+      'roll_number-desc': { field: 'roll_number', order: 'desc' },
+      'rating-asc': { field: 'rating', order: 'asc' },
+      'rating-desc': { field: 'rating', order: 'desc' },
+    };
+    const config = sortMap[value] || { field: 'name', order: 'asc' };
+    setLoading(true);
+    setSortBy(config.field);
+    setSortOrder(config.order);
+    setCurrentPage(1);
+  };
+
+  const loadStudents = async (searchQuery?: string, forceRefresh = false, sort?: string, order?: string) => {
     try {
       if (!searchQuery && studentsData && studentsData.length > 0 && !forceRefresh) {
         setStudents(studentsData);
+        setLoading(false);
+        setIsInitialLoad(false);
         return;
       }
-      if (!searchQuery && students.length === 0) setLoading(true);
-      const res = await apiFetchStudents(searchQuery, forceRefresh);
+      setLoading(true);
+      const res = await apiFetchStudents(searchQuery, forceRefresh, sort, order);
       setStudents(res);
     } catch (e) {
       console.error('Failed to fetch students:', e);
     } finally {
-      if (!searchQuery) setLoading(false);
+      setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
   useEffect(() => {
-    loadStudents();
+    loadStudents(undefined, false, sortBy, sortOrder);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sortBy, sortOrder]);
 
   useEffect(() => {
     if (!studentsData || studentsData.length === 0 || query.length > 0) return;
@@ -226,12 +248,12 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (query.length > 0) loadStudents(query);
-      else loadStudents();
+      if (query.length > 0) loadStudents(query, false, sortBy, sortOrder);
+      else loadStudents(undefined, false, sortBy, sortOrder);
     }, 250);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, sortBy, sortOrder]);
 
   const computeStudentRating = (student: ApiStudent): number => {
     const subjectRatings = (student as any).subject_ratings || {};
@@ -276,15 +298,8 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     originalObject: s
   }));
 
-  const filtered = formattedStudents.sort((a, b) => {
-    switch (sortBy) {
-      case 'name-asc': return a.name.localeCompare(b.name);
-      case 'rank-desc': return b.rating - a.rating;
-      case 'rank-asc': return a.rating - b.rating;
-      case 'batch-asc': return (a.batch || '').localeCompare(b.batch || '');
-      default: return 0;
-    }
-  });
+  // Students are already sorted by the backend, no client-side sorting needed
+  const filtered = formattedStudents;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -332,7 +347,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
         const loginId = (createdStudent as any)?.login_id || data.rollNumber || 'Not provided';
         window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
-      loadStudents(undefined, true); // Refresh
+      loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
@@ -343,7 +358,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
         await apiDeleteStudent(id);
-        loadStudents(undefined, true); // Refresh
+        loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
       } catch (error: any) {
         window.alert(`Error deleting student: ${error.message}`);
       }
@@ -372,7 +387,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     );
   };
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="space-y-4">
         <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -391,11 +406,13 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
             <div className="relative">
               <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search students..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
             </div>
-            <select value={sortBy} onChange={(event) => { setSortBy(event.target.value as any); setCurrentPage(1); }} className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}>
+            <select value={`${sortBy}-${sortOrder}`} onChange={(event) => handleSortChange(event.target.value)} className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}>
               <option value="name-asc">Sort: A to Z</option>
-              <option value="rank-desc">Sort: Rank (High to Low)</option>
-              <option value="rank-asc">Sort: Rank (Low to High)</option>
-              <option value="batch-asc">Sort: By Batch</option>
+              <option value="name-desc">Sort: Z to A</option>
+              <option value="roll_number-asc">Sort: Roll Number (↑)</option>
+              <option value="roll_number-desc">Sort: Roll Number (↓)</option>
+              <option value="rating-asc">Sort: Performance (Low to High)</option>
+              <option value="rating-desc">Sort: Performance (High to Low)</option>
             </select>
             <button onClick={() => setStudentModal({ open: true, title: 'Add Student' })} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button>
           </div>
@@ -411,7 +428,14 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedStudents.map((student) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="py-4 px-4">
+                    <TableRowsSkeleton rows={Math.min(STUDENTS_PER_PAGE, 8)} />
+                  </td>
+                </tr>
+              ) : (
+                paginatedStudents.map((student) => (
                 <tr key={student.id} onClick={() => onViewStudent(student.originalObject)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
@@ -455,7 +479,8 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

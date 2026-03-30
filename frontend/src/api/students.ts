@@ -72,10 +72,26 @@ export const setStudentsCache = (data: ApiStudent[] | null) => { studentsCache =
 
 // ── API functions ──────────────────────────────────────
 
-export async function fetchStudents(search?: string, forceRefresh = false): Promise<ApiStudent[]> {
-    const query = search && search.trim().length > 0
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : "";
+export async function fetchStudents(search?: string, forceRefresh = false, sortBy?: string, sortOrder?: string): Promise<ApiStudent[]> {
+    let query = "";
+    const params = new URLSearchParams();
+    
+    if (search && search.trim().length > 0) {
+        params.append("search", search.trim());
+    }
+    
+    if (sortBy) {
+        params.append("sortBy", sortBy);
+    }
+    
+    if (sortOrder) {
+        params.append("sortOrder", sortOrder);
+    }
+    
+    if (params.toString()) {
+        query = `?${params.toString()}`;
+    }
+    
     if (!query && studentsCache && !forceRefresh) return studentsCache;
     const res = await request<ApiStudent[]>(`/api/students${query}`);
     if (!query) studentsCache = res;

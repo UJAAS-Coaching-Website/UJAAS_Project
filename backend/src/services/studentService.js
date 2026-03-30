@@ -36,8 +36,11 @@ function generateInitialPassword(name) {
 
 /**
  * Get all students with user info, batch assignment, and aggregated ratings.
+ * @param {string} search - Optional search term
+ * @param {string} sortBy - Sort field: 'name', 'rollNumber', or 'rating' (default: 'name')
+ * @param {string} sortOrder - Sort order: 'asc' or 'desc' (default: 'asc')
  */
-export async function getAllStudents(search) {
+export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc') {
     const batchModel = await getStudentBatchModel();
     const includeEmail = await hasStudentEmailColumn();
     
@@ -66,6 +69,30 @@ export async function getAllStudents(search) {
         ),
         '{}'
     )`;
+
+    // Validate and sanitize sort parameters
+    const validSortFields = ['name', 'roll_number', 'rating'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'name';
+    const order = ['asc', 'desc'].includes(String(sortOrder).toLowerCase()) ? String(sortOrder).toUpperCase() : 'ASC';
+
+    // Build order clause based on sort field
+    let orderClause = "ORDER BY u.name ASC";
+    if (sortField === 'roll_number') {
+           // Sort roll_number numerically by casting to integer
+           orderClause = `ORDER BY (s.roll_number::INTEGER) ${order}`;
+    } else if (sortField === 'rating') {
+        orderClause = `ORDER BY (
+            COALESCE((SELECT AVG(
+                COALESCE(r.test_performance, 0) + 
+                COALESCE(r.dpp_performance, 0) + 
+                COALESCE(r.behavior, 0)
+            ) FROM batch_subjects bs 
+            LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = u.id
+            WHERE bs.batch_id = ${batchJoinSubquery}), 0)
+        ) ${order}`;
+    } else {
+        orderClause = `ORDER BY u.name ${order}`;
+    }
 
     const params = [];
     let searchClause = "";
@@ -103,7 +130,7 @@ export async function getAllStudents(search) {
         LEFT JOIN batches b ON b.id = ${batchJoinSubquery}
         WHERE u.role = 'student'
         ${searchClause}
-        ORDER BY u.name
+        ${orderClause}
     `, params);
     
     return result.rows.map(row => {

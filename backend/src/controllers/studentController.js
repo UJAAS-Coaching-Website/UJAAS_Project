@@ -11,7 +11,11 @@ import {
 
 export async function listStudents(req, res) {
     try {
-        const students = await getAllStudents(req.query.search);
+        const search = req.query.search;
+        const sortBy = req.query.sortBy || 'name';
+        const sortOrder = req.query.sortOrder || 'asc';
+        
+        const students = await getAllStudents(search, sortBy, sortOrder);
         return res.status(200).json(students);
     } catch (error) {
         console.error("listStudents error:", error.message);
