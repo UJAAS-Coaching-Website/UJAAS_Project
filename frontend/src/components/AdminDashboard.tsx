@@ -3929,6 +3929,14 @@ function StudentRatingsModal({
   const handlePrintStudentDetails = () => {
     const profileValues = getProfileValuesForPrint();
     const currentBatchInfo = batches.find(b => b.label === student.batch);
+    const normalizeSubjectKey = (value: string) => value.trim().toLowerCase();
+    const subjectFacultyMap = new Map<string, string>();
+    (currentBatchInfo?.facultyAssignments ?? []).forEach((assignment) => {
+      const subjectName = (assignment.subject ?? '').trim();
+      const facultyName = (assignment.name ?? '').trim();
+      if (!subjectName || !facultyName) return;
+      subjectFacultyMap.set(normalizeSubjectKey(subjectName), facultyName);
+    });
     const renderStarsForPrint = (value: number) => {
       const normalized = Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
       const rounded = Math.round(normalized);
@@ -3959,9 +3967,7 @@ function StudentRatingsModal({
             const subjectAverage = calculateSubjectRating(r);
             const attendanceRating = getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating);
             const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
-
-            const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
-            const subjectFaculty = batchFacultyNames.find(name => true);
+            const subjectFaculty = subjectFacultyMap.get(normalizeSubjectKey(subject));
 
             return `
                 <section class="subject-card">
