@@ -829,14 +829,34 @@ function StudentsTab({
   const STUDENTS_PER_PAGE = 20;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(batchStudents.length / STUDENTS_PER_PAGE));
+  const [sortBy, setSortBy] = useState<'name' | 'roll'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const normalizeName = (value: string | null | undefined) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizeRollDigits = (value: string | null | undefined) => {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+  };
+  const sortedBatchStudents = [...batchStudents].sort((a, b) => {
+    if (sortBy === 'name') {
+      const aName = normalizeName(a.name);
+      const bName = normalizeName(b.name);
+      const diff = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+      return sortOrder === 'asc' ? diff : -diff;
+    }
+    const aSafe = normalizeRollDigits(a.rollNumber);
+    const bSafe = normalizeRollDigits(b.rollNumber);
+    const diff = aSafe - bSafe || normalizeName(a.name).localeCompare(normalizeName(b.name));
+    return sortOrder === 'asc' ? diff : -diff;
+  });
+  const totalPages = Math.max(1, Math.ceil(sortedBatchStudents.length / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = batchStudents.slice(
+  const paginatedStudents = sortedBatchStudents.slice(
     (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
     safeCurrentPage * STUDENTS_PER_PAGE
   );
-  const rangeStart = batchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, batchStudents.length);
+  const rangeStart = sortedBatchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, sortedBatchStudents.length);
   
   // Local state for batch-level total classes
   const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
@@ -858,6 +878,10 @@ function StudentsTab({
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedBatch, students.length]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, sortOrder]);
 
   const handleSaveTotalClasses = () => {
     setIsEditingTotal(false);
@@ -895,6 +919,22 @@ function StudentsTab({
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
+
+        <select
+          value={`${sortBy}-${sortOrder}`}
+          onChange={(event) => {
+            const [nextSortBy, nextSortOrder] = event.target.value.split('-') as ['name' | 'roll', 'asc' | 'desc'];
+            setSortBy(nextSortBy);
+            setSortOrder(nextSortOrder);
+          }}
+          className="px-4 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+        >
+          <option value="name-asc">Sort: A to Z</option>
+          <option value="name-desc">Sort: Z to A</option>
+          <option value="roll-asc">Sort: Roll Number (↑)</option>
+          <option value="roll-desc">Sort: Roll Number (↓)</option>
+        </select>
         
         {isBatchActive && facultySubject && (
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
@@ -1026,7 +1066,7 @@ function StudentsTab({
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-medium text-gray-500">
-          Showing {rangeStart}-{rangeEnd} of {batchStudents.length} students
+          Showing {rangeStart}-{rangeEnd} of {sortedBatchStudents.length} students
         </p>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
