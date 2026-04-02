@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, useEffect } from 'react';
+import { useState, ChangeEvent, ClipboardEvent, useEffect } from 'react';
 import { 
   Plus, 
   X,
@@ -91,10 +91,102 @@ export function QuestionUploadForm({
     subject: fixedSubject || subjects[0] || ''
   });
   
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadingFields, setUploadingFields] = useState<Record<string, number>>({});
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [marksInput, setMarksInput] = useState<string>(String(defaultMarks));
   const [negativeMarksInput, setNegativeMarksInput] = useState<string>(String(defaultNegativeMarks));
+
+  const getUploadFieldKey = (type: 'question' | 'option' | 'explanation', index?: number) => {
+    return type === 'option' ? `option-${index}` : type;
+  };
+
+  const isUploadingField = (type: 'question' | 'option' | 'explanation', index?: number) => {
+    return Boolean(uploadingFields[getUploadFieldKey(type, index)]);
+  };
+
+  const isUploadingAnyField = Object.keys(uploadingFields).length > 0;
+
+  const uploadImageFile = async (file: File, type: 'question' | 'option' | 'explanation', index?: number) => {
+    const fieldKey = getUploadFieldKey(type, index);
+    setUploadingFields((prev) => ({
+      ...prev,
+      [fieldKey]: (prev[fieldKey] || 0) + 1,
+    }));
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const currentPath = window.location.pathname.toLowerCase();
+      const context = uploadContext || (currentPath.includes('dpps') || currentPath.includes('create-dpp') ? 'dpps' : 'tests');
+      formData.append('context', context);
+
+      // QuestionUploadForm is often used during creation.
+      // If we don't have a testId in the URL, provide a temporary collision-resistant one
+      const pathSegments = window.location.pathname.split('/');
+      const contextId = uploadContextId || pathSegments[pathSegments.length - 1] || Date.now().toString();
+      formData.append('contextId', contextId);
+      formData.append('itemRole', type);
+
+      const response = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          ...getAuthHeaders(),
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || 'Image upload failed');
+      }
+
+      const imageUrl = data.imageUrl;
+
+      if (type === 'question') {
+        setCurrentQuestion(prev => ({ ...prev, questionImage: imageUrl }));
+      } else if (type === 'explanation') {
+        setCurrentQuestion(prev => ({ ...prev, explanationImage: imageUrl }));
+      } else if (type === 'option' && index !== undefined) {
+        setCurrentQuestion(prev => {
+          const newOptionImages = [...(prev.optionImages || [])];
+          newOptionImages[index] = imageUrl;
+          return { ...prev, optionImages: newOptionImages };
+        });
+      }
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      alert(error.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingFields((prev) => {
+        const currentCount = prev[fieldKey] || 0;
+        if (currentCount <= 1) {
+          const next = { ...prev };
+          delete next[fieldKey];
+          return next;
+        }
+        return { ...prev, [fieldKey]: currentCount - 1 };
+      });
+    }
+  };
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    await uploadImageFile(file, type, index);
+    e.target.value = '';
+  };
+
+  const handleTextFieldPaste = (e: ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
+    const file = Array.from(e.clipboardData.files).find((item) => item.type.startsWith('image/'));
+    if (!file) return;
+
+    e.preventDefault();
+    void uploadImageFile(file, type, index);
+  };
 
   // Update effect if fixed props change or editingQuestion changes
   useEffect(() => {
@@ -164,64 +256,6 @@ export function QuestionUploadForm({
     }
 
     return null;
-  };
-
-  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'question' | 'option' | 'explanation', index?: number) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingImage(true);
-    
-    try {
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const currentPath = window.location.pathname.toLowerCase();
-      const context = uploadContext || (currentPath.includes('dpps') || currentPath.includes('create-dpp') ? 'dpps' : 'tests');
-      formData.append('context', context);
-      
-      // QuestionUploadForm is often used during creation.
-      // If we don't have a testId in the URL, provide a temporary collision-resistant one
-      const pathSegments = window.location.pathname.split('/');
-      const contextId = uploadContextId || pathSegments[pathSegments.length - 1] || Date.now().toString();
-      formData.append('contextId', contextId);
-      formData.append('itemRole', type);
-
-      const response = await fetch(`${API_BASE_URL}/api/upload`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          ...getAuthHeaders(),
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok || data.status === 'error') {
-        throw new Error(data.message || 'Image upload failed');
-      }
-
-      const imageUrl = data.imageUrl;
-
-      if (type === 'question') {
-        setCurrentQuestion(prev => ({ ...prev, questionImage: imageUrl }));
-      } else if (type === 'explanation') {
-        setCurrentQuestion(prev => ({ ...prev, explanationImage: imageUrl }));
-      } else if (type === 'option' && index !== undefined) {
-        setCurrentQuestion(prev => {
-          const newOptionImages = [...(prev.optionImages || [])];
-          newOptionImages[index] = imageUrl;
-          return { ...prev, optionImages: newOptionImages };
-        });
-      }
-    } catch (error: any) {
-      console.error('Error uploading image:', error);
-      alert(error.message || 'Failed to upload image. Please try again.');
-    } finally {
-      setIsUploadingImage(false);
-      e.target.value = '';
-    }
   };
 
   // Delete an image from S3 and clear it from state
@@ -413,11 +447,11 @@ export function QuestionUploadForm({
                 accept="image/*"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 onChange={(e) => handleImageUpload(e, 'question')}
-                disabled={isUploadingImage}
+                disabled={isUploadingField('question')}
               />
-              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingImage ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-cyan-600 border-cyan-100 hover:bg-cyan-50'}`}>
-                {isUploadingImage ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
-                {isUploadingImage ? 'Uploading...' : 'Upload Image'}
+              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingField('question') ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-cyan-600 border-cyan-100 hover:bg-cyan-50'}`}>
+                {isUploadingField('question') ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                {isUploadingField('question') ? 'Uploading...' : 'Upload Image'}
               </button>
             </div>
           </label>
@@ -425,6 +459,7 @@ export function QuestionUploadForm({
             <textarea
               value={currentQuestion.question}
               onChange={(e) => setCurrentQuestion({ ...currentQuestion, question: e.target.value })}
+              onPaste={(e) => handleTextFieldPaste(e, 'question')}
               rows={3}
               placeholder="Enter your question here..."
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
@@ -457,9 +492,9 @@ export function QuestionUploadForm({
                           accept="image/*"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                           onChange={(e) => handleImageUpload(e, 'option', index)}
-                          disabled={isUploadingImage}
+                          disabled={isUploadingField('option', index)}
                         />
-                        {isUploadingImage ? (
+                        {isUploadingField('option', index) ? (
                            <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin"/>
                         ) : (
                           <ImageIcon className="w-4 h-4 text-gray-400 hover:text-cyan-600 cursor-pointer transition-colors" />
@@ -501,6 +536,7 @@ export function QuestionUploadForm({
                         newOptions[index] = e.target.value;
                         setCurrentQuestion({ ...currentQuestion, options: newOptions });
                       }}
+                      onPaste={(e) => handleTextFieldPaste(e, 'option', index)}
                       placeholder={`Option ${String.fromCharCode(65 + index)}`}
                       className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition ${
                         (currentQuestion.type === 'MCQ' ? currentQuestion.correctAnswer === index : (currentQuestion.correctAnswer as number[]).includes(index))
@@ -510,7 +546,7 @@ export function QuestionUploadForm({
                     />
                     {currentQuestion.optionImages?.[index] && (
                       <div className="relative inline-block self-start">
-                        <img src={currentQuestion.optionImages[index]} alt={`Option ${index}`} className="h-16 w-auto rounded-lg border border-gray-200 shadow-sm" />
+                        <img src={currentQuestion.optionImages[index]} alt={`Option ${index}`} className="h-12 max-w-[160px] w-auto object-contain rounded-lg border border-gray-200 shadow-sm" />
                         <button 
                           onClick={() => handleImageRemove('option', index)}
                           className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 scale-75"
@@ -548,17 +584,18 @@ export function QuestionUploadForm({
                 accept="image/*"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 onChange={(e) => handleImageUpload(e, 'explanation')}
-                disabled={isUploadingImage}
+                disabled={isUploadingField('explanation')}
               />
-              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingImage ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-blue-600 border-blue-100 hover:bg-blue-50'}`}>
-                {isUploadingImage ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
-                {isUploadingImage ? 'Uploading...' : 'Add Solution Image'}
+              <button type="button" className={`p-1.5 rounded-lg transition-colors border flex items-center gap-1.5 text-xs font-bold ${isUploadingField('explanation') ? 'text-gray-400 border-gray-200 bg-gray-50' : 'text-blue-600 border-blue-100 hover:bg-blue-50'}`}>
+                {isUploadingField('explanation') ? <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <ImageIcon className="w-4 h-4" />}
+                {isUploadingField('explanation') ? 'Uploading...' : 'Add Solution Image'}
               </button>
             </div>
           </label>
           <textarea
             value={currentQuestion.explanation || ''}
             onChange={(e) => setCurrentQuestion({ ...currentQuestion, explanation: e.target.value })}
+            onPaste={(e) => handleTextFieldPaste(e, 'explanation')}
             rows={2}
             placeholder="Add solution explanation here..."
             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
@@ -590,8 +627,8 @@ export function QuestionUploadForm({
           <div className="flex items-center gap-3">
           <motion.button
             onClick={handleAdd}
-            disabled={isUploadingImage || (addDisabled && !editingQuestion)}
-            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-orange-500 to-red-500' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${(isUploadingImage || (addDisabled && !editingQuestion)) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
+            disabled={isUploadingAnyField || (addDisabled && !editingQuestion)}
+            className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${editingQuestion ? 'from-orange-500 to-red-500' : 'from-cyan-600 to-blue-600'} text-white rounded-xl font-semibold shadow-lg transition-all ${(isUploadingAnyField || (addDisabled && !editingQuestion)) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}`}
           >
             {editingQuestion ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
             {editingQuestion ? 'Update Question' : buttonLabel}
