@@ -34,5 +34,17 @@
     "attempts": 0,
     "createdAt": "2026-04-02T12:07:25.929Z",
     "updatedAt": "2026-04-02T12:07:25.929Z"
+  },
+  {
+    "id": "332c16c1-9fad-486c-baff-100038fb0d79",
+    "type": "delete_context",
+    "url": null,
+    "context": "tests",
+    "contextId": "72759155-b8a7-45a7-a46a-5ef65f0f2c6e",
+    "source": "deleteAllImagesForContext",
+    "errorMessage": "The specified key does not exist.",
+    "attempts": 0,
+    "createdAt": "2026-04-02T12:19:23.269Z",
+    "updatedAt": "2026-04-02T12:19:23.269Z"
   }
 ]

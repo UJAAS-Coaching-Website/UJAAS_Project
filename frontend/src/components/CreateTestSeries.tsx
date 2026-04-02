@@ -379,88 +379,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     handleSaveDraftClick(undefined, nextQuestions);
   };
 
-  const fillDemoQuestions = () => {
-    const demoQuestions: any[] = [];
-    const subjects = getSubjects();
-
-    if (testData.format === 'JEE MAIN') {
-      subjects.forEach(subject => {
-        for (let i = 1; i <= 20; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - Practice Question ${i} (Section A)`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 1,
-            subject,
-            metadata: { section: 'Section A' }
-          });
-        }
-
-        for (let i = 1; i <= 5; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'Numerical',
-            question: `${subject} - Numerical Practice ${i} (Section B)`,
-            correctAnswer: '10',
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 0,
-            subject,
-            metadata: { section: 'Section B' }
-          });
-        }
-      });
-    } else if (testData.format === 'NEET') {
-      const neetSubjectCounts: Record<string, number> = {
-        Physics: 45,
-        Chemistry: 45,
-        Biology: 90
-      };
-
-      subjects.forEach(subject => {
-        const count = neetSubjectCounts[subject] ?? 0;
-        for (let i = 1; i <= count; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - NEET Practice Question ${i}`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 1,
-            subject
-          });
-        }
-      });
-    } else {
-      subjects.forEach(subject => {
-        for (let i = 1; i <= 2; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - Custom Practice Question ${i}`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 0,
-            subject
-          });
-        }
-      });
-    }
-
-    setQuestions(demoQuestions);
-    questionsRef.current = demoQuestions;
-    setIsDraftDirty(true);
-    handleSaveDraftClick(undefined, demoQuestions);
-  };
-
   const toggleBatch = (label: string) => {
     setTestData((prev) => {
       const next = {
@@ -1008,13 +926,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={fillDemoQuestions}
-                  className="px-5 py-2.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors border border-amber-200 whitespace-nowrap"
-                >
-                  Fill Demo Questions
-                </button>
               </div>
 
               {testData.format === 'JEE MAIN' && (
