@@ -418,16 +418,21 @@ export function TestPreviewAndReview({
   };
 
   const selectAnswer = (questionId: string, value: string | number | number[] | null) => {
-    setAnswers({ ...answers, [questionId]: value });
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const toggleMsqAnswer = (questionId: string, optionIndex: number) => {
-    const currentAnswer = answers[questionId];
-    const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
-    const nextValues = currentValues.includes(optionIndex)
-      ? currentValues.filter((value) => value !== optionIndex)
-      : [...currentValues, optionIndex].sort((a, b) => a - b);
-    selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
+    setAnswers((prev) => {
+      const currentAnswer = prev[questionId];
+      const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
+      const nextValues = currentValues.includes(optionIndex)
+        ? currentValues.filter((value) => value !== optionIndex)
+        : [...currentValues, optionIndex].sort((a, b) => a - b);
+      return {
+        ...prev,
+        [questionId]: nextValues.length > 0 ? nextValues : null,
+      };
+    });
   };
 
 
