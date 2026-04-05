@@ -157,14 +157,11 @@ export function Footer() {
                 © {currentYear} UJAAS. All rights reserved.
               </p>
               <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-400">
-                <a href="#" className="transition hover:text-white">
-                  Privacy
+                <a href="/privacy-policy" className="transition hover:text-white">
+                  Privacy Policy
                 </a>
-                <a href="#" className="transition hover:text-white">
+                <a href="/terms-and-conditions" className="transition hover:text-white">
                   Terms
-                </a>
-                <a href="#" className="transition hover:text-white">
-                  Cookies
                 </a>
               </div>
             </div>
@@ -284,6 +281,14 @@ export function Footer() {
               <p className="text-sm text-gray-400">
                 © {currentYear} UJAAS Career Institute. All rights reserved.
               </p>
+              <div className="flex items-center gap-4 text-sm text-gray-400">
+                <a href="/privacy-policy" className="transition hover:text-white">
+                  Privacy Policy
+                </a>
+                <a href="/terms-and-conditions" className="transition hover:text-white">
+                  Terms
+                </a>
+              </div>
             </div>
           </motion.div>
         </div>

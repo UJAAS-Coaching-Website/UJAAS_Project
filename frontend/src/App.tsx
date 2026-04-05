@@ -77,6 +77,7 @@ const StudentDashboard = lazy(() => import('./components/StudentDashboard').then
 const AdminDashboard = lazy(() => import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
 const FacultyDashboard = lazy(() => import('./components/FacultyDashboard').then((module) => ({ default: module.FacultyDashboard })));
 const GetStarted = lazy(() => import('./components/GetStarted').then((module) => ({ default: module.GetStarted })));
+const LegalPolicyPage = lazy(() => import('./components/LegalPolicyPage'));
 
 export interface User {
   id: string;
@@ -827,6 +828,12 @@ function App() {
     if (path === '/login') {
       return { view: 'login' as const };
     }
+    if (path === '/privacy' || path === '/privacy-policy') {
+      return { view: 'privacy' as const };
+    }
+    if (path === '/terms' || path === '/terms-and-conditions') {
+      return { view: 'terms' as const };
+    }
     const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'student') {
       return {
@@ -920,6 +927,9 @@ function App() {
     const route = parsePath();
 
     if (!currentUser) {
+      if (route.view === 'privacy' || route.view === 'terms') {
+        return;
+      }
       const shouldShowGetStarted = route.view !== 'login';
       setShowGetStarted(shouldShowGetStarted);
       if (route.view === 'login') {
@@ -1362,6 +1372,13 @@ function App() {
       return <DashboardLoadingShell role={user.role} />;
     }
     const route = parsePath();
+    if (route.view === 'privacy' || route.view === 'terms') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <LegalPolicyPage kind={route.view} />
+        </Suspense>
+      );
+    }
     if (route.view === 'login') {
       return (
         <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
@@ -1403,6 +1420,15 @@ function App() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  const route = parsePath();
+  if (route.view === 'privacy' || route.view === 'terms') {
+    return (
+      <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+        <LegalPolicyPage kind={route.view} />
+      </Suspense>
     );
   }
 
