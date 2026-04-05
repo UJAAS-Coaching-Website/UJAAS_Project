@@ -926,10 +926,11 @@ function App() {
   const setTabFromPath = (currentUser: User | null) => {
     const route = parsePath();
 
+    if (route.view === 'privacy' || route.view === 'terms') {
+      return;
+    }
+
     if (!currentUser) {
-      if (route.view === 'privacy' || route.view === 'terms') {
-        return;
-      }
       const shouldShowGetStarted = route.view !== 'login';
       setShowGetStarted(shouldShowGetStarted);
       if (route.view === 'login') {

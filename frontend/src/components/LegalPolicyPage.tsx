@@ -155,9 +155,13 @@ export default function LegalPolicyPage({ kind }: LegalPolicyPageProps) {
   return (
     <div className="min-h-screen bg-white px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-3xl">
-        <a href="/get-started" className="mb-6 inline-block text-sm text-teal-700 underline underline-offset-4">
-          Back to home
-        </a>
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="mb-6 inline-block text-sm text-teal-700 underline underline-offset-4"
+        >
+          Back
+        </button>
 
         <div className="space-y-8">
           <header className="space-y-3 border-b border-slate-200 pb-6">
