@@ -29,7 +29,13 @@ const defaultLandingData: LandingData = {
 };
 
 function getStoredLandingData() {
-  const stored = localStorage.getItem('ujaasLandingData');
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem('ujaasLandingData');
+  } catch (e) {
+    console.warn('localStorage is not accessible', e);
+  }
+
   if (!stored) {
     return defaultLandingData;
   }
