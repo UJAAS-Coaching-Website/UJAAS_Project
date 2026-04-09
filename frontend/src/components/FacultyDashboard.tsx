@@ -29,6 +29,7 @@ import {
   Bell,
   Save,
   Check,
+  Mail,
   Megaphone
 } from 'lucide-react';
 const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
