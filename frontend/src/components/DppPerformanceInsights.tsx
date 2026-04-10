@@ -129,6 +129,8 @@ export function DppPerformanceInsights({
           }}
           hideExplanations={true}
           downloadType="dpp"
+          downloadBatchName={currentAttempt?.batch_name}
+          downloadSubjectName={currentAttempt?.subject_name}
           hideRank={true}
           hideTimeSpent={true}
           subtitle="DPP Performance Summary"

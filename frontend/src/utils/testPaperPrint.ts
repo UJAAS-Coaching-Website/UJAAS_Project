@@ -26,6 +26,9 @@ interface PrintTestPaperOptions {
   locationName?: string;
   documentLabel?: string;
   codeLabel?: string;
+  batchName?: string;
+  subjectName?: string;
+  groupBySubject?: boolean;
 }
 
 function escapeHtml(value: string) {
@@ -55,6 +58,9 @@ function buildPrintableHtml({
   locationName = 'Navsari',
   documentLabel = 'Test Paper',
   codeLabel = 'Code',
+  batchName,
+  subjectName,
+  groupBySubject = true,
 }: PrintTestPaperOptions) {
   const groupedQuestions: Record<string, Record<string, PrintableQuestion[]>> = {};
 
@@ -68,11 +74,8 @@ function buildPrintableHtml({
 
   let questionNumber = 0;
 
-  const contentHtml = Object.entries(groupedQuestions)
-    .map(([subject, sections]) => `
-      <section class="subject-block">
-        <h2 class="subject-title">${escapeHtml(subject)}</h2>
-        ${Object.entries(sections)
+  const renderSections = (sections: Record<string, PrintableQuestion[]>) =>
+    Object.entries(sections)
           .map(([section, sectionQuestions]) => `
             <div class="section-block">
               <h3 class="section-title">${escapeHtml(section)}</h3>
@@ -119,10 +122,26 @@ function buildPrintableHtml({
                 .join('')}
             </div>
           `)
-          .join('')}
-      </section>
-    `)
-    .join('');
+          .join('');
+
+  const contentHtml = groupBySubject
+    ? Object.entries(groupedQuestions)
+        .map(([subject, sections]) => `
+          <section class="subject-block">
+            <h2 class="subject-title">${escapeHtml(subject)}</h2>
+            ${renderSections(sections)}
+          </section>
+        `)
+        .join('')
+    : `<section class="subject-block">${Object.values(groupedQuestions).map((sections) => renderSections(sections)).join('')}</section>`;
+
+  const infoItems = [
+    { label: 'Duration', value: `${duration} mins` },
+    { label: 'Max Marks', value: String(totalMarks) },
+    { label: 'Questions', value: String(totalQuestions) },
+    ...(batchName?.trim() ? [{ label: 'Batch', value: batchName.trim() }] : []),
+    ...(subjectName?.trim() ? [{ label: 'Subject', value: subjectName.trim() }] : []),
+  ];
 
   return `
     <!doctype html>
@@ -188,7 +207,7 @@ function buildPrintableHtml({
           }
           .info-banner {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 10px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -332,14 +351,14 @@ function buildPrintableHtml({
           </div>
           <div class="test-info">
             <h1>${escapeHtml(title)}</h1>
-            ${testId ? `<div class="metadata">${escapeHtml(codeLabel)}: ${escapeHtml(testId)}</div>` : ''}
+            ${testId && codeLabel?.trim() ? `<div class="metadata">${escapeHtml(codeLabel)}: ${escapeHtml(testId)}</div>` : ''}
           </div>
         </div>
 
         <div class="info-banner">
-          <div class="info-item"><b>Duration:</b> ${duration} mins</div>
-          <div class="info-item"><b>Max Marks:</b> ${totalMarks}</div>
-          <div class="info-item"><b>Questions:</b> ${totalQuestions}</div>
+          ${infoItems
+            .map((item) => `<div class="info-item"><b>${escapeHtml(item.label)}:</b> ${escapeHtml(item.value)}</div>`)
+            .join('')}
         </div>
 
         ${instructions?.trim() ? `

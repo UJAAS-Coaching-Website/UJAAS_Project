@@ -66,6 +66,8 @@ interface StudentAnalyticsProps {
   hideExplanations?: boolean;
   hideDownload?: boolean;
   downloadType?: 'test' | 'dpp';
+  downloadBatchName?: string;
+  downloadSubjectName?: string;
   hideRank?: boolean;
   hideTimeSpent?: boolean;
   hideSummaryCard?: boolean;
@@ -83,6 +85,8 @@ export function StudentAnalytics({
   hideExplanations = false,
   hideDownload = false,
   downloadType = 'test',
+  downloadBatchName,
+  downloadSubjectName,
   hideRank = false,
   hideTimeSpent = false,
   hideSummaryCard = false,
@@ -148,11 +152,14 @@ export function StudentAnalytics({
         duration: result.duration,
         totalMarks: result.totalMarks,
         totalQuestions: result.totalQuestions,
-        instructions: result.instructions,
+        instructions: isDppDownload ? undefined : result.instructions,
         questions: result.questions,
         logoSrc: logo,
         documentLabel: isDppDownload ? 'DPP' : 'Test Paper',
-        codeLabel: isDppDownload ? 'DPP ID' : 'Code',
+        codeLabel: isDppDownload ? '' : 'Code',
+        batchName: isDppDownload ? downloadBatchName : undefined,
+        subjectName: isDppDownload ? downloadSubjectName : undefined,
+        groupBySubject: !isDppDownload,
       });
     } catch (err) {
       console.error('Failed to generate PDF:', err);
@@ -333,7 +340,7 @@ export function StudentAnalytics({
           ))}
         </div>
 
-        {subjectWiseStats.length > 0 && (
+        {!isDppDownload && subjectWiseStats.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
