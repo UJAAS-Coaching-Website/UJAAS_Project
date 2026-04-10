@@ -65,6 +65,7 @@ interface StudentAnalyticsProps {
   onViewResults?: (testId: string) => void;
   hideExplanations?: boolean;
   hideDownload?: boolean;
+  downloadType?: 'test' | 'dpp';
   hideRank?: boolean;
   hideTimeSpent?: boolean;
   hideSummaryCard?: boolean;
@@ -81,6 +82,7 @@ export function StudentAnalytics({
   onViewResults,
   hideExplanations = false,
   hideDownload = false,
+  downloadType = 'test',
   hideRank = false,
   hideTimeSpent = false,
   hideSummaryCard = false,
@@ -135,6 +137,8 @@ export function StudentAnalytics({
     return `${hrs}h ${mins}m ${secs}s`;
   };
 
+  const isDppDownload = downloadType === 'dpp';
+
   const handleDownloadTestPDF = async () => {
     setIsDownloadingPdf(true);
     try {
@@ -147,6 +151,8 @@ export function StudentAnalytics({
         instructions: result.instructions,
         questions: result.questions,
         logoSrc: logo,
+        documentLabel: isDppDownload ? 'DPP' : 'Test Paper',
+        codeLabel: isDppDownload ? 'DPP ID' : 'Code',
       });
     } catch (err) {
       console.error('Failed to generate PDF:', err);
@@ -186,10 +192,12 @@ export function StudentAnalytics({
                     className={`flex items-center justify-center ${isMobileViewport ? 'gap-1.5' : 'gap-2'} ${
                       isMobileViewport ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-2xl'
                     } ${isDownloadingPdf ? 'bg-blue-200 text-blue-800 cursor-wait shadow-inner' : 'bg-blue-100 text-blue-700 shadow-sm hover:bg-blue-200'} transition-all`}
-                    aria-label="Download"
+                    aria-label={isDppDownload ? 'Download DPP' : 'Download Test'}
                   >
                     <Download className={`${isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} ${isDownloadingPdf ? 'animate-bounce' : ''}`} />
-                    <span className="text-sm sm:text-base font-medium">{isDownloadingPdf ? 'Preparing PDF...' : 'Download'}</span>
+                    <span className="text-sm sm:text-base font-medium">
+                      {isDownloadingPdf ? 'Preparing PDF...' : isDppDownload ? 'Download DPP' : 'Download Test'}
+                    </span>
                   </button>
                 )}
                 <button

@@ -228,7 +228,7 @@ export function DPPPractice({ session, onExit, onSessionChange }: DPPPracticePro
         onClose={onExit}
         hideRank={true}
         hideTimeSpent={true}
-        hideDownload={true}
+          downloadType="dpp"
         hideSummaryCard={true}
         forceStatsRow={true}
         subtitle="DPP Performance Summary"

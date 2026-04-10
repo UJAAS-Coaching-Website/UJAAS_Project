@@ -24,6 +24,8 @@ interface PrintTestPaperOptions {
   logoSrc?: string;
   instituteName?: string;
   locationName?: string;
+  documentLabel?: string;
+  codeLabel?: string;
 }
 
 function escapeHtml(value: string) {
@@ -51,6 +53,8 @@ function buildPrintableHtml({
   logoSrc,
   instituteName = 'UJAAS Career Institute',
   locationName = 'Navsari',
+  documentLabel = 'Test Paper',
+  codeLabel = 'Code',
 }: PrintTestPaperOptions) {
   const groupedQuestions: Record<string, Record<string, PrintableQuestion[]>> = {};
 
@@ -328,7 +332,7 @@ function buildPrintableHtml({
           </div>
           <div class="test-info">
             <h1>${escapeHtml(title)}</h1>
-            ${testId ? `<div class="metadata">Code: ${escapeHtml(testId)}</div>` : ''}
+            ${testId ? `<div class="metadata">${escapeHtml(codeLabel)}: ${escapeHtml(testId)}</div>` : ''}
           </div>
         </div>
 
@@ -348,7 +352,7 @@ function buildPrintableHtml({
         ${contentHtml}
 
         <div class="footer">
-          &copy; ${new Date().getFullYear()} ${escapeHtml(instituteName)}. This document is for authorized use only.
+          &copy; ${new Date().getFullYear()} ${escapeHtml(instituteName)}. This ${escapeHtml(documentLabel)} is for authorized use only.
         </div>
       </body>
     </html>

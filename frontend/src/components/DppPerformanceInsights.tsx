@@ -128,7 +128,7 @@ export function DppPerformanceInsights({
             setSelectedAttemptIndex(0);
           }}
           hideExplanations={true}
-          hideDownload={true}
+          downloadType="dpp"
           hideRank={true}
           hideTimeSpent={true}
           subtitle="DPP Performance Summary"
