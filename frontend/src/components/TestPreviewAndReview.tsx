@@ -1211,8 +1211,8 @@ export function TestPreviewAndReview({
 
           {/* Sidebar - Question Palette */}
           <div className="hidden sm:block lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Question Palette</h3>
+            <div className="theme-surface rounded-2xl shadow-lg border p-6 sticky top-24" style={{ borderColor: 'var(--theme-border)' }}>
+              <h3 className="text-lg font-bold theme-text-primary mb-4">Question Palette</h3>
 
               {/* Stats - only for students */}
               {!isAnyPreview && (
@@ -1236,12 +1236,12 @@ export function TestPreviewAndReview({
 
               {/* Question Grid - Filtered by Active Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--theme-border)' }}>
                   <div className="flex flex-col">
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Current Palette</h4>
+                    <h4 className="text-xs font-bold theme-text-muted uppercase tracking-widest leading-none mb-1">Current Palette</h4>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-blue-600 uppercase">{currentSubject}</span>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{currentSection}</span>
+                      <span className="text-[10px] font-bold theme-text-muted uppercase theme-surface-muted px-2 py-0.5 rounded border" style={{ borderColor: 'var(--theme-border)' }}>{currentSection}</span>
                     </div>
                   </div>
                 </div>
@@ -1328,21 +1328,22 @@ export function TestPreviewAndReview({
                   ? 'min-h-[100dvh] h-[100dvh] max-h-[100dvh] rounded-none p-3 pb-4'
                   : 'max-w-md max-h-[90vh] rounded-3xl p-8'
               }`}
+              style={!isMobileViewport ? { background: 'var(--theme-surface)', color: 'var(--theme-text-primary)' } : undefined}
             >
               <div className="text-center mb-6">
                 <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-10 h-10 text-blue-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">Submit Test?</h3>
+                <h3 className="text-2xl font-bold theme-text-primary">Submit Test?</h3>
               </div>
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between p-3 bg-green-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Answered</span>
+                  <span className="theme-text-secondary font-medium">Answered</span>
                   <span className="font-bold text-green-600">{answeredCount}</span>
                 </div>
                 <div className="flex justify-between p-3 bg-red-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Not Answered</span>
+                  <span className="theme-text-secondary font-medium">Not Answered</span>
                   <span className="font-bold text-red-600">{notAnsweredCount}</span>
                 </div>
               </div>
@@ -1356,7 +1357,7 @@ export function TestPreviewAndReview({
                 </motion.button>
                 <button
                   onClick={() => setShowSubmitDialog(false)}
-                  className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                  className="w-full py-4 theme-surface-muted theme-text-secondary rounded-2xl font-bold transition-all"
                 >
                   Go Back
                 </button>
@@ -1371,7 +1372,8 @@ export function TestPreviewAndReview({
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+              className="theme-surface rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border"
+              style={{ borderColor: 'var(--theme-border)' }}
             >
               <div className="text-center mb-6">
                 <div className={`w-20 h-20 ${isAnyPreview ? 'bg-amber-100' : 'bg-red-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
@@ -1383,10 +1385,10 @@ export function TestPreviewAndReview({
                     <AlertCircle className="w-10 h-10 text-red-600" />
                   )}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900">
+                <h3 className="text-2xl font-bold theme-text-primary">
                   {isSaving ? 'Saving Changes...' : isAnyPreview ? 'Save Changes?' : 'Exit & Submit?'}
                 </h3>
-                <p className="text-gray-600 mt-2">
+                <p className="theme-text-secondary mt-2">
                   {isSaving
                     ? 'Please wait while we update the database.'
                     : isAnyPreview
@@ -1413,7 +1415,7 @@ export function TestPreviewAndReview({
                   )}
                   <button
                     onClick={() => setShowExitConfirm(false)}
-                    className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                    className="w-full py-4 theme-surface-muted theme-text-secondary rounded-2xl font-bold transition-all"
                   >
                     Cancel
                   </button>

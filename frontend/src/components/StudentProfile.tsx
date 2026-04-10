@@ -420,7 +420,11 @@ function OverviewSection({
             <button
               type="button"
               onClick={() => setIsEditingProfile(true)}
-              className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                isDark
+                  ? 'bg-blue-900/40 text-blue-200 hover:bg-blue-900/60 border border-blue-700/50'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              }`}
             >
               Edit
             </button>
@@ -429,7 +433,11 @@ function OverviewSection({
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                  isDark
+                    ? 'border-slate-600 text-slate-200 hover:bg-slate-800'
+                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
                 disabled={isSavingProfile}
               >
                 Cancel
@@ -474,7 +482,11 @@ function OverviewSection({
                     rows={3}
                     value={profileDraft.address}
                     onChange={(event) => setProfileDraft((prev) => ({ ...prev, address: event.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                    className={`w-full rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base ${
+                      isDark
+                        ? 'border-slate-600 bg-slate-900 text-slate-100'
+                        : 'border-gray-200 text-gray-900'
+                    }`}
                   />
                 ) : (
                   <input
@@ -492,7 +504,11 @@ function OverviewSection({
                       }
                       setProfileDraft((prev) => ({ ...prev, dateOfBirth: nextValue }));
                     }}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                    className={`w-full rounded-lg border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base ${
+                      isDark
+                        ? 'border-slate-600 bg-slate-900 text-slate-100'
+                        : 'border-gray-200 text-gray-900'
+                    }`}
                   />
                 )
               ) : (
@@ -848,7 +864,11 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
         <motion.button
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-full p-4 md:p-3 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl text-left hover:border-orange-400 transition"
+          className={`w-full p-4 md:p-3 border-2 rounded-xl text-left transition ${
+            isDark
+              ? 'bg-gradient-to-r from-orange-900/30 to-red-900/30 border-orange-700 hover:border-orange-500'
+              : 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 hover:border-orange-400'
+          }`}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 md:w-8 md:h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
@@ -877,20 +897,22 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
+                className={`rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8 ${
+                  isDark ? 'theme-surface border border-slate-700' : 'bg-white'
+                }`}
               >
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <LogOut className="w-8 h-8 text-orange-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirm Logout</h3>
-                  <p className="text-gray-600">Are you sure you want to sign out of your account?</p>
+                    <h3 className="text-2xl font-bold mb-2 theme-text-primary">Confirm Logout</h3>
+                    <p className="theme-text-secondary">Are you sure you want to sign out of your account?</p>
                 </div>
 
                 <div className="flex gap-3">
                   <motion.button
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                    className="flex-1 px-6 py-3 theme-surface-muted theme-text-secondary rounded-xl font-semibold transition"
                   >
                     Cancel
                   </motion.button>
@@ -922,14 +944,16 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8"
+                className={`rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-8 ${
+                  isDark ? 'theme-surface border border-slate-700' : 'bg-white'
+                }`}
               >
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Lock className="w-8 h-8 text-indigo-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Change Password</h3>
-                  <p className="text-gray-600">
+                    <h3 className="text-2xl font-bold mb-2 theme-text-primary">Change Password</h3>
+                    <p className="theme-text-secondary">
                     {isPasswordVerified
                       ? 'Choose a new password and confirm it.'
                       : 'Enter your current password to continue.'}
@@ -938,14 +962,16 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
                   {!isPasswordVerified && (
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                       Old Password
                       <input
                         type="password"
                         required
                         value={passwordForm.oldPassword}
                         onChange={handlePasswordChange('oldPassword')}
-                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                        className={`mt-2 w-full rounded-xl border px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+                          isDark ? 'border-slate-600 bg-slate-900 text-slate-100' : 'border-gray-200'
+                        }`}
                         placeholder="Enter old password"
                       />
                     </label>
@@ -953,26 +979,30 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
 
                   {isPasswordVerified && (
                     <>
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                         New Password
                         <input
                           type="password"
                           required
                           value={passwordForm.newPassword}
                           onChange={handlePasswordChange('newPassword')}
-                          className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          className={`mt-2 w-full rounded-xl border px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+                            isDark ? 'border-slate-600 bg-slate-900 text-slate-100' : 'border-gray-200'
+                          }`}
                           placeholder="Enter new password"
                         />
                       </label>
 
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label className={`block text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                         Confirm Password
                         <input
                           type="password"
                           required
                           value={passwordForm.confirmPassword}
                           onChange={handlePasswordChange('confirmPassword')}
-                          className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          className={`mt-2 w-full rounded-xl border px-4 py-3 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+                            isDark ? 'border-slate-600 bg-slate-900 text-slate-100' : 'border-gray-200'
+                          }`}
                           placeholder="Re-enter new password"
                         />
                       </label>
@@ -983,7 +1013,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                     <motion.button
                       type="button"
                       onClick={closeChangePassword}
-                      className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                      className="flex-1 px-6 py-3 theme-surface-muted theme-text-secondary rounded-xl font-semibold transition"
                     >
                       Cancel
                     </motion.button>

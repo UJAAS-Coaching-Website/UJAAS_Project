@@ -1504,18 +1504,19 @@ export function StudentTestTaking({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-              className="bg-white rounded-t-[28px] w-full max-h-[80vh] overflow-y-auto shadow-2xl border-t border-gray-100"
+              className="theme-surface rounded-t-[28px] w-full max-h-[80vh] overflow-y-auto shadow-2xl border-t"
+              style={{ borderColor: 'var(--theme-border)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 px-4 pt-3 pb-4">
-                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200" />
+              <div className="sticky top-0 theme-surface-elevated backdrop-blur border-b px-4 pt-3 pb-4" style={{ borderColor: 'var(--theme-border)' }}>
+                <div className="mx-auto mb-3 h-1.5 w-12 rounded-full" style={{ background: 'var(--state-neutral-border)' }} />
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">Question Palette</h3>
+                  <h3 className="text-lg font-bold theme-text-primary">Question Palette</h3>
                   <button onClick={() => setShowMobilePalette(false)} className="p-2 -mr-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close question palette">
-                    <X className="w-5 h-5 text-gray-700" />
+                    <X className="w-5 h-5 theme-text-secondary" />
                   </button>
                 </div>
-                <div className="text-xs text-gray-600">
+                <div className="text-xs theme-text-secondary">
                   <span className="text-blue-600 font-semibold uppercase">{currentSubject}</span>
                   <span className="mx-2">•</span>
                   <span className="uppercase">{currentSection}</span>
@@ -1523,14 +1524,14 @@ export function StudentTestTaking({
               </div>
 
               <div className="p-4">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-4">
+                <div className="theme-surface rounded-2xl border shadow-lg p-4" style={{ borderColor: 'var(--theme-border)' }}>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                  <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--theme-border)' }}>
                     <div className="flex flex-col">
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Current Palette</h4>
+                      <h4 className="text-xs font-bold theme-text-muted uppercase tracking-widest leading-none mb-1">Current Palette</h4>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-blue-600 uppercase">{currentSubject}</span>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-100">{currentSection}</span>
+                        <span className="text-[10px] font-bold theme-text-muted uppercase theme-surface-muted px-2 py-0.5 rounded border" style={{ borderColor: 'var(--theme-border)' }}>{currentSection}</span>
                       </div>
                     </div>
                   </div>
@@ -1569,48 +1570,48 @@ export function StudentTestTaking({
                 </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                <div className="mt-6 pt-6 border-t space-y-2" style={{ borderColor: 'var(--theme-border)' }}>
                   {!isAnyPreview && (
                     <>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gray-100 rounded" />
-                        <span className="text-xs text-gray-600">Not visited yet</span>
+                        <div className="theme-legend-dot-neutral w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">Not visited yet</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-green-100 rounded" />
-                        <span className="text-xs text-gray-600">Answered</span>
+                        <div className="theme-legend-dot-answered w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">Answered</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-red-100 rounded" />
-                        <span className="text-xs text-gray-600">Visited</span>
+                        <div className="theme-legend-dot-visited w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">Visited</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-purple-100 rounded" />
-                        <span className="text-xs text-gray-600">Review</span>
+                        <div className="theme-legend-dot-review w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">Review</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-purple-100 rounded relative">
+                        <div className="theme-legend-dot-review w-4 h-4 rounded relative">
                           <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
                         </div>
-                        <span className="text-xs text-gray-600">Answered & Review</span>
+                        <span className="theme-text-secondary text-xs">Answered & Review</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded" />
-                        <span className="text-xs text-gray-600">Current</span>
+                        <div className="theme-legend-dot-current w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">Current</span>
                       </div>
                     </>
                   )}
                   {isAnyPreview && (
                     <>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-teal-50 border border-teal-200 rounded" />
-                        <span className="text-xs text-gray-600">With Explanation</span>
+                        <div className="theme-palette-explanation w-4 h-4 rounded" />
+                        <span className="theme-text-secondary text-xs">With Explanation</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-gray-100 rounded relative">
+                        <div className="theme-legend-dot-neutral w-4 h-4 rounded relative">
                           <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
                         </div>
-                        <span className="text-xs text-gray-600">Needs Explanation</span>
+                        <span className="theme-text-secondary text-xs">Needs Explanation</span>
                       </div>
                     </>
                   )}

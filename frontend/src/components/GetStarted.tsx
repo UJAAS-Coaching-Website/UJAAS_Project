@@ -15,6 +15,7 @@ import logo from '../assets/logo.svg';
 import { LandingData } from '../App';
 import { useIsMobileViewport, useWindowWidth } from '../hooks/useViewport';
 import { formatIndianMobileInput } from '../utils/phone';
+import { useTheme } from '../theme';
 
 interface GetStartedProps {
   onGetStarted: () => void;
@@ -32,6 +33,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isL
   const visionScrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobileViewport();
   const viewportWidth = useWindowWidth();
+  const { isDark } = useTheme();
 
   // Sync activeVisionIndex from scroll position on mobile
   const handleVisionScroll = useCallback(() => {
@@ -143,7 +145,11 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isL
             </div>
             <button
               onClick={onGetStarted}
-              className="px-6 py-2 bg-white text-teal-600 rounded-lg font-semibold hover:bg-gray-50 transition"
+              className={`px-6 py-2 rounded-lg font-semibold transition ${
+                isDark
+                  ? 'theme-surface theme-text-primary border border-slate-600 hover:bg-slate-700'
+                  : 'bg-white text-teal-600 hover:bg-gray-50'
+              }`}
             >
               Go to Dashboard
             </button>
@@ -152,7 +158,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isL
       )}
 
       <div className="footer-reveal-main">
-        <section className="pt-13 pb-8 bg-white relative">
+        <section className={`pt-13 pb-8 relative ${isDark ? 'theme-surface' : 'bg-white'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             {!isMobile && (
               <div className="absolute top-4 right-6">
@@ -196,7 +202,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isL
         </section>
 
         {/* The Vision Section */}
-        <section className="pb-8 pt-0 bg-white">
+        <section className={`pb-8 pt-0 ${isDark ? 'theme-surface' : 'bg-white'}`}>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <h2 className="text-2xl md:text-4xl font-bold mb-2">
