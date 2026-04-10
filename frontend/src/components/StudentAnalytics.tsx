@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
+import { aggregateSubjectWiseStats } from '../utils/testMappings';
 
 interface Question {
   id: string;
@@ -32,6 +33,7 @@ interface Question {
   correctAnswer: number | string | number[];
   subject: string;
   marks: number;
+  negativeMarks?: number;
   type?: 'MCQ' | 'MSQ' | 'Numerical';
   metadata?: {
     section?: string;
@@ -97,6 +99,7 @@ export function StudentAnalytics({
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const subjectWiseStats = aggregateSubjectWiseStats(result.questions);
 
   useEffect(() => {
     if (!showReview) return;
@@ -321,6 +324,69 @@ export function StudentAnalytics({
             </motion.div>
           ))}
         </div>
+
+        {subjectWiseStats.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100 mb-4 sm:mb-6"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Subject-Wise Analysis</h2>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+              {subjectWiseStats.map((subject, index) => {
+                const attemptedQuestions = subject.correct + subject.incorrect;
+                const totalQuestions = attemptedQuestions + subject.unattempted;
+
+                return (
+                <motion.div
+                  key={subject.subject}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + index * 0.04 }}
+                  className="bg-white rounded-xl p-4 sm:p-5 shadow-lg border border-gray-100"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900">{subject.subject}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] sm:text-xs text-gray-600 whitespace-nowrap">
+                        Q: {attemptedQuestions}/{totalQuestions}
+                      </span>
+                      <span className="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 font-semibold whitespace-nowrap">
+                        {subject.scoredMarks}/{subject.totalMarks}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-1.5 flex-1 min-w-[150px]">
+                      <p className="text-base text-gray-700 whitespace-nowrap">
+                        Correct:{' '}
+                        <span className="text-base font-bold text-emerald-700 leading-none align-middle">{subject.correct}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-1.5 flex-1 min-w-[150px]">
+                      <p className="text-base text-gray-700 whitespace-nowrap">
+                        Incorrect:{' '}
+                        <span className="text-base font-bold text-rose-700 leading-none align-middle">{subject.incorrect}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-1.5 flex-1 min-w-[180px]">
+                      <p className="text-base text-gray-700 whitespace-nowrap">
+                        Not attempted:{' '}
+                        <span className="text-base font-bold text-slate-700 leading-none align-middle">{subject.unattempted}</span>
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )})}
+            </div>
+          </motion.div>
+        )}
 
         {/* Review Mode (Read Only) */}
         {showReview && (

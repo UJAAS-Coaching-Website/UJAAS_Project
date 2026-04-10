@@ -31,6 +31,119 @@ type AnalyticsQuestionOptions = {
   includeNegativeMarks?: boolean;
 };
 
+export interface SubjectWiseStat {
+  subject: string;
+  scoredMarks: number;
+  totalMarks: number;
+  correct: number;
+  incorrect: number;
+  unattempted: number;
+}
+
+type SubjectAggregationQuestion = {
+  subject?: string | null;
+  type?: 'MCQ' | 'MSQ' | 'Numerical' | string;
+  marks: number;
+  negativeMarks?: number;
+  correctAnswer: number | string | number[];
+  userAnswer?: number | string | number[] | null;
+};
+
+const isUnattemptedValue = (value: string | number | number[] | null | undefined) =>
+  Array.isArray(value) ? value.length === 0 : value === undefined || value === null || value === '';
+
+const normalizeAttemptValue = (
+  value: string | number | number[] | null | undefined,
+  questionType: SubjectAggregationQuestion['type'],
+) => {
+  if (isUnattemptedValue(value)) return null;
+
+  if (questionType === 'Numerical') {
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : raw;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+  }
+
+  if (typeof value === 'number') return value;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : String(value).trim();
+};
+
+const isQuestionCorrectByType = (question: SubjectAggregationQuestion) => {
+  const normalizedUser = normalizeAttemptValue(question.userAnswer, question.type);
+  if (normalizedUser === null) return false;
+
+  const normalizedCorrect = normalizeAttemptValue(question.correctAnswer as any, question.type);
+  if (normalizedCorrect === null) return false;
+
+  if (Array.isArray(normalizedUser) && Array.isArray(normalizedCorrect)) {
+    if (normalizedUser.length !== normalizedCorrect.length) return false;
+    return normalizedUser.every((value, index) => value === normalizedCorrect[index]);
+  }
+
+  return normalizedUser === normalizedCorrect;
+};
+
+const toRoundedScore = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+export function aggregateSubjectWiseStats(
+  questions: SubjectAggregationQuestion[],
+): SubjectWiseStat[] {
+  const stats = new Map<string, SubjectWiseStat>();
+
+  questions.forEach((question) => {
+    const subject = typeof question.subject === 'string' && question.subject.trim()
+      ? question.subject.trim()
+      : 'Other';
+
+    if (!stats.has(subject)) {
+      stats.set(subject, {
+        subject,
+        scoredMarks: 0,
+        totalMarks: 0,
+        correct: 0,
+        incorrect: 0,
+        unattempted: 0,
+      });
+    }
+
+    const stat = stats.get(subject)!;
+    const marks = Number(question.marks) || 0;
+    const penalty = Math.abs(Number(question.negativeMarks) || 0);
+    const isUnattempted = isUnattemptedValue(question.userAnswer);
+
+    stat.totalMarks += marks;
+
+    if (isUnattempted) {
+      stat.unattempted += 1;
+      return;
+    }
+
+    if (isQuestionCorrectByType(question)) {
+      stat.correct += 1;
+      stat.scoredMarks += marks;
+      return;
+    }
+
+    stat.incorrect += 1;
+    stat.scoredMarks -= penalty;
+  });
+
+  return Array.from(stats.values())
+    .map((entry) => ({
+      ...entry,
+      scoredMarks: toRoundedScore(entry.scoredMarks),
+      totalMarks: toRoundedScore(entry.totalMarks),
+    }))
+    .sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
 function normalizeSectionLabel(value: string | null | undefined) {
   const raw = typeof value === 'string' ? value.trim() : '';
   if (!raw) return undefined;
