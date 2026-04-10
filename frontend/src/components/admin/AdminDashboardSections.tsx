@@ -19,9 +19,12 @@ type StudentDirectoryStudent = {
 type LandingQuery = {
   id: string;
   name: string;
+  batch: string;
   phone: string;
   course: string;
   email?: string;
+  loginId?: string;
+  courseId?: string;
   message?: string;
   date: string;
   status: 'new' | 'seen' | 'contacted';

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
@@ -185,6 +185,14 @@ export function TestPreviewAndReview({
   const isStudentReviewMode = disableEditing && Boolean(reviewAttemptId) && Boolean(loadQuestionExplanation);
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
+  const resolveSection = (q: any) => {
+    const raw = String(q?.metadata?.section ?? q?.section ?? 'Default').trim();
+    if (!raw) return 'Default';
+    const compact = raw.toLowerCase().replace(/\s+/g, '');
+    if (compact === 'sectiona' || compact === 'a') return 'Section A';
+    if (compact === 'sectionb' || compact === 'b') return 'Section B';
+    return raw;
+  };
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
@@ -193,8 +201,21 @@ export function TestPreviewAndReview({
   // Group questions by subject and section for navigation
   const subjects = Array.from(new Set(questions.map(q => q?.subject).filter(Boolean)));
   const currentSubject = question?.subject;
-  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
-  const currentSection = (question as any)?.metadata?.section || 'Default';
+  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => resolveSection(q)))).sort();
+  const currentSection = resolveSection(question);
+  const scopedPaletteQuestions = useMemo(() => {
+    return questions
+      .map((q, index) => ({ q, globalIndex: index }))
+      .filter(({ q }) => q.subject === currentSubject && resolveSection(q) === currentSection)
+      .sort((a, b) => {
+        const aOrder = Number((a.q as any).order_index);
+        const bOrder = Number((b.q as any).order_index);
+        const safeA = Number.isFinite(aOrder) ? aOrder : a.globalIndex;
+        const safeB = Number.isFinite(bOrder) ? bOrder : b.globalIndex;
+        if (safeA !== safeB) return safeA - safeB;
+        return a.globalIndex - b.globalIndex;
+      });
+  }, [questions, currentSubject, currentSection]);
 
   useEffect(() => {
     if (isEditing) {
@@ -397,16 +418,21 @@ export function TestPreviewAndReview({
   };
 
   const selectAnswer = (questionId: string, value: string | number | number[] | null) => {
-    setAnswers({ ...answers, [questionId]: value });
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const toggleMsqAnswer = (questionId: string, optionIndex: number) => {
-    const currentAnswer = answers[questionId];
-    const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
-    const nextValues = currentValues.includes(optionIndex)
-      ? currentValues.filter((value) => value !== optionIndex)
-      : [...currentValues, optionIndex].sort((a, b) => a - b);
-    selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
+    setAnswers((prev) => {
+      const currentAnswer = prev[questionId];
+      const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
+      const nextValues = currentValues.includes(optionIndex)
+        ? currentValues.filter((value) => value !== optionIndex)
+        : [...currentValues, optionIndex].sort((a, b) => a - b);
+      return {
+        ...prev,
+        [questionId]: nextValues.length > 0 ? nextValues : null,
+      };
+    });
   };
 
 
@@ -642,7 +668,7 @@ export function TestPreviewAndReview({
                   <button
                     key={sec}
                     onClick={() => {
-                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
+                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && resolveSection(q) === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
                     className={`flex-1 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold border-2 transition-all ${currentSection === sec
@@ -652,7 +678,7 @@ export function TestPreviewAndReview({
                   >
                     {sec}
                     <span className="ml-2 text-[10px] sm:text-xs opacity-60">
-                      ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
+                      ({questions.filter(q => q.subject === currentSubject && resolveSection(q) === sec).length})
                     </span>
                   </button>
                 ))}
@@ -1221,15 +1247,13 @@ export function TestPreviewAndReview({
                 </div>
 
                 <div className="grid grid-cols-5 gap-2">
-                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                    .map((q) => (
+                  {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                       <motion.button
                         key={q.id}
-                        onClick={() => setCurrentQuestion(q.globalIndex)}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                        onClick={() => setCurrentQuestion(globalIndex)}
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
                           ? 'theme-palette-current scale-110 z-10'
-                          : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                          : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
                             ? 'theme-palette-answered'
                             : isAnyPreview && hasExplanationContent(q) && !hideExplanations
                               ? 'theme-palette-explanation'
@@ -1238,7 +1262,7 @@ export function TestPreviewAndReview({
                                 : 'theme-palette-neutral'
                           }`}
                       >
-                        {q.globalIndex + 1}
+                        {localIndex + 1}
                         {!isAnyPreview && flaggedQuestions.has(q.id) && (
                           <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
                         )}
@@ -1511,18 +1535,16 @@ export function TestPreviewAndReview({
                     </div>
 
                     <div className="grid grid-cols-5 gap-2 mb-6">
-                      {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                        .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                        .map((q) => (
+                      {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                           <motion.button
                             key={q.id}
                             onClick={() => {
-                              setCurrentQuestion(q.globalIndex);
+                              setCurrentQuestion(globalIndex);
                               setShowMobilePalette(false);
                             }}
-                            className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                            className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
                               ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                              : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                              : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
                                 ? 'bg-green-100 text-green-700'
                                 : isAnyPreview && hasExplanationContent(q) && !hideExplanations
                                   ? 'bg-teal-50 text-teal-700 border border-teal-200'
@@ -1531,7 +1553,7 @@ export function TestPreviewAndReview({
                                     : 'bg-gray-100 text-gray-600'
                             }`}
                           >
-                            {q.globalIndex + 1}
+                            {localIndex + 1}
                             {!isAnyPreview && flaggedQuestions.has(q.id) && (
                               <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white" />
                             )}

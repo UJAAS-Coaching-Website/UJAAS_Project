@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { ensureActiveBatchIds } from "./batchAccessService.js";
 
 const FACULTY_CONTEXT_QUERY = `
     SELECT
@@ -205,6 +206,7 @@ export async function createQuestionBankFile({
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const validatedBatchIds = await ensureActiveBatchIds(batchIds, client);
 
         const insertedFile = await client.query(
             `
@@ -231,7 +233,7 @@ export async function createQuestionBankFile({
             [id || null, subjectName, title, difficulty, fileUrl, originalFileName, createdBy]
         );
 
-        for (const batchId of batchIds) {
+        for (const batchId of validatedBatchIds) {
             await client.query(
                 `
                 INSERT INTO question_bank_batch_links (question_bank_file_id, batch_id)

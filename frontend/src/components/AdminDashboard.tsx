@@ -68,6 +68,8 @@ const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections
 const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
 const AdminStudentsTab = lazy(() => import('./admin/AdminStudentsTab').then(m => ({ default: m.AdminStudentsTab })));
 import { formatIndianMobileInput } from '../utils/phone';
+import { fetchBatches as apiFetchBatches } from '../api/batches';
+import { fetchSubjects as apiFetchSubjects } from '../api/subjects';
 
 interface AdminDashboardProps {
   user: User;
@@ -89,8 +91,8 @@ interface AdminDashboardProps {
   onDeleteStudent: (id: string) => Promise<void>;
   onAssignStudentToBatch: (studentId: string, batchId: string) => Promise<import('../api/students').ApiStudent>;
   onRemoveStudentFromBatch: (studentId: string, batchId: string) => Promise<void>;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onCreateBatch: (label: string, subjects?: string[], facultyIds?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onUploadBatchTimetable: (batchId: string, file: File) => Promise<{ ok: boolean; error?: string; timetableUrl?: string | null }>;
   onDeleteBatchTimetable: (batchId: string) => Promise<{ ok: boolean; error?: string }>;
@@ -121,6 +123,7 @@ interface AdminDashboardProps {
   onRefreshFaculties: () => void;
   onSearchStudents?: (query: string) => void;
   isDataLoading?: boolean;
+  isFacultyDataLoading?: boolean;
 }
 
 export type AdminTab = 'home' | 'students' | 'faculty' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
@@ -128,11 +131,13 @@ export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-s
 type Batch = string;
 export type AdminSection = 'landing' | 'batches' | 'students' | 'faculty' | 'test-series' | 'queries';
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; facultyAssignments?: { id: string; name: string; subject?: string | null }[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;
   name: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
   rollNumber: string;
   enrolledCourses: string[];
   joinDate: string;
@@ -153,6 +158,7 @@ interface Student {
   }>;
   subjectRemarks?: Record<string, string>;
   adminRemark?: string;
+  email?: string;
 }
 
 interface Faculty {
@@ -165,6 +171,10 @@ interface Faculty {
   rating?: number;
   reviewCount?: number;
   joinDate?: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+  profileImage?: string | null;
+  profile_image?: string | null;
 }
 
 type StudentFormState = {
@@ -234,6 +244,13 @@ function renderPerformanceStars(rating: number) {
   );
 }
 
+function getFacultyAvatarSrc(faculty: Faculty): string | null {
+  const candidate = faculty.avatarUrl ?? faculty.avatar_url ?? faculty.profileImage ?? faculty.profile_image;
+  if (typeof candidate !== 'string') return null;
+  const trimmed = candidate.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export function AdminDashboard({
   user,
   activeTab,
@@ -286,11 +303,8 @@ export function AdminDashboard({
   onRefreshFaculties,
   onSearchStudents,
   isDataLoading,
+  isFacultyDataLoading,
 }: AdminDashboardProps) {
-  if (isDataLoading) {
-    return <DashboardLoadingShell role="admin" />;
-  }
-
   // Convert API students to local Student[] format
   const apiToLocalStudent = (s: import('../api/students').ApiStudent): Student => {
     const subjectRatings = (s as any).subject_ratings || {};
@@ -305,13 +319,15 @@ export function AdminDashboard({
     return {
       id: s.id,
       name: s.name,
+      avatarUrl: (s as any).avatarUrl ?? (s as any).avatar_url ?? null,
+      avatar_url: (s as any).avatar_url ?? null,
       rollNumber: s.roll_number,
       enrolledCourses: s.assigned_batch ? [s.assigned_batch.name] : [],
       joinDate: s.join_date || '',
       performance: 0,
       rating: overallFromSubjects ?? (s.rating_attendance + s.rating_assignments + s.rating_participation + s.rating_behavior) / 4,
       batch: s.assigned_batch?.name || 'Unassigned',
-      email: s.login_id?.includes('@') ? s.login_id : '',
+      email: s.email || '',
       phoneNumber: s.phone || '',
       dateOfBirth: s.date_of_birth || '',
       address: s.address || '',
@@ -333,15 +349,12 @@ export function AdminDashboard({
     phone: f.phone,
     rating: f.rating,
     reviewCount: Number(f.reviewCount ?? f.review_count ?? 0),
-    joinDate: f.joining_date
+    joinDate: f.joining_date,
+    avatarUrl: f.avatarUrl ?? f.avatar_url,
+    avatar_url: f.avatar_url,
+    profileImage: f.profileImage ?? f.profile_image,
+    profile_image: f.profile_image
   }));
-  const subjectOptions = Array.from(new Set([
-    ...batches.flatMap((batch) => batch.subjects ?? []),
-    ...faculty.map((item) => item.subject),
-  ]))
-    .map((subject) => subject.trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [timeTableImage, setTimeTableImage] = useState<string | null>(null);
   const timeTableInputRef = useRef<HTMLInputElement>(null);
@@ -429,10 +442,7 @@ export function AdminDashboard({
     return fallbackUpdatedTest;
   };
 
-  // Remarks are stored locally; load from localStorage
-  useEffect(() => {
-    // Apply stored remarks to students rendered from API
-  }, [adminStudents]);
+
 
   const selectedBatchInfo = selectedBatch
     ? batches.find((batch) => batch.label === selectedBatch)
@@ -558,6 +568,7 @@ export function AdminDashboard({
         await onUpdateStudent(data.id, {
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,
@@ -684,11 +695,13 @@ export function AdminDashboard({
   const closeStudentRatings = () => setRatingModal({ open: false });
   const handleSaveStudentProfile = async (
     studentId: string,
-    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'rollNumber' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => {
     try {
       await onUpdateStudent(studentId, {
         name: updates.name,
+        rollNumber: updates.rollNumber,
+        email: updates.email,
         phone: updates.phoneNumber,
         dateOfBirth: updates.dateOfBirth,
         parentContact: updates.parentContact,
@@ -702,16 +715,17 @@ export function AdminDashboard({
   const handleSaveAdminRemark = async (studentId: string, remark: string) => {
     const cleanedRemark = remark.trim();
     try {
-      // We don't have a direct field for adminRemark in our UpdateStudentPayload yet, 
-      // but we can store it in the local storage bridge we have.
+      await onUpdateStudent(studentId, { adminRemark: cleanedRemark });
       setRatingModal((prev) =>
         prev.student?.id === studentId
           ? { ...prev, student: { ...prev.student, adminRemark: cleanedRemark } }
           : prev
       );
+      // Optional: keep writing to local storage as a fallback, but primary is now backend
       writeStoredRemarks(studentId, { adminRemark: cleanedRemark });
     } catch (error: any) {
       console.error(error);
+      window.alert(`Error saving remark: ${error.message}`);
     }
   };
 
@@ -910,7 +924,8 @@ export function AdminDashboard({
                 {adminSection === 'students' && (
                   <AdminStudentsTab
                     batches={batches}
-                    onViewStudent={openStudentRatings}
+                    studentsData={adminStudents}
+                    onViewStudent={(s) => openStudentRatings(apiToLocalStudent(s))}
                   />
                 )}
                 {adminSection === 'faculty' && (
@@ -939,8 +954,8 @@ export function AdminDashboard({
                 {adminSection === 'queries' && (
                   <AdminQueriesManagementTab
                     queries={queries}
-                    onViewQuery={openQueryDetails}
-                    onDeleteQuery={handleDeleteQuery}
+                    onViewQuery={(query: import('../App').LandingQuery) => openQueryDetails(query)}
+                    onDeleteQuery={(id: string) => void handleDeleteQuery(id)}
                   />
                 )}
               </>
@@ -1006,7 +1021,6 @@ export function AdminDashboard({
           title={facultyModal.title}
           onSubmit={handleSaveFaculty}
           isInitialEditing={facultyModal.isEditing}
-          subjectOptions={subjectOptions}
         />
 
         <BatchFormModal
@@ -1014,6 +1028,7 @@ export function AdminDashboard({
           mode={batchModal.mode}
           batches={batches}
           faculty={faculty}
+          isFacultyDataLoading={Boolean(isFacultyDataLoading)}
           subjectCatalog={subjectCatalog}
           batchLabel={batchModal.batchLabel}
           onClose={closeBatchModal}
@@ -1359,7 +1374,7 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
   };
 
   const conditionallyDeleteImage = async (url: string) => {
-    if (url && url.includes('landing-page')) {
+    if (url && url.includes('/landing-page/')) {
       try {
         await deleteLandingImage(url);
       } catch (e) {
@@ -1603,12 +1618,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         {isAddingFaculty && (
           <form onSubmit={handleAddFaculty} className="bg-gray-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required placeholder="Name" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <select name="subject" required defaultValue="" className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-              {subjectOptions.map((subject) => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
+            <input
+              name="subject"
+              required
+              placeholder="Subject"
+              className="px-4 py-2 rounded-lg border border-gray-200"
+              disabled={isActionInFlight}
+            />
             <input name="designation" required placeholder="Designation" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="experience" required placeholder="Experience" className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <div className="md:col-span-2">
@@ -1676,16 +1692,13 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         {editingFacultyIndex !== null && (
           <form onSubmit={handleSaveEditedFaculty} className="bg-teal-50 p-6 rounded-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <input name="name" required defaultValue={data.faculty[editingFacultyIndex].name} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
-            <select name="subject" required defaultValue={data.faculty[editingFacultyIndex].subject} className="px-4 py-2 rounded-lg border border-gray-200 bg-white" disabled={isActionInFlight}>
-              <option value="">{subjectOptions.length > 0 ? 'Select subject' : 'No subjects available'}</option>
-              {Array.from(new Set([...subjectOptions, data.faculty[editingFacultyIndex].subject]))
-                .map((subject) => subject.trim())
-                .filter(Boolean)
-                .sort((a, b) => a.localeCompare(b))
-                .map((subject) => (
-                  <option key={subject} value={subject}>{subject}</option>
-                ))}
-            </select>
+            <input
+              name="subject"
+              required
+              defaultValue={data.faculty[editingFacultyIndex].subject}
+              className="px-4 py-2 rounded-lg border border-gray-200"
+              disabled={isActionInFlight}
+            />
             <input name="designation" required defaultValue={data.faculty[editingFacultyIndex].designation} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <input name="experience" required defaultValue={data.faculty[editingFacultyIndex].experience} className="px-4 py-2 rounded-lg border border-gray-200" disabled={isActionInFlight} />
             <div className="md:col-span-2">
@@ -2115,10 +2128,10 @@ function LandingManagementTab({ data, onUpdate }: { data: LandingData; onUpdate:
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
+            { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
             { id: 'courses', title: 'Courses', description: 'Manage available courses' },
             { id: 'faculty', title: 'Faculty', description: 'Update faculty showcase' },
             { id: 'achievers', title: 'Achievers', description: 'Manage student success stories' },
-            { id: 'visions', title: 'The Vision', description: 'Manage vision statements and founders' },
           ].map((item) => (
             <div key={item.id} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <h3 className="text-lg font-bold mb-2">{item.title}</h3>
@@ -2165,14 +2178,16 @@ function OverviewTab({
   // Faculty logic
   const currentBatch = batches.find(b => b.label === selectedBatch);
   const isBatchActive = currentBatch?.is_active !== false;
-  const assigned = currentBatch?.facultyAssigned ?? [];
-  const assignedFaculty = faculty.filter((item) => assigned.includes(item.name));
+  const assignedFacultyIds = currentBatch?.facultyAssignments?.map((item) => item.id) ?? [];
+  const assignedFaculty = faculty.filter((item) => assignedFacultyIds.includes(item.id));
 
-  const handleRemoveFacultyFromBatch = async (facultyName: string) => {
+  const handleRemoveFacultyFromBatch = async (facultyId: string, facultyName: string) => {
     if (!currentBatch) return;
     if (!window.confirm(`Remove ${facultyName} from ${selectedBatch}?`)) return;
-    const nextAssigned = assigned.filter((name) => name !== facultyName);
-    const result = await onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssigned);
+    const nextAssignedIds = (currentBatch.facultyAssignments ?? [])
+      .filter((item) => item.id !== facultyId)
+      .map((item) => item.id);
+    const result = await onUpdateBatch(selectedBatch, currentBatch.subjects ?? [], nextAssignedIds);
     if (!result.ok) {
       window.alert(result.error ?? 'Unable to update batch faculty.');
     }
@@ -2192,7 +2207,7 @@ function OverviewTab({
           </button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{selectedBatch} Dashboard</h2>
-            <p className="text-teal-50/90 font-medium">Batch Management & Academic Overview</p>
+            <p className="text-teal-50/90 font-medium">Batch Management & Performance Overview</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -2230,17 +2245,32 @@ function OverviewTab({
             {assignedFaculty.map(t => (
               <div key={t.id} className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 group hover:bg-white hover:shadow-md transition-all flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50 shrink-0 text-lg">
-                    {t.name.charAt(0)}
+                  <div className="relative w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-teal-600 font-bold border border-gray-50 shrink-0 text-lg overflow-hidden">
+                    <span>{(t.name || 'F').charAt(0).toUpperCase()}</span>
+                    {getFacultyAvatarSrc(t) && (
+                      <img
+                        src={getFacultyAvatarSrc(t) || ''}
+                        alt={`${t.name} profile`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-bold text-gray-900 text-base truncate">{t.name}</h4>
+                    {t.rating !== undefined && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        {renderPerformanceStars(t.rating)}
+                      </div>
+                    )}
                     <p className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">{t.subject}</p>
                   </div>
                 </div>
                 {isBatchActive ? (
                   <button
-                    onClick={() => handleRemoveFacultyFromBatch(t.name)}
+                    onClick={() => handleRemoveFacultyFromBatch(t.id, t.name)}
                     className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     title="Remove from batch"
                   >
@@ -2302,29 +2332,70 @@ function StudentsTab({
   const STUDENTS_PER_PAGE = 20;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(batchStudents.length / STUDENTS_PER_PAGE));
+  const [sortBy, setSortBy] = useState<'name' | 'roll'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const normalizeName = (value: string | null | undefined) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizeRollDigits = (value: string | null | undefined) => {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+  };
+  const sortedBatchStudents = [...batchStudents].sort((a, b) => {
+    if (sortBy === 'name') {
+      const aName = normalizeName(a.name);
+      const bName = normalizeName(b.name);
+      const diff = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+      return sortOrder === 'asc' ? diff : -diff;
+    }
+    const aSafe = normalizeRollDigits(a.rollNumber);
+    const bSafe = normalizeRollDigits(b.rollNumber);
+    const diff = aSafe - bSafe || normalizeName(a.name).localeCompare(normalizeName(b.name));
+    return sortOrder === 'asc' ? diff : -diff;
+  });
+  const totalPages = Math.max(1, Math.ceil(sortedBatchStudents.length / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = batchStudents.slice(
+  const paginatedStudents = sortedBatchStudents.slice(
     (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
     safeCurrentPage * STUDENTS_PER_PAGE
   );
-  const rangeStart = batchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, batchStudents.length);
+  const rangeStart = sortedBatchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, sortedBatchStudents.length);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedBatch, students.length]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, sortOrder]);
+
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
-        {isBatchActive ? (
-          <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={`${sortBy}-${sortOrder}`}
+            onChange={(event) => {
+              const [nextSortBy, nextSortOrder] = event.target.value.split('-') as ['name' | 'roll', 'asc' | 'desc'];
+              setSortBy(nextSortBy);
+              setSortOrder(nextSortOrder);
+            }}
+            className="px-4 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+          >
+            <option value="name-asc">Sort: A to Z</option>
+            <option value="name-desc">Sort: Z to A</option>
+            <option value="roll-asc">Sort: Roll Number (↑)</option>
+            <option value="roll-desc">Sort: Roll Number (↓)</option>
+          </select>
+          {isBatchActive ? (
+            <div className="flex gap-3"><button onClick={onAddStudent} className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"><Plus className="w-5 h-5" />Add Student</button></div>
+          ) : null}
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -2371,7 +2442,7 @@ function StudentsTab({
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-medium text-gray-500">
-          Showing {rangeStart}-{rangeEnd} of {batchStudents.length} students
+          Showing {rangeStart}-{rangeEnd} of {sortedBatchStudents.length} students
         </p>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
@@ -2469,8 +2540,12 @@ function FacultyDirectoryTab({ faculty, onAddFaculty, onViewFaculty, onEditFacul
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
-            <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-teal-600 transition-colors">
-              <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 overflow-hidden bg-teal-100 group-hover:bg-teal-600 transition-colors">
+              {getFacultyAvatarSrc(t) ? (
+                <img src={getFacultyAvatarSrc(t)!} alt={t.name} className="w-full h-full object-cover" />
+              ) : (
+                <GraduationCap className="w-6 h-6 text-teal-600 group-hover:text-white transition-colors" />
+              )}
             </div>
             <h3 className="text-xl font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{t.name}</h3>
             <p className="text-sm font-semibold text-teal-600 uppercase mb-1">{t.subject}</p>
@@ -2514,6 +2589,10 @@ function TestSeriesManagementTab({
 }) {
   const [forceLiveLoadingTestId, setForceLiveLoadingTestId] = useState<string | null>(null);
   const [testOverrides, setTestOverrides] = useState<Record<string, import('../App').PublishedTest>>({});
+
+  useEffect(() => {
+    setTestOverrides({});
+  }, [publishedTests]);
 
   const handleDelete = (testId: string, testTitle: string) => {
     if (window.confirm(`Are you sure you want to delete the test series "${testTitle}"? This action cannot be undone.`)) {
@@ -2582,7 +2661,7 @@ function TestSeriesManagementTab({
                     <div className="flex items-center gap-2 text-sm text-gray-600"><Clock className="w-4 h-4" />{test.duration} Minutes</div>
                     <div className="flex items-center gap-2 text-sm text-gray-600"><Users className="w-4 h-4" />{test.batches.join(', ') || 'No batches'}</div>
                     {test.status === 'draft' && (
-                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{test.questions?.length || 0} questions added</div>
+                      <div className="flex items-center gap-2 text-sm text-amber-600 font-semibold"><FileText className="w-4 h-4" />{(Number.isFinite(Number(test.questionCount)) ? Number(test.questionCount) : test.questions?.length) || 0} questions added</div>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -2683,11 +2762,37 @@ function AddStudentModal({
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
+  const [backendBatches, setBackendBatches] = useState<BatchInfo[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setFormState(createInitialState(defaultBatch, initialData));
   }, [open, defaultBatch, initialData]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!active) return;
+        const mapped: BatchInfo[] = items.map((batch) => ({
+          id: batch.id,
+          label: batch.name,
+          slug: batch.slug,
+          subjects: batch.subjects ?? [],
+        }));
+        setBackendBatches(mapped);
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendBatches([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -2706,6 +2811,7 @@ function AddStudentModal({
   };
 
   const requiredMark = <span className="text-red-500">*</span>;
+  const dropdownBatches = backendBatches.length > 0 ? backendBatches : batches;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -2755,17 +2861,16 @@ function AddStudentModal({
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
               >
                 <option value="" disabled>Select batch</option>
-                {batches.map((batch) => (
+                {dropdownBatches.map((batch) => (
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Email {requiredMark}</span>
+              <span className="block">Email (Optional)</span>
               <input
                 type="email"
-                required
                 value={formState.email}
                 onChange={handleChange('email')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2774,10 +2879,9 @@ function AddStudentModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {requiredMark}</span>
+              <span className="block">Phone Number (Optional)</span>
               <input
                 type="tel"
-                required
                 value={formState.phoneNumber}
                 onChange={handleChange('phoneNumber')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2786,10 +2890,9 @@ function AddStudentModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Date of Birth {requiredMark}</span>
+              <span className="block">Date of Birth (Optional)</span>
               <input
                 type="date"
-                required
                 value={formState.dateOfBirth}
                 onChange={handleChange('dateOfBirth')}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
@@ -2847,7 +2950,6 @@ function AddFacultyModal({
   title,
   onSubmit,
   isInitialEditing,
-  subjectOptions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -2855,7 +2957,6 @@ function AddFacultyModal({
   title?: string;
   onSubmit?: (data: FacultyFormState) => void;
   isInitialEditing?: boolean;
-  subjectOptions: string[];
 }) {
   const [isEditing, setIsEditing] = useState(isInitialEditing ?? !initialData?.id);
   const [formState, setFormState] = useState<FacultyFormState>({
@@ -2870,6 +2971,7 @@ function AddFacultyModal({
     reviewCount: initialData?.reviewCount ?? 0,
     password: '',
   });
+  const [backendSubjectOptions, setBackendSubjectOptions] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -2888,6 +2990,30 @@ function AddFacultyModal({
     });
   }, [open, initialData, isInitialEditing]);
 
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchSubjects()
+      .then((subjects) => {
+        if (!active) return;
+        const normalized = subjects
+          .map((subject) => subject.name)
+          .filter((name) => typeof name === 'string' && name.trim().length > 0)
+          .map((name) => name.trim())
+          .sort((a, b) => a.localeCompare(b));
+        setBackendSubjectOptions(Array.from(new Set(normalized)));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendSubjectOptions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const handleChange = (field: keyof FacultyFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -2899,7 +3025,7 @@ function AddFacultyModal({
         : raw;
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
-  const mergedSubjectOptions = Array.from(new Set([...subjectOptions, formState.subject]))
+  const mergedSubjectOptions = Array.from(new Set([...backendSubjectOptions, formState.subject]))
     .map((subject) => subject.trim())
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
@@ -2979,10 +3105,9 @@ function AddFacultyModal({
             </label>
 
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {isEditing && requiredMark}</span>
+              <span className="block">Phone Number {isEditing && '(Optional)'}</span>
               <input
                 type="tel"
-                required={isEditing}
                 readOnly={!isEditing}
                 value={formState.phone}
                 onChange={handleChange('phone')}
@@ -3268,6 +3393,7 @@ function BatchFormModal({
   mode,
   batches,
   faculty,
+  isFacultyDataLoading,
   subjectCatalog,
   batchLabel,
   onClose,
@@ -3280,21 +3406,21 @@ function BatchFormModal({
   mode: 'create' | 'edit';
   batches: BatchInfo[];
   faculty: import('../api/faculties').ApiFaculty[];
+  isFacultyDataLoading: boolean;
   subjectCatalog: import('../api/subjects').ApiSubject[];
   batchLabel?: string;
   onClose: () => void;
-  onCreateBatch: (label: string, subjects?: string[], facultyAssigned?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onCreateBatch: (label: string, subjects?: string[], facultyIds?: string[]) => Promise<{ ok: boolean; error?: string; label?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteBatch: (label: string) => Promise<{ ok: boolean; error?: string }>;
   onRemoveSubjectFromBatch: (batchId: string, subjectId: string) => Promise<SubjectActionResult>;
 }) {
   const [formState, setFormState] = useState({
     name: '',
     subject: '',
-    faculty: '',
-    assignments: [] as { subject: string; faculty: string }[],
+    assignments: [] as { subject: string; facultyId: string | null; facultyName: string; faculty: string }[],
   });
-  const [selectedFacultyNames, setSelectedFacultyNames] = useState<string[]>([]);
+  const [selectedFacultyIds, setSelectedFacultyIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const subjects = subjectCatalog
     .map((subject) => subject.name)
@@ -3309,26 +3435,27 @@ function BatchFormModal({
     if (!open) return;
     if (mode === 'edit' && batchLabel) {
       const current = batches.find((batch) => batch.label === batchLabel);
-      const assignments = (current?.facultyAssigned ?? [])
-        .map((name) => {
-          const found = faculty.find((item) => item.name === name);
-          return found ? { subject: found.subject, faculty: found.name } : null;
-        })
-        .filter((item): item is { subject: string; faculty: string } => !!item);
+      const assignments = (current?.facultyAssignments ?? [])
+        .map((assignment) => ({
+          subject: assignment.subject ?? faculty.find((item) => item.id === assignment.id)?.subject ?? '',
+          facultyId: assignment.id,
+          facultyName: assignment.name,
+          faculty: assignment.name,
+        }))
+        .filter((item) => item.subject.trim().length > 0);
       const assignedSubjects = new Set(assignments.map((item) => item.subject));
       const subjectOnlyAssignments = (current?.subjects ?? [])
         .filter((subject) => subject && !assignedSubjects.has(subject))
-        .map((subject) => ({ subject, faculty: '' }));
+        .map((subject) => ({ subject, facultyId: null, facultyName: '', faculty: '' }));
       setFormState({
         name: current?.label ?? batchLabel,
         subject: '',
-        faculty: '',
         assignments: [...assignments, ...subjectOnlyAssignments],
       });
     } else {
-      setFormState({ name: '', subject: '', faculty: '', assignments: [] });
+      setFormState({ name: '', subject: '', assignments: [] });
     }
-    setSelectedFacultyNames([]);
+    setSelectedFacultyIds([]);
     setError(null);
   }, [open, mode, batchLabel, batches, faculty]);
 
@@ -3341,33 +3468,41 @@ function BatchFormModal({
   const addAssignment = () => {
     if (!formState.subject) return;
     setFormState((prev) => {
-      if (selectedFacultyNames.length === 0) {
-        const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject);
+      if (selectedFacultyIds.length === 0) {
+        const alreadyExists = prev.assignments.some((item) => item.subject === prev.subject && !item.facultyId);
         if (alreadyExists) {
-          return { ...prev, faculty: '' };
+          return {
+            ...prev,
+            subject: '',
+          };
         }
         return {
           ...prev,
-          assignments: [...prev.assignments, { subject: prev.subject, faculty: '' }],
-          faculty: '',
+          subject: '',
+          assignments: [...prev.assignments, { subject: prev.subject, facultyId: null, facultyName: '', faculty: '' }],
         };
       }
-      const additions = selectedFacultyNames
-        .filter((name) => !prev.assignments.some((item) => item.subject === prev.subject && item.faculty === name))
-        .map((name) => ({ subject: prev.subject, faculty: name }));
+      const additions = selectedFacultyIds
+        .map((facultyId) => facultyOptions.find((item) => item.id === facultyId))
+        .filter((item): item is typeof facultyOptions[number] => !!item)
+        .filter((item) => !prev.assignments.some((assignment) => assignment.subject === prev.subject && assignment.facultyId === item.id))
+        .map((item) => ({ subject: prev.subject, facultyId: item.id, facultyName: item.name, faculty: item.name }));
       if (additions.length === 0) {
-        return { ...prev, faculty: '' };
+        return {
+          ...prev,
+          subject: '',
+        };
       }
       const withoutPlaceholder = prev.assignments.filter(
-        (item) => !(item.subject === prev.subject && item.faculty.trim().length === 0)
+        (item) => !(item.subject === prev.subject && !item.facultyId)
       );
       return {
         ...prev,
+        subject: '',
         assignments: [...withoutPlaceholder, ...additions],
-        faculty: '',
       };
     });
-    setSelectedFacultyNames([]);
+    setSelectedFacultyIds([]);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -3375,9 +3510,12 @@ function BatchFormModal({
     const normalizedTypedSubject = formState.subject.trim();
     const inlineAssignments =
       normalizedTypedSubject.length > 0
-        ? selectedFacultyNames.length > 0
-          ? selectedFacultyNames.map((name) => ({ subject: normalizedTypedSubject, faculty: name }))
-          : [{ subject: normalizedTypedSubject, faculty: '' }]
+        ? selectedFacultyIds.length > 0
+          ? selectedFacultyIds
+            .map((facultyId) => facultyOptions.find((item) => item.id === facultyId))
+            .filter((item): item is typeof facultyOptions[number] => !!item)
+            .map((item) => ({ subject: normalizedTypedSubject, facultyId: item.id, facultyName: item.name, faculty: item.name }))
+          : [{ subject: normalizedTypedSubject, facultyId: null, facultyName: '', faculty: '' }]
         : [];
     const effectiveAssignments = [...formState.assignments, ...inlineAssignments];
     const selectedSubjects = Array.from(
@@ -3390,8 +3528,8 @@ function BatchFormModal({
     const selectedFaculty = Array.from(
       new Set(
         effectiveAssignments
-          .map((item) => item.faculty.trim())
-          .filter((name) => name.length > 0)
+          .map((item) => item.facultyId)
+          .filter((facultyId): facultyId is string => Boolean(facultyId))
       )
     );
     if (!formState.name.trim()) {
@@ -3415,12 +3553,12 @@ function BatchFormModal({
 
   const handleDelete = async () => {
     if (!batchLabel) return;
-    if (window.confirm(`Are you sure you want to delete the batch "${batchLabel}"?`)) {
+    if (window.confirm(`Are you sure you want to make the batch "${batchLabel}" inactive? Students will be unassigned and the batch will become unavailable for new assignments and content.`)) {
       const result = await onDeleteBatch(batchLabel);
       if (result.ok) {
         onClose();
       } else {
-        setError(result.error ?? 'Unable to delete batch.');
+        setError(result.error ?? 'Unable to make batch inactive.');
       }
     }
   };
@@ -3494,9 +3632,8 @@ function BatchFormModal({
                     setFormState((prev) => ({
                       ...prev,
                       subject: nextSubject,
-                      faculty: '',
                     }));
-                    setSelectedFacultyNames([]);
+                    setSelectedFacultyIds([]);
                   }}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white"
                   placeholder="Select or type a subject"
@@ -3513,6 +3650,8 @@ function BatchFormModal({
                 <div className={`w-full rounded-xl border border-gray-200 px-4 py-3 bg-white ${!formState.subject ? 'bg-gray-50 text-gray-400' : ''}`}>
                   {!formState.subject ? (
                     <span className="text-sm text-gray-400">Select subject first</span>
+                  ) : isFacultyDataLoading ? (
+                    <span className="text-sm text-gray-500">Loading faculty for this subject...</span>
                   ) : (
                     <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide pr-1">
                       {facultyOptions.length === 0 && (
@@ -3522,11 +3661,11 @@ function BatchFormModal({
                         <label key={item.id} className="flex items-center gap-2 text-sm text-gray-700">
                           <input
                             type="checkbox"
-                            checked={selectedFacultyNames.includes(item.name)}
+                            checked={selectedFacultyIds.includes(item.id)}
                             onChange={(event) => {
                               const checked = event.target.checked;
-                              setSelectedFacultyNames((prev) =>
-                                checked ? [...prev, item.name] : prev.filter((name) => name !== item.name)
+                              setSelectedFacultyIds((prev) =>
+                                checked ? [...prev, item.id] : prev.filter((facultyId) => facultyId !== item.id)
                               );
                             }}
                             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
@@ -3554,7 +3693,7 @@ function BatchFormModal({
               <p className="text-sm font-medium text-gray-700">Selected</p>
               <div className="space-y-1">
                 {formState.assignments.map((item, index) => (
-                  <div key={`${item.subject}-${item.faculty}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
+                  <div key={`${item.subject}-${item.facultyId ?? 'unassigned'}-${index}`} className="flex items-center justify-between text-sm text-gray-700">
                     <span>
                       {item.subject} — <span className="font-semibold">{item.faculty ? item.faculty : 'Unassigned'}</span>
                     </span>
@@ -3586,7 +3725,7 @@ function BatchFormModal({
                 onClick={handleDelete}
                 className="px-6 py-3 rounded-xl border border-red-200 text-red-600 font-bold hover:bg-red-50 transition sm:mr-auto"
               >
-                Delete Batch
+                Make Inactive
               </button>
             )}
             <button
@@ -3623,7 +3762,7 @@ function StudentRatingsModal({
   batches: BatchInfo[];
   onSaveProfile?: (
     studentId: string,
-    updates: Pick<Student, 'name' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
+    updates: Pick<Student, 'name' | 'rollNumber' | 'email' | 'phoneNumber' | 'dateOfBirth' | 'parentContact' | 'address'>
   ) => void;
   onSaveAdminRemark?: (studentId: string, remark: string) => void;
 }) {
@@ -3633,6 +3772,8 @@ function StudentRatingsModal({
   const [adminRemarkDraft, setAdminRemarkDraft] = useState('');
   const [profileDraft, setProfileDraft] = useState({
     name: '',
+    rollNumber: '',
+    email: '',
     phoneNumber: formatIndianMobileInput(''),
     dateOfBirth: '',
     parentContact: formatIndianMobileInput(''),
@@ -3657,6 +3798,8 @@ function StudentRatingsModal({
     setIsEditingAdminRemark(false);
     setProfileDraft({
       name: student.name ?? '',
+      rollNumber: student.rollNumber ?? '',
+      email: student.email ?? '',
       phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
       dateOfBirth: student.dateOfBirth ?? '',
       parentContact: formatIndianMobileInput(student.parentContact ?? ''),
@@ -3767,6 +3910,8 @@ function StudentRatingsModal({
   const finalRating = calculateFinalRating();
   const getProfileValuesForPrint = () => ({
     name: isEditingProfile ? profileDraft.name : student.name,
+    rollNumber: isEditingProfile ? profileDraft.rollNumber : student.rollNumber,
+    email: isEditingProfile ? profileDraft.email : student.email,
     phoneNumber: isEditingProfile ? profileDraft.phoneNumber : student.phoneNumber,
     dateOfBirth: isEditingProfile ? profileDraft.dateOfBirth : student.dateOfBirth,
     parentContact: isEditingProfile ? profileDraft.parentContact : student.parentContact,
@@ -3784,15 +3929,29 @@ function StudentRatingsModal({
   const handlePrintStudentDetails = () => {
     const profileValues = getProfileValuesForPrint();
     const currentBatchInfo = batches.find(b => b.label === student.batch);
+    const normalizeSubjectKey = (value: string) => value.trim().toLowerCase();
+    const subjectFacultyMap = new Map<string, string>();
+    (currentBatchInfo?.facultyAssignments ?? []).forEach((assignment) => {
+      const subjectName = (assignment.subject ?? '').trim();
+      const facultyName = (assignment.name ?? '').trim();
+      if (!subjectName || !facultyName) return;
+      subjectFacultyMap.set(normalizeSubjectKey(subjectName), facultyName);
+    });
+    const renderStarsForPrint = (value: number) => {
+      const normalized = Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
+      const rounded = Math.round(normalized);
+      return `${'&#9733;'.repeat(rounded)}${'&#9734;'.repeat(5 - rounded)}`;
+    };
 
     const detailsRows = [
       ['Student Name', profileValues.name || 'Not provided'],
+      ['Email', profileValues.email || 'Not provided'],
       ['Phone Number', profileValues.phoneNumber || 'Not provided'],
       ['Date of Birth', profileValues.dateOfBirth || 'Not provided'],
       ["Parent's Contact", profileValues.parentContact || 'Not provided'],
       ['Residential Address', profileValues.address || 'Not provided'],
       ['Batch', student.batch || 'Not provided'],
-      ['Roll Number', student.rollNumber || 'Not provided'],
+      ['Roll Number', profileValues.rollNumber || 'Not provided'],
       ['Final Average Rating', `${finalRating.toFixed(1)} / 5.0`],
     ]
       .map(
@@ -3806,10 +3965,9 @@ function StudentRatingsModal({
         ? `<div class="subjects-grid">${Object.entries(student.subjectRatings)
           .map(([subject, r]) => {
             const subjectAverage = calculateSubjectRating(r);
+            const attendanceRating = getAttendanceRatingValue(r.attendance, r.total_classes, r.attendanceRating);
             const subjectRemark = (student.subjectRemarks?.[subject] || '').trim();
-
-            const batchFacultyNames = currentBatchInfo?.facultyAssigned || [];
-            const subjectFaculty = batchFacultyNames.find(name => true);
+            const subjectFaculty = subjectFacultyMap.get(normalizeSubjectKey(subject));
 
             return `
                 <section class="subject-card">
@@ -3826,10 +3984,10 @@ function StudentRatingsModal({
                       </tr>
                     </thead>
                     <tbody>
-                      <tr><td>Attendance</td><td>${r.attendance.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>Test Performance</td><td>${r.tests.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>DPP Performance</td><td>${r.dppPerformance.toFixed(1)} / 5.0</td></tr>
-                      <tr><td>Class Behaviour</td><td>${r.behavior.toFixed(1)} / 5.0</td></tr>
+                      <tr><td>Attendance</td><td class="star-rating">${renderStarsForPrint(attendanceRating)}</td></tr>
+                      <tr><td>Test Performance</td><td class="star-rating">${renderStarsForPrint(r.tests)}</td></tr>
+                      <tr><td>DPP Performance</td><td class="star-rating">${renderStarsForPrint(r.dppPerformance)}</td></tr>
+                      <tr><td>Class Behaviour</td><td class="star-rating">${renderStarsForPrint(r.behavior)}</td></tr>
                     </tbody>
                   </table>
                   ${subjectRemark ? `
@@ -3946,6 +4104,11 @@ function StudentRatingsModal({
             }
             .value {
               width: 65%;
+            }
+            .star-rating {
+              letter-spacing: 1px;
+              color: #f59e0b;
+              font-size: 12px;
             }
             .highlight-rating td {
               background: #fef2f2 !important;
@@ -4147,9 +4310,23 @@ function StudentRatingsModal({
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 text-white flex justify-between items-center shrink-0">
-          <div>
-            <h3 className="text-xl font-bold">{student.name}</h3>
-            <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            {student.avatarUrl || student.avatar_url ? (
+              <img
+                src={(student.avatarUrl || student.avatar_url) as string}
+                alt={student.name}
+                className="w-12 h-12 rounded-full object-cover border-2 border-white/40 bg-white/20"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center font-bold text-white">
+                {student.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold truncate">{student.name}</h3>
+              <p className="text-teal-50 text-sm opacity-90 truncate">{student.batch} • {student.rollNumber}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -4186,6 +4363,8 @@ function StudentRatingsModal({
                         setIsEditingProfile(false);
                         setProfileDraft({
                           name: student.name ?? '',
+                          rollNumber: student.rollNumber ?? '',
+                          email: student.email ?? '',
                           phoneNumber: formatIndianMobileInput(student.phoneNumber ?? ''),
                           dateOfBirth: student.dateOfBirth ?? '',
                           parentContact: formatIndianMobileInput(student.parentContact ?? ''),
@@ -4223,7 +4402,29 @@ function StudentRatingsModal({
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Roll Number</p>
-                  <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileDraft.rollNumber}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, rollNumber: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                  {isEditingProfile ? (
+                    <input
+                      type="email"
+                      value={profileDraft.email}
+                      onChange={(e) => setProfileDraft((prev) => ({ ...prev, email: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-200"
+                    />
+                  ) : (
+                    <p className="text-gray-900 font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-indigo-600" /> {student.email || 'Not provided'}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>

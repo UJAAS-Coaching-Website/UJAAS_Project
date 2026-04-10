@@ -80,7 +80,7 @@ export function TestPerformanceInsights({
             timeSpent: perf.timeSpent,
             attempts: perf.attempts.map((attempt) => ({
               ...attempt,
-              questions: mapApiAttemptQuestionsToAnalytics(attempt.questions),
+              questions: mapApiAttemptQuestionsToAnalytics(attempt.questions, { includeNegativeMarks: true }),
             })),
           }))
         );
@@ -267,7 +267,7 @@ export function TestPerformanceInsights({
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+              <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-gray-50/50 border-b border-gray-100">
@@ -359,15 +359,15 @@ export function TestPerformanceInsights({
                 </tbody>
               </table>
             </div>
-            {filteredPerformances.length === 0 && (
-              <div className="py-20 text-center">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-10 h-10 text-gray-300" />
+              {filteredPerformances.length === 0 && (
+                <div className="py-20 text-center">
+                  <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-500">No students found matching your search.</p>
                 </div>
-                <p className="text-sm sm:text-base text-gray-500">No students found matching your search.</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
         )}
       </div>
     </motion.div>

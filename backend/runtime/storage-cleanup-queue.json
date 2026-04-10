@@ -1,0 +1,50 @@
+[
+  {
+    "id": "c3767c56-40ea-4403-8665-e06b04e6b925",
+    "type": "delete_context",
+    "url": null,
+    "context": "tests",
+    "contextId": "07dd15ec-e2af-4534-80bf-7f64dc5a42a8",
+    "source": "deleteAllImagesForContext",
+    "errorMessage": "The specified key does not exist.",
+    "attempts": 0,
+    "createdAt": "2026-04-02T11:54:14.386Z",
+    "updatedAt": "2026-04-02T11:54:14.386Z"
+  },
+  {
+    "id": "48b8fc1c-bd7b-424f-b5c9-0e6c3032e642",
+    "type": "delete_context",
+    "url": null,
+    "context": "tests",
+    "contextId": "d0ee5d97-4d92-4802-bee4-8989bd413db8",
+    "source": "deleteAllImagesForContext",
+    "errorMessage": "The specified key does not exist.",
+    "attempts": 0,
+    "createdAt": "2026-04-02T11:58:34.575Z",
+    "updatedAt": "2026-04-02T11:58:34.575Z"
+  },
+  {
+    "id": "2d20f71d-e7f5-4044-a1ac-e34f31e10653",
+    "type": "delete_context",
+    "url": null,
+    "context": "tests",
+    "contextId": "b089314f-0630-44fb-8066-05f9f8063c84",
+    "source": "deleteAllImagesForContext",
+    "errorMessage": "The specified key does not exist.",
+    "attempts": 0,
+    "createdAt": "2026-04-02T12:07:25.929Z",
+    "updatedAt": "2026-04-02T12:07:25.929Z"
+  },
+  {
+    "id": "332c16c1-9fad-486c-baff-100038fb0d79",
+    "type": "delete_context",
+    "url": null,
+    "context": "tests",
+    "contextId": "72759155-b8a7-45a7-a46a-5ef65f0f2c6e",
+    "source": "deleteAllImagesForContext",
+    "errorMessage": "The specified key does not exist.",
+    "attempts": 0,
+    "createdAt": "2026-04-02T12:19:23.269Z",
+    "updatedAt": "2026-04-02T12:19:23.269Z"
+  }
+]

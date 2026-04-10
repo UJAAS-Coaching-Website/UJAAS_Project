@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { changeMyPassword, me, verifyMyPassword } from '../api/auth';
+import { changeMyPassword, me, verifyMyPassword, updateMyProfile } from '../api/auth';
 import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
@@ -59,6 +59,7 @@ interface StudentDetails {
   rollNumber: string;
   batch: string;
   joinDate: string;
+  email: string;
   phone: string;
   address: string;
   dateOfBirth: string;
@@ -90,6 +91,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
         rollNumber: '',
         batch: '',
         joinDate: '',
+        email: '',
         phone: '',
         address: '',
         dateOfBirth: '',
@@ -110,6 +112,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       rollNumber: details.rollNumber || '',
       batch: details.batch || '',
       joinDate: normalizeDateForInput(details.joinDate),
+      email: (details as any).email || '',
       phone: details.phone || '',
       address: details.address || '',
       dateOfBirth: normalizeDateForInput(details.dateOfBirth),
@@ -260,6 +263,18 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       {activeSection === 'overview' && (
         <OverviewSection
           details={studentDetails}
+          profileName={profileUser.name}
+          profileEmail={profileUser.email || ''}
+          onProfileSaved={(next) => {
+            setProfileUser((prev: any) => ({ ...prev, email: next.email }));
+            setStudentDetails((prev) => ({
+              ...prev,
+              phone: next.phone,
+              email: next.email,
+              address: next.address,
+              dateOfBirth: next.dateOfBirth,
+            }));
+          }}
           isMobileViewport={isMobileViewport}
         />
       )}
@@ -321,12 +336,71 @@ function renderPerformanceStars(rating: number) {
 
 function OverviewSection({ 
   details,
+  profileName,
+  profileEmail,
+  onProfileSaved,
   isMobileViewport
 }: { 
   details: StudentDetails; 
+  profileName: string;
+  profileEmail: string;
+  onProfileSaved?: (next: { phone: string; email: string; address: string; dateOfBirth: string }) => void;
   isMobileViewport: boolean;
 }) {
   const { isDark } = useTheme();
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    phone: details.phone || '',
+    email: profileEmail || details.email || '',
+    address: details.address || '',
+    dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+  });
+
+  useEffect(() => {
+    setProfileDraft({
+      phone: details.phone || '',
+      email: profileEmail || details.email || '',
+      address: details.address || '',
+      dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+    });
+  }, [details.phone, details.email, details.address, details.dateOfBirth, profileEmail]);
+
+  const handleSaveProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      await updateMyProfile({
+        name: profileName,
+        phone: profileDraft.phone,
+        email: profileDraft.email,
+        address: profileDraft.address,
+        dateOfBirth: profileDraft.dateOfBirth || null,
+        parentContact: details.parentContact || '',
+      });
+      onProfileSaved?.({
+        phone: profileDraft.phone,
+        email: profileDraft.email,
+        address: profileDraft.address,
+        dateOfBirth: profileDraft.dateOfBirth,
+      });
+      setIsEditingProfile(false);
+      window.alert('Profile updated successfully.');
+    } catch (error: any) {
+      window.alert(error?.message || 'Failed to update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setProfileDraft({
+      phone: details.phone || '',
+      email: profileEmail || details.email || '',
+      address: details.address || '',
+      dateOfBirth: normalizeDateForInput(details.dateOfBirth || ''),
+    });
+    setIsEditingProfile(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -342,11 +416,40 @@ function OverviewSection({
       >
         <div className="mb-4 flex items-center justify-between sm:mb-6">
           <h3 className={`text-lg font-semibold sm:text-xl ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>Personal Information</h3>
+          {!isEditingProfile ? (
+            <button
+              type="button"
+              onClick={() => setIsEditingProfile(true)}
+              className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                disabled={isSavingProfile}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-70"
+                disabled={isSavingProfile}
+              >
+                {isSavingProfile ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 md:gap-6">
           {[
             { label: 'Phone', value: details.phone, icon: Phone, key: 'phone' },
+            { label: 'Email', value: profileEmail || details.email, icon: Mail, key: 'email' },
             { label: 'Date of Birth', value: details.dateOfBirth, icon: Calendar, key: 'dateOfBirth', type: 'date' },
             { label: 'Address', value: details.address, icon: MapPin, key: 'address' },
             { label: 'Parent Contact', value: details.parentContact, icon: Phone, key: 'parentContact' },
@@ -364,13 +467,43 @@ function OverviewSection({
                 <field.icon className={isMobileViewport ? 'h-3 w-3' : 'h-3.5 w-3.5 sm:h-4 sm:w-4'} />
                 {field.label}
               </label>
-              <p className={`rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 sm:text-base ${
+              
+              {isEditingProfile && (field.key === 'phone' || field.key === 'email' || field.key === 'address' || field.key === 'dateOfBirth') ? (
+                field.key === 'address' ? (
+                  <textarea
+                    rows={3}
+                    value={profileDraft.address}
+                    onChange={(event) => setProfileDraft((prev) => ({ ...prev, address: event.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                  />
+                ) : (
+                  <input
+                    type={field.key === 'dateOfBirth' ? 'date' : field.key === 'email' ? 'email' : 'tel'}
+                    value={field.key === 'phone' ? profileDraft.phone : field.key === 'email' ? profileDraft.email : profileDraft.dateOfBirth}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      if (field.key === 'phone') {
+                        setProfileDraft((prev) => ({ ...prev, phone: nextValue }));
+                        return;
+                      }
+                      if (field.key === 'email') {
+                        setProfileDraft((prev) => ({ ...prev, email: nextValue }));
+                        return;
+                      }
+                      setProfileDraft((prev) => ({ ...prev, dateOfBirth: nextValue }));
+                    }}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-200 sm:px-4 sm:text-base"
+                  />
+                )
+              ) : (
+                <p className={`rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 sm:text-base ${
                 isDark
                   ? 'bg-slate-900 text-slate-100 group-hover:bg-slate-800'
                   : 'bg-gray-50 text-gray-900 group-hover:bg-indigo-50'
               }`}>
                 {field.type === 'date' ? formatDateForDisplay(field.value) : field.value}
               </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -693,6 +826,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
         transition={{ delay: 0.2 }}
         className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-3"
       >
+
         <motion.button
           onClick={() => setShowChangePassword(true)}
           className={`w-full p-4 md:p-3 rounded-xl text-left hover:shadow-md transition flex items-center justify-between group border ${
@@ -872,6 +1006,7 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
             </motion.div>,
             modalRoot
           )}
+
     </div>
   );
 }

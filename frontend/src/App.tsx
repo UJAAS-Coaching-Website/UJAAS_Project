@@ -10,6 +10,7 @@ import {
   submitQuery as apiSubmitQuery,
   updateQueryStatus as apiUpdateQueryStatus,
   deleteQuery as apiDeleteQuery,
+  setQueriesCache,
 } from './api/landing';
 import {
   fetchBatches as apiFetchBatches,
@@ -19,6 +20,7 @@ import {
   permanentlyDeleteBatch as apiPermanentlyDeleteBatch,
   uploadBatchTimetable as apiUploadBatchTimetable,
   deleteBatchTimetable as apiDeleteBatchTimetable,
+  setBatchesCache,
   type ApiBatch,
 } from './api/batches';
 import {
@@ -26,6 +28,7 @@ import {
   createFaculty as apiCreateFaculty,
   updateFaculty as apiUpdateFaculty,
   deleteFacultyApi as apiDeleteFaculty,
+  setFacultiesCache,
   type ApiFaculty,
 } from './api/faculties';
 import {
@@ -36,6 +39,7 @@ import {
   assignStudentToBatch as apiAssignStudentToBatch,
   removeStudentFromBatch as apiRemoveStudentFromBatch,
   updateStudentRating as apiUpdateStudentRating,
+  setStudentsCache,
   type ApiStudent,
 } from './api/students';
 import {
@@ -52,8 +56,10 @@ import {
   forceTestLiveNow as apiForceTestLiveNow,
   updateTestApi,
   deleteTestApi as apiDeleteTest,
+  setTestsCache,
   type ApiTest,
 } from './api/tests';
+import { clearQuestionBankCache } from './api/questionBank';
 import { formatTimeAgo } from './utils/time';
 import { mapApiTestToPublished as apiTestToPublished } from './utils/testMappings';
 import { useIsMobileViewport } from './hooks/useViewport';
@@ -71,6 +77,7 @@ const StudentDashboard = lazy(() => import('./components/StudentDashboard').then
 const AdminDashboard = lazy(() => import('./components/AdminDashboard').then((module) => ({ default: module.AdminDashboard })));
 const FacultyDashboard = lazy(() => import('./components/FacultyDashboard').then((module) => ({ default: module.FacultyDashboard })));
 const GetStarted = lazy(() => import('./components/GetStarted').then((module) => ({ default: module.GetStarted })));
+const LegalPolicyPage = lazy(() => import('./components/LegalPolicyPage'));
 
 export interface User {
   id: string;
@@ -243,6 +250,7 @@ function App() {
     slug: string;
     subjects?: string[];
     facultyAssigned?: string[];
+    facultyAssignments?: { id: string; name: string; subject?: string | null }[];
     is_active?: boolean;
     studentCount?: number;
     testsConducted?: number;
@@ -256,6 +264,7 @@ function App() {
     label: b.name,
     slug: b.slug || b.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') || 'batch',
     subjects: b.subjects ?? undefined,
+    facultyAssignments: b.faculty?.map((f) => ({ id: f.id, name: f.name, subject: f.subject ?? null })) ?? undefined,
     facultyAssigned: b.faculty?.map((f: { name: string }) => f.name) ?? undefined,
     is_active: b.is_active,
     studentCount: b.student_count || 0,
@@ -291,10 +300,24 @@ function App() {
   const handlePublishTest = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; requiresSaveBeforePublish?: boolean }) => {
     showBatchToast('saving', 'Publishing test to database...');
     try {
-      const batchIds = adminBatches
-        .filter(b => test.batches.includes(b.label))
-        .map(b => b.id)
-        .filter(Boolean) as string[];
+      const resolveBatchIds = async (batchLabels: string[]) => {
+        const normalize = (value: string) => value.trim().toLowerCase();
+        const labelSet = new Set(batchLabels.map(normalize));
+
+        let sourceBatches = adminBatches;
+        if (sourceBatches.length === 0) {
+          const latest = await apiFetchBatches(true);
+          sourceBatches = latest.map(apiBatchToInfo);
+          setAdminBatches(sourceBatches);
+        }
+
+        return sourceBatches
+          .filter((b) => labelSet.has(normalize(b.label)))
+          .map((b) => b.id)
+          .filter(Boolean) as string[];
+      };
+
+      const batchIds = await resolveBatchIds(test.batches);
 
       if (test.id) {
         // Publishing from an existing draft — update it and change status
@@ -339,12 +362,22 @@ function App() {
 
   const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
 
-  const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string }) => {
+  const handleSaveDraft = async (test: Omit<PublishedTest, 'id' | 'status'> & { id?: string; partialQuestions?: boolean }) => {
     showBatchToast('saving', 'Saving draft...');
     try {
-      const batchIds = adminBatches
-        .filter(b => test.batches.includes(b.label))
-        .map(b => b.id)
+      const normalize = (value: string) => value.trim().toLowerCase();
+      const labelSet = new Set(test.batches.map(normalize));
+
+      let sourceBatches = adminBatches;
+      if (sourceBatches.length === 0) {
+        const latest = await apiFetchBatches(true);
+        sourceBatches = latest.map(apiBatchToInfo);
+        setAdminBatches(sourceBatches);
+      }
+
+      const batchIds = sourceBatches
+        .filter((b) => labelSet.has(normalize(b.label)))
+        .map((b) => b.id)
         .filter(Boolean) as string[];
 
       if (test.id) {
@@ -359,7 +392,9 @@ function App() {
           instructions: test.instructions,
           batchIds,
           questions: test.questions,
+          partialQuestions: Boolean((test as any).partialQuestions),
         });
+
         const updatedApiTest = await apiFetchTestById(test.id);
         setPublishedTests(prev => prev.map(t => t.id === test.id ? apiTestToPublished(updatedApiTest) : t));
         showBatchToast('saved', 'Draft saved successfully');
@@ -415,13 +450,20 @@ function App() {
 
       // We need to map batch names back to IDs if batches are updated
       let batchIds;
+      let sourceBatches = adminBatches;
+      if (sourceBatches.length === 0) {
+        const latest = await apiFetchBatches(true);
+        sourceBatches = latest.map(apiBatchToInfo);
+        setAdminBatches(sourceBatches);
+      }
+
       if (updates.batches) {
-        batchIds = adminBatches
+        batchIds = sourceBatches
           .filter(b => updates.batches!.includes(b.label))
           .map(b => b.id)
           .filter(Boolean) as string[];
       } else {
-        batchIds = adminBatches
+        batchIds = sourceBatches
           .filter(b => test.batches.includes(b.label))
           .map(b => b.id)
           .filter(Boolean) as string[];
@@ -492,8 +534,10 @@ function App() {
 
   const [adminBatches, setAdminBatches] = useState<AdminBatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLandingDataLoading, setIsLandingDataLoading] = useState(true);
   const [isGlobalDataLoading, setIsGlobalDataLoading] = useState(false);
   const [showGetStarted, setShowGetStarted] = useState(true);
+  const [isAdminFacultyLoading, setIsAdminFacultyLoading] = useState(false);
   const [adminFaculties, setAdminFaculties] = useState<ApiFaculty[]>([]);
   const [adminStudents, setAdminStudents] = useState<ApiStudent[]>([]);
   const [adminSubjects, setAdminSubjects] = useState<ApiSubject[]>([]);
@@ -532,14 +576,25 @@ function App() {
     }
   }, [user]);
 
+  const loadAdminFaculties = useCallback(async (forceRefresh = false) => {
+    setIsAdminFacultyLoading(true);
+    try {
+      const faculties = await fetchFaculties(forceRefresh);
+      setAdminFaculties(faculties);
+      return faculties;
+    } finally {
+      setIsAdminFacultyLoading(false);
+    }
+  }, []);
+
   const refreshAdminBatchDependencies = async () => {
-    const [apiBatches, apiTests, apiFaculties, apiStudents] = await Promise.all([
+    const [apiBatches, apiTests, , apiStudents] = await Promise.all([
       apiFetchBatches(),
       apiFetchTests().catch((e) => {
         console.warn('Could not fetch tests from API:', e);
         return [];
       }),
-      fetchFaculties().catch((e) => {
+      loadAdminFaculties().catch((e) => {
         console.warn('Could not fetch faculties from API:', e);
         return [];
       }),
@@ -551,7 +606,6 @@ function App() {
 
     setAdminBatches(apiBatches.map(apiBatchToInfo));
     setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-    setAdminFaculties(apiFaculties);
     setAdminStudents(apiStudents);
   };
 
@@ -621,24 +675,20 @@ function App() {
     return adminBatches.find((batch) => batch.label === label)?.slug ?? null;
   };
 
-  const addAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[]) => {
+  const addAdminBatch = async (label: string, subjects?: string[], facultyIds?: string[]) => {
     const trimmedLabel = label.trim();
     if (adminBatches.some((b) => b.label.toLowerCase() === trimmedLabel.toLowerCase())) {
       return { ok: false, error: 'A batch with this name already exists' };
     }
 
     const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
-    const facultyIds = (facultyAssigned ?? []).map(name => {
-      const fac = adminFaculties.find(f => f.name === name);
-      return fac?.id;
-    }).filter((id): id is string => !!id);
 
     try {
       showBatchToast('saving', 'Creating batch in database...');
       const apiBatch = await apiCreateBatch({
         name: trimmedLabel,
         subjects: trimmedSubjects,
-        facultyIds: facultyIds,
+        facultyIds: (facultyIds ?? []).filter(Boolean),
       });
       setAdminBatches((prev) => [...prev, apiBatchToInfo(apiBatch)]);
       showBatchToast('saved', 'Batch created in database.');
@@ -650,7 +700,7 @@ function App() {
     }
   };
 
-  const updateAdminBatch = async (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => {
+  const updateAdminBatch = async (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => {
     const targetLabel = oldLabel || label;
     const trimmedLabel = label.trim();
 
@@ -663,10 +713,6 @@ function App() {
     }
 
     const trimmedSubjects = (subjects ?? []).map(s => s.trim()).filter(Boolean);
-    const facultyIds = (facultyAssigned ?? []).map(name => {
-      const fac = adminFaculties.find(f => f.name === name);
-      return fac?.id;
-    }).filter((id): id is string => !!id);
 
     if (!batchId) {
       return { ok: false, error: 'Batch not found in database.' };
@@ -677,7 +723,7 @@ function App() {
       const apiBatch = await apiUpdateBatch(batchId, {
         name: trimmedLabel,
         subjects: trimmedSubjects,
-        facultyIds: facultyIds,
+        facultyIds: (facultyIds ?? []).filter(Boolean),
       });
       setAdminBatches((prev) =>
         prev.map((b) => b.id === batchId ? apiBatchToInfo(apiBatch) : b)
@@ -704,18 +750,18 @@ function App() {
     }
 
     try {
-      showBatchToast('saving', 'Deleting batch from database...');
+      showBatchToast('saving', 'Making batch inactive...');
       await apiDeleteBatch(batch.id);
-      setAdminBatches((prev) => prev.map((b) => b.label === label ? { ...b, is_active: false } : b));
+      await refreshAdminBatchDependencies();
       if (adminBatch === label) {
         setAdminBatch(null);
       }
-      showBatchToast('saved', 'Batch deleted from database.');
+      showBatchToast('saved', 'Batch made inactive.');
       return { ok: true };
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete batch in API:', err);
-      showBatchToast('error', 'Failed to delete batch from database');
-      return { ok: false, error: 'Failed to delete batch from database' };
+      showBatchToast('error', err?.message || 'Failed to make batch inactive');
+      return { ok: false, error: err?.message || 'Failed to make batch inactive' };
     }
   };
 
@@ -764,6 +810,7 @@ function App() {
       }
 
       await refreshAdminBatchDependencies();
+      await refreshAdminSubjects();
       showBatchToast('saved', 'Batch permanently deleted');
       return { ok: true };
     } catch (error: any) {
@@ -780,6 +827,12 @@ function App() {
     }
     if (path === '/login') {
       return { view: 'login' as const };
+    }
+    if (path === '/privacy' || path === '/privacy-policy') {
+      return { view: 'privacy' as const };
+    }
+    if (path === '/terms' || path === '/terms-and-conditions') {
+      return { view: 'terms' as const };
     }
     const parts = path.split('/').filter(Boolean);
     if (parts[0] === 'student') {
@@ -872,6 +925,10 @@ function App() {
 
   const setTabFromPath = (currentUser: User | null) => {
     const route = parsePath();
+
+    if (route.view === 'privacy' || route.view === 'terms') {
+      return;
+    }
 
     if (!currentUser) {
       const shouldShowGetStarted = route.view !== 'login';
@@ -1034,46 +1091,87 @@ function App() {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const initializeSession = async () => {
+      const fetchLandingWithRetry = async (maxAttempts = 3) => {
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          try {
+            return await fetchLandingData();
+          } catch (error) {
+            const isLastAttempt = attempt === maxAttempts;
+            if (isLastAttempt) {
+              console.warn('Could not fetch landing data from API after retries:', error);
+              return null;
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 250 * attempt));
+          }
+        }
+        return null;
+      };
+
+      const loadLandingData = async () => {
+        const apiLanding = await fetchLandingWithRetry();
+        if (!cancelled && apiLanding) {
+          const newData = apiLanding as unknown as LandingData;
+          setLandingData(newData);
+        }
+        if (!cancelled) {
+          setIsLandingDataLoading(false);
+        }
+      };
+
+      void loadLandingData();
+
       try {
         const hasStoredToken = (() => {
           const token = localStorage.getItem('ujaasToken');
           return Boolean(token && token !== 'null' && token !== 'undefined');
         })();
 
-        const [apiLanding, profileResponse] = await Promise.all([
-          fetchLandingData().catch(e => { console.warn('Could not fetch landing data from API:', e); return null; }),
-          hasStoredToken
-            ? me().catch(e => { console.warn('Could not fetch user profile:', e); return null; })
-            : Promise.resolve(null),
-        ]);
-
-        if (apiLanding) {
-          setLandingData(apiLanding as unknown as LandingData);
-        }
+        const profileResponse = hasStoredToken
+          ? await me().catch(e => { console.warn('Could not fetch user profile:', e); return null; })
+          : null;
 
         if (profileResponse && profileResponse.user) {
           const loggedInUser = profileResponse.user as User;
-          setUser(loggedInUser);
-          setShowGetStarted(false);
+          if (!cancelled) {
+            setUser(loggedInUser);
+            setShowGetStarted(false);
+          }
+          
+          // Parse the URL and route the user to the correct tab/subTab based on the URL
+          if (!cancelled) {
+            setTabFromPath(loggedInUser);
+          }
 
           // Fetching is now handled reactively by the loadRequiredData useEffect hook
           // that listens to activeTab and adminLandingSection.
         } else {
-          setUser(null);
-          // If no user, set empty batches
-          setAdminBatches([]);
+          if (!cancelled) {
+            setUser(null);
+            // If no user, set empty batches
+            setAdminBatches([]);
+          }
         }
       } catch (error) {
         console.error('Error during session initialization:', error);
-        setUser(null);
-        setAdminBatches([]); // Fallback to empty on error
+        if (!cancelled) {
+          setUser(null);
+          setAdminBatches([]); // Fallback to empty on error
+        }
       }
 
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     };
 
-    initializeSession();
+    void initializeSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1081,18 +1179,27 @@ function App() {
     safeSetLocalStorage('ujaasAdminBatches', JSON.stringify(adminBatches));
   }, [adminBatches]);
 
+
   useEffect(() => {
     const handlePopState = () => {
       setTabFromPath(user);
     };
 
     window.addEventListener('popstate', handlePopState);
-    setTabFromPath(user);
+    
+    // On mount, if we are loading the user session, DO NOT wipe the URL.
+    // Wait until the user is actually loaded.
+    if (!loading && user) {
+      setTabFromPath(user);
+    } else if (!loading && !user) {
+      // User definitively not logged in
+      setTabFromPath(null);
+    }
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [user]);
+  }, [user, loading]);
 
   // True Lazy Tab Loading Watcher Hook
   useEffect(() => {
@@ -1115,15 +1222,21 @@ function App() {
     }
 
     // 2. Faculties
-    if (user.role === 'admin' && adminLandingSection === 'faculty' && adminFaculties.length === 0) {
+    if (
+      user.role === 'admin' &&
+      (adminLandingSection === 'batches' || adminLandingSection === 'faculty') &&
+      adminFaculties.length === 0
+    ) {
       isFetching = true;
-      fetchTasks.push(fetchFaculties().then(res => setAdminFaculties(res)).catch(() => {}));
+      fetchTasks.push(loadAdminFaculties().catch(() => {}));
     }
 
     // 3. Tests
-    if ((activeTab === 'test-series' || adminLandingSection === 'test-series') && publishedTests.length === 0) {
+    const shouldLoadTests = (activeTab === 'test-series' || adminLandingSection === 'test-series');
+    const shouldForceRefreshTests = user.role === 'student' && activeTab === 'test-series';
+    if (shouldLoadTests && (publishedTests.length === 0 || shouldForceRefreshTests)) {
       isFetching = true;
-      fetchTasks.push(apiFetchTests().then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
+      fetchTasks.push(apiFetchTests(shouldForceRefreshTests).then(res => setPublishedTests((res as ApiTest[]).map(apiTestToPublished))).catch(() => {}));
     }
 
     // 4. Queries
@@ -1136,9 +1249,34 @@ function App() {
       setIsGlobalDataLoading(true);
       Promise.all(fetchTasks).finally(() => setIsGlobalDataLoading(false));
     }
+  }, [user, activeTab, adminLandingSection, adminBatches.length, adminStudents.length, adminFaculties.length, publishedTests.length, queries.length, loadAdminFaculties]);
+
+  useEffect(() => {
+    if (!user) return;
+    const inTestSeriesView = activeTab === 'test-series' || adminLandingSection === 'test-series';
+    if (!inTestSeriesView) return;
+
+    apiFetchTests(true)
+      .then((res) => setPublishedTests((res as ApiTest[]).map(apiTestToPublished)))
+      .catch(() => {});
   }, [user, activeTab, adminLandingSection]);
 
+  // Reset scroll position to top when navigating between tabs or sections
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeTab, studentSubTab, adminLandingSection, adminBatch]);
+
+  const clearAllApiCaches = () => {
+    setQueriesCache(null);
+    setBatchesCache(null);
+    setFacultiesCache(null);
+    setStudentsCache(null);
+    setTestsCache(null);
+    clearQuestionBankCache();
+  };
+
   const handleLogin = async (userData: User) => {
+    clearAllApiCaches();
     setUser(userData);
     setShowGetStarted(false);
 
@@ -1209,6 +1347,7 @@ function App() {
     } catch {
       // Proceed with local cleanup even if API call fails.
     }
+    clearAllApiCaches();
     // Hard clear all global React states to prevent cross-login stale data mounts
     setAdminBatches([]);
     setPublishedTests([]);
@@ -1234,6 +1373,13 @@ function App() {
       return <DashboardLoadingShell role={user.role} />;
     }
     const route = parsePath();
+    if (route.view === 'privacy' || route.view === 'terms') {
+      return (
+        <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+          <LegalPolicyPage kind={route.view} />
+        </Suspense>
+      );
+    }
     if (route.view === 'login') {
       return (
         <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
@@ -1249,6 +1395,7 @@ function App() {
             isNewUser={false}
             userName=""
             landingData={landingData}
+            isLandingLoading={isLandingDataLoading}
             onSubmitQuery={handleAddQuery}
           />
         </Suspense>
@@ -1277,6 +1424,15 @@ function App() {
     );
   }
 
+  const route = parsePath();
+  if (route.view === 'privacy' || route.view === 'terms') {
+    return (
+      <Suspense fallback={<AuthLoadingShell isMobile={isMobile} />}>
+        <LegalPolicyPage kind={route.view} />
+      </Suspense>
+    );
+  }
+
   return (<>
     <MotionConfig reducedMotion="always">
       <AnimatePresence mode="wait">
@@ -1294,6 +1450,7 @@ function App() {
                 isNewUser={false}
                 userName=""
                 landingData={landingData}
+                isLandingLoading={isLandingDataLoading}
                 onSubmitQuery={handleAddQuery}
               />
             </Suspense>
@@ -1391,6 +1548,7 @@ function App() {
               onClearBatch={handleAdminClearBatch}
               batches={adminBatches}
               adminFaculties={adminFaculties}
+              isFacultyDataLoading={isAdminFacultyLoading}
               onCreateFaculty={async (data: import('./api/faculties').CreateFacultyPayload) => {
                 showBatchToast('saving', 'Saving faculty to database...');
                 try {
@@ -1428,8 +1586,7 @@ function App() {
               }}
               onRefreshFaculties={async () => {
                 try {
-                  const refreshed = await fetchFaculties();
-                  setAdminFaculties(refreshed);
+                  await loadAdminFaculties(true);
                 } catch (err) {
                   console.error("Failed to refresh faculties:", err);
                 }

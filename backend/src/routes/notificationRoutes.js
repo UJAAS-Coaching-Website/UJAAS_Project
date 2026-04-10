@@ -69,6 +69,9 @@ router.put("/mine/:id", authenticate, requireAnyRole("admin", "faculty"), async 
         }
         res.status(200).json({ status: "success" });
     } catch (error) {
+        if (error?.code === "INVALID_BATCH_ASSIGNMENT" || error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ status: "error", message: error.message });
+        }
         res.status(500).json({ status: "error", message: error.message });
     }
 });
@@ -103,6 +106,9 @@ router.post("/broadcast", authenticate, async (req, res) => {
         
         res.status(200).json({ status: "success" });
     } catch (error) {
+        if (error?.code === "INVALID_BATCH_ASSIGNMENT" || error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ status: "error", message: error.message });
+        }
         res.status(500).json({ status: "error", message: error.message });
     }
 });

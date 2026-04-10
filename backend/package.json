@@ -9,9 +9,22 @@
     "start": "node src/index.js",
     "db:test": "node scripts/db-test.js",
     "db:migrate": "node scripts/migrate.js",
+    "db:migrate:delete-cascade-hardening": "node scripts/migrate-delete-cascade-hardening.js",
+    "db:migrate:student-ratings-decimal": "node scripts/migrate-student-ratings-decimal.js",
+    "db:audit:storage-refs": "node scripts/audit-storage-references.js",
+    "storage:cleanup:retry": "node scripts/retry-storage-cleanup-queue.js",
+    "storage:cleanup:retry:50": "node scripts/retry-storage-cleanup-queue.js --limit=50",
     "db:reset": "node scripts/reset.js",
     "db:status": "node scripts/status.js",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "test:cache-consistency": "node scripts/cache-consistency-smoke.js",
+    "cleanup:cache-test-subjects": "node scripts/cleanup-cache-test-subjects.js",
+    "test:batch-student-lifecycle": "node scripts/test-batch-student-lifecycle.js",
+    "test:new-test-student-visibility": "node scripts/test-new-test-student-visibility.js",
+    "test:storage-bucket-structure": "node scripts/test-storage-bucket-structure.js",
+    "test:avatar-db-persistence": "node scripts/test-avatar-db-persistence.js",
+    "test:avatar-storage-object": "node scripts/test-avatar-storage-object.js",
+    "test:faculty-rating-visibility": "node scripts/test-faculty-rating-visibility.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",
@@ -23,6 +36,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
     "pg": "^8.12.0",
+    "redis": "^5.11.0",
     "sharp": "^0.34.5"
   }
 }

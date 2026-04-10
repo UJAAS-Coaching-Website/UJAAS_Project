@@ -275,7 +275,7 @@ function buildPrintableHtml({
             background: #ffffff;
           }
           .question-image {
-            max-height: 260px;
+            max-height: 170px;
             padding: 6px;
           }
           .options-grid {
@@ -297,7 +297,7 @@ function buildPrintableHtml({
             white-space: pre-wrap;
           }
           .option-image {
-            max-height: 160px;
+            max-height: 96px;
             margin-top: 6px;
             padding: 4px;
           }

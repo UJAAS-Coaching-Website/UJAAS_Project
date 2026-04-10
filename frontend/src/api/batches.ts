@@ -1,37 +1,10 @@
 /**
  * Batch API client — typed functions for batch management.
- * Uses the same auth/request infrastructure as auth.ts.
+ * Uses the shared auth request helper so 401s can auto-refresh tokens.
  */
 
-function getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function runRequest(
-    path: string,
-    options: RequestInit = {}
-): Promise<Response> {
-    return fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-            ...(options.headers || {}),
-        },
-    });
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await runRequest(path, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error((data as any)?.message || "Request failed");
-    }
-    return data;
-}
+import { request, getAuthHeaders } from "./auth";
+import { API_BASE_URL } from "./base";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -63,6 +36,7 @@ function normalizeBatch(batch: ApiBatch): ApiBatch {
 export interface ApiBatchFaculty {
     id: string;
     name: string;
+    subject?: string | null;
 }
 
 export interface ApiBatch {
@@ -104,8 +78,11 @@ export interface PermanentDeleteBatchSummary {
     deletedDppAttempts: number;
     deletedExclusiveTests: number;
     unlinkedSharedTests: number;
+    deletedExclusiveSubjects: number;
+    deletedExclusiveQuestionBankFiles: number;
     deletedNotifications: number;
     removedTimetableReference: number;
+    removedStorageAssets: number;
 }
 
 let batchesCache: ApiBatch[] | null = null;
@@ -129,10 +106,12 @@ export async function fetchBatch(id: string): Promise<ApiBatch> {
 export async function createBatch(
     data: CreateBatchPayload
 ): Promise<ApiBatch> {
-    return request<ApiBatch>("/api/batches", {
+    const result = await request<ApiBatch>("/api/batches", {
         method: "POST",
         body: JSON.stringify(data),
     });
+    batchesCache = null;
+    return result;
 }
 
 export async function uploadBatchTimetable(
@@ -155,35 +134,43 @@ export async function uploadBatchTimetable(
     if (!response.ok) {
         throw new Error((data as any)?.message || "Failed to upload timetable");
     }
+    batchesCache = null;
     return data;
 }
 
 export async function deleteBatchTimetable(
     batchId: string
 ): Promise<ApiBatch> {
-    return request<ApiBatch>(`/api/batches/${batchId}/timetable`, {
+    const result = await request<ApiBatch>(`/api/batches/${batchId}/timetable`, {
         method: "DELETE",
     });
+    batchesCache = null;
+    return result;
 }
 
 export async function updateBatch(
     id: string,
     data: UpdateBatchPayload
 ): Promise<ApiBatch> {
-    return request<ApiBatch>(`/api/batches/${id}`, {
+    const result = await request<ApiBatch>(`/api/batches/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
     });
+    batchesCache = null;
+    return result;
 }
 
 export async function deleteBatch(id: string): Promise<void> {
     await request(`/api/batches/${id}`, { method: "DELETE" });
+    batchesCache = null;
 }
 
 export async function permanentlyDeleteBatch(
     id: string
 ): Promise<{ message: string; summary: PermanentDeleteBatchSummary }> {
-    return request(`/api/batches/${id}/permanent`, { method: "DELETE" });
+    const result = await request<{ message: string; summary: PermanentDeleteBatchSummary }>(`/api/batches/${id}/permanent`, { method: "DELETE" });
+    batchesCache = null;
+    return result;
 }
 
 export async function assignStudentToBatch(
@@ -194,6 +181,7 @@ export async function assignStudentToBatch(
         method: "POST",
         body: JSON.stringify({ studentId }),
     });
+    batchesCache = null;
 }
 
 export async function removeStudentFromBatch(
@@ -203,6 +191,7 @@ export async function removeStudentFromBatch(
     await request(`/api/batches/${batchId}/students/${studentId}`, {
         method: "DELETE",
     });
+    batchesCache = null;
 }
 
 export async function assignFacultyToBatch(
@@ -213,6 +202,7 @@ export async function assignFacultyToBatch(
         method: "POST",
         body: JSON.stringify({ facultyId }),
     });
+    batchesCache = null;
 }
 
 export async function removeFacultyFromBatch(
@@ -222,6 +212,7 @@ export async function removeFacultyFromBatch(
     await request(`/api/batches/${batchId}/faculty/${facultyId}`, {
         method: "DELETE",
     });
+    batchesCache = null;
 }
 
 export async function createBatchNotification(
@@ -232,5 +223,5 @@ export async function createBatchNotification(
         method: "POST",
         body: JSON.stringify(data),
     });
+    batchesCache = null;
 }
-import { API_BASE_URL } from "./base";

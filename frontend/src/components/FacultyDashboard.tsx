@@ -29,6 +29,7 @@ import {
   Bell,
   Save,
   Check,
+  Mail,
   Megaphone
 } from 'lucide-react';
 const NoticesManagement = lazy(() => import('./NoticesManagement').then(m => ({ default: m.NoticesManagement })));
@@ -68,7 +69,7 @@ interface FacultyDashboardProps {
   onSelectBatch: (batch: Batch) => void;
   onClearBatch: () => void;
   batches: BatchInfo[];
-  onUpdateBatch: (label: string, subjects?: string[], facultyAssigned?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
+  onUpdateBatch: (label: string, subjects?: string[], facultyIds?: string[], oldLabel?: string) => Promise<{ ok: boolean; error?: string }>;
   onLogout: () => void;
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -86,12 +87,15 @@ interface FacultyDashboardProps {
 export type FacultyTab = 'home' | 'students' | 'content' | 'analytics' | 'test-series' | 'ratings' | 'rankings' | 'create-test' | 'create-dpp' | 'notices' | 'upload-notes' | 'profile' | 'add-student' | 'preview-test' | 'question-bank';
 type Batch = string;
 export type FacultySection = 'batches' | 'students' | 'test-series';
-type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
+type BatchInfo = { id?: string; label: string; slug: string; subjects?: string[]; facultyAssigned?: string[]; facultyAssignments?: { id: string; name: string; subject?: string | null }[]; is_active?: boolean; studentCount?: number; testsConducted?: number; averagePerformance?: number; timetable_url?: string | null; };
 
 interface Student {
   id: string;
   name: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
   rollNumber: string;
+  email?: string;
   enrolledCourses: string[];
   joinDate: string;
   performance: number;
@@ -244,7 +248,10 @@ export function FacultyDashboard({
         return {
           id: api.id,
           name: api.name,
+          avatarUrl: (api as any).avatarUrl ?? (api as any).avatar_url ?? null,
+          avatar_url: (api as any).avatar_url ?? null,
           rollNumber: api.roll_number,
+          email: api.email || '',
           enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
           joinDate: api.join_date || new Date().toISOString().split('T')[0],
           performance: (overallFromSubjects ?? (((api.rating_attendance || 0) + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4)) * 20,
@@ -823,14 +830,34 @@ function StudentsTab({
   const STUDENTS_PER_PAGE = 20;
   const batchStudents = students.filter(s => s.batch === selectedBatch);
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(batchStudents.length / STUDENTS_PER_PAGE));
+  const [sortBy, setSortBy] = useState<'name' | 'roll'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const normalizeName = (value: string | null | undefined) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizeRollDigits = (value: string | null | undefined) => {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    const parsed = Number.parseInt(digits, 10);
+    return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+  };
+  const sortedBatchStudents = [...batchStudents].sort((a, b) => {
+    if (sortBy === 'name') {
+      const aName = normalizeName(a.name);
+      const bName = normalizeName(b.name);
+      const diff = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+      return sortOrder === 'asc' ? diff : -diff;
+    }
+    const aSafe = normalizeRollDigits(a.rollNumber);
+    const bSafe = normalizeRollDigits(b.rollNumber);
+    const diff = aSafe - bSafe || normalizeName(a.name).localeCompare(normalizeName(b.name));
+    return sortOrder === 'asc' ? diff : -diff;
+  });
+  const totalPages = Math.max(1, Math.ceil(sortedBatchStudents.length / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = batchStudents.slice(
+  const paginatedStudents = sortedBatchStudents.slice(
     (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
     safeCurrentPage * STUDENTS_PER_PAGE
   );
-  const rangeStart = batchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, batchStudents.length);
+  const rangeStart = sortedBatchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, sortedBatchStudents.length);
   
   // Local state for batch-level total classes
   const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
@@ -852,6 +879,10 @@ function StudentsTab({
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedBatch, students.length]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, sortOrder]);
 
   const handleSaveTotalClasses = () => {
     setIsEditingTotal(false);
@@ -889,6 +920,22 @@ function StudentsTab({
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
           <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
         </div>
+
+        <select
+          value={`${sortBy}-${sortOrder}`}
+          onChange={(event) => {
+            const [nextSortBy, nextSortOrder] = event.target.value.split('-') as ['name' | 'roll', 'asc' | 'desc'];
+            setSortBy(nextSortBy);
+            setSortOrder(nextSortOrder);
+          }}
+          className="px-4 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+        >
+          <option value="name-asc">Sort: A to Z</option>
+          <option value="name-desc">Sort: Z to A</option>
+          <option value="roll-asc">Sort: Roll Number (↑)</option>
+          <option value="roll-desc">Sort: Roll Number (↓)</option>
+        </select>
         
         {isBatchActive && facultySubject && (
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
@@ -955,8 +1002,33 @@ function StudentsTab({
             {paginatedStudents.map((s) => (
               <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
                 <td className="py-4 px-4">
-                  <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
-                  <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {s.avatarUrl || s.avatar_url ? (
+                      <div
+                        className="rounded-full overflow-hidden border border-gray-200 bg-gray-100 shadow-sm flex-none"
+                        style={{ width: '40px', height: '40px' }}
+                      >
+                        <img
+                          src={(s.avatarUrl || s.avatar_url) as string}
+                          alt={s.name}
+                          className="rounded-full"
+                          style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-full border border-gray-200 bg-gradient-to-br from-cyan-100 to-blue-100 text-cyan-700 font-bold text-base leading-none flex items-center justify-center shadow-sm flex-none"
+                        style={{ width: '40px', height: '40px' }}
+                      >
+                        {s.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
+                    </div>
+                  </div>
                 </td>
                 <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
                 <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
@@ -995,7 +1067,7 @@ function StudentsTab({
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-medium text-gray-500">
-          Showing {rangeStart}-{rangeEnd} of {batchStudents.length} students
+          Showing {rangeStart}-{rangeEnd} of {sortedBatchStudents.length} students
         </p>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
@@ -1381,9 +1453,23 @@ function StudentRatingsModal({
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white flex justify-between items-center shrink-0">
-          <div>
-            <h3 className="text-xl font-bold">{student.name}</h3>
-            <p className="text-teal-50 text-sm opacity-90">{student.batch} • {student.rollNumber}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            {student.avatarUrl || student.avatar_url ? (
+              <img
+                src={(student.avatarUrl || student.avatar_url) as string}
+                alt={student.name}
+                className="w-12 h-12 rounded-full object-cover border-2 border-white/40 bg-white/20"
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center font-bold text-white">
+                {student.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold truncate">{student.name}</h3>
+              <p className="text-teal-50 text-sm opacity-90 truncate">{student.batch} • {student.rollNumber}</p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
             <X className="w-5 h-5" />
@@ -1398,6 +1484,10 @@ function StudentRatingsModal({
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Roll Number</p>
                   <p className="text-gray-900 font-semibold flex items-center gap-2"><BookOpen className="w-4 h-4 text-teal-600" /> {student.rollNumber}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</p>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2"><Mail className="w-4 h-4 text-indigo-600" /> {student.email || 'Not provided'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>

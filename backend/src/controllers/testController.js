@@ -16,7 +16,6 @@ import {
     updateTest,
     deleteTest
 } from "../services/testService.js";
-import { deleteAllImagesForContext } from "../services/storageService.js";
 import { createMultiBatchNotification } from "../services/notificationService.js";
 import { getDeviceIdFromRequest } from "../utils/device.js";
 
@@ -125,7 +124,7 @@ export async function handleUpdateTest(req, res) {
         const {
             title, format, durationMinutes, totalMarks,
             scheduleDate, scheduleTime, instructions,
-            batchIds, questions
+            batchIds, questions, partialQuestions
         } = req.body;
 
         if (!title || !title.trim()) {
@@ -149,7 +148,8 @@ export async function handleUpdateTest(req, res) {
             scheduleTime,
             instructions,
             batchIds,
-            questions
+            questions,
+            partialQuestions: Boolean(partialQuestions)
         });
 
         if (!test) {
@@ -222,12 +222,7 @@ export async function handleUpdateTestStatus(req, res) {
 
 export async function handleDeleteTest(req, res) {
     try {
-        const testId = req.params.id;
-
-        // Clean up all S3 images for this test before deleting from DB
-        await deleteAllImagesForContext('tests', testId);
-
-        const deleted = await deleteTest(testId);
+        const deleted = await deleteTest(req.params.id);
         if (!deleted) {
             return res.status(404).json({ message: "test not found" });
         }
@@ -293,7 +288,13 @@ export async function startMyTestAttempt(req, res) {
 export async function saveMyAttemptProgress(req, res) {
     try {
         const deviceId = getDeviceIdFromRequest(req);
-        const attempt = await saveStudentAttemptProgress(req.params.attemptId, req.user.sub, req.body?.answers || {}, deviceId);
+        const attempt = await saveStudentAttemptProgress(
+            req.params.attemptId,
+            req.user.sub,
+            req.body?.answers || {},
+            req.body?.uiState || null,
+            deviceId
+        );
         if (!attempt) {
             return res.status(404).json({ message: "active attempt not found" });
         }

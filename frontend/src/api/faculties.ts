@@ -1,34 +1,4 @@
-import { API_BASE_URL } from "./base";
-
-function getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function runRequest(
-    path: string,
-    options: RequestInit = {}
-): Promise<Response> {
-    return fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-            ...(options.headers || {}),
-        },
-    });
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await runRequest(path, options);
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error((data as any)?.message || "Request failed");
-    }
-    return data;
-}
+import { request } from "./auth";
 
 export interface ApiFaculty {
     id: string;
@@ -42,6 +12,7 @@ export interface ApiFaculty {
     rating?: number;
     reviewCount?: number;
     joining_date?: string;
+    avatar_url?: string | null;
 }
 
 let facultiesCache: ApiFaculty[] | null = null;
@@ -65,19 +36,24 @@ export interface CreateFacultyPayload {
 }
 
 export async function createFaculty(data: CreateFacultyPayload): Promise<ApiFaculty> {
-    return request<ApiFaculty>('/api/faculties', {
+    const result = await request<ApiFaculty>('/api/faculties', {
         method: 'POST',
         body: JSON.stringify(data),
     });
+    facultiesCache = null;
+    return result;
 }
 
 export async function updateFaculty(id: string, data: Partial<CreateFacultyPayload>): Promise<ApiFaculty> {
-    return request<ApiFaculty>(`/api/faculties/${id}`, {
+    const result = await request<ApiFaculty>(`/api/faculties/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     });
+    facultiesCache = null;
+    return result;
 }
 
 export async function deleteFacultyApi(id: string): Promise<void> {
     await request(`/api/faculties/${id}`, { method: 'DELETE' });
+    facultiesCache = null;
 }

@@ -43,7 +43,7 @@ export interface LandingDataPayload {
 }
 
 export async function fetchLandingData(): Promise<LandingDataPayload> {
-    return apiRequest<LandingDataPayload>("/api/landing");
+    return apiRequest<LandingDataPayload>("/api/landing", { cache: "no-store" });
 }
 
 export async function updateLandingData(data: LandingDataPayload): Promise<LandingDataPayload> {

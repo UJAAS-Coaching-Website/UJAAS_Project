@@ -13,6 +13,7 @@ type StudentDirectoryStudent = {
   id: string;
   name: string;
   rollNumber: string;
+  email?: string;
   rating: number;
   batch: string;
 };

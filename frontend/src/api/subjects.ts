@@ -1,27 +1,7 @@
-import { API_BASE_URL } from "./base";
-
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("ujaasToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { request, requestWithMeta } from "./auth";
 
 async function requestRaw(path: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    credentials: "include",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(),
-      ...(options.headers || {}),
-    },
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    return { ok: false as const, status: response.status, data };
-  }
-  return { ok: true as const, status: response.status, data };
+  return requestWithMeta(path, options);
 }
 
 export interface ApiSubject {

@@ -42,6 +42,7 @@ export interface UpdateProfilePayload {
   name: string;
   phone: string;
   address: string;
+  email: string;
   dateOfBirth: string | null;
   parentContact: string;
 }
@@ -122,21 +123,34 @@ async function tryRefreshToken(): Promise<boolean> {
   return refreshInFlight;
 }
 
-export async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+export async function requestWithMeta(
+  path: string,
+  options: RequestInit = {},
+  retried = false
+): Promise<{ ok: boolean; status: number; data: any }> {
   const response = await runRequest(path, options);
 
   if (response.status === 401 && !retried && path !== "/api/auth/refresh" && path !== "/api/auth/login") {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
-      return request<T>(path, options, true);
+      return requestWithMeta(path, options, true);
     }
   }
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data?.message || "Request failed");
+  return {
+    ok: response.ok,
+    status: response.status,
+    data,
+  };
+}
+
+export async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
+  const meta = await requestWithMeta(path, options, retried);
+  if (!meta.ok) {
+    throw new Error(meta.data?.message || "Request failed");
   }
-  return data;
+  return meta.data;
 }
 
 export async function login(loginId: string, password: string): Promise<AuthResponse> {

@@ -1,5 +1,7 @@
 import { pool } from "../db/index.js";
 import { getStudentBatchModel, pickStudentBatchModel } from "./studentBatchModel.js";
+import { deleteAllImagesForContext, deleteImageFromStorage } from "./storageService.js";
+import { ensureActiveBatchIds } from "./batchAccessService.js";
 import {
     mapAssessmentQuestionRow,
     mapAttemptQuestionsForResult,
@@ -17,29 +19,8 @@ const TEST_SCHEDULE_TS_EXPR = `
         ELSE (((t.scheduled_at::date)::text || ' ' || TRIM(t.schedule_time))::timestamp AT TIME ZONE '${TEST_SCHEDULE_TIMEZONE}')
     END
 `;
-
-async function ensureActiveBatchIds(batchIds, client = pool) {
-    const normalizedBatchIds = Array.from(new Set((batchIds || []).filter(Boolean)));
-    if (normalizedBatchIds.length === 0) {
-        return;
-    }
-
-    const result = await client.query(
-        `SELECT id
-         FROM batches
-         WHERE id = ANY($1::uuid[])
-           AND is_active = true`,
-        [normalizedBatchIds]
-    );
-
-    if (result.rowCount !== normalizedBatchIds.length) {
-        const activeIds = new Set(result.rows.map((row) => row.id));
-        const invalidIds = normalizedBatchIds.filter((batchId) => !activeIds.has(batchId));
-        const error = new Error(`inactive or missing batches cannot be assigned: ${invalidIds.join(", ")}`);
-        error.code = "INVALID_BATCH_ASSIGNMENT";
-        throw error;
-    }
-}
+const QUESTION_SECTION_ORDER_EXPR = `CASE section WHEN 'Section A' THEN 0 WHEN 'Section B' THEN 1 ELSE 2 END`;
+const QUESTION_ORDER_BY_CLAUSE = `subject ASC, ${QUESTION_SECTION_ORDER_EXPR} ASC, order_index ASC, id ASC`;
 
 function mapAttemptRow(row) {
     if (!row) return null;
@@ -389,7 +370,7 @@ export async function getTestById(id) {
             explanation, explanation_img, order_index, difficulty
         FROM questions
         WHERE test_id = $1
-        ORDER BY order_index, subject
+        ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
     `, [id]);
 
     return {
@@ -562,7 +543,7 @@ async function buildAttemptResult(attemptId) {
             difficulty
         FROM questions
         WHERE test_id = $1
-        ORDER BY order_index, subject
+        ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
     `, [attempt.test_id]);
 
     const questions = mapAttemptQuestionsForResult(
@@ -796,7 +777,32 @@ export async function startOrResumeStudentAttempt(testId, studentId, deviceId) {
     }
 }
 
-export async function saveStudentAttemptProgress(attemptId, studentId, answers, deviceId) {
+function normalizeAttemptUiState(uiState, existingUiState = null) {
+    const source = uiState && typeof uiState === "object" ? uiState : existingUiState;
+    if (!source || typeof source !== "object") {
+        return null;
+    }
+
+    const flaggedQuestionIds = Array.isArray(source.flaggedQuestionIds)
+        ? Array.from(new Set(source.flaggedQuestionIds.filter((value) => typeof value === "string" && value.trim().length > 0)))
+        : [];
+
+    const visitedQuestionIds = Array.isArray(source.visitedQuestionIds)
+        ? Array.from(new Set(source.visitedQuestionIds.filter((value) => typeof value === "string" && value.trim().length > 0)))
+        : [];
+
+    const currentQuestionIndex = Number.isFinite(Number(source.currentQuestionIndex))
+        ? Number(source.currentQuestionIndex)
+        : 0;
+
+    return {
+        flaggedQuestionIds,
+        visitedQuestionIds,
+        currentQuestionIndex,
+    };
+}
+
+export async function saveStudentAttemptProgress(attemptId, studentId, answers, uiState, deviceId) {
     if (!deviceId) {
         const error = new Error("device id required");
         error.code = "DEVICE_ID_REQUIRED";
@@ -804,7 +810,7 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
     }
 
     const lookup = await pool.query(`
-        SELECT device_id
+        SELECT device_id, answers
         FROM test_attempts
         WHERE id = $1
           AND student_id = $2
@@ -822,6 +828,19 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
         throw error;
     }
 
+    const existingAnswers = (lookup.rows[0]?.answers && typeof lookup.rows[0].answers === "object")
+        ? lookup.rows[0].answers
+        : {};
+
+    const normalizedAnswers = (answers && typeof answers === "object")
+        ? Object.fromEntries(Object.entries(answers).filter(([key]) => key !== "_uiState"))
+        : {};
+
+    const normalizedUiState = normalizeAttemptUiState(uiState, existingAnswers._uiState || null);
+    const persistedAnswers = normalizedUiState
+        ? { ...normalizedAnswers, _uiState: normalizedUiState }
+        : normalizedAnswers;
+
     const result = await pool.query(`
         UPDATE test_attempts
         SET
@@ -831,7 +850,7 @@ export async function saveStudentAttemptProgress(attemptId, studentId, answers, 
           AND student_id = $2
           AND submitted_at IS NULL
         RETURNING id, test_id, student_id, attempt_no, started_at, deadline_at, submitted_at, auto_submitted, time_spent, score, correct_answers, wrong_answers, unattempted, answers
-    `, [attemptId, studentId, JSON.stringify(answers || {}), deviceId]);
+        `, [attemptId, studentId, JSON.stringify(persistedAnswers || {}), deviceId]);
 
     return mapAttemptRow(result.rows[0]);
 }
@@ -888,7 +907,7 @@ export async function submitStudentAttempt(attemptId, studentId, { answers, auto
                 order_index
             FROM questions
             WHERE test_id = $1
-            ORDER BY order_index, subject
+            ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
         `, [attempt.test_id]);
 
         const metrics = scoreAttempt(questionsResult.rows, mergedAnswers, { format: attempt.format });
@@ -1203,6 +1222,9 @@ export async function createTest({
         if (questions && questions.length > 0) {
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
+                const resolvedOrderIndex = Number.isFinite(Number(q.orderIndex ?? q.order_index))
+                    ? Number(q.orderIndex ?? q.order_index)
+                    : i;
                 await client.query(
                     `INSERT INTO questions (test_id, subject, section, type, question_text, question_img, options, option_imgs, correct_ans, correct_answer, marks, neg_marks, explanation, explanation_img, order_index, difficulty)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
@@ -1221,7 +1243,7 @@ export async function createTest({
                         q.negativeMarks ?? q.neg_marks ?? 0,
                         q.explanation || null,
                         q.explanationImage || q.explanation_img || null,
-                        i,
+                        resolvedOrderIndex,
                         q.difficulty || null,
                     ]
                 );
@@ -1241,6 +1263,10 @@ export async function createTest({
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizeQuestionPayload(question, orderIndex) {
+    const resolvedOrderIndex = Number.isFinite(Number(question.orderIndex ?? question.order_index))
+        ? Number(question.orderIndex ?? question.order_index)
+        : orderIndex;
+
     return {
         id: (question.id && UUID_REGEX.test(question.id)) ? question.id : null,
         subject: question.subject || "General",
@@ -1259,7 +1285,7 @@ function normalizeQuestionPayload(question, orderIndex) {
         negativeMarks: question.negativeMarks ?? question.neg_marks ?? 0,
         explanation: question.explanation || null,
         explanationImage: question.explanationImage || question.explanation_img || null,
-        orderIndex,
+        orderIndex: resolvedOrderIndex,
         difficulty: question.difficulty || null,
     };
 }
@@ -1301,6 +1327,42 @@ function questionsDiffer(existingQuestion, nextQuestion) {
         existingQuestion.orderIndex !== Number(nextQuestion.orderIndex) ||
         existingQuestion.difficulty !== nextQuestion.difficulty
     );
+}
+
+function collectQuestionImageUrls(question) {
+    const urls = [];
+
+    if (typeof question?.questionImage === "string" && question.questionImage) {
+        urls.push(question.questionImage);
+    }
+
+    if (Array.isArray(question?.optionImages)) {
+        for (const value of question.optionImages) {
+            if (typeof value === "string" && value) {
+                urls.push(value);
+            }
+        }
+    }
+
+    if (typeof question?.explanationImage === "string" && question.explanationImage) {
+        urls.push(question.explanationImage);
+    }
+
+    return urls;
+}
+
+function isManagedContextImageUrl(url, context) {
+    return typeof url === "string" && url.includes(`/questions/${context}/`);
+}
+
+async function cleanupImageUrls(urlsToDelete) {
+    for (const imageUrl of urlsToDelete) {
+        try {
+            await deleteImageFromStorage(imageUrl);
+        } catch (error) {
+            console.error("Test image cleanup failed:", imageUrl, error?.message || error);
+        }
+    }
 }
 
 async function insertQuestion(client, testId, question) {
@@ -1433,7 +1495,7 @@ export async function syncScheduledTestStatuses() {
     const liveResult = await pool.query(`
         UPDATE tests t
         SET status = 'live'
-        WHERE t.status IN ('upcoming', 'completed')
+                WHERE t.status = 'upcoming'
           AND ${TEST_SCHEDULE_TS_EXPR} IS NOT NULL
           AND NOW() >= ${TEST_SCHEDULE_TS_EXPR}
         RETURNING t.id
@@ -1459,9 +1521,10 @@ export async function syncScheduledTestStatuses() {
 export async function updateTest(id, {
     title, format, durationMinutes, totalMarks,
     scheduleDate, scheduleTime, instructions,
-    batchIds, questions
+    batchIds, questions, partialQuestions = false
 }) {
     const client = await pool.connect();
+    const imageUrlsToDelete = new Set();
     try {
         await client.query("BEGIN");
         await ensureActiveBatchIds(batchIds, client);
@@ -1479,6 +1542,7 @@ export async function updateTest(id, {
         }
 
         const existingTest = existingTestResult.rows[0];
+
         const normalizedScheduleDate = scheduleDate || "";
         const existingScheduleDate = existingTest.scheduled_at
             ? new Date(existingTest.scheduled_at).toISOString().slice(0, 10)
@@ -1531,6 +1595,33 @@ export async function updateTest(id, {
             );
         }
 
+        // If a test is explicitly updated with zero batches, remove it completely.
+        // This keeps DB rows and storage context aligned for orphaned tests.
+        if (Array.isArray(batchIds) && nextBatchIds.length === 0) {
+            const deletedTestResult = await client.query(
+                `DELETE FROM tests WHERE id = $1 RETURNING id, title`,
+                [id]
+            );
+
+            await client.query("COMMIT");
+
+            if (deletedTestResult.rowCount > 0) {
+                try {
+                    await deleteAllImagesForContext("tests", id);
+                } catch (error) {
+                    console.error("test image cleanup failed for orphaned test:", id, error?.message || error);
+                }
+
+                return {
+                    ...deletedTestResult.rows[0],
+                    status: "deleted",
+                    batches: [],
+                };
+            }
+
+            return null;
+        }
+
         // Diff questions by ID so draft saves only touch changed rows.
         const existingQuestionResult = await client.query(
             `SELECT
@@ -1548,11 +1639,26 @@ export async function updateTest(id, {
         const nextQuestions = (questions || []).map((question, index) => normalizeQuestionPayload(question, index));
         const nextQuestionIds = new Set(nextQuestions.map((question) => question.id).filter(Boolean));
 
-        const questionIdsToDelete = existingQuestionResult.rows
-            .map((row) => row.id)
-            .filter((questionId) => !nextQuestionIds.has(questionId));
+        const questionIdsToDelete = partialQuestions
+            ? []
+            : existingQuestionResult.rows
+                .map((row) => row.id)
+                .filter((questionId) => !nextQuestionIds.has(questionId));
 
         if (questionIdsToDelete.length > 0) {
+            for (const questionRow of existingQuestionResult.rows) {
+                if (!questionIdsToDelete.includes(questionRow.id)) {
+                    continue;
+                }
+
+                const normalized = normalizeStoredQuestion(questionRow);
+                for (const imageUrl of collectQuestionImageUrls(normalized)) {
+                    if (isManagedContextImageUrl(imageUrl, "tests")) {
+                        imageUrlsToDelete.add(imageUrl);
+                    }
+                }
+            }
+
             await client.query(
                 `DELETE FROM questions
                  WHERE test_id = $1
@@ -1565,6 +1671,15 @@ export async function updateTest(id, {
             if (question.id && existingQuestionMap.has(question.id)) {
                 const existingQuestion = existingQuestionMap.get(question.id);
                 if (existingQuestion && questionsDiffer(existingQuestion, question)) {
+                    const oldUrls = collectQuestionImageUrls(existingQuestion);
+                    const nextUrls = new Set(collectQuestionImageUrls(question));
+
+                    for (const oldUrl of oldUrls) {
+                        if (isManagedContextImageUrl(oldUrl, "tests") && !nextUrls.has(oldUrl)) {
+                            imageUrlsToDelete.add(oldUrl);
+                        }
+                    }
+
                     await updateQuestion(client, question);
                 }
                 continue;
@@ -1574,6 +1689,11 @@ export async function updateTest(id, {
         }
 
         await client.query("COMMIT");
+
+        if (imageUrlsToDelete.size > 0) {
+            await cleanupImageUrls(imageUrlsToDelete);
+        }
+
         return getTestById(id);
     } catch (error) {
         await client.query("ROLLBACK");
@@ -1587,9 +1707,40 @@ export async function updateTest(id, {
  * Delete a test (cascades to questions and test_target_batches).
  */
 export async function deleteTest(id) {
+    const imageUrlsToDelete = new Set();
+
+    const questionImageRowsResult = await pool.query(
+        `SELECT id, subject, section, type, question_text, question_img, options, option_imgs,
+                correct_ans, correct_answer, marks, neg_marks, explanation, explanation_img, order_index, difficulty
+         FROM questions
+         WHERE test_id = $1`,
+        [id]
+    );
+
+    for (const row of questionImageRowsResult.rows) {
+        const normalized = normalizeStoredQuestion(row);
+        for (const imageUrl of collectQuestionImageUrls(normalized)) {
+            if (isManagedContextImageUrl(imageUrl, "tests")) {
+                imageUrlsToDelete.add(imageUrl);
+            }
+        }
+    }
+
     const result = await pool.query(
         "DELETE FROM tests WHERE id = $1 RETURNING id",
         [id]
     );
+
+    if (result.rowCount > 0) {
+        try {
+            if (imageUrlsToDelete.size > 0) {
+                await cleanupImageUrls(imageUrlsToDelete);
+            }
+            await deleteAllImagesForContext("tests", id);
+        } catch (error) {
+            console.error("test image cleanup failed:", id, error?.message || error);
+        }
+    }
+
     return result.rowCount > 0;
 }

@@ -143,16 +143,16 @@ async function getStudentSubjectRatings(userId, client = pool) {
     const result = await client.query(
         `SELECT
             sub.name AS subject_name,
-            COALESCE(r.attendance, 0) AS attendance,
+            COALESCE(r.attendance, 0)::float AS attendance,
             COALESCE(bs.total_classes, 0) AS total_classes,
             CASE
                 WHEN COALESCE(bs.total_classes, 0) > 0
                     THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5)
                 ELSE 0
             END AS attendance_rating,
-            COALESCE(r.test_performance, 0) AS tests,
-            COALESCE(r.dpp_performance, 0) AS dpp_performance,
-            COALESCE(r.behavior, 0) AS behavior,
+            COALESCE(r.test_performance, 0)::float AS tests,
+            COALESCE(r.dpp_performance, 0)::float AS dpp_performance,
+            COALESCE(r.behavior, 0)::float AS behavior,
             COALESCE(r.remarks, '') AS remarks
          FROM batch_subjects bs
          JOIN subjects sub ON sub.id = bs.subject_id
@@ -266,7 +266,7 @@ export async function fetchUserProfileById(userId) {
     }
 }
 
-export async function updateStudentProfile(userId, { name, phone, address, dateOfBirth, parentContact }) {
+export async function updateStudentProfile(userId, { name, phone, address, dateOfBirth, parentContact, email }) {
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
@@ -276,23 +276,51 @@ export async function updateStudentProfile(userId, { name, phone, address, dateO
             [name, userId]
         );
 
-        const updateResult = await client.query(
-            `
-      UPDATE students
-      SET
-        phone = $1,
-        address = $2,
-        dob = NULLIF($3, '')::date,
-        parent_contact = $4
-      WHERE user_id = $5
-      RETURNING user_id
-      `,
-            [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", userId]
-        );
+        const hasEmailColumn = await columnExists("students", "email", client);
 
-        if (updateResult.rowCount === 0) {
-            await client.query("ROLLBACK");
-            return null;
+        if (hasEmailColumn) {
+            const normalizedEmail = typeof email === "string" && email.trim()
+                ? email.trim().toLowerCase()
+                : null;
+
+            const updateResult = await client.query(
+                `
+          UPDATE students
+          SET
+            phone = $1,
+            address = $2,
+            dob = NULLIF($3, '')::date,
+            parent_contact = $4,
+            email = $5
+              WHERE user_id = $6
+              RETURNING user_id
+              `,
+                [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", normalizedEmail, userId]
+            );
+
+            if (updateResult.rowCount === 0) {
+                await client.query("ROLLBACK");
+                return null;
+            }
+        } else {
+            const updateResult = await client.query(
+                `
+          UPDATE students
+          SET
+            phone = $1,
+            address = $2,
+            dob = NULLIF($3, '')::date,
+            parent_contact = $4
+              WHERE user_id = $5
+              RETURNING user_id
+              `,
+                [phone ?? "", address ?? "", dateOfBirth ?? "", parentContact ?? "", userId]
+            );
+
+            if (updateResult.rowCount === 0) {
+                await client.query("ROLLBACK");
+                return null;
+            }
         }
 
         await client.query("COMMIT");

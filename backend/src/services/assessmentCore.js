@@ -35,28 +35,11 @@ export function parseStoredAnswer(value, questionType) {
     return Number.isFinite(parsed) ? parsed : String(value).trim();
 }
 
-export function buildJeeMainScorableSet(questions, answers) {
+export function buildJeeMainScorableSet(questions, _answers) {
     const scorable = new Set();
-    const sectionBCounts = new Map();
-    const normalizedAnswers = answers && typeof answers === "object" ? answers : {};
 
     for (const question of questions) {
-        const section = question.section || null;
-        if (section === "Section B") {
-            const submittedAnswer = parseStoredAnswer(normalizedAnswers[question.id], question.type);
-            if (submittedAnswer === null) {
-                continue;
-            }
-            const subjectKey = question.subject || "General";
-            const currentCount = sectionBCounts.get(subjectKey) || 0;
-            if (currentCount >= 5) {
-                continue;
-            }
-            sectionBCounts.set(subjectKey, currentCount + 1);
-            scorable.add(question.id);
-            continue;
-        }
-
+        // Latest JEE Main pattern does not use a Section B attempt cap.
         scorable.add(question.id);
     }
 

@@ -61,13 +61,17 @@ export function withStoredRemarks<T extends StudentRemarkFields>(list: T[]): T[]
       return student;
     }
 
+    const mergedSubjectRemarks: Record<string, string> = {
+      ...(entry.subjectRemarks ?? {}),
+      ...(student.subjectRemarks ?? {}),
+    };
+
+    const hasServerAdminRemark = typeof student.adminRemark === 'string' && student.adminRemark.trim().length > 0;
+
     return {
       ...student,
-      subjectRemarks: {
-        ...(student.subjectRemarks ?? {}),
-        ...(entry.subjectRemarks ?? {}),
-      },
-      adminRemark: entry.adminRemark ?? student.adminRemark,
+      subjectRemarks: mergedSubjectRemarks,
+      adminRemark: hasServerAdminRemark ? student.adminRemark : (entry.adminRemark ?? student.adminRemark),
     };
   });
 }

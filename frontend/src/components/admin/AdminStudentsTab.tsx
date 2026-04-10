@@ -10,14 +10,18 @@ import {
   removeStudentFromBatch as apiRemoveStudentFromBatch,
   type ApiStudent,
 } from '../../api/students';
+import { fetchBatches as apiFetchBatches } from '../../api/batches';
 import { formatIndianMobileInput } from '../../utils/phone';
 import { TableRowsSkeleton } from '../ui/content-skeletons';
 import { generateInitialPassword } from '../../utils/passwords';
+import { getAttendanceRatingValue } from '../../utils/profile';
 
 type StudentDirectoryStudent = {
   id: string;
   name: string;
   rollNumber: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
   rating: number;
   batch: string;
   email?: string;
@@ -70,11 +74,35 @@ function AddStudentModal({
   });
 
   const [formState, setFormState] = useState(createInitialState(defaultBatch, initialData));
+  const [backendBatches, setBackendBatches] = useState<{ label: string; id?: string; slug: string }[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setFormState(createInitialState(defaultBatch, initialData));
   }, [open, defaultBatch, initialData]);
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!active) return;
+        setBackendBatches(items.map((batch) => ({
+          label: batch.name,
+          id: batch.id,
+          slug: batch.slug,
+        })));
+      })
+      .catch(() => {
+        if (!active) return;
+        setBackendBatches([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -93,6 +121,7 @@ function AddStudentModal({
   };
 
   const requiredMark = <span className="text-red-500">*</span>;
+  const dropdownBatches = backendBatches.length > 0 ? backendBatches : batches;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center px-4 py-8 z-layer-10001">
@@ -121,22 +150,22 @@ function AddStudentModal({
               <span className="block">Batch {requiredMark}</span>
               <select required value={formState.batch} onChange={handleChange('batch')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200 bg-white">
                 <option value="" disabled>Select batch</option>
-                {batches.map((batch) => (
+                {dropdownBatches.map((batch) => (
                   <option key={batch.slug} value={batch.label}>{batch.label}</option>
                 ))}
               </select>
             </label>
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Email {requiredMark}</span>
-              <input type="email" required value={formState.email} onChange={handleChange('email')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" placeholder="student@email.com" />
+              <span className="block">Email (Optional)</span>
+              <input type="email" value={formState.email} onChange={handleChange('email')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" placeholder="student@email.com" />
             </label>
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Phone Number {requiredMark}</span>
-              <input type="tel" required value={formState.phoneNumber} onChange={handleChange('phoneNumber')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" placeholder="+91 9XXXX XXXXX" />
+              <span className="block">Phone Number (Optional)</span>
+              <input type="tel" value={formState.phoneNumber} onChange={handleChange('phoneNumber')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" placeholder="+91 9XXXX XXXXX" />
             </label>
             <label className="space-y-2 text-sm font-medium text-gray-700 block">
-              <span className="block">Date of Birth {requiredMark}</span>
-              <input type="date" required value={formState.dateOfBirth} onChange={handleChange('dateOfBirth')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" />
+              <span className="block">Date of Birth (Optional)</span>
+              <input type="date" value={formState.dateOfBirth} onChange={handleChange('dateOfBirth')} className="w-full rounded-xl border border-gray-200 px-4 py-3 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200" />
             </label>
           </div>
           <label className="space-y-2 text-sm font-medium text-gray-700 block">
@@ -158,50 +187,110 @@ function AddStudentModal({
 }
 
 // --- Main Tab Component ---
-export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void }) {
+export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void, studentsData?: ApiStudent[] }) {
   const [students, setStudents] = useState<ApiStudent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [query, setQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name-asc' | 'rank-desc' | 'rank-asc' | 'batch-asc'>('name-asc');
+  const [sortBy, setSortBy] = useState<'name' | 'roll_number' | 'rating'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const STUDENTS_PER_PAGE = 20;
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentDirectoryStudent; title?: string }>({ open: false });
 
-  const loadStudents = async (searchQuery?: string) => {
+  // Helper function to parse combined sort option and update both sort states
+  const handleSortChange = (value: string) => {
+    const sortMap: Record<string, { field: 'name' | 'roll_number' | 'rating'; order: 'asc' | 'desc' }> = {
+      'name-asc': { field: 'name', order: 'asc' },
+      'name-desc': { field: 'name', order: 'desc' },
+      'roll_number-asc': { field: 'roll_number', order: 'asc' },
+      'roll_number-desc': { field: 'roll_number', order: 'desc' },
+      'rating-asc': { field: 'rating', order: 'asc' },
+      'rating-desc': { field: 'rating', order: 'desc' },
+    };
+    const config = sortMap[value] || { field: 'name', order: 'asc' };
+    setLoading(true);
+    setSortBy(config.field);
+    setSortOrder(config.order);
+    setCurrentPage(1);
+  };
+
+  const loadStudents = async (searchQuery?: string, forceRefresh = false, sort?: string, order?: string) => {
     try {
-      if (!searchQuery && students.length === 0) setLoading(true);
-      const res = await apiFetchStudents(searchQuery);
+      if (!searchQuery && studentsData && studentsData.length > 0 && !forceRefresh) {
+        setStudents(studentsData);
+        setLoading(false);
+        setIsInitialLoad(false);
+        return;
+      }
+      setLoading(true);
+      const res = await apiFetchStudents(searchQuery, forceRefresh, sort, order);
       setStudents(res);
     } catch (e) {
       console.error('Failed to fetch students:', e);
     } finally {
-      if (!searchQuery) setLoading(false);
+      setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
   useEffect(() => {
-    loadStudents();
+    loadStudents(undefined, false, sortBy, sortOrder);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (!studentsData || studentsData.length === 0 || query.length > 0) return;
+    setStudents(studentsData);
+    setLoading(false);
+  }, [studentsData, query]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (query.length > 0) loadStudents(query);
-      else loadStudents();
+      if (query.length > 0) loadStudents(query, false, sortBy, sortOrder);
+      else loadStudents(undefined, false, sortBy, sortOrder);
     }, 250);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, sortBy, sortOrder]);
+
+  const computeStudentRating = (student: ApiStudent): number => {
+    const subjectRatings = (student as any).subject_ratings || {};
+    const subjectValues = Object.values(subjectRatings) as any[];
+
+    if (subjectValues.length > 0) {
+      return subjectValues.reduce((acc, curr) => {
+        const attendanceRating = getAttendanceRatingValue(
+          curr.attendance,
+          curr.total_classes,
+          curr.attendanceRating ?? curr.attendance_rating
+        );
+        const tests = Number(curr.tests || 0);
+        const dpp = Number(curr.dppPerformance ?? curr.dpp_performance ?? 0);
+        const behavior = Number(curr.behavior || 0);
+        return acc + (attendanceRating + tests + dpp + behavior) / 4;
+      }, 0) / subjectValues.length;
+    }
+
+    return (
+      Number(student.rating_attendance || 0) +
+      Number(student.rating_assignments || 0) +
+      Number(student.rating_participation || 0) +
+      Number(student.rating_behavior || 0)
+    ) / 4;
+  };
 
   // Convert ApiStudent to the format expected by the rendering logic
   const formattedStudents = students.map(s => ({
     id: s.id,
     name: s.name,
     rollNumber: s.roll_number || '',
-    rating: s.rating_assignments || 0, // Fallback to a single rating for simplicity in the list
+    avatarUrl: (s as any).avatarUrl ?? (s as any).avatar_url ?? null,
+    avatar_url: (s as any).avatar_url ?? null,
+    rating: computeStudentRating(s),
     batch: s.assigned_batch?.name || 'Unassigned',
-    email: s.login_id || '',
+    email: s.email || '',
     phoneNumber: s.phone || '',
     dateOfBirth: s.date_of_birth || '',
     address: s.address || '',
@@ -209,15 +298,8 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
     originalObject: s
   }));
 
-  const filtered = formattedStudents.sort((a, b) => {
-    switch (sortBy) {
-      case 'name-asc': return a.name.localeCompare(b.name);
-      case 'rank-desc': return b.rating - a.rating;
-      case 'rank-asc': return a.rating - b.rating;
-      case 'batch-asc': return (a.batch || '').localeCompare(b.batch || '');
-      default: return 0;
-    }
-  });
+  // Students are already sorted by the backend, no client-side sorting needed
+  const filtered = formattedStudents;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -236,6 +318,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
         await apiUpdateStudent(data.id, {
           name: data.name,
           rollNumber: data.rollNumber,
+          email: data.email,
           phone: data.phoneNumber,
           address: data.address,
           dateOfBirth: data.dateOfBirth,
@@ -264,7 +347,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
         const loginId = (createdStudent as any)?.login_id || data.rollNumber || 'Not provided';
         window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
-      loadStudents(); // Refresh
+      loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
@@ -275,7 +358,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
         await apiDeleteStudent(id);
-        loadStudents(); // Refresh
+        loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
       } catch (error: any) {
         window.alert(`Error deleting student: ${error.message}`);
       }
@@ -304,7 +387,7 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
     );
   };
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="space-y-4">
         <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
@@ -321,13 +404,15 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
           <div><h2 className="text-3xl font-bold text-gray-900">Students Directory</h2><p className="text-gray-500">Manage all students across all batches</p></div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search students..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
+              <input type="text" value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Search by name or roll number..." className="px-4 py-3 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 w-64" />
             </div>
-            <select value={sortBy} onChange={(event) => { setSortBy(event.target.value as any); setCurrentPage(1); }} className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}>
+            <select value={`${sortBy}-${sortOrder}`} onChange={(event) => handleSortChange(event.target.value)} className="px-6 py-3 pr-10 bg-gray-100 border-none rounded-xl focus:ring-2 focus:ring-teal-500 text-sm font-bold text-gray-700 outline-none cursor-pointer hover:bg-gray-200 transition appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23374151' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 1rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}>
               <option value="name-asc">Sort: A to Z</option>
-              <option value="rank-desc">Sort: Rank (High to Low)</option>
-              <option value="rank-asc">Sort: Rank (Low to High)</option>
-              <option value="batch-asc">Sort: By Batch</option>
+              <option value="name-desc">Sort: Z to A</option>
+              <option value="roll_number-asc">Sort: Roll Number (↑)</option>
+              <option value="roll_number-desc">Sort: Roll Number (↓)</option>
+              <option value="rating-asc">Sort: Performance (Low to High)</option>
+              <option value="rating-desc">Sort: Performance (High to Low)</option>
             </select>
             <button onClick={() => setStudentModal({ open: true, title: 'Add Student' })} className="px-6 py-3 bg-gradient-to-r from-cyan-600 via-blue-500 to-teal-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2 hover:shadow-xl transition"><Plus className="w-5 h-5" />Add Student</button>
           </div>
@@ -343,11 +428,43 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedStudents.map((student) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="py-4 px-4">
+                    <TableRowsSkeleton rows={Math.min(STUDENTS_PER_PAGE, 8)} />
+                  </td>
+                </tr>
+              ) : (
+                paginatedStudents.map((student) => (
                 <tr key={student.id} onClick={() => onViewStudent(student.originalObject)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                   <td className="py-4 px-4">
-                    <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{student.name}</div>
-                    <div className="text-xs text-gray-500">{student.rollNumber}</div>
+                    <div className="flex items-center gap-3">
+                      {student.avatarUrl || student.avatar_url ? (
+                        <div
+                          className="rounded-full overflow-hidden border border-gray-200 bg-gray-100 shadow-sm flex-none"
+                          style={{ width: '44px', height: '44px' }}
+                        >
+                          <img
+                            src={(student.avatarUrl || student.avatar_url) as string}
+                            alt={student.name}
+                            className="rounded-full"
+                            style={{ width: '44px', height: '44px', objectFit: 'cover' }}
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-full border border-gray-200 bg-gradient-to-br from-cyan-100 to-blue-100 text-cyan-700 font-bold text-lg leading-none flex items-center justify-center shadow-sm flex-none"
+                          style={{ width: '44px', height: '44px' }}
+                        >
+                          {student.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{student.name}</div>
+                        <div className="text-xs text-gray-500">{student.rollNumber}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap">{renderStars(student.rating)}</td>
                   <td className="py-4 px-4">
@@ -362,7 +479,8 @@ export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label:
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>

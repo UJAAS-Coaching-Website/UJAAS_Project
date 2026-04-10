@@ -14,6 +14,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QuestionUploadForm, Question } from './QuestionUploadForm';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { fetchBatches as apiFetchBatches } from '../api/batches';
+import { fetchTestById } from '../api/tests';
+import { mapApiTestToPublished as mapApiTestToPublishedTest } from '../utils/testMappings';
 
 interface BatchInfo {
   label: string;
@@ -80,6 +83,7 @@ function getMetadataSnapshot(data: {
 }
 
 export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resumeTest }: CreateTestSeriesProps) {
+  const [apiBatches, setApiBatches] = useState<BatchInfo[]>([]);
   const [step, setStep] = useState(1);
   const [draftId, setDraftId] = useState<string | null>(resumeTest?.id || null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -107,38 +111,90 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const [isDraftDirty, setIsDraftDirty] = useState(false);
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const draftIdRef = useRef<string | null>(resumeTest?.id || null);
+  const testDataRef = useRef(testData);
+  const questionsRef = useRef<Question[]>(questions);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isHydratingDraft, setIsHydratingDraft] = useState(false);
   const [showStep2Validation, setShowStep2Validation] = useState(false);
   const latestSavePromiseRef = useRef<Promise<string | undefined> | null>(null);
   const isDraftDirtyRef = useRef(isDraftDirty);
 
-  // Resume from draft: pre-populate data
   useEffect(() => {
-    if (resumeTest) {
-      const resumedTestData = {
-        title: resumeTest.title || '',
-        format: (resumeTest.format || 'Custom') as any,
-        selectedBatches: resumeTest.batches || [],
-        duration: resumeTest.duration || 180,
-        totalMarks: resumeTest.totalMarks || 300,
-        passingMarks: 120,
-        scheduleDate: resumeTest.scheduleDate || '',
-        scheduleTime: resumeTest.scheduleTime || '09:00',
-        instructions: resumeTest.instructions || ''
+    testDataRef.current = testData;
+  }, [testData]);
+
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
+
+  useEffect(() => {
+    draftIdRef.current = draftId;
+  }, [draftId]);
+
+  // Resume from draft: pre-populate data and hydrate full questions from API when needed.
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      if (!resumeTest) return;
+
+      const applyResumeData = (source: import('../App').PublishedTest) => {
+        const resumedTestData = {
+          title: source.title || '',
+          format: (source.format || 'Custom') as any,
+          selectedBatches: source.batches || [],
+          duration: source.duration || 180,
+          totalMarks: source.totalMarks || 300,
+          passingMarks: 120,
+          scheduleDate: source.scheduleDate || '',
+          scheduleTime: source.scheduleTime || '09:00',
+          instructions: source.instructions || ''
+        };
+        setTestData(resumedTestData);
+        testDataRef.current = resumedTestData;
+        setLastSavedMetadataSnapshot(getMetadataSnapshot(resumedTestData));
+        setIsDraftDirty(false);
+
+        const resumedQuestions = source.questions || [];
+        setQuestions(resumedQuestions);
+        questionsRef.current = resumedQuestions;
+
+        if (source.title && source.batches?.length) {
+          setStep(2);
+        }
       };
-      setTestData(resumedTestData);
-      setLastSavedMetadataSnapshot(getMetadataSnapshot(resumedTestData));
-      setIsDraftDirty(false);
-      setQuestions(resumeTest.questions || []);
-      // Jump to step 2 if config is already filled
-      if (resumeTest.title && resumeTest.batches?.length) {
-        setStep(2);
+
+      applyResumeData(resumeTest);
+
+      if (!resumeTest.id) return;
+      if (Array.isArray(resumeTest.questions) && resumeTest.questions.length > 0) return;
+
+      setIsHydratingDraft(true);
+      try {
+        const apiTest = await fetchTestById(resumeTest.id);
+        if (cancelled) return;
+        const fullDraft = mapApiTestToPublishedTest(apiTest);
+        applyResumeData(fullDraft);
+      } catch (error) {
+        console.error('Failed to hydrate full draft details:', error);
+      } finally {
+        if (!cancelled) {
+          setIsHydratingDraft(false);
+        }
       }
-    }
-  }, []);
+    };
+
+    void hydrate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeTest]);
 
   useEffect(() => {
     setIsDraftDirty(getMetadataSnapshot(testData) !== lastSavedMetadataSnapshot);
@@ -157,11 +213,39 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   useBodyScrollLock(showSuccess);
 
+  const availableBatches = apiBatches.length > 0 ? apiBatches : batches;
+
+  useEffect(() => {
+    let mounted = true;
+
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!mounted) return;
+        setApiBatches(
+          items
+            .filter((batch) => batch.is_active !== false)
+            .map((batch) => ({
+              label: batch.name,
+              slug: batch.slug,
+              subjects: batch.subjects ?? undefined,
+            }))
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setApiBatches([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const allWebsiteSubjects = useMemo(() => {
     const defaults = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
-    const fromBatches = batches.flatMap((batch) => batch.subjects ?? []);
+    const fromBatches = availableBatches.flatMap((batch) => batch.subjects ?? []);
     return Array.from(new Set([...defaults, ...fromBatches.map((subject) => subject.trim()).filter(Boolean)]));
-  }, [batches]);
+  }, [availableBatches]);
 
   const [customSubjects, setCustomSubjects] = useState<string[]>(allWebsiteSubjects);
 
@@ -191,7 +275,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
 
   const JEE_SECTION_LIMITS: Record<'Section A' | 'Section B', number> = {
     'Section A': 20,
-    'Section B': 10,
+    'Section B': 5,
   };
   const NEET_SUBJECT_LIMITS: Record<string, number> = {
     Physics: 45,
@@ -214,132 +298,105 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     if (!editingQuestion && addDisabled) {
       return;
     }
-    const enrichedQuestion = {
-      ...question,
-      subject: activeSubject,
-      metadata: {
-        section: testData.format === 'JEE MAIN' ? activeSection : undefined
-      }
-    };
-
     let nextQuestions: Question[] = [];
+    let savedQuestionsPayload: Question[] = [];
     setQuestions(prev => {
+      const scopedQuestions = prev.filter((q) => {
+        if (q.subject !== activeSubject) return false;
+        if (testData.format !== 'JEE MAIN') return true;
+        return ((q as any).metadata?.section || 'Section A') === activeSection;
+      });
+
+      const maxScopedOrderIndex = scopedQuestions.reduce((maxValue, q) => {
+        const value = Number((q as any).order_index);
+        if (!Number.isFinite(value)) return maxValue;
+        return Math.max(maxValue, value);
+      }, -1);
+
+      const incomingOrderIndex = Number((question as any).order_index);
+      const resolvedOrderIndex = Number.isFinite(incomingOrderIndex)
+        ? incomingOrderIndex
+        : maxScopedOrderIndex + 1;
+
+      const enrichedQuestion = {
+        ...question,
+        subject: activeSubject,
+        metadata: {
+          section: testData.format === 'JEE MAIN' ? activeSection : undefined
+        },
+        order_index: resolvedOrderIndex,
+      };
+
       const exists = prev.findIndex(q => q.id === question.id);
-      if (exists > -1) {
+      const isExplicitEdit = Boolean(editingQuestion && editingQuestion.id === question.id);
+
+      if (exists > -1 && isExplicitEdit) {
         nextQuestions = [...prev];
         nextQuestions[exists] = enrichedQuestion;
+        savedQuestionsPayload = [enrichedQuestion];
       } else {
-        nextQuestions = [...prev, enrichedQuestion];
+        // In add mode, never replace by matching id; collisions should append as new question.
+        const questionToAppend = exists > -1
+          ? { ...enrichedQuestion, id: crypto.randomUUID() }
+          : enrichedQuestion;
+        nextQuestions = [...prev, questionToAppend];
+        savedQuestionsPayload = [questionToAppend];
       }
-      // Auto-save with the new list
-      handleSaveDraftClick(undefined, nextQuestions);
+      // Auto-save with the new list/delta
+      if (draftIdRef.current) {
+        void handleSaveDraftClick(undefined, savedQuestionsPayload, { partialQuestions: true });
+      } else {
+        void handleSaveDraftClick(undefined, nextQuestions);
+      }
       return nextQuestions;
     });
     setIsDraftDirty(true);
     setEditingQuestion(null);
   };
 
-  const filteredQuestions = questions.filter(q =>
-    q.subject === activeSubject &&
-    (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
-  );
+  const filteredQuestions = useMemo(() => {
+    const scoped = questions.filter((q) =>
+      q.subject === activeSubject &&
+      (testData.format !== 'JEE MAIN' || (q as any).metadata?.section === activeSection)
+    );
+
+    return scoped.sort((a, b) => {
+      const aOrder = Number((a as any).order_index);
+      const bOrder = Number((b as any).order_index);
+      const safeA = Number.isFinite(aOrder) ? aOrder : Number.MAX_SAFE_INTEGER;
+      const safeB = Number.isFinite(bOrder) ? bOrder : Number.MAX_SAFE_INTEGER;
+      if (safeA !== safeB) return safeA - safeB;
+      return a.id.localeCompare(b.id);
+    });
+  }, [questions, activeSubject, activeSection, testData.format]);
 
   const handleRemoveQuestion = (id: string) => {
     const nextQuestions = questions.filter(q => q.id !== id);
     setQuestions(nextQuestions);
+    questionsRef.current = nextQuestions;
     setIsDraftDirty(true);
     // Auto-save
     handleSaveDraftClick(undefined, nextQuestions);
   };
 
-  const fillDemoQuestions = () => {
-    const demoQuestions: any[] = [];
-    const subjects = getSubjects();
-
-    if (testData.format === 'JEE MAIN') {
-      subjects.forEach(subject => {
-        for (let i = 1; i <= 20; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - Practice Question ${i} (Section A)`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 1,
-            subject,
-            metadata: { section: 'Section A' }
-          });
-        }
-
-        for (let i = 1; i <= 10; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'Numerical',
-            question: `${subject} - Numerical Practice ${i} (Section B)`,
-            correctAnswer: '10',
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 0,
-            subject,
-            metadata: { section: 'Section B' }
-          });
-        }
-      });
-    } else if (testData.format === 'NEET') {
-      const neetSubjectCounts: Record<string, number> = {
-        Physics: 45,
-        Chemistry: 45,
-        Biology: 90
+  const toggleBatch = (label: string) => {
+    setTestData((prev) => {
+      const next = {
+        ...prev,
+        selectedBatches: prev.selectedBatches.includes(label)
+          ? prev.selectedBatches.filter((b) => b !== label)
+          : [...prev.selectedBatches, label],
       };
 
-      subjects.forEach(subject => {
-        const count = neetSubjectCounts[subject] ?? 0;
-        for (let i = 1; i <= count; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - NEET Practice Question ${i}`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 1,
-            subject
-          });
-        }
-      });
-    } else {
-      subjects.forEach(subject => {
-        for (let i = 1; i <= 2; i++) {
-          demoQuestions.push({
-            id: crypto.randomUUID(),
-            type: 'MCQ',
-            question: `${subject} - Custom Practice Question ${i}`,
-            options: ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctAnswer: 0,
-            difficulty: 'Medium',
-            marks: 4,
-            negativeMarks: 0,
-            subject
-          });
-        }
-      });
-    }
+        testDataRef.current = next;
 
-    setQuestions(demoQuestions);
-    setIsDraftDirty(true);
-    handleSaveDraftClick(undefined, demoQuestions);
-  };
+      // Keep draft metadata in sync when batches are changed.
+      if (draftId && onSaveDraft) {
+        void handleSaveDraftClick(next);
+      }
 
-  const toggleBatch = (label: string) => {
-    setTestData(prev => ({
-      ...prev,
-      selectedBatches: prev.selectedBatches.includes(label)
-        ? prev.selectedBatches.filter(b => b !== label)
-        : [...prev.selectedBatches, label]
-    }));
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -380,23 +437,30 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
     }
   };
 
-  const handleSaveDraftClick = async (overrideTestData?: typeof testData, overrideQuestions?: Question[]) => {
+  const handleSaveDraftClick = async (
+    overrideTestData?: typeof testData,
+    overrideQuestions?: Question[],
+    options?: { partialQuestions?: boolean }
+  ) => {
     if (!onSaveDraft) return;
-    const savePromise = (async () => {
+    if (isHydratingDraft) return;
+    const savePromise = saveQueueRef.current.then(async () => {
       setIsSavingDraft(true);
       try {
+        const currentTestData = testDataRef.current;
+        const currentQuestions = questionsRef.current;
         const metadataToSave = {
-          title: (overrideTestData?.title || testData.title) || 'Untitled Draft',
-          format: overrideTestData?.format || testData.format,
-          selectedBatches: overrideTestData?.selectedBatches || testData.selectedBatches,
-          duration: overrideTestData?.duration || testData.duration,
-          totalMarks: overrideTestData?.totalMarks || testData.totalMarks,
-          scheduleDate: overrideTestData?.scheduleDate || testData.scheduleDate,
-          scheduleTime: overrideTestData?.scheduleTime || testData.scheduleTime,
-          instructions: overrideTestData?.instructions || testData.instructions
+          title: (overrideTestData?.title ?? currentTestData.title) || 'Untitled Draft',
+          format: overrideTestData?.format ?? currentTestData.format,
+          selectedBatches: overrideTestData?.selectedBatches ?? currentTestData.selectedBatches,
+          duration: overrideTestData?.duration ?? currentTestData.duration,
+          totalMarks: overrideTestData?.totalMarks ?? currentTestData.totalMarks,
+          scheduleDate: overrideTestData?.scheduleDate ?? currentTestData.scheduleDate,
+          scheduleTime: overrideTestData?.scheduleTime ?? currentTestData.scheduleTime,
+          instructions: overrideTestData?.instructions ?? currentTestData.instructions
         };
         const dataToSave = {
-          id: draftId || undefined,
+          id: draftIdRef.current || undefined,
           title: metadataToSave.title,
           format: metadataToSave.format,
           batches: metadataToSave.selectedBatches,
@@ -404,22 +468,28 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           totalMarks: metadataToSave.totalMarks,
           scheduleDate: metadataToSave.scheduleDate,
           scheduleTime: metadataToSave.scheduleTime,
-          questions: overrideQuestions || questions,
-          instructions: metadataToSave.instructions
+          questions: overrideQuestions ?? currentQuestions,
+          instructions: metadataToSave.instructions,
+          partialQuestions: Boolean(options?.partialQuestions && draftIdRef.current),
         };
 
         const newId = await onSaveDraft(dataToSave);
-        if (newId) setDraftId(newId);
+        if (newId) {
+          draftIdRef.current = newId;
+          setDraftId(newId);
+        }
         setLastSavedMetadataSnapshot(getMetadataSnapshot(metadataToSave));
         setIsDraftDirty(false);
-        return newId;
+        return newId || draftIdRef.current || undefined;
       } catch (error) {
         console.error("Failed to save draft:", error);
         return undefined;
       } finally {
         setIsSavingDraft(false);
       }
-    })();
+    });
+
+    saveQueueRef.current = savePromise.then(() => undefined, () => undefined);
 
     latestSavePromiseRef.current = savePromise;
     const result = await savePromise;
@@ -427,6 +497,15 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       latestSavePromiseRef.current = null;
     }
     return result;
+  };
+
+  const handleBack = async () => {
+    if (latestSavePromiseRef.current) {
+      await latestSavePromiseRef.current;
+    } else if (onSaveDraft && isDraftDirtyRef.current) {
+      await handleSaveDraftClick();
+    }
+    onBack();
   };
 
   const handleContinueToAddQuestions = async () => {
@@ -446,7 +525,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
   );
 
   const getRequiredCount = () => {
-    if (testData.format === 'JEE MAIN') return 90;
+    if (testData.format === 'JEE MAIN') return 75;
     if (testData.format === 'NEET') return 180;
     return 5;
   };
@@ -476,28 +555,8 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
       return totalQuestionMarks;
     }
 
-    const bySubject: Record<string, { sectionA: number; sectionBMarks: number[] }> = {};
-    questions.forEach((q) => {
-      const subject = q.subject || 'General';
-      const section = (q as any).metadata?.section || 'Section A';
-      if (!bySubject[subject]) {
-        bySubject[subject] = { sectionA: 0, sectionBMarks: [] };
-      }
-      const marks = Number(q.marks ?? 0);
-      if (section === 'Section B') {
-        bySubject[subject].sectionBMarks.push(Number.isFinite(marks) ? marks : 0);
-      } else {
-        bySubject[subject].sectionA += Number.isFinite(marks) ? marks : 0;
-      }
-    });
-
-    return Object.values(bySubject).reduce((sum, subjectData) => {
-      const sectionBTop5 = subjectData.sectionBMarks
-        .sort((a, b) => b - a)
-        .slice(0, 5)
-        .reduce((acc, value) => acc + value, 0);
-      return sum + subjectData.sectionA + sectionBTop5;
-    }, 0);
+    // In the latest JEE Main pattern, Section B has 5 compulsory questions per subject.
+    return totalQuestionMarks;
   }, [questions, testData.format, totalQuestionMarks]);
 
   const marksDelta = testData.totalMarks - maxAttemptableMarks;
@@ -581,7 +640,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
           className="mb-8"
         >
           <button
-            onClick={onBack}
+            onClick={() => void handleBack()}
             className="flex items-center gap-2 text-gray-600 hover:text-teal-600 transition mb-4 font-semibold"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -691,7 +750,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                       Select Batches *
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {batches.map((batch) => (
+                      {availableBatches.map((batch) => (
                         <button
                           key={batch.slug}
                           onClick={() => toggleBatch(batch.label)}
@@ -867,13 +926,6 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={fillDemoQuestions}
-                  className="px-5 py-2.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-xl hover:bg-amber-200 transition-colors border border-amber-200 whitespace-nowrap"
-                >
-                  Fill Demo Questions
-                </button>
               </div>
 
               {testData.format === 'JEE MAIN' && (
@@ -902,7 +954,7 @@ export function CreateTestSeries({ onBack, batches, onPublish, onSaveDraft, resu
                   <div className="text-sm text-blue-800">
                     <p className="font-bold mb-1">Standard {testData.format} Pattern:</p>
                     {testData.format === 'JEE MAIN' ? (
-                      <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 10 Numerical Value Questions (+4, 0) - Students attempt 5'}</p>
+                      <p>{activeSection === 'Section A' ? 'Section A: 20 Multiple Choice Questions (+4, -1)' : 'Section B: 5 Numerical Value Questions (+4, 0) - All are compulsory'}</p>
                     ) : (
                       <p>Physics: 45 MCQs, Chemistry: 45 MCQs, Biology: 90 MCQs (all +4, -1)</p>
                     )}

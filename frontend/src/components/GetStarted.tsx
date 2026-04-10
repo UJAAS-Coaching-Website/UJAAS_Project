@@ -21,10 +21,11 @@ interface GetStartedProps {
   isNewUser?: boolean;
   userName?: string;
   landingData: LandingData;
+  isLandingLoading?: boolean;
   onSubmitQuery: (query: { name: string; email: string; phone: string; courseId: string; message?: string }) => void;
 }
 
-export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onSubmitQuery }: GetStartedProps) {
+export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isLandingLoading = false, onSubmitQuery }: GetStartedProps) {
   const [currentAchiever, setCurrentAchiever] = useState(0);
   const [activeVisionIndex, setActiveVisionIndex] = useState(0);
   const [currentFaculty, setCurrentFaculty] = useState(0);
@@ -120,6 +121,16 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
 
   return (
     <div className="footer-reveal-page dark-mask-surface min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50">
+      <style>{`
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+      `}</style>
       {isNewUser && userName && (
         <div className="sticky top-0 z-[1000] dark-mask-hero bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white py-4 px-4 shadow-lg">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -195,8 +206,131 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
               </h2>
             </div>
 
-            <div className="relative">
-              {landingData.visions && landingData.visions.length > 0 ? (
+            <div className="relative" style={{ minHeight: isMobile ? '240px' : '420px' }}>
+              {isLandingLoading ? (
+                <div
+                  className="overflow-hidden shadow-xl border border-white rounded-2xl"
+                  style={{
+                    height: isMobile ? '200px' : '350px',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    borderRadius: isMobile ? '1rem' : '1.5rem',
+                    background: 'white',
+                  }}
+                >
+                  {/* Left Section Skeleton - Image & Name */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      width: isMobile ? '35%' : '25%',
+                      borderRight: '1px solid rgb(229 231 235)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Image Placeholder */}
+                    <div
+                      className="bg-gray-300 animate-pulse"
+                      style={{
+                        flex: '1 1 0%',
+                        backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer 2s infinite',
+                      }}
+                    />
+                    {/* Name & Designation Placeholders */}
+                    <div style={{ padding: isMobile ? '0.5rem 0.25rem' : '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <div
+                        className="rounded"
+                        style={{
+                          height: isMobile ? '0.6rem' : '0.875rem',
+                          width: '75%',
+                          backgroundColor: '#e5e7eb',
+                          backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 2s infinite',
+                        }}
+                      />
+                      <div
+                        className="rounded"
+                        style={{
+                          height: isMobile ? '0.5rem' : '0.6875rem',
+                          width: '60%',
+                          backgroundColor: '#e5e7eb',
+                          backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 2s infinite',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Section Skeleton - Quote */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      width: isMobile ? '65%' : '75%',
+                      padding: isMobile ? '0.75rem' : '2.5rem',
+                      gap: isMobile ? '0.5rem' : '0.75rem',
+                    }}
+                  >
+                    {/* Quote Line 1 */}
+                    <div
+                      className="rounded"
+                      style={{
+                        height: isMobile ? '0.65rem' : '1rem',
+                        width: '95%',
+                        backgroundColor: '#e5e7eb',
+                        backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer 2s infinite',
+                      }}
+                    />
+                    {/* Quote Line 2 */}
+                    <div
+                      className="rounded"
+                      style={{
+                        height: isMobile ? '0.65rem' : '1rem',
+                        width: '88%',
+                        backgroundColor: '#e5e7eb',
+                        backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer 2s infinite',
+                      }}
+                    />
+                    {/* Quote Line 3 */}
+                    <div
+                      className="rounded"
+                      style={{
+                        height: isMobile ? '0.65rem' : '1rem',
+                        width: '92%',
+                        backgroundColor: '#e5e7eb',
+                        backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer 2s infinite',
+                      }}
+                    />
+                    {!isMobile && (
+                      <>
+                        {/* Quote Line 4 (desktop only) */}
+                        <div
+                          className="rounded"
+                          style={{
+                            height: '1rem',
+                            width: '78%',
+                            backgroundColor: '#e5e7eb',
+                            backgroundImage: `linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)`,
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 2s infinite',
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : landingData.visions && landingData.visions.length > 0 ? (
                 <>
                   {/* Mobile: native horizontal scroll with snap; Desktop: translateX carousel */}
                   <div
@@ -216,8 +350,7 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                               borderRadius: isMobile ? '1rem' : '1.5rem',
                               display: 'flex',
                               flexDirection: 'row',
-                              minHeight: isMobile ? '200px' : '350px',
-                              height: isMobile ? '200px' : undefined,
+                              height: isMobile ? '200px' : '350px',
                             }}
                           >
                             {/* Left Section - Image & Name */}
@@ -375,8 +508,8 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                   )}
                 </>
               ) : (
-                <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                  <p className="text-gray-500 italic">No vision entries added yet.</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden shadow-xl border border-white rounded-2xl h-[240px] md:h-[350px] animate-pulse flex items-center justify-center">
+                  <p className="text-gray-500 italic animate-none">No vision entries added yet.</p>
                 </div>
               )}
             </div>
@@ -390,16 +523,27 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6" style={isMobile ? { gap: '0.75rem' } : undefined}>
-              {courses.map((course, idx) => (
-                <div
-                  key={course.id || idx}
-                  className="bg-white rounded-xl p-4 md:p-6 text-center shadow-lg"
-                  style={isMobile ? { padding: '0.625rem' } : undefined}
-                >
-                  <BookOpen className="w-6 h-6 md:w-5 md:h-5 text-teal-600 mx-auto mb-2 md:mb-3" style={isMobile ? { width: '1rem', height: '1rem', marginBottom: '0.25rem' } : undefined} />
-                  <h3 className="font-bold text-gray-900 text-base md:text-xl leading-tight" style={isMobile ? { fontSize: '0.875rem', lineHeight: '1.4' } : undefined}>{course.name}</h3>
-                </div>
-              ))}
+              {isLandingLoading
+                ? Array.from({ length: 8 }).map((_, idx) => (
+                    <div
+                      key={`course-skeleton-${idx}`}
+                      className="bg-white rounded-xl p-4 md:p-6 text-center shadow-lg animate-pulse"
+                      style={isMobile ? { padding: '0.625rem' } : undefined}
+                    >
+                      <div className="w-6 h-6 md:w-5 md:h-5 bg-teal-100 rounded mx-auto mb-2 md:mb-3" style={isMobile ? { width: '1rem', height: '1rem', marginBottom: '0.25rem' } : undefined} />
+                      <div className="h-4 md:h-5 bg-teal-100 rounded w-3/4 mx-auto" />
+                    </div>
+                  ))
+                : courses.map((course, idx) => (
+                    <div
+                      key={course.id || idx}
+                      className="bg-white rounded-xl p-4 md:p-6 text-center shadow-lg"
+                      style={isMobile ? { padding: '0.625rem' } : undefined}
+                    >
+                      <BookOpen className="w-6 h-6 md:w-5 md:h-5 text-teal-600 mx-auto mb-2 md:mb-3" style={isMobile ? { width: '1rem', height: '1rem', marginBottom: '0.25rem' } : undefined} />
+                      <h3 className="font-bold text-gray-900 text-base md:text-xl leading-tight" style={isMobile ? { fontSize: '0.875rem', lineHeight: '1.4' } : undefined}>{course.name}</h3>
+                    </div>
+                  ))}
             </div>
           </div>
         </section>
@@ -435,7 +579,20 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
               )}
 
               {/* Unified Viewports Carousel - Faculty */}
-              {faculty.length > 0 && (
+              {isLandingLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full px-2 pb-8">
+                  {Array.from({ length: Math.max(2, facultyItemsPerView) }).map((_, idx) => (
+                    <div key={`faculty-skeleton-${idx}`} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-2xl overflow-hidden shadow-lg animate-pulse">
+                      <div className="aspect-square bg-teal-100" />
+                      <div className="p-3 md:p-6 space-y-2">
+                        <div className="h-4 bg-teal-100 rounded w-2/3" />
+                        <div className="h-3 bg-teal-100 rounded w-1/2" />
+                        <div className="h-3 bg-teal-100 rounded w-3/4" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : faculty.length > 0 && (
                 <div className="overflow-hidden w-full px-2 pb-8">
                   <div
                     className="flex"
@@ -519,7 +676,19 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, onS
                 </>
               )}
 
-              {achievers.length > 0 ? (
+              {isLandingLoading ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full px-2 pb-8">
+                  {Array.from({ length: Math.max(2, achieversItemsPerView) }).map((_, idx) => (
+                    <div key={`achiever-skeleton-${idx}`} className="bg-white rounded-2xl shadow-xl overflow-hidden animate-pulse">
+                      <div className="aspect-square bg-teal-100" />
+                      <div className="p-3 md:p-5 space-y-2">
+                        <div className="h-4 bg-teal-100 rounded w-2/3" />
+                        <div className="h-3 bg-teal-100 rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : achievers.length > 0 ? (
                 <>
                   {/* Unified Viewports Carousel - Achievers */}
                   {achievers.length > 0 && (

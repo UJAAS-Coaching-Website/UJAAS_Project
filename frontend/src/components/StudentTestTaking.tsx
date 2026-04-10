@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobileViewport } from '../hooks/useViewport';
 import { NumericAnswerKeypad } from './ui/numeric-answer-keypad';
+import type { ApiAttemptUiState } from '../api/tests';
 import {
   Clock,
   ChevronLeft,
@@ -50,6 +51,7 @@ interface StudentTestTakingProps {
   onExit: () => void;
   onSave?: (testId: string, questions: Question[], title: string, batches: string[]) => void;
   initialAnswers?: Record<string, StudentAnswer>;
+  initialUiState?: ApiAttemptUiState;
   initialTimeSpent?: number;
   isPreview?: boolean;
   isFacultyPreview?: boolean;
@@ -57,7 +59,7 @@ interface StudentTestTakingProps {
   initialBatches?: string[];
   deadlineAt?: string;
   serverNow?: string;
-  onSaveProgress?: (answers: Record<string, StudentAnswer>) => void | Promise<void>;
+  onSaveProgress?: (answers: Record<string, StudentAnswer>, uiState?: ApiAttemptUiState) => void | Promise<void>;
   enableTimer?: boolean;
   showMarksMeta?: boolean;
   outerPaddingClassName?: string;
@@ -65,6 +67,8 @@ interface StudentTestTakingProps {
 
 const ANSWER_FLAG_PREFIX = 'ujaasTestHasAnswer:';
 const ANSWER_STORAGE_PREFIX = 'ujaasTestAnswers:';
+const QUESTION_INDEX_PREFIX = 'ujaasTestQuestionIdx:';
+const UI_STATE_STORAGE_PREFIX = 'ujaasTestUiState:';
 
 export function StudentTestTaking({
   testId,
@@ -77,6 +81,7 @@ export function StudentTestTaking({
   onExit,
   onSave,
   initialAnswers = {},
+  initialUiState,
   initialTimeSpent = 0,
   isPreview = false,
   isFacultyPreview = false,
@@ -93,7 +98,21 @@ export function StudentTestTaking({
   const [testTitle, setTestTitle] = useState(initialTitle);
   const [selectedBatches, setSelectedBatches] = useState<string[]>(initialBatches);
   const [showSettings, setShowSettings] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(() => {
+    if (!attemptId) return 0;
+    try {
+      const saved = sessionStorage.getItem(`${QUESTION_INDEX_PREFIX}${attemptId}`);
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < (initialQuestions?.length || 0)) return idx;
+      }
+    } catch { /* ignore */ }
+    const uiIndex = Number(initialUiState?.currentQuestionIndex);
+    if (Number.isFinite(uiIndex) && uiIndex >= 0 && uiIndex < (initialQuestions?.length || 0)) {
+      return uiIndex;
+    }
+    return 0;
+  });
   const [answers, setAnswers] = useState<Record<string, StudentAnswer>>(initialAnswers);
   const [timeLeft, setTimeLeft] = useState(() => {
     if (deadlineAt && serverNow) {
@@ -106,22 +125,55 @@ export function StudentTestTaking({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [flaggedQuestions] = useState<Set<string>>(new Set());
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(
+    () => new Set((initialUiState?.flaggedQuestionIds || []).filter(Boolean))
+  );
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(
-    () => new Set(initialQuestions && initialQuestions[0] ? [initialQuestions[0].id] : [])
+    () => {
+      const initial = new Set((initialUiState?.visitedQuestionIds || []).filter(Boolean));
+      if (initialQuestions && initialQuestions[0]) {
+        initial.add(initialQuestions[0].id);
+      }
+      // Also mark the restored question as visited
+      if (initialQuestions) {
+        // Mark all answered questions as visited (they were visited in a previous session)
+        for (const q of initialQuestions) {
+          if (initialAnswers[q.id] !== undefined && initialAnswers[q.id] !== null && initialAnswers[q.id] !== '') {
+            initial.add(q.id);
+          }
+        }
+        // Restore the current question index's question as visited
+        try {
+          const saved = sessionStorage.getItem(`${QUESTION_INDEX_PREFIX}${attemptId}`);
+          if (saved !== null) {
+            const idx = parseInt(saved, 10);
+            if (!isNaN(idx) && idx >= 0 && idx < initialQuestions.length) {
+              initial.add(initialQuestions[idx].id);
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      return initial;
+    }
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
-  const [sectionBLimitMessage, setSectionBLimitMessage] = useState<string | null>(null);
   const autoSubmitTriggeredRef = useRef(false);
   useBodyScrollLock(showSubmitDialog || showExitConfirm || showSettings || showMobilePalette);
   const isMobileViewport = useIsMobileViewport();
 
   const isAnyPreview = isPreview || isFacultyPreview;
-  const isJeeMain = format === 'JEE MAIN';
   const hasExplanationContent = (item: { explanation?: string; explanationImage?: string }) =>
     Boolean(item.explanation?.trim() || item.explanationImage);
+  const resolveSection = (q: any) => {
+    const raw = String(q?.metadata?.section ?? q?.section ?? 'Default').trim();
+    if (!raw) return 'Default';
+    const compact = raw.toLowerCase().replace(/\s+/g, '');
+    if (compact === 'sectiona' || compact === 'a') return 'Section A';
+    if (compact === 'sectionb' || compact === 'b') return 'Section B';
+    return raw;
+  };
 
   const question = questions[currentQuestion];
   const questionCount = questions.length;
@@ -130,8 +182,47 @@ export function StudentTestTaking({
   // Group questions by subject and section for navigation
   const subjects = Array.from(new Set(questions.map(q => q?.subject).filter(Boolean)));
   const currentSubject = question?.subject;
-  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => (q as any)?.metadata?.section || 'Default'))).sort();
-  const currentSection = (question as any)?.metadata?.section || 'Default';
+  const sections = Array.from(new Set(questions.filter(q => q && q.subject === currentSubject).map(q => resolveSection(q)))).sort();
+  const currentSection = resolveSection(question);
+  const scopedPaletteQuestions = useMemo(() => {
+    return questions
+      .map((q, index) => ({ q, globalIndex: index }))
+      .filter(({ q }) => q.subject === currentSubject && resolveSection(q) === currentSection)
+      .sort((a, b) => {
+        const aOrder = Number((a.q as any).order_index);
+        const bOrder = Number((b.q as any).order_index);
+        const safeA = Number.isFinite(aOrder) ? aOrder : a.globalIndex;
+        const safeB = Number.isFinite(bOrder) ? bOrder : b.globalIndex;
+        if (safeA !== safeB) return safeA - safeB;
+        return a.globalIndex - b.globalIndex;
+      });
+  }, [questions, currentSubject, currentSection]);
+
+  useEffect(() => {
+    const validIds = new Set(questions.map((q) => q.id));
+    setFlaggedQuestions((prev) => {
+      const filtered = new Set(Array.from(prev).filter((id) => validIds.has(id)));
+      if (filtered.size === prev.size) return prev;
+      return filtered;
+    });
+    setVisitedQuestions((prev) => {
+      const filtered = new Set(Array.from(prev).filter((id) => validIds.has(id)));
+      if (filtered.size === prev.size) return prev;
+      return filtered;
+    });
+    setCurrentQuestion((prev) => {
+      if (questions.length === 0) return 0;
+      if (prev < 0) return 0;
+      if (prev >= questions.length) return questions.length - 1;
+      return prev;
+    });
+  }, [questions]);
+
+  const uiStatePayload = useMemo<ApiAttemptUiState>(() => ({
+    flaggedQuestionIds: Array.from(flaggedQuestions),
+    visitedQuestionIds: Array.from(visitedQuestions),
+    currentQuestionIndex: currentQuestion,
+  }), [flaggedQuestions, visitedQuestions, currentQuestion]);
 
   useEffect(() => {
     if (isEditing) {
@@ -149,6 +240,34 @@ export function StudentTestTaking({
       return next;
     });
   }, [currentQuestion, questions]);
+
+  useEffect(() => {
+    if (!attemptId || initialUiState) return;
+    try {
+      const stored = localStorage.getItem(`${UI_STATE_STORAGE_PREFIX}${attemptId}`);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as ApiAttemptUiState;
+      if (Array.isArray(parsed.flaggedQuestionIds)) {
+        setFlaggedQuestions(new Set(parsed.flaggedQuestionIds.filter(Boolean)));
+      }
+      if (Array.isArray(parsed.visitedQuestionIds)) {
+        setVisitedQuestions(new Set(parsed.visitedQuestionIds.filter(Boolean)));
+      }
+      if (Number.isFinite(Number(parsed.currentQuestionIndex))) {
+        setCurrentQuestion(Number(parsed.currentQuestionIndex));
+      }
+    } catch {
+      // ignore malformed local state
+    }
+  }, [attemptId, initialUiState]);
+
+  // Persist current question index to sessionStorage for refresh recovery
+  useEffect(() => {
+    if (!attemptId || isAnyPreview) return;
+    try {
+      sessionStorage.setItem(`${QUESTION_INDEX_PREFIX}${attemptId}`, String(currentQuestion));
+    } catch { /* ignore */ }
+  }, [currentQuestion, attemptId, isAnyPreview]);
 
   const handleSaveEdit = () => {
     if (editForm.id) {
@@ -225,10 +344,10 @@ export function StudentTestTaking({
   useEffect(() => {
     if (isAnyPreview || !onSaveProgress || isSubmitting || autoSubmitTriggeredRef.current) return;
     const saveTimer = setTimeout(() => {
-      void onSaveProgress(answers);
+      void onSaveProgress(answers, uiStatePayload);
     }, 800);
     return () => clearTimeout(saveTimer);
-  }, [answers, isAnyPreview, isSubmitting, onSaveProgress]);
+  }, [answers, uiStatePayload, isAnyPreview, isSubmitting, onSaveProgress]);
 
   const handleAutoSubmit = async () => {
     if (isSubmitting || autoSubmitTriggeredRef.current) return;
@@ -240,6 +359,8 @@ export function StudentTestTaking({
       await onSubmit(answers, { autoSubmitted: true });
       setShowSubmitDialog(false);
       setShowExitConfirm(false);
+      // Clean up persisted question index on successful submit
+      try { sessionStorage.removeItem(`${QUESTION_INDEX_PREFIX}${attemptId}`); } catch { /* ignore */ }
     } finally {
       setIsSubmitting(false);
     }
@@ -253,6 +374,8 @@ export function StudentTestTaking({
       await onSubmit(answers, { autoSubmitted });
       setShowSubmitDialog(false);
       setShowExitConfirm(false);
+      // Clean up persisted question index on successful submit
+      try { sessionStorage.removeItem(`${QUESTION_INDEX_PREFIX}${attemptId}`); } catch { /* ignore */ }
     } finally {
       setIsSubmitting(false);
     }
@@ -277,12 +400,14 @@ export function StudentTestTaking({
     if (!attemptId) return;
     const key = `${ANSWER_FLAG_PREFIX}${attemptId}`;
     const answersKey = `${ANSWER_STORAGE_PREFIX}${attemptId}`;
+    const uiStateKey = `${UI_STATE_STORAGE_PREFIX}${attemptId}`;
     try {
       if (Object.keys(answers || {}).length > 0) {
         localStorage.setItem(answersKey, JSON.stringify(answers));
       } else {
         localStorage.removeItem(answersKey);
       }
+      localStorage.setItem(uiStateKey, JSON.stringify(uiStatePayload));
     } catch {
       // ignore storage failures
     }
@@ -291,14 +416,14 @@ export function StudentTestTaking({
     } else {
       localStorage.removeItem(key);
     }
-  }, [attemptId, hasAnyAnswer, answers]);
+  }, [attemptId, hasAnyAnswer, answers, uiStatePayload]);
 
   useEffect(() => {
     if (isAnyPreview || !onSaveProgress) return;
 
     const flushProgress = () => {
       try {
-        void onSaveProgress(answers);
+        void onSaveProgress(answers, uiStatePayload);
       } catch {
         // ignore
       }
@@ -316,63 +441,42 @@ export function StudentTestTaking({
       window.removeEventListener('pagehide', flushProgress);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [answers, isAnyPreview, onSaveProgress]);
-
-  const isSectionBQuestion = (q?: Question) =>
-    Boolean(q && isJeeMain && q.metadata?.section === 'Section B');
-
-  const sectionBAnsweredBySubject = useMemo(() => {
-    const counts: Record<string, number> = {};
-    if (!isJeeMain) return counts;
-    questions.forEach((q) => {
-      if (!isSectionBQuestion(q)) return;
-      if (isAnsweredValue(answers[q.id])) {
-        counts[q.subject] = (counts[q.subject] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [answers, questions, isJeeMain]);
-
-  const isSectionBLocked = !isAnyPreview
-    && isSectionBQuestion(question)
-    && !isAnsweredValue(answers[question?.id])
-    && (sectionBAnsweredBySubject[question?.subject || ''] || 0) >= 5;
-
-  useEffect(() => {
-    if (!isSectionBLocked) {
-      setSectionBLimitMessage(null);
-    }
-  }, [isSectionBLocked]);
+  }, [answers, uiStatePayload, isAnyPreview, onSaveProgress]);
 
   const isOptionSelected = (questionId: string, optionIndex: number) => {
     const answer = answers[questionId];
     return Array.isArray(answer) ? answer.includes(optionIndex) : answer === optionIndex;
   };
 
-  const selectAnswer = (questionId: string, value: StudentAnswer) => {
-    const targetQuestion = questions.find(q => q.id === questionId);
-    const isClearing = value === null || value === '';
-    const alreadyAnswered = isAnsweredValue(answers[questionId]);
-    if (!isClearing && !alreadyAnswered && isSectionBQuestion(targetQuestion)) {
-      const currentCount = sectionBAnsweredBySubject[targetQuestion?.subject || ''] || 0;
-      if (currentCount >= 5) {
-        setSectionBLimitMessage(
-          `Section B allows only 5 attempts in ${targetQuestion?.subject}. Clear an earlier answer to attempt this question.`
-        );
-        return;
+  const toggleFlag = (questionId: string) => {
+    if (isAnyPreview) return;
+    setFlaggedQuestions(prev => {
+      const next = new Set(prev);
+      if (next.has(questionId)) {
+        next.delete(questionId);
+      } else {
+        next.add(questionId);
       }
-    }
-    setSectionBLimitMessage(null);
-    setAnswers({ ...answers, [questionId]: value });
+      return next;
+    });
+  };
+
+  const selectAnswer = (questionId: string, value: StudentAnswer) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
 
   const toggleMsqAnswer = (questionId: string, optionIndex: number) => {
-    const currentAnswer = answers[questionId];
-    const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
-    const nextValues = currentValues.includes(optionIndex)
-      ? currentValues.filter((value) => value !== optionIndex)
-      : [...currentValues, optionIndex].sort((a, b) => a - b);
-    selectAnswer(questionId, nextValues.length > 0 ? nextValues : null);
+    setAnswers((prev) => {
+      const currentAnswer = prev[questionId];
+      const currentValues = Array.isArray(currentAnswer) ? currentAnswer : [];
+      const nextValues = currentValues.includes(optionIndex)
+        ? currentValues.filter((value) => value !== optionIndex)
+        : [...currentValues, optionIndex].sort((a, b) => a - b);
+      return {
+        ...prev,
+        [questionId]: nextValues.length > 0 ? nextValues : null,
+      };
+    });
   };
 
   const getQuestionStatus = (index: number) => {
@@ -400,10 +504,10 @@ export function StudentTestTaking({
     subjects.forEach(subject => {
       stats[subject] = {};
       const subjectQuestions = questions.filter(q => q.subject === subject);
-      const subjectSections = Array.from(new Set(subjectQuestions.map(q => (q as any).metadata?.section || 'Default'))).sort();
+      const subjectSections = Array.from(new Set(subjectQuestions.map(q => resolveSection(q)))).sort();
 
       subjectSections.forEach(section => {
-        const sectionQuestions = subjectQuestions.filter(q => ((q as any).metadata?.section || 'Default') === section);
+        const sectionQuestions = subjectQuestions.filter(q => resolveSection(q) === section);
 
         const answered = sectionQuestions.filter(q => isAnsweredValue(answers[q.id]) && !flaggedQuestions.has(q.id)).length;
         const marked = sectionQuestions.filter(q => flaggedQuestions.has(q.id) && !isAnsweredValue(answers[q.id])).length;
@@ -577,7 +681,7 @@ export function StudentTestTaking({
                   <button
                     key={sec}
                     onClick={() => {
-                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec);
+                      const firstIdx = questions.findIndex(q => q.subject === currentSubject && resolveSection(q) === sec);
                       if (firstIdx > -1) setCurrentQuestion(firstIdx);
                     }}
                     className={`flex-1 py-2 sm:py-3 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold border-2 transition-all ${currentSection === sec
@@ -587,7 +691,7 @@ export function StudentTestTaking({
                   >
                     {sec}
                     <span className="ml-1.5 sm:ml-2 text-[11px] sm:text-xs opacity-60">
-                      ({questions.filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === sec).length})
+                      ({questions.filter(q => q.subject === currentSubject && resolveSection(q) === sec).length})
                     </span>
                   </button>
                 ))}
@@ -682,10 +786,6 @@ export function StudentTestTaking({
                             <button
                               onClick={() => {
                                 if (isAnyPreview) return;
-                                if (isSectionBLocked) {
-                                  setSectionBLimitMessage(`Section B allows only 5 attempts in ${question.subject}. Clear an earlier answer to attempt this question.`);
-                                  return;
-                                }
                                 if (isMsq) {
                                   toggleMsqAnswer(question.id, index);
                                   return;
@@ -751,7 +851,7 @@ export function StudentTestTaking({
                               value={Array.isArray(answers[question.id]) ? '' : String(answers[question.id] || '')}
                               onChange={(nextValue) => selectAnswer(question.id, nextValue)}
                               placeholder="Enter numerical value"
-                              disabled={isSectionBLocked}
+                              disabled={false}
                             />
                           </div>
                         )}
@@ -957,6 +1057,16 @@ export function StudentTestTaking({
                   {!isAnyPreview && (
                     <>
                       <button
+                        onClick={() => toggleFlag(question.id)}
+                        className={`px-6 py-3 border-2 rounded-xl font-semibold transition-all ${
+                          flaggedQuestions.has(question.id)
+                            ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
+                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {flaggedQuestions.has(question.id) ? 'Unmark Review' : 'Mark for Review'}
+                      </button>
+                      <button
                         onClick={() => selectAnswer(question.id, null)}
                         className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
                       >
@@ -1022,8 +1132,18 @@ export function StudentTestTaking({
                     {!isAnyPreview && (
                       <>
                         <button
+                          onClick={() => toggleFlag(question.id)}
+                          className={`py-2.5 rounded-xl text-xs font-medium shadow-sm transition-all ${
+                            flaggedQuestions.has(question.id)
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {flaggedQuestions.has(question.id) ? 'Unmark' : 'Mark Review'}
+                        </button>
+                        <button
                           onClick={() => selectAnswer(question.id, null)}
-                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium shadow-sm"
+                          className="py-2.5 bg-gray-100 text-gray-700 rounded-xl text-xs font-medium shadow-sm"
                         >
                           Clear
                         </button>
@@ -1053,17 +1173,15 @@ export function StudentTestTaking({
                 </div>
 
                 <div className="grid grid-cols-5 gap-2">
-                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                    .map((q) => (
+                  {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                       <motion.button
                         key={q.id}
-                        onClick={() => setCurrentQuestion(q.globalIndex)}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
+                        onClick={() => setCurrentQuestion(globalIndex)}
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
                           ? 'theme-palette-current scale-110 z-10'
-                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered'
                             ? 'theme-palette-review'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
+                            : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
                               ? 'theme-palette-answered'
                               : isAnyPreview && hasExplanationContent(q)
                                 ? 'theme-palette-explanation'
@@ -1074,8 +1192,8 @@ export function StudentTestTaking({
                                     : 'theme-palette-neutral'
                           }`}
                       >
-                        {q.globalIndex + 1}
-                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                        {localIndex + 1}
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered' && (
                           <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
                         {isAnyPreview && !hasExplanationContent(q) && (
@@ -1417,32 +1535,30 @@ export function StudentTestTaking({
                     </div>
                   </div>
                 <div className="grid grid-cols-5 gap-2 mb-6">
-                  {questions.map((q, index) => ({ ...q, globalIndex: index }))
-                    .filter(q => q.subject === currentSubject && ((q as any).metadata?.section || 'Default') === currentSection)
-                    .map((q) => (
+                  {scopedPaletteQuestions.map(({ q, globalIndex }, localIndex) => (
                       <motion.button
                         key={q.id}
                         onClick={() => {
-                          setCurrentQuestion(q.globalIndex);
+                          setCurrentQuestion(globalIndex);
                           setShowMobilePalette(false);
                         }}
-                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === q.globalIndex
-                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white ring-2 ring-blue-600 ring-offset-2 scale-110 z-10'
-                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered'
-                            ? 'bg-purple-100 text-purple-700'
-                            : !isAnyPreview && getQuestionStatus(q.globalIndex) === 'answered'
-                              ? 'bg-green-100 text-green-700'
+                        className={`aspect-square rounded-lg font-semibold text-sm relative ${currentQuestion === globalIndex
+                          ? 'theme-palette-current scale-110 z-10'
+                          : !isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered'
+                            ? 'theme-palette-review'
+                            : !isAnyPreview && getQuestionStatus(globalIndex) === 'answered'
+                              ? 'theme-palette-answered'
                               : isAnyPreview && hasExplanationContent(q)
-                                ? 'bg-teal-50 text-teal-700 border border-teal-200'
+                                ? 'theme-palette-explanation'
                                 : !isAnyPreview && flaggedQuestions.has(q.id)
-                                  ? 'bg-purple-100 text-purple-700'
+                                  ? 'theme-palette-review'
                                   : !isAnyPreview && visitedQuestions.has(q.id)
-                                    ? 'bg-red-100 text-red-700'
-                                    : 'bg-gray-100 text-gray-600'
+                                    ? 'theme-palette-visited'
+                                    : 'theme-palette-neutral'
                           }`}
                       >
-                        {q.globalIndex + 1}
-                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(q.globalIndex) === 'answered' && (
+                        {localIndex + 1}
+                        {!isAnyPreview && flaggedQuestions.has(q.id) && getQuestionStatus(globalIndex) === 'answered' && (
                           <div className="absolute top-1 right-1 z-10 w-3 h-3 bg-green-500 rounded-full" />
                         )}
                         {isAnyPreview && !hasExplanationContent(q) && (

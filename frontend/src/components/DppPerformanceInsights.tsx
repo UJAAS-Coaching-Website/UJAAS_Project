@@ -201,11 +201,7 @@ export function DppPerformanceInsights({
                     return (
                       <tr
                         key={perf.studentId}
-                        onClick={() => {
-                          setSelectedStudent(perf);
-                          setSelectedAttemptIndex(0);
-                        }}
-                        className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                        className="transition-colors"
                       >
                         <td className="px-6 py-4">
                           <div className="font-bold text-gray-900">{perf.studentName}</div>

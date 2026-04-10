@@ -11,17 +11,39 @@ export const flushPattern = async (pattern) => {
   try {
     let cursor = '0';
     let keysToDelete = [];
+    let guard = 0;
     
     do {
-      // Upstash Redis client returns [cursor, [keys]]
-      const [nextCursor, keys] = await redis.scan(cursor, { match: pattern, count: 100 });
+      const scanResult = await redis.scan(cursor, { match: pattern, count: 100 });
+
+      // Support both array and object response shapes from Redis clients.
+      let nextCursor = '0';
+      let keys = [];
+
+      if (Array.isArray(scanResult)) {
+        nextCursor = String(scanResult[0] ?? '0');
+        keys = Array.isArray(scanResult[1]) ? scanResult[1] : [];
+      } else if (scanResult && typeof scanResult === 'object') {
+        nextCursor = String(scanResult.cursor ?? scanResult.nextCursor ?? '0');
+        const resultKeys = scanResult.keys ?? scanResult.results ?? [];
+        keys = Array.isArray(resultKeys) ? resultKeys : [];
+      }
+
       cursor = nextCursor;
       if (keys && keys.length > 0) {
         keysToDelete.push(...keys);
       }
-    } while (cursor !== '0' && cursor !== 0);
+
+      guard += 1;
+      if (guard > 1000) {
+        console.warn(`[Cache Invalidation] SCAN guard tripped while flushing '${pattern}'.`);
+        break;
+      }
+    } while (String(cursor) !== '0');
 
     if (keysToDelete.length > 0) {
+      // De-duplicate keys collected across scan pages.
+      keysToDelete = [...new Set(keysToDelete)];
       const pipeline = redis.pipeline();
       keysToDelete.forEach(key => pipeline.del(key));
       await pipeline.exec();

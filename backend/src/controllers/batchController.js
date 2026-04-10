@@ -58,6 +58,9 @@ export async function handleCreateBatch(req, res) {
         if (error.code === "23505") {
             return res.status(409).json({ message: "a batch with this name already exists" });
         }
+        if (error.code === "INVALID_BATCH_FACULTY_ASSIGNMENT") {
+            return res.status(400).json({ message: "Selected faculty could not be assigned to this batch. Refresh and try again." });
+        }
         return res.status(500).json({ message: "failed to create batch", error: error.message });
     }
 }
@@ -80,6 +83,9 @@ export async function handleUpdateBatch(req, res) {
         console.error("updateBatch error:", error.message);
         if (error.code === "23505") {
             return res.status(409).json({ message: "a batch with this name already exists" });
+        }
+        if (error.code === "INVALID_BATCH_FACULTY_ASSIGNMENT") {
+            return res.status(400).json({ message: "Selected faculty could not be assigned to this batch. Refresh and try again." });
         }
         return res.status(500).json({ message: "failed to update batch", error: error.message });
     }
@@ -217,6 +223,9 @@ export async function handleCreateBatchNotification(req, res) {
         await createBatchNotification(batchId, { title, message, type });
         return res.status(201).json({ message: "notice sent successfully" });
     } catch (error) {
+        if (error?.code === "BATCH_INACTIVE" || error?.code === "BATCH_NOT_FOUND") {
+            return res.status(400).json({ message: error.message });
+        }
         console.error("createBatchNotification error:", error.message);
         return res.status(500).json({ message: "failed to send notice", error: error.message });
     }

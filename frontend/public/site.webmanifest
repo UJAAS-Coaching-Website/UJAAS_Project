@@ -1,0 +1,15 @@
+{
+  "name": "UJAAS Career Institute",
+  "short_name": "UJAAS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#9F1C0D",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "type": "image/png"
+    }
+  ]
+}

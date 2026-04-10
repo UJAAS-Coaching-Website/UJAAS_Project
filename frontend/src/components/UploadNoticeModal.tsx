@@ -1,7 +1,7 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Megaphone, X, Loader2, Check } from 'lucide-react';
-import { ApiBatch } from '../api/batches';
+import { ApiBatch, fetchBatches as apiFetchBatches } from '../api/batches';
 import { broadcastNotice } from '../api/facultyReviews';
 import { toast } from 'sonner';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -22,11 +22,13 @@ interface UploadNoticeModalProps {
 }
 
 const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, batches, userRole, initialNotice, onSubmit, onSubmitted }) => {
+  const [apiBatches, setApiBatches] = useState<ApiBatch[]>([]);
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeMessage, setNoticeMessage] = useState('');
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const isEditing = Boolean(initialNotice?.id);
+  const availableBatches = apiBatches.length > 0 ? apiBatches : batches;
 
   useBodyScrollLock(isOpen);
 
@@ -43,6 +45,25 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
     setSelectedBatchIds([]);
   }, [isOpen, initialNotice]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let mounted = true;
+    apiFetchBatches(true)
+      .then((items) => {
+        if (!mounted) return;
+        setApiBatches(items.filter((batch) => batch.is_active !== false));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setApiBatches([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleToggleBatch = (id: string) => {
@@ -52,10 +73,10 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
   };
 
   const handleSelectAll = () => {
-    if (selectedBatchIds.length === batches.length) {
+    if (selectedBatchIds.length === availableBatches.length) {
       setSelectedBatchIds([]);
     } else {
-      setSelectedBatchIds(batches.map(b => b.id));
+      setSelectedBatchIds(availableBatches.map(b => b.id));
     }
   };
 
@@ -145,11 +166,11 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
                 onClick={handleSelectAll}
                 className="text-xs font-bold text-teal-600 hover:text-teal-700 transition"
               >
-                {selectedBatchIds.length === batches.length ? 'Deselect All' : 'Select All'}
+                {selectedBatchIds.length === availableBatches.length ? 'Deselect All' : 'Select All'}
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar outline-none focus:ring-2 focus:ring-teal-500 rounded-xl" tabIndex={0}>
-              {batches.map(batch => (
+              {availableBatches.map(batch => (
                 <button
                   key={batch.id}
                   type="button"
@@ -165,7 +186,7 @@ const UploadNoticeModal: React.FC<UploadNoticeModalProps> = ({ isOpen, onClose, 
                 </button>
               ))}
             </div>
-            {batches.length === 0 && (
+            {availableBatches.length === 0 && (
               <p className="text-sm text-gray-500 italic">No batches available.</p>
             )}
           </div>

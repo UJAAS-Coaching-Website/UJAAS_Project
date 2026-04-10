@@ -1,30 +1,7 @@
 /**
  * Student API client — typed functions for student management.
  */
-
-function getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem("ujaasToken");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-            ...(options.headers || {}),
-        },
-    });
-    if (response.status === 204) return {} as T;
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error((data as any)?.message || "Request failed");
-    }
-    return data;
-}
+import { request } from "./auth";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -37,7 +14,10 @@ export interface ApiStudent {
     id: string;
     name: string;
     login_id: string;
+    avatar_url?: string | null;
+    avatarUrl?: string | null;
     roll_number: string;
+    email?: string | null;
     phone: string | null;
     address: string | null;
     date_of_birth: string | null;
@@ -68,10 +48,12 @@ export interface CreateStudentPayload {
 export interface UpdateStudentPayload {
     name?: string;
     rollNumber?: string;
+    email?: string;
     phone?: string;
     address?: string;
     dateOfBirth?: string;
     parentContact?: string;
+    adminRemark?: string;
 }
 
 export interface UpdateStudentRatingPayload {
@@ -90,10 +72,26 @@ export const setStudentsCache = (data: ApiStudent[] | null) => { studentsCache =
 
 // ── API functions ──────────────────────────────────────
 
-export async function fetchStudents(search?: string, forceRefresh = false): Promise<ApiStudent[]> {
-    const query = search && search.trim().length > 0
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : "";
+export async function fetchStudents(search?: string, forceRefresh = false, sortBy?: string, sortOrder?: string): Promise<ApiStudent[]> {
+    let query = "";
+    const params = new URLSearchParams();
+    
+    if (search && search.trim().length > 0) {
+        params.append("search", search.trim());
+    }
+    
+    if (sortBy) {
+        params.append("sortBy", sortBy);
+    }
+    
+    if (sortOrder) {
+        params.append("sortOrder", sortOrder);
+    }
+    
+    if (params.toString()) {
+        query = `?${params.toString()}`;
+    }
+    
     if (!query && studentsCache && !forceRefresh) return studentsCache;
     const res = await request<ApiStudent[]>(`/api/students${query}`);
     if (!query) studentsCache = res;
@@ -107,34 +105,41 @@ export async function fetchStudent(id: string): Promise<ApiStudent> {
 export async function createStudent(
     data: CreateStudentPayload
 ): Promise<ApiStudent> {
-    return request<ApiStudent>("/api/students", {
+    const result = await request<ApiStudent>("/api/students", {
         method: "POST",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function updateStudent(
     id: string,
     data: UpdateStudentPayload
 ): Promise<ApiStudent> {
-    return request<ApiStudent>(`/api/students/${id}`, {
+    const result = await request<ApiStudent>(`/api/students/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function deleteStudent(id: string): Promise<void> {
     await request(`/api/students/${id}`, { method: "DELETE" });
+    studentsCache = null;
 }
 
 export async function assignStudentToBatch(
     studentId: string,
     batchId: string
 ): Promise<ApiStudent> {
-    return request<ApiStudent>(`/api/students/${studentId}/batches`, {
+    const result = await request<ApiStudent>(`/api/students/${studentId}/batches`, {
         method: "POST",
         body: JSON.stringify({ batchId }),
     });
+    studentsCache = null;
+    return result;
 }
 
 export async function removeStudentFromBatch(
@@ -144,15 +149,17 @@ export async function removeStudentFromBatch(
     await request(`/api/students/${studentId}/batches/${batchId}`, {
         method: "DELETE",
     });
+    studentsCache = null;
 }
 
 export async function updateStudentRating(
     studentId: string,
     data: UpdateStudentRatingPayload
 ): Promise<any> {
-    return request<any>(`/api/students/${studentId}/rating`, {
+    const result = await request<any>(`/api/students/${studentId}/rating`, {
         method: "PUT",
         body: JSON.stringify(data),
     });
+    studentsCache = null;
+    return result;
 }
-import { API_BASE_URL } from "./base";

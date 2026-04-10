@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import "dotenv/config";
+import "./load-env.js";
 import { Pool } from "pg";
 
 const __filename = fileURLToPath(import.meta.url);

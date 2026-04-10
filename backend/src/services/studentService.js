@@ -1,6 +1,29 @@
 import { pool } from "../db/index.js";
 import { hashPassword } from "../utils/password.js";
 import { getStudentBatchModel } from "./studentBatchModel.js";
+import { ensureActiveBatchExists } from "./batchAccessService.js";
+import { deleteAvatarFromStorage } from "./storageService.js";
+
+let studentEmailColumnExistsCache = null;
+
+async function hasStudentEmailColumn(client = pool) {
+    if (studentEmailColumnExistsCache !== null) {
+        return studentEmailColumnExistsCache;
+    }
+
+    const result = await client.query(
+        `SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'students'
+              AND column_name = 'email'
+        ) AS exists`
+    );
+
+    studentEmailColumnExistsCache = result.rows[0]?.exists === true;
+    return studentEmailColumnExistsCache;
+}
 
 /**
  * Generate initial password from student name: firstname@123
@@ -13,9 +36,13 @@ function generateInitialPassword(name) {
 
 /**
  * Get all students with user info, batch assignment, and aggregated ratings.
+ * @param {string} search - Optional search term
+ * @param {string} sortBy - Sort field: 'name', 'rollNumber', or 'rating' (default: 'name')
+ * @param {string} sortOrder - Sort order: 'asc' or 'desc' (default: 'asc')
  */
-export async function getAllStudents(search) {
+export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc') {
     const batchModel = await getStudentBatchModel();
+    const includeEmail = await hasStudentEmailColumn();
     
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
@@ -26,12 +53,12 @@ export async function getAllStudents(search) {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', COALESCE(r.attendance, 0),
+                    'attendance', COALESCE(r.attendance, 0)::float,
                     'total_classes', COALESCE(bs.total_classes, 0),
                     'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
-                    'tests', COALESCE(r.test_performance, 0),
-                    'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', COALESCE(r.behavior, 0),
+                    'tests', COALESCE(r.test_performance, 0)::float,
+                    'dppPerformance', COALESCE(r.dpp_performance, 0)::float,
+                    'behavior', COALESCE(r.behavior, 0)::float,
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
@@ -43,6 +70,34 @@ export async function getAllStudents(search) {
         '{}'
     )`;
 
+    // Validate and sanitize sort parameters
+    const validSortFields = ['name', 'roll_number', 'rating'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'name';
+    const order = ['asc', 'desc'].includes(String(sortOrder).toLowerCase()) ? String(sortOrder).toUpperCase() : 'ASC';
+
+    // Build order clause based on sort field
+    let orderClause = "ORDER BY u.name ASC";
+    if (sortField === 'roll_number') {
+        // Sort by numeric value when digits exist, with text fallback for stable ordering.
+        orderClause = `
+            ORDER BY
+                NULLIF(regexp_replace(COALESCE(s.roll_number, ''), '[^0-9]', '', 'g'), '')::BIGINT ${order} NULLS LAST,
+                s.roll_number ${order}
+        `;
+    } else if (sortField === 'rating') {
+        orderClause = `ORDER BY (
+            COALESCE((SELECT AVG(
+                COALESCE(r.test_performance, 0) + 
+                COALESCE(r.dpp_performance, 0) + 
+                COALESCE(r.behavior, 0)
+            ) FROM batch_subjects bs 
+            LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = u.id
+            WHERE bs.batch_id = ${batchJoinSubquery}), 0)
+        ) ${order}`;
+    } else {
+        orderClause = `ORDER BY u.name ${order}`;
+    }
+
     const params = [];
     let searchClause = "";
     if (search && String(search).trim()) {
@@ -51,6 +106,7 @@ export async function getAllStudents(search) {
             u.name ILIKE $${params.length}
             OR u.login_id ILIKE $${params.length}
             OR s.roll_number ILIKE $${params.length}
+            ${includeEmail ? `OR s.email ILIKE $${params.length}` : ""}
         )`;
     }
 
@@ -59,7 +115,9 @@ export async function getAllStudents(search) {
             u.id,
             u.name,
             u.login_id,
+            u.avatar_url,
             s.roll_number,
+            ${includeEmail ? "s.email," : "NULL::text AS email,"}
             s.phone,
             s.address,
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
@@ -76,7 +134,7 @@ export async function getAllStudents(search) {
         LEFT JOIN batches b ON b.id = ${batchJoinSubquery}
         WHERE u.role = 'student'
         ${searchClause}
-        ORDER BY u.name
+        ${orderClause}
     `, params);
     
     return result.rows.map(row => {
@@ -105,6 +163,7 @@ export async function getAllStudents(search) {
  */
 export async function getStudentById(id) {
     const batchModel = await getStudentBatchModel();
+    const includeEmail = await hasStudentEmailColumn();
 
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
@@ -115,12 +174,12 @@ export async function getStudentById(id) {
             SELECT json_object_agg(
                 sub.name, 
                 json_build_object(
-                    'attendance', COALESCE(r.attendance, 0),
+                    'attendance', COALESCE(r.attendance, 0)::float,
                     'total_classes', COALESCE(bs.total_classes, 0),
                     'attendance_rating', CASE WHEN COALESCE(bs.total_classes, 0) > 0 THEN LEAST(5, (COALESCE(r.attendance, 0)::float / bs.total_classes::float) * 5) ELSE 0 END,
-                    'tests', COALESCE(r.test_performance, 0),
-                    'dppPerformance', COALESCE(r.dpp_performance, 0),
-                    'behavior', COALESCE(r.behavior, 0),
+                    'tests', COALESCE(r.test_performance, 0)::float,
+                    'dppPerformance', COALESCE(r.dpp_performance, 0)::float,
+                    'behavior', COALESCE(r.behavior, 0)::float,
                     'remarks', COALESCE(r.remarks, '')
                 )
             )
@@ -137,7 +196,9 @@ export async function getStudentById(id) {
             u.id,
             u.name,
             u.login_id,
+            u.avatar_url,
             s.roll_number,
+            ${includeEmail ? "s.email," : "NULL::text AS email,"}
             s.phone,
             s.address,
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
@@ -184,10 +245,18 @@ export async function createStudent({ name, rollNumber, email, phone, address, d
     try {
         await client.query("BEGIN");
         const batchModel = await getStudentBatchModel();
+        const includeEmail = await hasStudentEmailColumn(client);
+        if (batchId) {
+            await ensureActiveBatchExists(batchId, client);
+        }
 
         const password = hashPassword(generateInitialPassword(name));
 
-        const loginId = (typeof email === "string" && email.trim()) ? email.trim().toLowerCase() : rollNumber;
+        const normalizedEmail = typeof email === "string" && email.trim()
+            ? email.trim().toLowerCase()
+            : null;
+
+        const loginId = rollNumber;
 
         const userResult = await client.query(
             `INSERT INTO users (name, login_id, role, password_hash, created_at)
@@ -198,17 +267,33 @@ export async function createStudent({ name, rollNumber, email, phone, address, d
         const userId = userResult.rows[0].id;
 
         if (batchModel === "single") {
-            await client.query(
-                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
-                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE, $7)`,
-                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
-            );
+            if (includeEmail) {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, email, phone, address, dob, parent_contact, join_date, assigned_batch_id)
+                     VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, $7, CURRENT_DATE, $8)`,
+                    [userId, rollNumber, normalizedEmail, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
+                );
+            } else {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date, assigned_batch_id)
+                     VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE, $7)`,
+                    [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null, batchId || null]
+                );
+            }
         } else {
-            await client.query(
-                `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
-                 VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
-                [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
-            );
+            if (includeEmail) {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, email, phone, address, dob, parent_contact, join_date)
+                     VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::date, $7, CURRENT_DATE)`,
+                    [userId, rollNumber, normalizedEmail, phone || null, address || null, dateOfBirth || "", parentContact || null]
+                );
+            } else {
+                await client.query(
+                    `INSERT INTO students (user_id, roll_number, phone, address, dob, parent_contact, join_date)
+                     VALUES ($1, $2, $3, $4, NULLIF($5, '')::date, $6, CURRENT_DATE)`,
+                    [userId, rollNumber, phone || null, address || null, dateOfBirth || "", parentContact || null]
+                );
+            }
             if (batchId) {
                 await client.query(
                     `INSERT INTO student_batches (student_id, batch_id)
@@ -236,22 +321,54 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
     const client = await pool.connect();
     try {
         await client.query("BEGIN");
+        const includeEmail = await hasStudentEmailColumn(client);
+
+        const hasEmailInput = Object.prototype.hasOwnProperty.call(arguments[1] || {}, "email");
+        const normalizedEmail = hasEmailInput
+            ? (typeof arguments[1].email === "string" && arguments[1].email.trim()
+                ? arguments[1].email.trim().toLowerCase()
+                : null)
+            : undefined;
 
         if (name) {
             await client.query(`UPDATE users SET name = $1 WHERE id = $2`, [name, id]);
         }
 
-        await client.query(
-            `UPDATE students
-             SET roll_number = COALESCE($2, roll_number),
-                 phone = COALESCE($3, phone),
-                 address = COALESCE($4, address),
-                 dob = COALESCE(NULLIF($5, '')::date, dob),
-                 parent_contact = COALESCE($6, parent_contact),
-                 admin_remark = COALESCE($7, admin_remark)
-             WHERE user_id = $1`,
-            [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null, adminRemark || null]
-        );
+        if (includeEmail) {
+            await client.query(
+                `UPDATE students
+                 SET roll_number = COALESCE($2, roll_number),
+                     email = CASE WHEN $3::text IS NULL THEN email ELSE $3 END,
+                     phone = COALESCE($4, phone),
+                     address = COALESCE($5, address),
+                     dob = COALESCE(NULLIF($6, '')::date, dob),
+                     parent_contact = COALESCE($7, parent_contact),
+                     admin_remark = COALESCE($8, admin_remark)
+                 WHERE user_id = $1`,
+                [
+                    id,
+                    rollNumber || null,
+                    hasEmailInput ? (normalizedEmail ?? "") : null,
+                    phone || null,
+                    address || null,
+                    dateOfBirth || "",
+                    parentContact || null,
+                    adminRemark || null,
+                ]
+            );
+        } else {
+            await client.query(
+                `UPDATE students
+                 SET roll_number = COALESCE($2, roll_number),
+                     phone = COALESCE($3, phone),
+                     address = COALESCE($4, address),
+                     dob = COALESCE(NULLIF($5, '')::date, dob),
+                     parent_contact = COALESCE($6, parent_contact),
+                     admin_remark = COALESCE($7, admin_remark)
+                 WHERE user_id = $1`,
+                [id, rollNumber || null, phone || null, address || null, dateOfBirth || "", parentContact || null, adminRemark || null]
+            );
+        }
 
         if (rollNumber) {
             await client.query(`UPDATE users SET login_id = $1 WHERE id = $2`, [rollNumber, id]);
@@ -271,10 +388,26 @@ export async function updateStudent(id, { name, rollNumber, phone, address, date
  * Delete a student.
  */
 export async function deleteStudent(id) {
+    const preDeleteResult = await pool.query(
+        "SELECT avatar_url FROM users WHERE id = $1 AND role = 'student'",
+        [id]
+    );
+
+    const avatarUrl = preDeleteResult.rows[0]?.avatar_url || null;
+
     const result = await pool.query(
         "DELETE FROM users WHERE id = $1 AND role = 'student' RETURNING id",
         [id]
     );
+
+    if (result.rowCount > 0 && avatarUrl) {
+        try {
+            await deleteAvatarFromStorage(avatarUrl);
+        } catch (error) {
+            console.error("student avatar cleanup failed:", id, error?.message || error);
+        }
+    }
+
     return result.rowCount > 0;
 }
 
@@ -282,6 +415,7 @@ export async function deleteStudent(id) {
  * Assign a student to a batch.
  */
 export async function assignStudentToBatch(studentId, batchId) {
+    await ensureActiveBatchExists(batchId);
     const batchModel = await getStudentBatchModel();
     if (batchModel === "single") {
         await pool.query(
@@ -382,14 +516,14 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
             );
         }
         
-        const result = await client.query(
-            `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
-             VALUES ($1, $2, COALESCE($3, 0), COALESCE($4, 0), COALESCE($5, 0), COALESCE($6, 0), $7, NOW())
+          const result = await client.query(
+                `INSERT INTO student_ratings (student_id, batch_subject_id, attendance, test_performance, dpp_performance, behavior, remarks, updated_at)
+                 VALUES ($1, $2, COALESCE($3::numeric, 0), COALESCE($4::numeric, 0), COALESCE($5::numeric, 0), COALESCE($6::numeric, 0), $7, NOW())
              ON CONFLICT (student_id, batch_subject_id) DO UPDATE SET
-                attendance = CASE WHEN $3 IS NOT NULL THEN $3 ELSE student_ratings.attendance END,
-                test_performance = CASE WHEN $4 IS NOT NULL THEN $4 ELSE student_ratings.test_performance END,
-                dpp_performance = CASE WHEN $5 IS NOT NULL THEN $5 ELSE student_ratings.dpp_performance END,
-                behavior = CASE WHEN $6 IS NOT NULL THEN $6 ELSE student_ratings.behavior END,
+                     attendance = CASE WHEN $3 IS NOT NULL THEN $3::numeric ELSE student_ratings.attendance END,
+                     test_performance = CASE WHEN $4 IS NOT NULL THEN $4::numeric ELSE student_ratings.test_performance END,
+                     dpp_performance = CASE WHEN $5 IS NOT NULL THEN $5::numeric ELSE student_ratings.dpp_performance END,
+                     behavior = CASE WHEN $6 IS NOT NULL THEN $6::numeric ELSE student_ratings.behavior END,
                 remarks = CASE WHEN $7 IS NOT NULL THEN $7 ELSE student_ratings.remarks END,
                 updated_at = NOW()
              RETURNING id`,
@@ -412,8 +546,10 @@ export async function updateStudentRating(studentId, subjectName, ratings) {
                 bs.total_classes,
                 CASE WHEN bs.total_classes > 0 THEN LEAST(5, (r.attendance::float / bs.total_classes::float) * 5) ELSE 0 END as attendance_rating,
                 sub.name as subject,
-                r.test_performance as tests,
-                r.dpp_performance as "dppPerformance"
+                r.test_performance::float as tests,
+                r.dpp_performance::float as "dppPerformance",
+                r.attendance::float as attendance,
+                r.behavior::float as behavior
             FROM student_ratings r
             JOIN batch_subjects bs ON bs.id = r.batch_subject_id
             JOIN subjects sub ON sub.id = bs.subject_id

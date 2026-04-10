@@ -1,27 +1,56 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import crypto from 'crypto';
+import { enqueueStorageCleanupTask } from './storageCleanupQueueService.js';
 
-// Initialize the S3 Client for Supabase Storage
+const STORAGE_S3_REGION = process.env.STORAGE_S3_REGION;
+const STORAGE_S3_ENDPOINT = process.env.STORAGE_S3_ENDPOINT;
+const STORAGE_S3_ACCESS_KEY_ID = process.env.STORAGE_S3_ACCESS_KEY_ID;
+const STORAGE_S3_SECRET_ACCESS_KEY = process.env.STORAGE_S3_SECRET_ACCESS_KEY;
+const STORAGE_PUBLIC_BASE_URL = process.env.STORAGE_PUBLIC_BASE_URL;
+
+const BUCKET_NAME = process.env.STORAGE_BUCKET_NAME;
+
+// Initialize the S3 Client (Supabase/Railway/any S3-compatible storage)
 const s3Client = new S3Client({
   forcePathStyle: true,
-  region: 'ap-northeast-1',
-  endpoint: 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/s3',
+  region: STORAGE_S3_REGION,
+  endpoint: STORAGE_S3_ENDPOINT,
   credentials: {
-    accessKeyId: '1b21e916b2e5fe3d8e4357447f29f6a6',
-    secretAccessKey: '346643e644142d5397c5fafe0d4376ced4c0969253eca649223905cf8133556d'
+    accessKeyId: STORAGE_S3_ACCESS_KEY_ID,
+    secretAccessKey: STORAGE_S3_SECRET_ACCESS_KEY
   }
 });
 
-const STORAGE_PUBLIC_BASE_URL = 'https://zcgpdmavhhvtgzlgomoq.supabase.co/storage/v1/object/public';
-const QUESTIONS_BUCKET_NAME = 'questions';
-const NOTES_BUCKET_NAME = 'notes';
-const QUESTION_BANK_BUCKET_NAME = 'question-bank';
-const LANDING_PAGE_BUCKET_NAME = 'landing-page';
-const TIMETABLES_BUCKET_NAME = 'timetables';
-const AVATARS_BUCKET_NAME = 'avatar';
-
 const buildPublicUrl = (bucketName, objectKey) =>
   `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/${objectKey}`;
+
+function extractObjectKeyFromStorageUrl(fileUrl, bucketName) {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    return null;
+  }
+
+  const marker = `/${bucketName}/`;
+
+  // Preferred: parse URL path and extract everything after /<bucket>/.
+  try {
+    const parsed = new URL(fileUrl);
+    const pathname = decodeURIComponent(parsed.pathname || '');
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex >= 0) {
+      return pathname.slice(markerIndex + marker.length);
+    }
+  } catch {
+    // Non-URL strings can still be handled by fallback extraction below.
+  }
+
+  // Fallback: extract from raw string if marker appears anywhere.
+  const rawIndex = fileUrl.indexOf(marker);
+  if (rawIndex >= 0) {
+    return fileUrl.slice(rawIndex + marker.length);
+  }
+
+  return null;
+}
 
 import sharp from 'sharp';
 
@@ -45,9 +74,9 @@ export async function uploadAvatarToStorage(fileBuffer, userId) {
       .webp({ quality: 80 })
       .toBuffer();
 
-    const objectKey = `${userId}/avatar-${Date.now()}.webp`;
+    const objectKey = `avatars/${userId}/avatar-${Date.now()}.webp`;
 
-    return await uploadBufferToBucket(AVATARS_BUCKET_NAME, objectKey, processedBuffer, 'image/webp');
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, processedBuffer, 'image/webp');
   } catch (error) {
     console.error('Avatar storage upload error:', error);
     throw new Error('Failed to process and upload avatar.');
@@ -100,16 +129,10 @@ async function uploadBufferToBucket(bucketName, objectKey, fileBuffer, mimeType)
 }
 
 async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
-  const urlPrefix = `${STORAGE_PUBLIC_BASE_URL}/${bucketName}/`;
-
-  if (!fileUrl?.startsWith(urlPrefix)) {
-    console.warn('Storage URL does not match expected pattern, skipping delete:', fileUrl);
+  const objectKey = extractObjectKeyFromStorageUrl(fileUrl, bucketName);
+  if (!objectKey) {
+    console.warn('Storage URL key extraction failed, skipping delete:', fileUrl);
     return;
-  }
-
-  let objectKey = fileUrl.slice(urlPrefix.length);
-  if (objectKey.startsWith(`${bucketName}/`)) {
-    objectKey = objectKey.slice(bucketName.length + 1);
   }
 
   const command = new DeleteObjectCommand({
@@ -128,6 +151,17 @@ async function deleteFileFromStorageByUrl(fileUrl, bucketName) {
     if (isMissingObject) {
       console.warn('Storage object not found, skipping delete:', { bucketName, objectKey });
       return;
+    }
+
+    try {
+      await enqueueStorageCleanupTask({
+        type: 'delete_url',
+        url: fileUrl,
+        source: 'deleteFileFromStorageByUrl',
+        errorMessage: error?.message || String(error)
+      });
+    } catch (queueError) {
+      console.error('Failed to enqueue storage URL cleanup task:', queueError?.message || queueError);
     }
 
     throw error;
@@ -154,10 +188,10 @@ export async function uploadImageToStorage(fileBuffer, originalName, mimeType, c
   const randomId = crypto.randomUUID();
   
   // Construct the secure, flat-folder path (e.g., tests/123/question-abc.jpg)
-  const objectKey = `${context}/${contextId}/${itemRole}-${randomId}.${ext}`;
+  const objectKey = `questions/${context}/${contextId}/${itemRole}-${randomId}.${ext}`;
 
   try {
-    return await uploadBufferToBucket(QUESTIONS_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Storage upload error:', error);
     throw new Error('Failed to upload image to storage.');
@@ -169,10 +203,10 @@ export async function uploadLandingPageImageToStorage(fileBuffer, originalName, 
   const ext = extMatch ? extMatch[1] : 'jpg';
 
   const randomId = crypto.randomUUID();
-  const objectKey = `${itemRole}/${randomId}.${ext}`;
+  const objectKey = `landing-page/${itemRole}/${randomId}.${ext}`;
 
   try {
-    return await uploadBufferToBucket(LANDING_PAGE_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Landing page storage upload error:', error);
     throw new Error('Failed to upload landing page image to storage.');
@@ -182,6 +216,7 @@ export async function uploadLandingPageImageToStorage(fileBuffer, originalName, 
 export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, chapterContext, noteId) {
   const sanitizedFileName = sanitizeFileName(originalName);
   const objectKey = [
+    'notes',
     'batches',
     chapterContext.batch_id,
     'chapters',
@@ -192,7 +227,7 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
   ].join('/');
 
   try {
-    return await uploadBufferToBucket(NOTES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Notes storage upload error:', error);
     throw new Error('Failed to upload note to storage.');
@@ -202,6 +237,7 @@ export async function uploadNoteToStorage(fileBuffer, originalName, mimeType, ch
 export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, mimeType, subjectName, fileId, title) {
   const sanitizedFileName = buildSanitizedFileNameWithSourceExtension(title, originalName);
   const objectKey = [
+    'question-bank',
     'subjects',
     sanitizePathSegment(subjectName),
     'files',
@@ -210,7 +246,7 @@ export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, 
   ].join('/');
 
   try {
-    return await uploadBufferToBucket(QUESTION_BANK_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Question bank storage upload error:', error);
     throw new Error('Failed to upload question bank file to storage.');
@@ -219,10 +255,10 @@ export async function uploadQuestionBankFileToStorage(fileBuffer, originalName, 
 
 export async function uploadTimetableToStorage(fileBuffer, originalName, mimeType, batchId) {
   const sanitizedFileName = sanitizeFileName(originalName);
-  const objectKey = ['batches', sanitizePathSegment(batchId), sanitizedFileName].join('/');
+  const objectKey = ['timetables', 'batches', sanitizePathSegment(batchId), sanitizedFileName].join('/');
 
   try {
-    return await uploadBufferToBucket(TIMETABLES_BUCKET_NAME, objectKey, fileBuffer, mimeType);
+    return await uploadBufferToBucket(BUCKET_NAME, objectKey, fileBuffer, mimeType);
   } catch (error) {
     console.error('Timetable storage upload error:', error);
     throw new Error('Failed to upload timetable to storage.');
@@ -236,7 +272,7 @@ export async function uploadTimetableToStorage(fileBuffer, originalName, mimeTyp
  */
 export async function deleteImageFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, QUESTIONS_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Storage delete error:', error);
     throw new Error('Failed to delete image from storage.');
@@ -245,7 +281,7 @@ export async function deleteImageFromStorage(imageUrl) {
 
 export async function deleteAvatarFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, AVATARS_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Avatar storage delete error:', error);
     throw new Error('Failed to delete avatar from storage.');
@@ -254,7 +290,7 @@ export async function deleteAvatarFromStorage(imageUrl) {
 
 export async function deleteLandingPageImageFromStorage(imageUrl) {
   try {
-    await deleteFileFromStorageByUrl(imageUrl, LANDING_PAGE_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(imageUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Landing page storage delete error:', error);
     throw new Error('Failed to delete landing page image from storage.');
@@ -263,7 +299,7 @@ export async function deleteLandingPageImageFromStorage(imageUrl) {
 
 export async function deleteNoteFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, NOTES_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Notes storage delete error:', error);
     throw new Error('Failed to delete note from storage.');
@@ -272,7 +308,7 @@ export async function deleteNoteFromStorage(fileUrl) {
 
 export async function deleteQuestionBankFileFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, QUESTION_BANK_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Question bank storage delete error:', error);
     throw new Error('Failed to delete question bank file from storage.');
@@ -281,7 +317,7 @@ export async function deleteQuestionBankFileFromStorage(fileUrl) {
 
 export async function deleteTimetableFromStorage(fileUrl) {
   try {
-    await deleteFileFromStorageByUrl(fileUrl, TIMETABLES_BUCKET_NAME);
+    await deleteFileFromStorageByUrl(fileUrl, BUCKET_NAME);
   } catch (error) {
     console.error('Timetable storage delete error:', error);
     throw new Error('Failed to delete timetable from storage.');
@@ -297,11 +333,11 @@ export async function deleteTimetableFromStorage(fileUrl) {
  */
 export async function deleteAllImagesForContext(context, contextId) {
   try {
-    const prefix = `${context}/${contextId}/`;
+    const prefix = `questions/${context}/${contextId}/`;
 
     // List all objects under this prefix
     const listCommand = new ListObjectsV2Command({
-      Bucket: QUESTIONS_BUCKET_NAME,
+      Bucket: BUCKET_NAME,
       Prefix: prefix
     });
 
@@ -312,19 +348,74 @@ export async function deleteAllImagesForContext(context, contextId) {
       return;
     }
 
-    // Batch delete all objects
-    const deleteCommand = new DeleteObjectsCommand({
-      Bucket: QUESTIONS_BUCKET_NAME,
-      Delete: {
-        Objects: listResult.Contents.map(obj => ({ Key: obj.Key })),
-        Quiet: true
-      }
-    });
+    const keys = listResult.Contents.map((obj) => obj.Key).filter(Boolean);
+    if (keys.length === 0) {
+      console.log(`No S3 object keys found under prefix: ${prefix}`);
+      return;
+    }
 
-    await s3Client.send(deleteCommand);
-    console.log(`Deleted ${listResult.Contents.length} S3 objects under: ${prefix}`);
+    // Try bulk delete first.
+    try {
+      const deleteCommand = new DeleteObjectsCommand({
+        Bucket: BUCKET_NAME,
+        Delete: {
+          Objects: keys.map((key) => ({ Key: key })),
+          Quiet: true,
+        },
+      });
+
+      const bulkResult = await s3Client.send(deleteCommand);
+      const failedKeys = (bulkResult?.Errors || []).map((entry) => entry?.Key).filter(Boolean);
+
+      if (failedKeys.length > 0) {
+        for (const key of failedKeys) {
+          try {
+            await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+          } catch (singleError) {
+            const isMissingObject =
+              singleError?.Code === 'NoSuchKey' ||
+              singleError?.name === 'NoSuchKey' ||
+              singleError?.$metadata?.httpStatusCode === 404;
+
+            if (!isMissingObject) {
+              throw singleError;
+            }
+          }
+        }
+      }
+
+      console.log(`Deleted ${keys.length} S3 objects under: ${prefix}`);
+    } catch (bulkError) {
+      // Fall back to one-by-one delete for providers that reject mixed-key bulk requests.
+      for (const key of keys) {
+        try {
+          await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+        } catch (singleError) {
+          const isMissingObject =
+            singleError?.Code === 'NoSuchKey' ||
+            singleError?.name === 'NoSuchKey' ||
+            singleError?.$metadata?.httpStatusCode === 404;
+
+          if (!isMissingObject) {
+            throw bulkError;
+          }
+        }
+      }
+      console.log(`Deleted ${keys.length} S3 objects under: ${prefix} (fallback mode)`);
+    }
   } catch (error) {
     console.error('Bulk S3 delete error:', error);
+    try {
+      await enqueueStorageCleanupTask({
+        type: 'delete_context',
+        context,
+        contextId,
+        source: 'deleteAllImagesForContext',
+        errorMessage: error?.message || String(error)
+      });
+    } catch (queueError) {
+      console.error('Failed to enqueue context cleanup task:', queueError?.message || queueError);
+    }
     // Don't throw — we don't want S3 cleanup failure to block test deletion
   }
 }

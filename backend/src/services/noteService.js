@@ -3,7 +3,14 @@ import { pool } from "../db/index.js";
 // Fetch notes for a specific chapter
 export const getNotesByChapter = async (chapterId) => {
     const result = await pool.query(
-        `SELECT * FROM notes WHERE chapter_id = $1 ORDER BY created_at ASC`,
+        `SELECT n.*
+         FROM notes n
+         JOIN chapters c ON c.id = n.chapter_id
+         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+         JOIN batches b ON b.id = bs.batch_id
+         WHERE n.chapter_id = $1
+           AND b.is_active = true
+         ORDER BY n.created_at ASC`,
         [chapterId]
     );
     return result.rows;
@@ -11,7 +18,16 @@ export const getNotesByChapter = async (chapterId) => {
 
 // Get a single note by ID
 export const getNoteById = async (id) => {
-    const result = await pool.query(`SELECT * FROM notes WHERE id = $1`, [id]);
+    const result = await pool.query(
+        `SELECT n.*
+         FROM notes n
+         JOIN chapters c ON c.id = n.chapter_id
+         JOIN batch_subjects bs ON bs.id = c.batch_subject_id
+         JOIN batches b ON b.id = bs.batch_id
+         WHERE n.id = $1
+           AND b.is_active = true`,
+        [id]
+    );
     return result.rows[0];
 };
 
