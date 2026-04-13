@@ -36,14 +36,19 @@ function generateInitialPassword(name) {
 
 /**
  * Get all students with user info, batch assignment, and aggregated ratings.
+ * Supports optional search, batch filtering, sorting, and pagination.
  * @param {string} search - Optional search term
- * @param {string} sortBy - Sort field: 'name', 'rollNumber', or 'rating' (default: 'name')
+ * @param {string} sortBy - Sort field: 'name', 'roll_number', or 'rating' (default: 'name')
  * @param {string} sortOrder - Sort order: 'asc' or 'desc' (default: 'asc')
+ * @param {{ page?: number, limit?: number, batch?: string }} options - Pagination/filter options
  */
-export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc') {
+export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc', options = {}) {
     const batchModel = await getStudentBatchModel();
     const includeEmail = await hasStudentEmailColumn();
-    
+    const page = Math.max(1, Number.parseInt(options.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, Number.parseInt(options.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+
     const batchJoinSubquery = batchModel === 'single'
         ? `s.assigned_batch_id`
         : `(SELECT batch_id FROM student_batches WHERE student_id = u.id LIMIT 1)`;
@@ -51,7 +56,7 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
     const ratingsSubquery = `COALESCE(
         (
             SELECT json_object_agg(
-                sub.name, 
+                sub.name,
                 json_build_object(
                     'attendance', COALESCE(r.attendance, 0)::float,
                     'total_classes', COALESCE(bs.total_classes, 0),
@@ -70,15 +75,12 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
         '{}'
     )`;
 
-    // Validate and sanitize sort parameters
     const validSortFields = ['name', 'roll_number', 'rating'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'name';
     const order = ['asc', 'desc'].includes(String(sortOrder).toLowerCase()) ? String(sortOrder).toUpperCase() : 'ASC';
 
-    // Build order clause based on sort field
-    let orderClause = "ORDER BY u.name ASC";
+    let orderClause = 'ORDER BY u.name ASC';
     if (sortField === 'roll_number') {
-        // Sort by numeric value when digits exist, with text fallback for stable ordering.
         orderClause = `
             ORDER BY
                 NULLIF(regexp_replace(COALESCE(s.roll_number, ''), '[^0-9]', '', 'g'), '')::BIGINT ${order} NULLS LAST,
@@ -87,10 +89,10 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
     } else if (sortField === 'rating') {
         orderClause = `ORDER BY (
             COALESCE((SELECT AVG(
-                COALESCE(r.test_performance, 0) + 
-                COALESCE(r.dpp_performance, 0) + 
+                COALESCE(r.test_performance, 0) +
+                COALESCE(r.dpp_performance, 0) +
                 COALESCE(r.behavior, 0)
-            ) FROM batch_subjects bs 
+            ) FROM batch_subjects bs
             LEFT JOIN student_ratings r ON r.batch_subject_id = bs.id AND r.student_id = u.id
             WHERE bs.batch_id = ${batchJoinSubquery}), 0)
         ) ${order}`;
@@ -99,16 +101,40 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
     }
 
     const params = [];
-    let searchClause = "";
+    const addParam = (value) => {
+        params.push(value);
+        return `$${params.length}`;
+    };
+
+    const whereConditions = ["u.role = 'student'"];
+
     if (search && String(search).trim()) {
-        params.push(`%${String(search).trim()}%`);
-        searchClause = ` AND (
-            u.name ILIKE $${params.length}
-            OR u.login_id ILIKE $${params.length}
-            OR s.roll_number ILIKE $${params.length}
-            ${includeEmail ? `OR s.email ILIKE $${params.length}` : ""}
-        )`;
+        const searchTerm = addParam(`%${String(search).trim()}%`);
+        whereConditions.push(`(
+            u.name ILIKE ${searchTerm}
+            OR u.login_id ILIKE ${searchTerm}
+            OR s.roll_number ILIKE ${searchTerm}
+            ${includeEmail ? `OR s.email ILIKE ${searchTerm}` : ''}
+        )`);
     }
+
+    if (options.batch && String(options.batch).trim()) {
+        const batchName = addParam(String(options.batch).trim());
+        whereConditions.push(`COALESCE(b.name, '') = ${batchName}`);
+    }
+
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+
+    const countResult = await pool.query(`
+        SELECT COUNT(*)::int AS total
+        FROM users u
+        JOIN students s ON s.user_id = u.id
+        LEFT JOIN batches b ON b.id = ${batchJoinSubquery}
+        ${whereClause}
+    `, params);
+
+    const limitParam = addParam(limit);
+    const offsetParam = addParam(offset);
 
     const result = await pool.query(`
         SELECT
@@ -117,7 +143,7 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
             u.login_id,
             u.avatar_url,
             s.roll_number,
-            ${includeEmail ? "s.email," : "NULL::text AS email,"}
+            ${includeEmail ? 's.email,' : 'NULL::text AS email,'}
             s.phone,
             s.address,
             TO_CHAR(s.dob, 'YYYY-MM-DD') AS date_of_birth,
@@ -132,12 +158,14 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
         FROM users u
         JOIN students s ON s.user_id = u.id
         LEFT JOIN batches b ON b.id = ${batchJoinSubquery}
-        WHERE u.role = 'student'
-        ${searchClause}
+        ${whereClause}
         ${orderClause}
+        LIMIT ${limitParam}
+        OFFSET ${offsetParam}
     `, params);
-    
-    return result.rows.map(row => {
+
+    return {
+        students: result.rows.map(row => {
         const ratings = row.ratings || {};
         const ratingEntries = Object.values(ratings);
         const subjectRemarks = {};
@@ -155,7 +183,14 @@ export async function getAllStudents(search, sortBy = 'name', sortOrder = 'asc')
             subject_ratings: ratings,
             subject_remarks: subjectRemarks
         };
-    });
+        }),
+        pagination: {
+            page,
+            limit,
+            total: countResult.rows[0]?.total || 0,
+            totalPages: Math.max(1, Math.ceil((countResult.rows[0]?.total || 0) / limit)),
+        }
+    };
 }
 
 /**

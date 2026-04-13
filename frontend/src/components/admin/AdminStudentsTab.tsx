@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent, ChangeEvent, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, FormEvent, ChangeEvent, lazy, Suspense } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -187,8 +187,9 @@ function AddStudentModal({
 }
 
 // --- Main Tab Component ---
-export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void, studentsData?: ApiStudent[] }) {
+export function AdminStudentsTab({ batches, onViewStudent }: { batches: { label: string; id?: string; slug: string }[], onViewStudent: (student: any) => void }) {
   const [students, setStudents] = useState<ApiStudent[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [query, setQuery] = useState('');
@@ -198,6 +199,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
   const STUDENTS_PER_PAGE = 20;
 
   const [studentModal, setStudentModal] = useState<{ open: boolean; initialData?: StudentDirectoryStudent; title?: string }>({ open: false });
+  const didMountRef = useRef(false);
 
   // Helper function to parse combined sort option and update both sort states
   const handleSortChange = (value: string) => {
@@ -216,17 +218,20 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     setCurrentPage(1);
   };
 
-  const loadStudents = async (searchQuery?: string, forceRefresh = false, sort?: string, order?: string) => {
+  const loadStudents = async (searchQuery?: string, forceRefresh = false, sort?: string, order?: string, page = 1) => {
     try {
-      if (!searchQuery && studentsData && studentsData.length > 0 && !forceRefresh) {
-        setStudents(studentsData);
-        setLoading(false);
-        setIsInitialLoad(false);
-        return;
-      }
       setLoading(true);
-      const res = await apiFetchStudents(searchQuery, forceRefresh, sort, order);
-      setStudents(res);
+      const res = await apiFetchStudents({
+        search: searchQuery,
+        forceRefresh,
+        sortBy: sort,
+        sortOrder: order,
+        page,
+        limit: STUDENTS_PER_PAGE,
+      });
+      setStudents(res.students);
+      setTotalStudents(res.pagination.total);
+      setCurrentPage(res.pagination.page);
     } catch (e) {
       console.error('Failed to fetch students:', e);
     } finally {
@@ -236,24 +241,20 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
   };
 
   useEffect(() => {
-    loadStudents(undefined, false, sortBy, sortOrder);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, sortOrder]);
-
-  useEffect(() => {
-    if (!studentsData || studentsData.length === 0 || query.length > 0) return;
-    setStudents(studentsData);
-    setLoading(false);
-  }, [studentsData, query]);
-
-  useEffect(() => {
     const timer = window.setTimeout(() => {
-      if (query.length > 0) loadStudents(query, false, sortBy, sortOrder);
-      else loadStudents(undefined, false, sortBy, sortOrder);
+      loadStudents(query.length > 0 ? query : undefined, false, sortBy, sortOrder, currentPage);
     }, 250);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, sortBy, sortOrder]);
+  }, [query, sortBy, sortOrder, currentPage]);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const computeStudentRating = (student: ApiStudent): number => {
     const subjectRatings = (student as any).subject_ratings || {};
@@ -301,11 +302,11 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
   // Students are already sorted by the backend, no client-side sorting needed
   const filtered = formattedStudents;
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / STUDENTS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalStudents / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = filtered.slice((safeCurrentPage - 1) * STUDENTS_PER_PAGE, safeCurrentPage * STUDENTS_PER_PAGE);
-  const rangeStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, filtered.length);
+  const paginatedStudents = filtered;
+  const rangeStart = totalStudents === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, totalStudents);
 
   const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(totalPages, page)));
 
@@ -347,7 +348,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
         const loginId = (createdStudent as any)?.login_id || data.rollNumber || 'Not provided';
         window.alert(`New Student added successfully!\n\nName: ${data.name}\nLogin ID: ${loginId}\nInitial Password: ${initialPassword}`);
       }
-      loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
+      loadStudents(query.length > 0 ? query : undefined, true, sortBy, sortOrder, currentPage); // Refresh with current sort
     } catch (error: any) {
       window.alert(`Error: ${error.message || 'Failed to save student'}`);
     }
@@ -358,7 +359,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
         await apiDeleteStudent(id);
-        loadStudents(undefined, true, sortBy, sortOrder); // Refresh with current sort
+        loadStudents(query.length > 0 ? query : undefined, true, sortBy, sortOrder, currentPage); // Refresh with current sort
       } catch (error: any) {
         window.alert(`Error deleting student: ${error.message}`);
       }
@@ -485,7 +486,7 @@ export function AdminStudentsTab({ batches, onViewStudent, studentsData }: { bat
           </table>
         </div>
         <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm font-medium text-gray-500">Showing {rangeStart}-{rangeEnd} of {filtered.length} students</p>
+          <p className="text-sm font-medium text-gray-500">Showing {rangeStart}-{rangeEnd} of {totalStudents} students</p>
           <div className="flex items-center gap-2 self-start md:self-auto">
             <button type="button" onClick={() => goToPage(safeCurrentPage - 1)} disabled={safeCurrentPage === 1} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
             <span className="min-w-20 text-center text-sm font-semibold text-gray-600">Page {safeCurrentPage} of {totalPages}</span>

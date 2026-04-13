@@ -569,8 +569,8 @@ function App() {
   const handleSearchAdminStudents = useCallback(async (query: string) => {
     if (!user || user.role !== 'admin') return;
     try {
-      const results = await apiFetchStudents(query);
-      setAdminStudents(results);
+      const results = await apiFetchStudents({ search: query, page: 1, limit: 20 });
+      setAdminStudents(results.students);
     } catch (error) {
       console.warn('Could not search students from API:', error);
     }
@@ -598,15 +598,15 @@ function App() {
         console.warn('Could not fetch faculties from API:', e);
         return [];
       }),
-      apiFetchStudents().catch((e) => {
+      apiFetchStudents({ page: 1, limit: 20 }).catch((e) => {
         console.warn('Could not fetch students from API:', e);
-        return [];
+        return { students: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } };
       }),
     ]);
 
     setAdminBatches(apiBatches.map(apiBatchToInfo));
     setPublishedTests((apiTests as ApiTest[]).map(apiTestToPublished));
-    setAdminStudents(apiStudents);
+    setAdminStudents(apiStudents.students);
   };
 
   const refreshAdminSubjects = async () => {
@@ -1216,7 +1216,7 @@ function App() {
       isFetching = true;
       fetchTasks.push(apiFetchBatches().then(res => setAdminBatches(res.map(apiBatchToInfo))).catch(() => {}));
       if (adminStudents.length === 0) {
-        fetchTasks.push(apiFetchStudents().then(res => setAdminStudents(res)).catch(() => {}));
+        fetchTasks.push(apiFetchStudents({ page: 1, limit: 20 }).then(res => setAdminStudents(res.students)).catch(() => {}));
         fetchTasks.push(refreshAdminSubjects());
       }
     }

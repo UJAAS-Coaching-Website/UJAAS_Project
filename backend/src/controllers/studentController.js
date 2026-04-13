@@ -14,8 +14,11 @@ export async function listStudents(req, res) {
         const search = req.query.search;
         const sortBy = req.query.sortBy || 'name';
         const sortOrder = req.query.sortOrder || 'asc';
+        const page = req.query.page;
+        const limit = req.query.limit;
+        const batch = req.query.batch;
         
-        const students = await getAllStudents(search, sortBy, sortOrder);
+        const students = await getAllStudents(search, sortBy, sortOrder, { page, limit, batch });
         return res.status(200).json(students);
     } catch (error) {
         console.error("listStudents error:", error.message);

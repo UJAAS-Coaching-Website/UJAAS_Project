@@ -34,6 +34,26 @@ export interface ApiStudent {
     admin_remark?: string;
 }
 
+export interface StudentsPageResponse {
+    students: ApiStudent[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+}
+
+export interface FetchStudentsOptions {
+    search?: string;
+    forceRefresh?: boolean;
+    sortBy?: string;
+    sortOrder?: string;
+    page?: number;
+    limit?: number;
+    batch?: string;
+}
+
 export interface CreateStudentPayload {
     name: string;
     rollNumber: string;
@@ -66,13 +86,23 @@ export interface UpdateStudentRatingPayload {
     remarks?: string;
 }
 
-let studentsCache: ApiStudent[] | null = null;
+let studentsCache: StudentsPageResponse | null = null;
 export const getStudentsCache = () => studentsCache;
-export const setStudentsCache = (data: ApiStudent[] | null) => { studentsCache = data; };
+export const setStudentsCache = (data: StudentsPageResponse | null) => { studentsCache = data; };
 
 // ── API functions ──────────────────────────────────────
 
-export async function fetchStudents(search?: string, forceRefresh = false, sortBy?: string, sortOrder?: string): Promise<ApiStudent[]> {
+export async function fetchStudents(options: FetchStudentsOptions = {}): Promise<StudentsPageResponse> {
+    const {
+        search,
+        forceRefresh = false,
+        sortBy,
+        sortOrder,
+        page = 1,
+        limit = 20,
+        batch,
+    } = options;
+
     let query = "";
     const params = new URLSearchParams();
     
@@ -87,13 +117,25 @@ export async function fetchStudents(search?: string, forceRefresh = false, sortB
     if (sortOrder) {
         params.append("sortOrder", sortOrder);
     }
+
+    if (page > 1) {
+        params.append("page", String(page));
+    }
+
+    if (limit !== 20) {
+        params.append("limit", String(limit));
+    }
+
+    if (batch && batch.trim().length > 0) {
+        params.append("batch", batch.trim());
+    }
     
     if (params.toString()) {
         query = `?${params.toString()}`;
     }
     
     if (!query && studentsCache && !forceRefresh) return studentsCache;
-    const res = await request<ApiStudent[]>(`/api/students${query}`);
+    const res = await request<StudentsPageResponse>(`/api/students${query}`);
     if (!query) studentsCache = res;
     return res;
 }

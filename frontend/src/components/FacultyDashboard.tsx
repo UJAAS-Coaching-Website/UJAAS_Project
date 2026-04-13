@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, type ChangeEvent } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense, type ChangeEvent } from 'react';
 import { DashboardHeroSkeleton, StatCardSkeleton, TableRowsSkeleton, TestCardSkeleton, ProfileSkeleton, QuestionBankSkeleton, DashboardLoadingShell } from './ui/content-skeletons';
 import { User, Tab } from '../App';
 import {
@@ -52,6 +52,7 @@ import logo from '../assets/logo.svg';
 const NotesManagementTab = lazy(() => import('./NotesManagementTab').then(m => ({ default: m.NotesManagementTab })));
 import { fetchTestAnalysis, fetchTests } from '../api/tests';
 import { ApiBatch } from '../api/batches';
+import { fetchStudents as apiFetchStudents } from '../api/students';
 import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks } from '../utils/studentRemarks';
@@ -828,61 +829,153 @@ function StudentsTab({
   isBatchActive?: boolean;
 }) {
   const STUDENTS_PER_PAGE = 20;
-  const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const [pageStudents, setPageStudents] = useState<Student[]>(() => students.slice(0, STUDENTS_PER_PAGE));
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'name' | 'roll'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [batchTotalClasses, setBatchTotalClasses] = useState(0);
+  const [localAttendance, setLocalAttendance] = useState<Record<string, number>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
+  const [isEditingAttendance, setIsEditingAttendance] = useState(false);
+  const didMountRef = useRef(false);
+
   const normalizeName = (value: string | null | undefined) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const normalizeRollDigits = (value: string | null | undefined) => {
     const digits = String(value || '').replace(/[^0-9]/g, '');
     const parsed = Number.parseInt(digits, 10);
     return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
   };
-  const sortedBatchStudents = [...batchStudents].sort((a, b) => {
+
+  const mappedStudents = pageStudents.map((api) => {
+    const subRatings = (api as any).subject_ratings || {};
+    const subjectValues = Object.values(subRatings || {});
+    const overallFromSubjects = subjectValues.length > 0
+      ? subjectValues.reduce((acc, curr) => {
+          const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating);
+          return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+        }, 0) / subjectValues.length
+      : null;
+
+    return {
+      id: api.id,
+      name: api.name,
+      avatarUrl: (api as any).avatarUrl ?? (api as any).avatar_url ?? null,
+      avatar_url: (api as any).avatar_url ?? null,
+      rollNumber: api.rollNumber,
+      email: api.email || '',
+      enrolledCourses: api.batch ? [api.batch] : [],
+      joinDate: api.joinDate || new Date().toISOString().split('T')[0],
+      performance: 0,
+      rating: overallFromSubjects ?? (((api.rating_attendance || 0) + api.rating_assignments + api.rating_participation + api.rating_behavior) / 4),
+      batch: api.batch,
+      phoneNumber: api.phoneNumber,
+      dateOfBirth: api.dateOfBirth,
+      address: api.address,
+      parentContact: api.parentContact,
+      totalAttendance: (api as any).totalAttendance ?? api.rating_attendance,
+      totalClasses: (api as any).totalClasses ?? api.rating_total_classes,
+      subjectRatings: subRatings,
+      subjectRemarks: (api as any).subjectRemarks || {},
+      adminRemark: (api as any).adminRemark || '',
+    };
+  });
+
+  const sortedBatchStudents = [...mappedStudents].sort((a, b) => {
     if (sortBy === 'name') {
-      const aName = normalizeName(a.name);
-      const bName = normalizeName(b.name);
-      const diff = aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+      const diff = normalizeName(a.name).localeCompare(normalizeName(b.name), undefined, { sensitivity: 'base' });
       return sortOrder === 'asc' ? diff : -diff;
     }
-    const aSafe = normalizeRollDigits(a.rollNumber);
-    const bSafe = normalizeRollDigits(b.rollNumber);
-    const diff = aSafe - bSafe || normalizeName(a.name).localeCompare(normalizeName(b.name));
+    const diff = normalizeRollDigits(a.rollNumber) - normalizeRollDigits(b.rollNumber) || normalizeName(a.name).localeCompare(normalizeName(b.name));
     return sortOrder === 'asc' ? diff : -diff;
   });
-  const totalPages = Math.max(1, Math.ceil(sortedBatchStudents.length / STUDENTS_PER_PAGE));
+
+  const totalPages = Math.max(1, Math.ceil(totalStudents / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = sortedBatchStudents.slice(
-    (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
-    safeCurrentPage * STUDENTS_PER_PAGE
-  );
-  const rangeStart = sortedBatchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, sortedBatchStudents.length);
-  
-  // Local state for batch-level total classes
-  const initialBatchTotalClasses = batchStudents.length > 0 ? batchStudents[0].totalClasses : 0;
-  const [batchTotalClasses, setBatchTotalClasses] = useState(initialBatchTotalClasses);
-  const [localAttendance, setLocalAttendance] = useState<Record<string, number>>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [isEditingTotal, setIsEditingTotal] = useState(false);
-  const [isEditingAttendance, setIsEditingAttendance] = useState(false);
+  const rangeStart = totalStudents === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, totalStudents);
 
   useEffect(() => {
-    const att: Record<string, number> = {};
-    batchStudents.forEach(s => {
-      att[s.id] = s.totalAttendance;
-    });
-    setLocalAttendance(att);
-    setBatchTotalClasses(batchStudents.length > 0 ? batchStudents[0].totalClasses : 0);
-  }, [students, selectedBatch]);
+    let active = true;
+    setLoading(true);
+
+    apiFetchStudents({
+      batch: selectedBatch,
+      page: currentPage,
+      limit: STUDENTS_PER_PAGE,
+      sortBy: sortBy === 'roll' ? 'roll_number' : 'name',
+      sortOrder,
+    })
+      .then((response) => {
+        if (!active) return;
+        const nextStudents = response.students.map((api) => ({
+          id: api.id,
+          name: api.name,
+          avatarUrl: (api as any).avatarUrl ?? (api as any).avatar_url ?? null,
+          avatar_url: (api as any).avatar_url ?? null,
+          rollNumber: api.roll_number,
+          email: api.email || '',
+          enrolledCourses: api.assigned_batch ? [api.assigned_batch.name] : [],
+          joinDate: api.join_date || new Date().toISOString().split('T')[0],
+          performance: 0,
+          rating: 0,
+          batch: api.assigned_batch?.name || '',
+          phoneNumber: api.phone || '',
+          dateOfBirth: api.date_of_birth || '',
+          address: api.address || '',
+          parentContact: api.parent_contact || '',
+          totalAttendance: api.rating_attendance || 0,
+          totalClasses: api.rating_total_classes || 0,
+          subjectRatings: (api as any).subject_ratings || {},
+          subjectRemarks: (api as any).subject_remarks || {},
+          adminRemark: (api as any).admin_remark || '',
+        }));
+
+        setPageStudents(nextStudents);
+        setTotalStudents(response.pagination.total);
+        setCurrentPage(response.pagination.page);
+
+        const att: Record<string, number> = {};
+        nextStudents.forEach((student) => {
+          att[student.id] = student.totalAttendance;
+        });
+        setLocalAttendance(att);
+        setBatchTotalClasses(nextStudents.length > 0 ? nextStudents[0].totalClasses : 0);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch batch students:', error);
+        if (!active) return;
+        setPageStudents([]);
+        setTotalStudents(0);
+        setLocalAttendance({});
+        setBatchTotalClasses(0);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBatch, currentPage, sortBy, sortOrder]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedBatch, students.length]);
+  }, [selectedBatch]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const handleSaveTotalClasses = () => {
     setIsEditingTotal(false);
@@ -891,23 +984,23 @@ function StudentsTab({
 
   const handleSaveAttendance = async () => {
     if (!facultySubject) {
-      alert("Faculty subject not assigned.");
+      alert('Faculty subject not assigned.');
       return;
     }
     setIsSaving(true);
     try {
-      const promises = batchStudents.map(s => 
-        onUpdateRating(s.id, {
+      const promises = sortedBatchStudents.map((student) =>
+        onUpdateRating(student.id, {
           subject: facultySubject,
           total_classes: batchTotalClasses,
-          attendance: localAttendance[s.id] || 0
+          attendance: localAttendance[student.id] || 0,
         })
       );
       await Promise.all(promises);
-      alert("Attendance updated successfully!");
+      alert('Attendance updated successfully!');
       setIsEditingAttendance(false);
     } catch (error: any) {
-      alert("Failed to update attendance: " + error.message);
+      alert('Failed to update attendance: ' + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -918,7 +1011,7 @@ function StudentsTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
-          <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
+          <p className="text-gray-500">{selectedBatch} • {totalStudents} Students</p>
         </div>
 
         <select
@@ -936,7 +1029,7 @@ function StudentsTab({
           <option value="roll-asc">Sort: Roll Number (↑)</option>
           <option value="roll-desc">Sort: Roll Number (↓)</option>
         </select>
-        
+
         {isBatchActive && facultySubject && (
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
             <div className="flex items-center gap-3">
@@ -953,7 +1046,7 @@ function StudentsTab({
                 <span className="text-xl font-black text-teal-900 px-4">{batchTotalClasses}</span>
               )}
             </div>
-            
+
             {!isEditingTotal && !isEditingAttendance && (
               <button
                 onClick={() => setIsEditingTotal(true)}
@@ -999,75 +1092,83 @@ function StudentsTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {paginatedStudents.map((s) => (
-              <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {s.avatarUrl || s.avatar_url ? (
-                      <div
-                        className="rounded-full overflow-hidden border border-gray-200 bg-gray-100 shadow-sm flex-none"
-                        style={{ width: '40px', height: '40px' }}
-                      >
-                        <img
-                          src={(s.avatarUrl || s.avatar_url) as string}
-                          alt={s.name}
-                          className="rounded-full"
-                          style={{ width: '40px', height: '40px', objectFit: 'cover' }}
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className="rounded-full border border-gray-200 bg-gradient-to-br from-cyan-100 to-blue-100 text-cyan-700 font-bold text-base leading-none flex items-center justify-center shadow-sm flex-none"
-                        style={{ width: '40px', height: '40px' }}
-                      >
-                        {s.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
-                <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    {isEditingAttendance && batchTotalClasses > 0 ? (
-                      <>
-                        <input
-                          type="number"
-                          min="0"
-                          max={batchTotalClasses}
-                          value={localAttendance[s.id] ?? 0}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
-                            setLocalAttendance({ ...localAttendance, [s.id]: Math.min(val, batchTotalClasses) });
-                          }}
-                          className="w-16 px-2 py-1 rounded border border-teal-200 focus:ring-2 focus:ring-teal-100 outline-none font-medium"
-                        />
-                        <span className="text-gray-400 font-medium">/ {batchTotalClasses}</span>
-                      </>
-                    ) : (
-                      <span className="font-bold text-gray-700">
-                        {s.totalAttendance} / {s.totalClasses}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center">
-                    {renderPerformanceStars(s.rating)}
-                  </div>
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="py-4 px-4">
+                  <TableRowsSkeleton rows={Math.min(STUDENTS_PER_PAGE, 8)} />
                 </td>
               </tr>
-            ))}
+            ) : (
+              sortedBatchStudents.map((s) => (
+                <tr key={s.id} onClick={() => !isEditingAttendance && onViewStudent(s)} className={`hover:bg-gray-50/50 transition-colors ${!isEditingAttendance ? 'cursor-pointer' : ''} group`}>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {s.avatarUrl || s.avatar_url ? (
+                        <div
+                          className="rounded-full overflow-hidden border border-gray-200 bg-gray-100 shadow-sm flex-none"
+                          style={{ width: '40px', height: '40px' }}
+                        >
+                          <img
+                            src={(s.avatarUrl || s.avatar_url) as string}
+                            alt={s.name}
+                            className="rounded-full"
+                            style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-full border border-gray-200 bg-gradient-to-br from-cyan-100 to-blue-100 text-cyan-700 font-bold text-base leading-none flex items-center justify-center shadow-sm flex-none"
+                          style={{ width: '40px', height: '40px' }}
+                        >
+                          {s.name?.trim()?.charAt(0)?.toUpperCase() || 'S'}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors truncate">{s.name}</div>
+                        <div className="text-xs text-gray-500 truncate">{s.rollNumber}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-sm text-gray-600 font-mono">{s.rollNumber}</td>
+                  <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      {isEditingAttendance && batchTotalClasses > 0 ? (
+                        <>
+                          <input
+                            type="number"
+                            min="0"
+                            max={batchTotalClasses}
+                            value={localAttendance[s.id] ?? 0}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setLocalAttendance({ ...localAttendance, [s.id]: Math.min(val, batchTotalClasses) });
+                            }}
+                            className="w-16 px-2 py-1 rounded border border-teal-200 focus:ring-2 focus:ring-teal-100 outline-none font-medium"
+                          />
+                          <span className="text-gray-400 font-medium">/ {batchTotalClasses}</span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-gray-700">
+                          {s.totalAttendance} / {s.totalClasses}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center">
+                      {renderPerformanceStars(s.rating)}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-medium text-gray-500">
-          Showing {rangeStart}-{rangeEnd} of {sortedBatchStudents.length} students
+          Showing {rangeStart}-{rangeEnd} of {totalStudents} students
         </p>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button

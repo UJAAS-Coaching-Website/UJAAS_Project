@@ -64,6 +64,7 @@ import { generateInitialPassword } from '../utils/passwords';
 import { getAttendanceRatingValue } from '../utils/profile';
 import { withStoredRemarks, writeStoredRemarks } from '../utils/studentRemarks';
 import { formatLinkSummary } from '../utils/subjectAlerts';
+import { fetchStudents as apiFetchStudents } from '../api/students';
 const AdminBatchSelectionTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminBatchSelectionTab })));
 const AdminQueriesManagementTab = lazy(() => import('./admin/AdminDashboardSections').then(m => ({ default: m.AdminQueriesManagementTab })));
 const AdminStudentsTab = lazy(() => import('./admin/AdminStudentsTab').then(m => ({ default: m.AdminStudentsTab })));
@@ -924,7 +925,6 @@ export function AdminDashboard({
                 {adminSection === 'students' && (
                   <AdminStudentsTab
                     batches={batches}
-                    studentsData={adminStudents}
                     onViewStudent={(s) => openStudentRatings(apiToLocalStudent(s))}
                   />
                 )}
@@ -2330,17 +2330,20 @@ function StudentsTab({
   isBatchActive?: boolean;
 }) {
   const STUDENTS_PER_PAGE = 20;
-  const batchStudents = students.filter(s => s.batch === selectedBatch);
+  const [pageStudents, setPageStudents] = useState<Student[]>([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'name' | 'roll'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const didMountRef = useRef(false);
   const normalizeName = (value: string | null | undefined) => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const normalizeRollDigits = (value: string | null | undefined) => {
     const digits = String(value || '').replace(/[^0-9]/g, '');
     const parsed = Number.parseInt(digits, 10);
     return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
   };
-  const sortedBatchStudents = [...batchStudents].sort((a, b) => {
+  const sortedBatchStudents = [...pageStudents].sort((a, b) => {
     if (sortBy === 'name') {
       const aName = normalizeName(a.name);
       const bName = normalizeName(b.name);
@@ -2352,29 +2355,97 @@ function StudentsTab({
     const diff = aSafe - bSafe || normalizeName(a.name).localeCompare(normalizeName(b.name));
     return sortOrder === 'asc' ? diff : -diff;
   });
-  const totalPages = Math.max(1, Math.ceil(sortedBatchStudents.length / STUDENTS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalStudents / STUDENTS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginatedStudents = sortedBatchStudents.slice(
-    (safeCurrentPage - 1) * STUDENTS_PER_PAGE,
-    safeCurrentPage * STUDENTS_PER_PAGE
-  );
-  const rangeStart = sortedBatchStudents.length === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
-  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, sortedBatchStudents.length);
+  const rangeStart = totalStudents === 0 ? 0 : (safeCurrentPage - 1) * STUDENTS_PER_PAGE + 1;
+  const rangeEnd = Math.min(safeCurrentPage * STUDENTS_PER_PAGE, totalStudents);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+
+    apiFetchStudents({
+      batch: selectedBatch,
+      page: currentPage,
+      limit: STUDENTS_PER_PAGE,
+      sortBy: sortBy === 'roll' ? 'roll_number' : 'name',
+      sortOrder,
+    })
+      .then((response) => {
+        if (!active) return;
+        const nextStudents: Student[] = response.students.map((student) => {
+          const subjectRatings = (student as any).subject_ratings || {};
+          const subjectValues = Object.values(subjectRatings) as any[];
+          const overallFromSubjects = subjectValues.length > 0
+            ? subjectValues.reduce((acc: number, curr: any) => {
+                const attendanceRating = getAttendanceRatingValue(curr.attendance, curr.total_classes, curr.attendanceRating ?? curr.attendance_rating);
+                return acc + (attendanceRating + curr.tests + curr.dppPerformance + curr.behavior) / 4;
+              }, 0) / subjectValues.length
+            : null;
+
+          return {
+            id: student.id,
+            name: student.name,
+            avatarUrl: (student as any).avatarUrl ?? (student as any).avatar_url ?? null,
+            avatar_url: (student as any).avatar_url ?? null,
+            rollNumber: student.roll_number,
+            enrolledCourses: student.assigned_batch ? [student.assigned_batch.name] : [],
+            joinDate: student.join_date || '',
+            performance: 0,
+            rating: overallFromSubjects ?? ((student.rating_attendance + student.rating_assignments + student.rating_participation + student.rating_behavior) / 4),
+            batch: student.assigned_batch?.name || 'Unassigned',
+            email: student.email || '',
+            phoneNumber: student.phone || '',
+            dateOfBirth: student.date_of_birth || '',
+            address: student.address || '',
+            parentContact: student.parent_contact || '',
+            subjectRatings,
+            subjectRemarks: (student as any).subject_remarks || {},
+            adminRemark: (student as any).admin_remark || '',
+          };
+        });
+
+        setPageStudents(nextStudents);
+        setTotalStudents(response.pagination.total);
+        setCurrentPage(response.pagination.page);
+      })
+      .catch((error) => {
+        console.error('Failed to load batch students:', error);
+        if (!active) return;
+        setPageStudents([]);
+        setTotalStudents(0);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBatch, currentPage, sortBy, sortOrder, students]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedBatch, students.length]);
+  }, [selectedBatch]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Batch Students</h2>
-          <p className="text-gray-500">{selectedBatch} • {batchStudents.length} Students</p>
+          <p className="text-gray-500">{selectedBatch} • {totalStudents} Students</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -2408,7 +2479,14 @@ function StudentsTab({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {paginatedStudents.map((s) => (
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="py-4 px-4">
+                  <TableRowsSkeleton rows={Math.min(STUDENTS_PER_PAGE, 8)} />
+                </td>
+              </tr>
+            ) : (
+              sortedBatchStudents.map((s) => (
               <tr key={s.id} onClick={() => onViewStudent(s)} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
                 <td className="py-4 px-4">
                   <div className="font-bold text-gray-900 group-hover:text-teal-600 transition-colors">{s.name}</div>
@@ -2436,13 +2514,14 @@ function StudentsTab({
                   ) : null}
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
       <div className="mt-6 flex flex-col gap-4 border-t border-gray-100 pt-5 md:flex-row md:items-center md:justify-between">
         <p className="text-sm font-medium text-gray-500">
-          Showing {rangeStart}-{rangeEnd} of {sortedBatchStudents.length} students
+          Showing {rangeStart}-{rangeEnd} of {totalStudents} students
         </p>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
