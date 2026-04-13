@@ -16,7 +16,7 @@ import { useIsMobileViewport } from '../hooks/useViewport';
 const socialLinks = [
   { icon: Facebook, link: 'https://www.facebook.com/100088932682619/', color: 'hover:text-blue-400', label: 'Facebook' },
   { icon: Instagram, link: 'https://www.instagram.com/ujas2.0careerinstitute/', color: 'hover:text-pink-400', label: 'Instagram' },
-  { icon: Youtube, link: 'https://youtube.com/@ujas2.0careerinstitute?si=S7-TrfZ1Q1v4UCL-', color: 'hover:text-red-500', label: 'YouTube' },
+  { icon: Youtube, link: 'https://www.youtube.com/@ujaascareerinstitute', color: 'hover:text-red-500', label: 'YouTube' },
 ];
 
 const courses = [
