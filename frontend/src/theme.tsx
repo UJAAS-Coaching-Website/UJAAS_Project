@@ -10,10 +10,16 @@ type ThemeContextValue = {
 };
 
 const THEME_STORAGE_KEY = 'ujaas-theme';
+// Keep dark mode disabled in production for now. Set to true when theme toggle goes live.
+const ENABLE_THEME_TOGGLE = false;
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getInitialTheme(): Theme {
+  if (!ENABLE_THEME_TOGGLE) {
+    return 'light';
+  }
+
   if (typeof window === 'undefined') {
     return 'light';
   }
@@ -29,19 +35,25 @@ function getInitialTheme(): Theme {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
 
+  const resolvedTheme: Theme = ENABLE_THEME_TOGGLE ? theme : 'light';
+
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle('theme-dark', theme === 'dark');
-    root.setAttribute('data-theme', theme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  }, [theme]);
+    root.classList.toggle('theme-dark', resolvedTheme === 'dark');
+    root.setAttribute('data-theme', resolvedTheme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, resolvedTheme);
+  }, [resolvedTheme]);
+
+  const applyTheme = (nextTheme: Theme) => {
+    setTheme(ENABLE_THEME_TOGGLE ? nextTheme : 'light');
+  };
 
   const value = useMemo<ThemeContextValue>(() => ({
-    theme,
-    isDark: theme === 'dark',
-    toggleTheme: () => setTheme((current) => (current === 'dark' ? 'light' : 'dark')),
-    setTheme,
-  }), [theme]);
+    theme: resolvedTheme,
+    isDark: resolvedTheme === 'dark',
+    toggleTheme: () => setTheme((current) => (ENABLE_THEME_TOGGLE ? (current === 'dark' ? 'light' : 'dark') : 'light')),
+    setTheme: applyTheme,
+  }), [resolvedTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
