@@ -226,7 +226,8 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
                 </div>
               </div>
               <div className="shrink-0">
-                <ThemeToggle compact={isMobileViewport} />
+                {/* Toggle visibility control for main branch: change false to true to show this button again. */}
+                {false && <ThemeToggle compact={isMobileViewport} />}
               </div>
             </div>
           </div>

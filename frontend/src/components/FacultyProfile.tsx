@@ -134,7 +134,8 @@ export function FacultyProfile({ user, onLogout }: FacultyProfileProps) {
                 </div>
               </div>
               <div className="shrink-0">
-                <ThemeToggle />
+                {/* Toggle visibility control for main branch: change false to true to show this button again. */}
+                {false && <ThemeToggle />}
               </div>
             </div>
           </div>
