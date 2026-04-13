@@ -6,11 +6,14 @@ import {
   ArrowLeft,
   Calendar,
   Target,
+  Download,
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
-import { fetchDppAnalysis, type ApiDppAnalysis } from '../api/dpps';
-import { mapApiDppQuestionsToAnalytics } from '../utils/testMappings';
+import { fetchDppAnalysis, fetchDppById, type ApiDppAnalysis } from '../api/dpps';
+import { mapApiDppQuestionsToAnalytics, mapApiQuestionToPublishedQuestion } from '../utils/testMappings';
 import { TableRowsSkeleton } from './ui/content-skeletons';
+import { printTestPaperPdf } from '../utils/testPaperPrint';
+import logo from '../assets/logo.svg';
 
 interface DppPerformanceInsightsProps {
   dppTitle: string;
@@ -30,6 +33,7 @@ export function DppPerformanceInsights({
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const searchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -90,6 +94,42 @@ export function DppPerformanceInsights({
     };
   };
 
+  const handleDownloadDppPDF = async () => {
+    setIsDownloadingPdf(true);
+
+    try {
+      const dpp = await fetchDppById(dppId);
+      const resolvedQuestions = (dpp.questions || []).map(mapApiQuestionToPublishedQuestion);
+
+      if (!resolvedQuestions.length) {
+        window.alert('No DPP questions were found for this paper.');
+        return;
+      }
+
+      const totalMarks = resolvedQuestions.reduce((sum, question) => sum + Number(question.marks || 0), 0);
+
+      await printTestPaperPdf({
+        title: dppTitle,
+        duration: 0,
+        totalMarks,
+        totalQuestions: resolvedQuestions.length,
+        instructions: undefined,
+        questions: resolvedQuestions,
+        logoSrc: logo,
+        documentLabel: 'DPP',
+        codeLabel: '',
+        batchName: dpp.batch_name,
+        subjectName: dpp.subject_name,
+        groupBySubject: false,
+      });
+    } catch (error) {
+      console.error('Failed to download DPP paper PDF', error);
+      window.alert('Failed to download the DPP paper. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   if (selectedStudent) {
     const attempts = selectedStudent.attempts || [];
     const currentAttempt = attempts[selectedAttemptIndex] || attempts[0];
@@ -128,7 +168,9 @@ export function DppPerformanceInsights({
             setSelectedAttemptIndex(0);
           }}
           hideExplanations={true}
-          hideDownload={true}
+          downloadType="dpp"
+          downloadBatchName={currentAttempt?.batch_name}
+          downloadSubjectName={currentAttempt?.subject_name}
           hideRank={true}
           hideTimeSpent={true}
           subtitle="DPP Performance Summary"
@@ -146,7 +188,7 @@ export function DppPerformanceInsights({
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
@@ -159,6 +201,14 @@ export function DppPerformanceInsights({
                 <p className="text-gray-500">Performance Insights & Student Attempts</p>
               </div>
             </div>
+            <button
+              onClick={handleDownloadDppPDF}
+              disabled={isDownloadingPdf}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg disabled:cursor-wait disabled:opacity-80"
+            >
+              <Download className="w-4 h-4" />
+              {isDownloadingPdf ? 'Preparing PDF...' : 'Download DPP Paper'}
+            </button>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">

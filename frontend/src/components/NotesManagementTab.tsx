@@ -1036,7 +1036,7 @@ export function NotesManagementTab({
               )
             ) : (
               variant !== 'student' ? (
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:gap-5 sm:p-5 lg:grid-cols-3">
               {loadingDpps ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <DppCardSkeleton key={`dpp-skeleton-${index}`} />
@@ -1047,19 +1047,33 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : 'cursor-pointer'
+                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 pb-5 shadow-lg transition-opacity sm:p-5 sm:pb-6 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : 'cursor-pointer'
                     }`}
                   onClick={() => { void handleOpenAdminFacultyPreview(item.id); }}
                 >
                   <div className="flex h-full flex-col gap-3">
                     <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
-                          {item.subject_name}
-                        </span>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 sm:px-2.5 sm:text-xs">
-                          {item.question_count} Questions
-                        </span>
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                          <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-bold text-orange-700 sm:px-2.5 sm:text-xs">
+                            {item.subject_name}
+                          </span>
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700 sm:px-2.5 sm:text-xs">
+                            {item.question_count} Questions
+                          </span>
+                        </div>
+                        {variant === 'faculty' && canManageContent && (
+                          <button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleDeleteDPP(item.id);
+                            }}
+                            className="shrink-0 rounded-lg p-2 text-red-600 transition hover:bg-red-50"
+                            title="Delete DPP"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                       <h4 className="text-base font-bold text-gray-900 sm:text-lg">{item.title}</h4>
                       <p className="mt-1 text-xs text-gray-500 sm:text-sm">
@@ -1094,7 +1108,7 @@ export function NotesManagementTab({
                             {analyticsLoadingDppId === item.id ? 'Loading...' : 'Analytics'}
                           </button>
                         </div>
-                      {canManageContent && (
+                      {canManageContent && variant !== 'faculty' && (
                         <button
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1124,7 +1138,7 @@ export function NotesManagementTab({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04 }}
-                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 shadow-lg transition-opacity sm:p-5 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : ''
+                  className={`h-full rounded-2xl border border-white bg-white/80 p-4 pb-5 shadow-lg transition-opacity sm:p-5 sm:pb-6 ${previewingDppId === item.id ? 'cursor-wait opacity-70' : ''
                     }`}
                 >
                   <div className="flex h-full flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-x-6">
