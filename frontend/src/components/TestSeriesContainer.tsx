@@ -589,6 +589,7 @@ export function TestSeriesContainer({
       <StudentAnalytics
         result={mapApiAttemptResultToAnalytics(testState.result)}
         attemptHistory={testState.history || []}
+        viewerType="student"
         onSelectAttempt={(attemptId) => {
           void openAttemptAnalytics(attemptId);
         }}

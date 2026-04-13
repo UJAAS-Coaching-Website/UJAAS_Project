@@ -163,6 +163,7 @@ export function DppPerformanceInsights({
         </div>
         <StudentAnalytics
           result={currentAttempt}
+          viewerType="faculty"
           onClose={() => {
             setSelectedStudent(null);
             setSelectedAttemptIndex(0);

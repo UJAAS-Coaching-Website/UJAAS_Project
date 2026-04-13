@@ -76,6 +76,7 @@ interface StudentAnalyticsProps {
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
   loadingAttemptId?: string | null;
+  viewerType?: 'student' | 'faculty';
 }
 
 export function StudentAnalytics({
@@ -94,7 +95,8 @@ export function StudentAnalytics({
   subtitle = 'Detailed Performance Analysis',
   attemptHistory = [],
   onSelectAttempt,
-  loadingAttemptId = null
+  loadingAttemptId = null,
+  viewerType = 'student'
 }: StudentAnalyticsProps) {
   const isMobileViewport = useIsMobileViewport();
   const [showReview, setShowReview] = useState(false);
@@ -106,6 +108,35 @@ export function StudentAnalytics({
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const subjectWiseStats = aggregateSubjectWiseStats(result.questions);
+
+  const numericRank = typeof result.rank === 'number' && Number.isFinite(result.rank) && result.rank > 0
+    ? result.rank
+    : null;
+  const numericTotalStudents = typeof result.totalStudents === 'number'
+    && Number.isFinite(result.totalStudents)
+    && result.totalStudents > 0
+    ? result.totalStudents
+    : null;
+
+  const hasRankData = numericRank !== null && numericTotalStudents !== null;
+  const normalizedRank = hasRankData ? Math.min(numericRank as number, numericTotalStudents as number) : null;
+  const percentile = hasRankData
+    ? (1 - (((normalizedRank as number) - 1) / (numericTotalStudents as number))) * 100
+    : null;
+
+  const getRankBadgeLabel = () => {
+    if (!hasRankData || (numericTotalStudents as number) < 10) return null;
+    if ((normalizedRank as number) === 1) return 'Test Topper';
+    if ((percentile as number) >= 99) return 'Top 1%';
+    if ((percentile as number) >= 95) return 'Top 5%';
+    if ((percentile as number) >= 90) return 'Top 10%';
+    if ((percentile as number) >= 75) return 'Top 25%';
+    return null;
+  };
+
+  const rankBadgeLabel = getRankBadgeLabel();
+  const showImprovementCue = hasRankData && !rankBadgeLabel && (numericTotalStudents as number) >= 10;
+  const improvementCueText = viewerType === 'faculty' ? 'Outside top performance band' : 'Keep pushing';
 
   useEffect(() => {
     if (!showReview) return;
@@ -303,10 +334,13 @@ export function StudentAnalytics({
                   <p className="text-blue-100 text-xs md:text-sm mb-1">Your Rank</p>
                   <p className="text-3xl md:text-5xl font-bold mb-1">#{result.rank ?? 0}</p>
                   <p className="text-blue-100 hidden md:block">out of {result.totalStudents ?? 0}</p>
-                  {!isMobileViewport && (
+                  {!isMobileViewport && rankBadgeLabel && (
                     <div className="mt-2 md:mt-3 px-3 md:px-4 py-1 bg-white/20 backdrop-blur-sm rounded-full inline-flex items-center justify-center">
-                      <span className="text-base md:text-lg font-bold">Top Performance</span>
+                      <span className="text-base md:text-lg font-bold">{rankBadgeLabel}</span>
                     </div>
+                  )}
+                  {!isMobileViewport && showImprovementCue && (
+                    <p className="mt-2 md:mt-3 text-sm text-blue-100/90">{improvementCueText}</p>
                   )}
                 </div>
               ) : null}
