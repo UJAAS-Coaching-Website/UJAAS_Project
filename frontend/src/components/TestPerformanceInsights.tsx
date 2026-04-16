@@ -11,11 +11,11 @@ import {
   Download,
 } from 'lucide-react';
 import { StudentAnalytics } from './StudentAnalytics';
-import { fetchTestAnalysis, fetchTestById } from '../api/tests';
+import { clearCachedTestInsights, fetchAttemptResult, fetchTestAnalysis, fetchTestById, fetchTestStudentAnalysis, type ApiTestStudentAnalysis } from '../api/tests';
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
 import {
-  mapApiAttemptQuestionsToAnalytics,
+  mapApiAttemptResultToAnalytics,
   mapApiQuestionToPublishedQuestion,
 } from '../utils/testMappings';
 import { TableRowsSkeleton } from './ui/content-skeletons';
@@ -31,7 +31,6 @@ export interface StudentPerformance {
   accuracy: number;
   rank: number;
   timeSpent: number;
-  attempts: any[];
 }
 
 interface TestPerformanceInsightsProps {
@@ -54,18 +53,30 @@ export function TestPerformanceInsights({
   testInstructions,
 }: TestPerformanceInsightsProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentPerformance | null>(null);
+  const [selectedStudentAnalysis, setSelectedStudentAnalysis] = useState<ApiTestStudentAnalysis | null>(null);
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [performances, setPerformances] = useState<StudentPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingStudentId, setLoadingStudentId] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const searchTimerRef = useRef<number | null>(null);
+  const tableLoadControllerRef = useRef<AbortController | null>(null);
+  const studentLoadControllerRef = useRef<AbortController | null>(null);
+
+  const isAbortError = (error: unknown) =>
+    error instanceof DOMException
+      ? error.name === 'AbortError'
+      : (error as { name?: string } | null)?.name === 'AbortError';
 
   useEffect(() => {
     const loadAnalysis = async () => {
+      tableLoadControllerRef.current?.abort();
+      const controller = new AbortController();
+      tableLoadControllerRef.current = controller;
       setIsLoading(true);
       try {
-        const analysis = await fetchTestAnalysis(testId, searchQuery);
+        const analysis = await fetchTestAnalysis(testId, searchQuery, { signal: controller.signal });
         setPerformances(
           analysis.performances.map((perf) => ({
             studentId: perf.studentId,
@@ -78,17 +89,19 @@ export function TestPerformanceInsights({
             accuracy: perf.accuracy,
             rank: perf.rank,
             timeSpent: perf.timeSpent,
-            attempts: perf.attempts.map((attempt) => ({
-              ...attempt,
-              questions: mapApiAttemptQuestionsToAnalytics(attempt.questions, { includeNegativeMarks: true }),
-            })),
           }))
         );
       } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
         console.error('Failed to load test analysis', error);
         setPerformances([]);
       } finally {
-        setIsLoading(false);
+        if (tableLoadControllerRef.current === controller) {
+          tableLoadControllerRef.current = null;
+          setIsLoading(false);
+        }
       }
     };
 
@@ -103,8 +116,17 @@ export function TestPerformanceInsights({
       if (searchTimerRef.current) {
         window.clearTimeout(searchTimerRef.current);
       }
+      tableLoadControllerRef.current?.abort();
     };
   }, [testId, searchQuery]);
+
+  useEffect(() => {
+    return () => {
+      tableLoadControllerRef.current?.abort();
+      studentLoadControllerRef.current?.abort();
+      clearCachedTestInsights(testId);
+    };
+  }, [testId]);
 
   const rankedPerformances = useMemo(() => {
     return [...performances].sort((a, b) => (a.rank || 0) - (b.rank || 0));
@@ -167,8 +189,32 @@ export function TestPerformanceInsights({
     }
   };
 
-  if (selectedStudent) {
-    const attempts = selectedStudent.attempts || [];
+  const handleOpenStudentAnalysis = async (performance: StudentPerformance) => {
+    studentLoadControllerRef.current?.abort();
+    const controller = new AbortController();
+    studentLoadControllerRef.current = controller;
+    setLoadingStudentId(performance.studentId);
+    try {
+      const analysis = await fetchTestStudentAnalysis(testId, performance.studentId, { signal: controller.signal });
+      setSelectedStudent(performance);
+      setSelectedStudentAnalysis(analysis);
+      setSelectedAttemptIndex(0);
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+      console.error('Failed to load student analysis', error);
+      window.alert('Failed to load detailed student analysis. Please try again.');
+    } finally {
+      if (studentLoadControllerRef.current === controller) {
+        studentLoadControllerRef.current = null;
+        setLoadingStudentId(null);
+      }
+    }
+  };
+
+  if (selectedStudent && selectedStudentAnalysis) {
+    const attempts = selectedStudentAnalysis.attempts || [];
     const currentAttempt = attempts[selectedAttemptIndex] || attempts[0];
     return (
       <div className="fixed inset-0 bg-white z-[10005] overflow-y-auto">
@@ -200,8 +246,11 @@ export function TestPerformanceInsights({
         <StudentAnalytics
           result={currentAttempt}
           viewerType="faculty"
+          loadDetailedResult={async (attemptId, signal) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId, { expectedTestId: testId, signal }))}
           onClose={() => {
+            studentLoadControllerRef.current?.abort();
             setSelectedStudent(null);
+            setSelectedStudentAnalysis(null);
             setSelectedAttemptIndex(0);
           }}
           hideExplanations={true}
@@ -291,8 +340,7 @@ export function TestPerformanceInsights({
                       <tr
                         key={perf.studentId}
                         onClick={() => {
-                          setSelectedStudent(perf);
-                          setSelectedAttemptIndex(0);
+                          void handleOpenStudentAnalysis(perf);
                         }}
                         className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                       >
@@ -349,9 +397,16 @@ export function TestPerformanceInsights({
                           </div>
                         </td>
                         <td className="px-3 py-3 sm:px-6 sm:py-4">
-                          <button className="flex items-center gap-1 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700">
-                            View Details
-                            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:translate-x-1" />
+                          <button
+                            disabled={loadingStudentId === perf.studentId}
+                            className={`flex items-center gap-1 text-xs sm:text-sm font-bold ${
+                              loadingStudentId === perf.studentId
+                                ? 'text-blue-400 cursor-wait'
+                                : 'text-blue-600 hover:text-blue-700'
+                            }`}
+                          >
+                            {loadingStudentId === perf.studentId ? 'Loading...' : 'View Details'}
+                            <ChevronRight className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loadingStudentId === perf.studentId ? '' : 'transition-transform group-hover:translate-x-1'}`} />
                           </button>
                         </td>
                       </tr>

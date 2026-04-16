@@ -1288,7 +1288,7 @@ export async function getTestAttemptAnalysis(testId, search) {
         `, searchTerm ? [testId, searchTerm] : [testId]),
     ]);
 
-    const allAttempts = await Promise.all(allAttemptsResult.rows.map(async (row) => ({
+    const allAttempts = allAttemptsResult.rows.map((row) => ({
         attemptId: row.id,
         studentId: row.student_id,
         studentName: row.student_name,
@@ -1301,8 +1301,7 @@ export async function getTestAttemptAnalysis(testId, search) {
             ? Number((((Number(row.correct_answers || 0) / Number(row.total_questions || 1)) * 100).toFixed(1)))
             : 0,
         timeSpent: Number(row.time_spent || 0),
-        result: await buildAttemptResult(row.id),
-    })));
+    }));
 
     const firstAttempts = new Map(
         firstAttemptsResult.rows.map((row) => [
@@ -1341,16 +1340,45 @@ export async function getTestAttemptAnalysis(testId, search) {
                 accuracy: first?.accuracy ?? attempt.accuracy,
                 rank: first?.rank ?? 0,
                 timeSpent: first?.timeSpent ?? attempt.timeSpent,
-                attempts: [attempt.result],
             });
             continue;
         }
 
         existing.attemptCount += 1;
-        existing.attempts.push(attempt.result);
     }
 
     return Array.from(grouped.values());
+}
+
+export async function getStudentTestAttemptAnalysis(testId, studentId) {
+    const attemptsResult = await pool.query(`
+        SELECT
+            ta.id,
+            ta.attempt_no,
+            ta.submitted_at,
+            u.name AS student_name
+        FROM test_attempts ta
+        JOIN users u ON u.id = ta.student_id
+        WHERE ta.test_id = $1
+          AND ta.student_id = $2
+          AND ta.submitted_at IS NOT NULL
+        ORDER BY ta.attempt_no ASC, ta.submitted_at ASC
+    `, [testId, studentId]);
+
+    if (attemptsResult.rowCount === 0) {
+        return null;
+    }
+
+    const attempts = await Promise.all(
+        attemptsResult.rows.map((row) => buildAttemptSummaryResult(row.id))
+    );
+
+    return {
+        testId,
+        studentId,
+        studentName: attemptsResult.rows[0].student_name,
+        attempts,
+    };
 }
 
 /**

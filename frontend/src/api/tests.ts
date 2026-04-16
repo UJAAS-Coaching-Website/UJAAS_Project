@@ -260,17 +260,24 @@ export interface ApiTestAnalysisPerformance {
     studentName: string;
     attemptCount: number;
     latestSubmittedAt: string;
+    firstSubmittedAt?: string;
     score: number;
     totalMarks: number;
     accuracy: number;
     rank: number;
     timeSpent: number;
-    attempts: ApiAttemptResult[];
 }
 
 export interface ApiTestAnalysis {
     testId: string;
     performances: ApiTestAnalysisPerformance[];
+}
+
+export interface ApiTestStudentAnalysis {
+    testId: string;
+    studentId: string;
+    studentName: string;
+    attempts: ApiAttemptSummaryResult[];
 }
 
 export interface CreateTestPayload {
@@ -294,6 +301,7 @@ export const setTestsCache = (data: ApiTest[] | null) => { testsCache = data; };
 type AnalysisCacheOptions = {
     forceRefresh?: boolean;
     expectedTestId?: string;
+    signal?: AbortSignal;
 };
 
 let testAnalysisCacheOwner: string | null = null;
@@ -305,6 +313,10 @@ const testAttemptSummaryCache = new Map<string, ApiAttemptSummary>();
 const testAttemptSummaryInFlight = new Map<string, Promise<ApiAttemptSummary>>();
 const myAttemptResultsCache = new Map<string, ApiStudentAttemptResultListItem[]>();
 const myAttemptResultsInFlight = new Map<string, Promise<ApiStudentAttemptResultListItem[]>>();
+const testAnalysisTableCache = new Map<string, ApiTestAnalysis>();
+const testAnalysisTableInFlight = new Map<string, Promise<ApiTestAnalysis>>();
+const testAnalysisDetailCache = new Map<string, ApiTestStudentAnalysis>();
+const testAnalysisDetailInFlight = new Map<string, Promise<ApiTestStudentAnalysis>>();
 
 const hasAnalysisCacheOwner = () => Boolean(testAnalysisCacheOwner);
 const analysisCacheKey = (id: string) => `${testAnalysisCacheOwner}:${id}`;
@@ -323,6 +335,10 @@ export function clearTestAnalysisCache() {
     testAttemptSummaryInFlight.clear();
     myAttemptResultsCache.clear();
     myAttemptResultsInFlight.clear();
+    testAnalysisTableCache.clear();
+    testAnalysisTableInFlight.clear();
+    testAnalysisDetailCache.clear();
+    testAnalysisDetailInFlight.clear();
 }
 
 export function setTestAnalysisCacheOwner(userId: string | null) {
@@ -369,6 +385,34 @@ export function clearTestAttemptCaches(testId?: string) {
 
     testAttemptSummaryCache.clear();
     testAttemptSummaryInFlight.clear();
+}
+
+export function clearCachedTestInsights(testId?: string) {
+    if (!hasAnalysisCacheOwner()) return;
+
+    if (!testId) {
+        testAnalysisTableCache.clear();
+        testAnalysisTableInFlight.clear();
+        testAnalysisDetailCache.clear();
+        testAnalysisDetailInFlight.clear();
+        return;
+    }
+
+    const tablePrefix = analysisCacheKey(`table:${testId}:`);
+    const detailPrefix = analysisCacheKey(`detail:${testId}:`);
+
+    Array.from(testAnalysisTableCache.keys()).forEach((key) => {
+        if (key.startsWith(tablePrefix)) testAnalysisTableCache.delete(key);
+    });
+    Array.from(testAnalysisTableInFlight.keys()).forEach((key) => {
+        if (key.startsWith(tablePrefix)) testAnalysisTableInFlight.delete(key);
+    });
+    Array.from(testAnalysisDetailCache.keys()).forEach((key) => {
+        if (key.startsWith(detailPrefix)) testAnalysisDetailCache.delete(key);
+    });
+    Array.from(testAnalysisDetailInFlight.keys()).forEach((key) => {
+        if (key.startsWith(detailPrefix)) testAnalysisDetailInFlight.delete(key);
+    });
 }
 
 export function seedAttemptResultCache(result: ApiAttemptResult) {
@@ -462,7 +506,7 @@ export async function fetchMyAttemptResults(options: AnalysisCacheOptions = {}):
 
 export async function fetchAttemptResult(attemptId: string, options: AnalysisCacheOptions = {}): Promise<ApiAttemptResult> {
     if (!hasAnalysisCacheOwner()) {
-        return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`);
+        return request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`, { signal: options.signal });
     }
 
     const cacheKey = analysisCacheKey(attemptId);
@@ -472,6 +516,15 @@ export async function fetchAttemptResult(attemptId: string, options: AnalysisCac
     }
     if (cached && !hasExpectedTest(cached, options.expectedTestId)) {
         attemptResultCache.delete(cacheKey);
+    }
+
+    if (options.signal) {
+        const result = await request<ApiAttemptResult>(`/api/tests/attempts/${attemptId}/result`, { signal: options.signal });
+        if (!hasExpectedTest(result, options.expectedTestId)) {
+            throw new Error('Attempt result belongs to a different test');
+        }
+        attemptResultCache.set(cacheKey, result);
+        return result;
     }
 
     if (!options.forceRefresh && attemptResultInFlight.has(cacheKey)) {
@@ -603,9 +656,71 @@ export async function submitMyAttempt(
     return result;
 }
 
-export async function fetchTestAnalysis(testId: string, search?: string): Promise<ApiTestAnalysis> {
-    const query = search && search.trim().length > 0
-        ? `?search=${encodeURIComponent(search.trim())}`
+export async function fetchTestAnalysis(testId: string, search?: string, options: AnalysisCacheOptions = {}): Promise<ApiTestAnalysis> {
+    const normalizedSearch = search?.trim().toLowerCase() || '';
+    const query = normalizedSearch
+        ? `?search=${encodeURIComponent(normalizedSearch)}`
         : "";
-    return request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis${query}`);
+
+    if (!hasAnalysisCacheOwner()) {
+        return request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis${query}`, { signal: options.signal });
+    }
+
+    const cacheKey = analysisCacheKey(`table:${testId}:${normalizedSearch || 'all'}`);
+    if (!options.forceRefresh && testAnalysisTableCache.has(cacheKey)) {
+        return testAnalysisTableCache.get(cacheKey) as ApiTestAnalysis;
+    }
+
+    if (options.signal) {
+        const analysis = await request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis${query}`, { signal: options.signal });
+        testAnalysisTableCache.set(cacheKey, analysis);
+        return analysis;
+    }
+
+    if (!options.forceRefresh && testAnalysisTableInFlight.has(cacheKey)) {
+        return testAnalysisTableInFlight.get(cacheKey) as Promise<ApiTestAnalysis>;
+    }
+
+    const pending = request<ApiTestAnalysis>(`/api/tests/${testId}/attempts/analysis${query}`)
+        .then((analysis) => {
+            testAnalysisTableCache.set(cacheKey, analysis);
+            return analysis;
+        })
+        .finally(() => {
+            testAnalysisTableInFlight.delete(cacheKey);
+        });
+    testAnalysisTableInFlight.set(cacheKey, pending);
+    return pending;
+}
+
+export async function fetchTestStudentAnalysis(testId: string, studentId: string, options: AnalysisCacheOptions = {}): Promise<ApiTestStudentAnalysis> {
+    if (!hasAnalysisCacheOwner()) {
+        return request<ApiTestStudentAnalysis>(`/api/tests/${testId}/attempts/analysis/${studentId}`, { signal: options.signal });
+    }
+
+    const cacheKey = analysisCacheKey(`detail:${testId}:${studentId}`);
+    if (!options.forceRefresh && testAnalysisDetailCache.has(cacheKey)) {
+        return testAnalysisDetailCache.get(cacheKey) as ApiTestStudentAnalysis;
+    }
+
+    if (options.signal) {
+        const analysis = await request<ApiTestStudentAnalysis>(`/api/tests/${testId}/attempts/analysis/${studentId}`, { signal: options.signal });
+        testAnalysisDetailCache.set(cacheKey, analysis);
+        return analysis;
+    }
+
+    if (!options.forceRefresh && testAnalysisDetailInFlight.has(cacheKey)) {
+        return testAnalysisDetailInFlight.get(cacheKey) as Promise<ApiTestStudentAnalysis>;
+    }
+
+    const pending = request<ApiTestStudentAnalysis>(`/api/tests/${testId}/attempts/analysis/${studentId}`)
+        .then((analysis) => {
+            testAnalysisDetailCache.set(cacheKey, analysis);
+            return analysis;
+        })
+        .finally(() => {
+            testAnalysisDetailInFlight.delete(cacheKey);
+        });
+    testAnalysisDetailInFlight.set(cacheKey, pending);
+    return pending;
 }

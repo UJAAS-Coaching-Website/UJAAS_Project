@@ -13,6 +13,7 @@ import {
     getAttemptResult,
     getAttemptQuestionExplanation,
     getTestAnalysis,
+    getTestStudentAnalysis,
     handleCreateTest,
     handleUpdateTestStatus,
     handleDeleteTest,
@@ -35,11 +36,12 @@ router.post(
         `attempts:${req.params.attemptId}:*`,
         `user:*:attempts:${req.params.attemptId}:*`,
         `student:${req.user?.sub}:test:*:summary`,
-        "test:*:analysis",
+        "test:*:analysis*",
     ]),
     submitMyAttempt
 );
-router.get("/:id/attempts/analysis", authenticate, requireAnyRole("admin", "faculty"), checkCache(req => `test:${req.params.id}:analysis`, 600), getTestAnalysis);
+router.get("/:id/attempts/analysis/:studentId", authenticate, requireAnyRole("admin", "faculty"), checkCache(req => `test:${req.params.id}:analysis:student:${req.params.studentId}`, 600), getTestStudentAnalysis);
+router.get("/:id/attempts/analysis", authenticate, requireAnyRole("admin", "faculty"), checkCache(req => `test:${req.params.id}:analysis:${String(req.query.search || '').trim().toLowerCase() || 'all'}`, 600), getTestAnalysis);
 router.get("/:id/attempts", authenticate, requireRole("student"), checkCache(req => `student:${req.user?.sub}:test:${req.params.id}:summary`, 600), getMyTestAttemptSummary);
 router.post("/:id/attempts/start", authenticate, requireRole("student"), invalidateCache(req => [`student:${req.user?.sub}:*`]), startMyTestAttempt);
 
@@ -49,9 +51,9 @@ router.get("/", authenticate, requireAnyRole("admin", "faculty", "student"), lis
 router.get("/:id", authenticate, requireAnyRole("admin", "faculty", "student"), getTest);
 
 // Modification routes
-router.post("/", authenticate, requireRole("admin"), invalidateCache(['tests:list:*', 'user:*:attempts:*']), handleCreateTest);
-router.put("/:id", authenticate, requireAnyRole("admin", "faculty"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*']), handleUpdateTest);
-router.patch("/:id/status", authenticate, requireRole("admin"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*']), handleUpdateTestStatus);
-router.delete("/:id", authenticate, requireRole("admin"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*']), handleDeleteTest);
+router.post("/", authenticate, requireRole("admin"), invalidateCache(['tests:list:*', 'user:*:attempts:*', 'test:*:analysis*']), handleCreateTest);
+router.put("/:id", authenticate, requireAnyRole("admin", "faculty"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*', 'test:*:analysis*']), handleUpdateTest);
+router.patch("/:id/status", authenticate, requireRole("admin"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*', 'test:*:analysis*']), handleUpdateTestStatus);
+router.delete("/:id", authenticate, requireRole("admin"), invalidateCache(req => ['tests:list:*', `test:${req.params.id}:*`, 'user:*:attempts:*', 'test:*:analysis*']), handleDeleteTest);
 
 export default router;

@@ -84,7 +84,7 @@ interface StudentAnalyticsProps {
   subtitle?: string;
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
-  loadDetailedResult?: (attemptId: string) => Promise<TestResult>;
+  loadDetailedResult?: (attemptId: string, signal?: AbortSignal) => Promise<TestResult>;
   loadingAttemptId?: string | null;
   viewerType?: 'student' | 'faculty';
 }
@@ -114,6 +114,7 @@ export function StudentAnalytics({
   const [detailedResult, setDetailedResult] = useState<TestResult | null>(null);
   const [isLoadingDetailedResult, setIsLoadingDetailedResult] = useState(false);
   const reviewRef = useRef<HTMLDivElement | null>(null);
+  const detailedResultControllerRef = useRef<AbortController | null>(null);
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
     : '0.0';
@@ -151,6 +152,10 @@ export function StudentAnalytics({
   const rankBadgeLabel = getRankBadgeLabel();
   const showImprovementCue = hasRankData && !rankBadgeLabel && (numericTotalStudents as number) >= 10;
   const improvementCueText = viewerType === 'faculty' ? 'Outside top performance band' : 'Keep pushing';
+  const isAbortError = (error: unknown) =>
+    error instanceof DOMException
+      ? error.name === 'AbortError'
+      : (error as { name?: string } | null)?.name === 'AbortError';
 
   useEffect(() => {
     if (!showReview) return;
@@ -161,9 +166,18 @@ export function StudentAnalytics({
   }, [showReview]);
 
   useEffect(() => {
+    detailedResultControllerRef.current?.abort();
+    detailedResultControllerRef.current = null;
+    setIsLoadingDetailedResult(false);
     setDetailedResult(null);
     setShowReview(false);
   }, [(result as ApiAttemptSummaryResult).attempt_id]);
+
+  useEffect(() => {
+    return () => {
+      detailedResultControllerRef.current?.abort();
+    };
+  }, []);
 
   const reviewAnswers = resolvedQuestions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
@@ -198,13 +212,24 @@ export function StudentAnalytics({
     if (result.questions && result.questions.length > 0) return result as TestResult;
     if (!loadDetailedResult) return null;
 
+    detailedResultControllerRef.current?.abort();
+    const controller = new AbortController();
+    detailedResultControllerRef.current = controller;
     setIsLoadingDetailedResult(true);
     try {
-      const fullResult = await loadDetailedResult((result as ApiAttemptSummaryResult).attempt_id);
+      const fullResult = await loadDetailedResult((result as ApiAttemptSummaryResult).attempt_id, controller.signal);
       setDetailedResult(fullResult);
       return fullResult;
+    } catch (error) {
+      if (isAbortError(error)) {
+        return null;
+      }
+      throw error;
     } finally {
-      setIsLoadingDetailedResult(false);
+      if (detailedResultControllerRef.current === controller) {
+        detailedResultControllerRef.current = null;
+        setIsLoadingDetailedResult(false);
+      }
     }
   };
 

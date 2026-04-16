@@ -12,6 +12,7 @@ import {
     getAttemptQuestionExplanationForUser,
     getStudentAttemptResults,
     getTestAttemptAnalysis,
+    getStudentTestAttemptAnalysis,
     createTest,
     updateTestStatus,
     updateTest,
@@ -394,5 +395,28 @@ export async function getTestAnalysis(req, res) {
     } catch (error) {
         console.error("getTestAnalysis error:", error.message);
         return res.status(500).json({ message: "failed to fetch test analysis", error: error.message });
+    }
+}
+
+export async function getTestStudentAnalysis(req, res) {
+    try {
+        const test = await getTestById(req.params.id);
+        if (!test) {
+            return res.status(404).json({ message: "test not found" });
+        }
+
+        if (test.status === "draft" && req.user?.role !== "admin") {
+            return res.status(403).json({ message: "forbidden: draft tests only visible to admin" });
+        }
+
+        const analysis = await getStudentTestAttemptAnalysis(req.params.id, req.params.studentId);
+        if (!analysis) {
+            return res.status(404).json({ message: "student analysis not found" });
+        }
+
+        return res.status(200).json(analysis);
+    } catch (error) {
+        console.error("getTestStudentAnalysis error:", error.message);
+        return res.status(500).json({ message: "failed to fetch student analysis", error: error.message });
     }
 }
