@@ -275,6 +275,7 @@ function App() {
 
   const [user, setUser] = useState<User | null>(null);
   const [reviewModalTrigger, setReviewModalTrigger] = useState(0);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [studentSubTab, setStudentSubTab] = useState<string | undefined>(undefined);
@@ -1342,26 +1343,32 @@ function App() {
   };
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
-      await logoutRequest();
-    } catch {
-      // Proceed with local cleanup even if API call fails.
+      try {
+        await logoutRequest();
+      } catch {
+        // Proceed with local cleanup even if API call fails.
+      }
+      clearAllApiCaches();
+      // Hard clear all global React states to prevent cross-login stale data mounts
+      setAdminBatches([]);
+      setPublishedTests([]);
+      setAdminFaculties([]);
+      setAdminStudents([]);
+      setAdminSubjects([]);
+      setSelectedPreviewTest(null);
+      setResumeDraftId(null);
+      
+      setUser(null);
+      setAdminBatch(null);
+      setAdminLandingSection('batches');
+      setShowGetStarted(true);
+      window.history.pushState({ view: 'get-started' }, '', '/get-started');
+    } finally {
+      setIsLoggingOut(false);
     }
-    clearAllApiCaches();
-    // Hard clear all global React states to prevent cross-login stale data mounts
-    setAdminBatches([]);
-    setPublishedTests([]);
-    setAdminFaculties([]);
-    setAdminStudents([]);
-    setAdminSubjects([]);
-    setSelectedPreviewTest(null);
-    setResumeDraftId(null);
-    
-    setUser(null);
-    setAdminBatch(null);
-    setAdminLandingSection('batches');
-    setShowGetStarted(true);
-    window.history.pushState({ view: 'get-started' }, '', '/get-started');
   };
   const handleGetStarted = () => {
     setShowGetStarted(false);
@@ -1422,9 +1429,10 @@ function App() {
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 sm:w-auto"
+            disabled={isLoggingOut}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-80 sm:w-auto"
           >
-            Log Out
+            {isLoggingOut ? 'Please wait...' : 'Log Out'}
           </button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef, type TouchEvent as ReactTouchEvent } from 'react';
 import { User } from '../App';
 import {
   GraduationCap,
@@ -45,6 +45,14 @@ interface StudentDashboardProps {
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+const MOBILE_SWIPE_TABS: Tab[] = ['home', 'test-series', 'question-bank'];
+
+const getSwipeTab = (tab: Tab): 'home' | 'test-series' | 'question-bank' | null => {
+  if (tab === 'home' || tab === 'test-series' || tab === 'question-bank') {
+    return tab;
+  }
+  return null;
+};
 
 export function StudentDashboard({
   user,
@@ -66,6 +74,7 @@ export function StudentDashboard({
   const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
+  const [tabSlideDirection, setTabSlideDirection] = useState<-1 | 0 | 1>(0);
   const [testSeriesMode, setTestSeriesMode] = useState<'list' | 'overview' | 'taking' | 'analytics' | 'viewResults'>('list');
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
@@ -77,6 +86,8 @@ export function StudentDashboard({
   const [toRateFaculties, setToRateFaculties] = useState<FacultyToRate[]>([]);
   const [reviewSession, setReviewSession] = useState<ReviewSession | null>(null);
   const [showReviewModalInternal, setShowReviewModalInternal] = useState(false);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const previousSwipeTabRef = useRef<'home' | 'test-series' | 'question-bank' | null>(getSwipeTab(activeTab));
   const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
     return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
   });
@@ -300,7 +311,82 @@ export function StudentDashboard({
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
   const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
   const isTestAnalyticsRoute = activeTab === 'test-series' && testSeriesMode === 'analytics';
+  const activeSwipeTab = getSwipeTab(activeTab);
+  const canSwipeBetweenTabs = Boolean(
+    isMobileViewport
+    && activeSwipeTab
+    && !isNavbarHidden
+    && !subTab
+    && !isTestAttemptRoute
+    && !isTestAnalyticsRoute
+  );
+  const useHorizontalSlide = Boolean(isMobileViewport && activeSwipeTab);
+  const slideEnterOffset = tabSlideDirection === 0 ? 0 : tabSlideDirection > 0 ? 56 : -56;
+  const slideExitOffset = tabSlideDirection === 0 ? 0 : tabSlideDirection > 0 ? -56 : 56;
   const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
+
+  useEffect(() => {
+    const nextSwipeTab = getSwipeTab(activeTab);
+    const previousSwipeTab = previousSwipeTabRef.current;
+
+    if (!nextSwipeTab || !previousSwipeTab || nextSwipeTab === previousSwipeTab) {
+      previousSwipeTabRef.current = nextSwipeTab;
+      setTabSlideDirection(0);
+      return;
+    }
+
+    const nextIndex = MOBILE_SWIPE_TABS.indexOf(nextSwipeTab);
+    const previousIndex = MOBILE_SWIPE_TABS.indexOf(previousSwipeTab);
+
+    if (nextIndex > previousIndex) {
+      setTabSlideDirection(1);
+    } else if (nextIndex < previousIndex) {
+      setTabSlideDirection(-1);
+    } else {
+      setTabSlideDirection(0);
+    }
+
+    previousSwipeTabRef.current = nextSwipeTab;
+  }, [activeTab]);
+
+  const handleContentTouchStart = (event: ReactTouchEvent<HTMLElement>) => {
+    if (!canSwipeBetweenTabs) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleContentTouchEnd = (event: ReactTouchEvent<HTMLElement>) => {
+    if (!canSwipeBetweenTabs || !activeSwipeTab) {
+      swipeStartRef.current = null;
+      return;
+    }
+
+    const start = swipeStartRef.current;
+    const touch = event.changedTouches[0];
+    swipeStartRef.current = null;
+
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isHorizontalSwipe = Math.abs(deltaX) > 56 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2;
+
+    if (!isHorizontalSwipe) return;
+
+    const activeIndex = MOBILE_SWIPE_TABS.indexOf(activeSwipeTab);
+    if (activeIndex < 0) return;
+
+    const nextIndex = deltaX < 0 ? activeIndex + 1 : activeIndex - 1;
+    const nextTab = MOBILE_SWIPE_TABS[nextIndex];
+    if (!nextTab) return;
+
+    setTabSlideDirection(deltaX < 0 ? 1 : -1);
+    if (nextTab === 'home') {
+      setProfileSection('overview');
+    }
+    onNavigate(nextTab);
+  };
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
     onNavigate(activeTab, newSubTab);
@@ -505,16 +591,21 @@ export function StudentDashboard({
             ? (isMobileViewport ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6')
             : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
         }`}
+        onTouchStart={handleContentTouchStart}
+        onTouchEnd={handleContentTouchEnd}
+        style={canSwipeBetweenTabs ? { touchAction: 'pan-y' } : undefined}
       >
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${mobileSpacerHeight}px` : '4rem' }} />
         )}
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`${activeTab}:${subTab ?? 'root'}`}
+            initial={useHorizontalSlide ? { opacity: 1, x: slideEnterOffset } : { opacity: 0, y: 20 }}
+            animate={useHorizontalSlide ? { opacity: 1, x: 0 } : { opacity: 1, y: 0 }}
+            exit={useHorizontalSlide ? { opacity: 1, x: slideExitOffset } : { opacity: 0, y: -20 }}
+            transition={{ duration: useHorizontalSlide ? 0.24 : 0.3, ease: 'easeOut' }}
+          >
           {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
             <Suspense fallback={<DashboardHeroSkeleton />}>
               <DPPPractice
@@ -574,7 +665,8 @@ export function StudentDashboard({
               />
             </Suspense>
           )}
-        </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Footer */}
