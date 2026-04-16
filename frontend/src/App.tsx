@@ -1419,6 +1419,13 @@ function App() {
           <div className="mt-6 rounded-2xl bg-teal-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-teal-700 sm:text-sm">
             Tip: Browser menu → “Desktop site”
           </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 sm:w-auto"
+          >
+            Log Out
+          </button>
         </div>
       </div>
     );
