@@ -39,7 +39,7 @@ interface TestSeries {
 interface TestSeriesProps {
   loading?: boolean;
   onStartTest: (test: import('../App').PublishedTest) => Promise<void>;
-  onViewAnalytics: (attemptId?: string | null) => void;
+  onViewAnalytics: (attemptId?: string | null, testId?: string) => void;
   onViewResults: () => void;
   publishedTests?: import('../App').PublishedTest[];
   loadingOverviewTestId?: string | null;
@@ -154,6 +154,24 @@ export function TestSeriesSection({
   });
 
   const visibleTests = filteredTests.slice(0, visibleCount);
+
+  const latestAttemptByTestId = useMemo(() => {
+    const lookup = new Map<string, { id: string; submittedAtMs: number }>();
+
+    attemptResults.forEach((attempt) => {
+      const submittedAtMs = new Date(attempt.submittedAt).getTime();
+      const current = lookup.get(attempt.testId);
+
+      if (!current || submittedAtMs >= current.submittedAtMs) {
+        lookup.set(attempt.testId, {
+          id: attempt.id,
+          submittedAtMs: Number.isFinite(submittedAtMs) ? submittedAtMs : 0,
+        });
+      }
+    });
+
+    return new Map(Array.from(lookup.entries()).map(([testId, value]) => [testId, value.id]));
+  }, [attemptResults]);
 
   const stats = useMemo(() => {
     const total = allTests.length;
@@ -297,11 +315,12 @@ export function TestSeriesSection({
       <div className="grid grid-cols-1 items-stretch sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {visibleTests.map((test) => (
           (() => {
+            const resolvedLatestAttemptId = test.latestAttemptId || latestAttemptByTestId.get(test.id) || null;
             const isLoadingOverview = loadingOverviewTestId === test.id;
             const isLoadingAnalysis = Boolean(
               test.status === 'completed' &&
-              test.latestAttemptId &&
-              loadingAnalysisAttemptId === test.latestAttemptId
+              resolvedLatestAttemptId &&
+              loadingAnalysisAttemptId === resolvedLatestAttemptId
             );
 
             return (
@@ -392,7 +411,7 @@ export function TestSeriesSection({
                 <motion.button
                   onClick={() => {
                     if (test.status === 'completed') {
-                      onViewAnalytics(test.latestAttemptId);
+                      onViewAnalytics(resolvedLatestAttemptId, test.id);
                     } else if (test.status === 'pending') {
                       const publishedMatch = publishedTests.find((publishedTest) => publishedTest.id === test.id);
                       if (publishedMatch) {

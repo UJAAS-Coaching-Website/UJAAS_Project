@@ -156,9 +156,9 @@ export function TestSeriesContainer({
         return;
       }
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
+      pendingSubTabRef.current = `Analysis-${attemptId}`;
       setTestState({ mode: 'analytics', result, history: summary?.history || [] });
       window.scrollTo({ top: 0, behavior: 'auto' });
-      pendingSubTabRef.current = `Analysis-${attemptId}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } finally {
       if (analyticsRequestRef.current === requestId && isAliveRef.current) {
@@ -225,6 +225,10 @@ export function TestSeriesContainer({
       lastNonResultsSubTabRef.current = subTab;
     }
     const syncFromRoute = async () => {
+      if (pendingSubTabRef.current && subTab !== pendingSubTabRef.current) {
+        return;
+      }
+
       if (subTab && pendingSubTabRef.current === subTab) {
         pendingSubTabRef.current = null;
       }
@@ -363,9 +367,9 @@ export function TestSeriesContainer({
           : item
       )));
 
+      pendingSubTabRef.current = `Overview-${slugifyText(fullTest.title)}`;
       setTestState({ mode: 'overview', test: fullTest });
       window.scrollTo({ top: 0, behavior: 'auto' });
-      pendingSubTabRef.current = `Overview-${slugifyText(fullTest.title)}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to load test overview');
@@ -409,6 +413,7 @@ export function TestSeriesContainer({
           : test
       )));
 
+      pendingSubTabRef.current = `Test-${slugifyText(fullTest.title)}`;
       setTestState({
         mode: 'taking',
         test: fullTest,
@@ -418,7 +423,6 @@ export function TestSeriesContainer({
         deadlineAt: payload.attempt.deadline_at,
         serverNow: payload.serverNow,
       });
-      pendingSubTabRef.current = `Test-${slugifyText(fullTest.title)}`;
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       window.alert(error?.message || 'Unable to start this test');
@@ -454,8 +458,8 @@ export function TestSeriesContainer({
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
-      setTestState({ mode: 'analytics', result });
       pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
+      setTestState({ mode: 'analytics', result });
       onNavigateSubTab?.(pendingSubTabRef.current);
     } catch (error: any) {
       const message = error?.message || 'Unable to submit test';
@@ -551,6 +555,36 @@ export function TestSeriesContainer({
 
   const currentTests = useMemo(() => studentTests, [studentTests]);
 
+  const handleViewAnalytics = useCallback((attemptId?: string | null, testId?: string) => {
+    if (attemptId) {
+      analyticsOriginRef.current = 'list';
+      void openAttemptAnalytics(attemptId);
+      return;
+    }
+
+    if (!testId) {
+      window.alert('Unable to open analysis for this test right now.');
+      return;
+    }
+
+    analyticsOriginRef.current = 'list';
+    void (async () => {
+      try {
+        const summary = await fetchMyTestAttemptSummary(testId);
+        const fallbackAttemptId = summary.history[0]?.id;
+
+        if (!fallbackAttemptId) {
+          window.alert('No submitted attempt was found for this test yet.');
+          return;
+        }
+
+        await openAttemptAnalytics(fallbackAttemptId);
+      } catch (error: any) {
+        window.alert(error?.message || 'Unable to open analysis for this test');
+      }
+    })();
+  }, [openAttemptAnalytics]);
+
   if (testState.mode === 'overview' && testState.test) {
     return (
       <TestOverview
@@ -619,19 +653,14 @@ export function TestSeriesContainer({
     <TestSeriesSection
       loading={currentTests.length === 0 && isLoadingResults}
       onStartTest={handleStartTest}
-      onViewAnalytics={(attemptId) => {
-        if (attemptId) {
-          analyticsOriginRef.current = 'list';
-          void openAttemptAnalytics(attemptId);
-        }
-      }}
+      onViewAnalytics={handleViewAnalytics}
       onViewResults={() => {
         previousResultsScrollRef.current = window.scrollY;
         previousResultsStateRef.current = testState;
         void loadAttemptResults();
         previousResultsSubTabRef.current = pendingSubTabRef.current || subTab || 'list';
-        setTestState({ mode: 'viewResults' });
         pendingSubTabRef.current = 'Results';
+        setTestState({ mode: 'viewResults' });
         onNavigateSubTab?.(pendingSubTabRef.current);
       }}
       publishedTests={currentTests}

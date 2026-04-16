@@ -319,6 +319,7 @@ export function StudentDashboard({
     && !isTestAttemptRoute
     && !isTestAnalyticsRoute
   );
+  const shouldRenderMobileTabShell = Boolean(isMobileViewport && activeSwipeTab);
   const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
 
   useEffect(() => {
@@ -417,7 +418,7 @@ export function StudentDashboard({
       }
 
       return (
-        <div className={isMobileViewport ? 'px-4' : ''}>
+        <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
           <StudentDashboardHome {...homeTabProps} />
         </div>
       );
@@ -425,7 +426,7 @@ export function StudentDashboard({
 
     if (tab === 'test-series') {
       return (
-        <div className={isMobileViewport ? 'px-4' : ''}>
+        <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
           <Suspense fallback={<TestSeriesSkeleton />}>
             <TestSeriesContainer
               user={user}
@@ -440,7 +441,7 @@ export function StudentDashboard({
     }
 
     return (
-      <div className={isMobileViewport ? 'px-4' : ''}>
+      <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
         <Suspense fallback={<QuestionBankSkeleton />}>
           <QuestionBank
             userRole="student"
@@ -653,13 +654,13 @@ export function StudentDashboard({
         className={`footer-reveal-main w-full flex-grow ${
           (isTestAttemptRoute || isTestAnalyticsRoute || isDppRoute)
             ? (isMobileViewport ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6')
-            : (isMobileViewport ? 'max-w-none mx-0 px-0 py-8' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8')
+            : (isMobileViewport ? 'max-w-none mx-0 px-0 pt-8 pb-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8')
         }`}
       >
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${mobileSpacerHeight}px` : '4rem' }} />
         )}
-        {isMobileViewport && canSwipeBetweenTabs && activeSwipeTab ? (
+        {shouldRenderMobileTabShell && activeSwipeTab ? (
           <div
             className="overflow-hidden"
             onTouchStart={handleContentTouchStart}
@@ -682,7 +683,7 @@ export function StudentDashboard({
         ) : (
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={`${activeTab}:${subTab ?? 'root'}`}
+              key={activeTab === 'test-series' ? activeTab : `${activeTab}:${subTab ?? 'root'}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -713,12 +714,12 @@ export function StudentDashboard({
                 </div>
               )}
               {activeTab === 'home' && subTab !== 'dpp' && (
-                <div className={isMobileViewport ? 'px-4' : ''}>
+                <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
                   <StudentDashboardHome {...homeTabProps} />
                 </div>
               )}
               {activeTab === 'test-series' && (
-                <div className={isMobileViewport ? 'px-4' : ''}>
+                <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
                   <Suspense fallback={<TestSeriesSkeleton />}>
                     <TestSeriesContainer
                       user={user}
@@ -731,7 +732,7 @@ export function StudentDashboard({
                 </div>
               )}
               {activeTab === 'profile' && (
-                <div className={isMobileViewport ? 'px-4' : ''}>
+                <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
                   <Suspense fallback={<ProfileSkeleton />}>
                     <StudentProfile
                       user={user}
@@ -742,12 +743,12 @@ export function StudentDashboard({
                 </div>
               )}
               {activeTab === 'batch-detail' && (
-                <div className={isMobileViewport ? 'px-4' : ''}>
+                <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
                   <StudentDashboardHome {...homeTabProps} />
                 </div>
               )}
               {activeTab === 'question-bank' && (
-                <div className={isMobileViewport ? 'px-4' : ''}>
+                <div className={isMobileViewport ? 'px-4 pb-8' : ''}>
                   <Suspense fallback={<QuestionBankSkeleton />}>
                     <QuestionBank
                       userRole="student"
