@@ -153,15 +153,21 @@ export function TestSeriesContainer({
       if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
-      const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
-      if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
-        return;
-      }
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
       pendingSubTabRef.current = `Analysis-${attemptId}`;
-      setTestState({ mode: 'analytics', result, history: summary?.history || [] });
+      setTestState({ mode: 'analytics', result, history: [] });
       window.scrollTo({ top: 0, behavior: 'auto' });
       onNavigateSubTab?.(pendingSubTabRef.current);
+
+      const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
+      if (analyticsRequestRef.current !== requestId || !isAliveRef.current || !summary) {
+        return;
+      }
+      setTestState((prev) => (
+        prev.mode === 'analytics' && prev.result?.attempt_id === attemptId
+          ? { ...prev, history: summary.history || [] }
+          : prev
+      ));
     } finally {
       if (analyticsRequestRef.current === requestId && isAliveRef.current) {
         setLoadingAnalysisAttemptId(null);
