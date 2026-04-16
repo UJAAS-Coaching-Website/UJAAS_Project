@@ -573,6 +573,164 @@ async function buildAttemptResult(attemptId) {
     };
 }
 
+function isUnattemptedAttemptValue(value) {
+    return Array.isArray(value) ? value.length === 0 : value === undefined || value === null || value === "";
+}
+
+function normalizeAttemptAnswer(value, questionType) {
+    if (isUnattemptedAttemptValue(value)) return null;
+
+    if (questionType === "Numerical") {
+        const raw = String(value).trim();
+        if (!raw) return null;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : raw;
+    }
+
+    if (Array.isArray(value)) {
+        return value.map((item) => Number(item)).filter(Number.isFinite).sort((a, b) => a - b);
+    }
+
+    if (typeof value === "number") return value;
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : String(value).trim();
+}
+
+function isAttemptAnswerCorrect(question, userAnswer) {
+    const normalizedUser = normalizeAttemptAnswer(userAnswer, question.type);
+    if (normalizedUser === null) return false;
+
+    const normalizedCorrect = normalizeAttemptAnswer(question.correct_answer, question.type);
+    if (normalizedCorrect === null) return false;
+
+    if (Array.isArray(normalizedUser) && Array.isArray(normalizedCorrect)) {
+        if (normalizedUser.length !== normalizedCorrect.length) return false;
+        return normalizedUser.every((value, index) => value === normalizedCorrect[index]);
+    }
+
+    return normalizedUser === normalizedCorrect;
+}
+
+function buildSubjectStats(questions, rawAnswers) {
+    const answers = rawAnswers && typeof rawAnswers === "object" ? rawAnswers : {};
+    const stats = new Map();
+
+    questions.forEach((question) => {
+        const subject = (typeof question.subject === "string" && question.subject.trim()) || "Other";
+        if (!stats.has(subject)) {
+            stats.set(subject, {
+                subject,
+                scoredMarks: 0,
+                totalMarks: 0,
+                correct: 0,
+                incorrect: 0,
+                unattempted: 0,
+            });
+        }
+
+        const stat = stats.get(subject);
+        const marks = Number(question.marks) || 0;
+        const penalty = Math.abs(Number(question.neg_marks) || 0);
+        const userAnswer = answers[question.id];
+
+        stat.totalMarks += marks;
+
+        if (isUnattemptedAttemptValue(userAnswer)) {
+            stat.unattempted += 1;
+            return;
+        }
+
+        if (isAttemptAnswerCorrect(question, userAnswer)) {
+            stat.correct += 1;
+            stat.scoredMarks += marks;
+            return;
+        }
+
+        stat.incorrect += 1;
+        stat.scoredMarks -= penalty;
+    });
+
+    return Array.from(stats.values())
+        .map((entry) => ({
+            ...entry,
+            scoredMarks: Math.round((entry.scoredMarks + Number.EPSILON) * 100) / 100,
+            totalMarks: Math.round((entry.totalMarks + Number.EPSILON) * 100) / 100,
+        }))
+        .sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
+async function buildAttemptSummaryResult(attemptId) {
+    const attemptResult = await pool.query(`
+        WITH ${TEST_FIRST_ATTEMPT_RANKING_CTE}
+        SELECT
+            ta.id,
+            ta.test_id,
+            ta.student_id,
+            ta.attempt_no,
+            ta.submitted_at,
+            ta.auto_submitted,
+            ta.time_spent,
+            ta.answers,
+            ta.score,
+            ta.correct_answers,
+            ta.wrong_answers,
+            ta.unattempted,
+            rfa.rank,
+            rfa.total_students,
+            t.title AS test_title,
+            t.total_marks,
+            COALESCE(t.duration_mins, t.duration_minutes, 0) AS duration_minutes
+        FROM test_attempts ta
+        JOIN tests t ON t.id = ta.test_id
+        LEFT JOIN ranked_first_attempts rfa
+            ON rfa.test_id = ta.test_id
+           AND rfa.student_id = ta.student_id
+        WHERE ta.id = $1
+          AND ta.submitted_at IS NOT NULL
+    `, [attemptId]);
+
+    if (attemptResult.rowCount === 0) {
+        return null;
+    }
+
+    const attempt = attemptResult.rows[0];
+    const questionsResult = await pool.query(`
+        SELECT
+            id,
+            subject,
+            type,
+            COALESCE(correct_ans, correct_answer) AS correct_answer,
+            marks,
+            neg_marks
+        FROM questions
+        WHERE test_id = $1
+        ORDER BY ${QUESTION_ORDER_BY_CLAUSE}
+    `, [attempt.test_id]);
+
+    const subjectStats = buildSubjectStats(questionsResult.rows, attempt.answers);
+
+    return {
+        attempt_id: attempt.id,
+        attempt_no: Number(attempt.attempt_no),
+        auto_submitted: attempt.auto_submitted,
+        testId: attempt.test_id,
+        testTitle: attempt.test_title,
+        totalMarks: Number(attempt.total_marks),
+        obtainedMarks: Number(attempt.score || 0),
+        totalQuestions: questionsResult.rows.length,
+        correctAnswers: Number(attempt.correct_answers || 0),
+        wrongAnswers: Number(attempt.wrong_answers || 0),
+        unattempted: Number(attempt.unattempted || 0),
+        timeSpent: Number(attempt.time_spent || 0),
+        duration: Number(attempt.duration_minutes || 0),
+        rank: Number(attempt.rank || 0),
+        totalStudents: Number(attempt.total_students || 0),
+        submittedAt: attempt.submitted_at,
+        subjectStats,
+    };
+}
+
 async function getAttemptAccessForUser(attemptId, user) {
     const lookup = await pool.query(`
         SELECT
@@ -965,6 +1123,15 @@ export async function getAttemptResultForUser(attemptId, user) {
     }
 
     return buildAttemptResult(attemptId);
+}
+
+export async function getAttemptSummaryForUser(attemptId, user) {
+    const attempt = await getAttemptAccessForUser(attemptId, user);
+    if (!attempt) {
+        return null;
+    }
+
+    return buildAttemptSummaryResult(attemptId);
 }
 
 export async function getAttemptQuestionExplanationForUser(attemptId, questionId, user) {

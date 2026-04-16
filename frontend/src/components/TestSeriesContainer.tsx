@@ -7,6 +7,7 @@ import { TestOverview } from './test-series/TestOverview';
 import { User, PublishedTest } from '../App';
 import { API_BASE_URL } from '../api/base';
 import {
+  fetchAttemptSummaryResult,
   fetchAttemptResult,
   fetchMyAttemptResults,
   fetchMyTestAttemptSummary,
@@ -17,6 +18,7 @@ import {
   type ApiAttemptUiState,
   type ApiActiveAttemptPayload,
   type ApiAttemptResult,
+  type ApiAttemptSummaryResult,
   type ApiAttemptHistoryEntry,
   type ApiStudentAttemptResultListItem,
 } from '../api/tests';
@@ -41,7 +43,7 @@ type TestState =
     deadlineAt: string;
     serverNow: string;
   }
-  | { mode: 'analytics'; result?: ApiAttemptResult; history?: ApiAttemptHistoryEntry[] }
+  | { mode: 'analytics'; result?: ApiAttemptSummaryResult; history?: ApiAttemptHistoryEntry[] }
   | { mode: 'viewResults' };
 
 const ACTIVE_SESSION_STORAGE_KEY = 'ujaasActiveTestSession';
@@ -147,7 +149,7 @@ export function TestSeriesContainer({
     try {
       if (!isAliveRef.current) return;
       setLoadingAnalysisAttemptId(attemptId);
-      const result = await fetchAttemptResult(attemptId);
+      const result = await fetchAttemptSummaryResult(attemptId);
       if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
@@ -621,12 +623,13 @@ export function TestSeriesContainer({
   if (testState.mode === 'analytics' && testState.result) {
     return (
       <StudentAnalytics
-        result={mapApiAttemptResultToAnalytics(testState.result)}
+        result={testState.result}
         attemptHistory={testState.history || []}
         viewerType="student"
         onSelectAttempt={(attemptId) => {
           void openAttemptAnalytics(attemptId);
         }}
+        loadDetailedResult={async (attemptId) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId))}
         loadingAttemptId={loadingAnalysisAttemptId}
         onClose={handleBackFromAnalytics}
       />

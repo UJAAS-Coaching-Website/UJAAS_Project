@@ -1,8 +1,7 @@
 import { motion } from 'motion/react';
-import { TestPreviewAndReview } from './TestPreviewAndReview';
-import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry } from '../api/tests';
+import { fetchAttemptQuestionExplanation, type ApiAttemptHistoryEntry, type ApiAttemptSummaryResult } from '../api/tests';
 import { useIsMobileViewport } from '../hooks/useViewport';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, lazy, Suspense } from 'react';
 import {
   Trophy,
   Target,
@@ -22,6 +21,8 @@ import {
 import logo from '../assets/logo.svg';
 import { printTestPaperPdf } from '../utils/testPaperPrint';
 import { aggregateSubjectWiseStats } from '../utils/testMappings';
+
+const TestPreviewAndReview = lazy(() => import('./TestPreviewAndReview').then((module) => ({ default: module.TestPreviewAndReview })));
 
 interface Question {
   id: string;
@@ -55,8 +56,16 @@ interface TestResult {
   rank?: number;
   totalStudents?: number;
   submittedAt: string;
-  questions: Question[];
+  questions?: Question[];
   instructions?: string;
+  subjectStats?: {
+    subject: string;
+    scoredMarks: number;
+    totalMarks: number;
+    correct: number;
+    incorrect: number;
+    unattempted: number;
+  }[];
 }
 
 interface StudentAnalyticsProps {
@@ -75,6 +84,7 @@ interface StudentAnalyticsProps {
   subtitle?: string;
   attemptHistory?: ApiAttemptHistoryEntry[];
   onSelectAttempt?: (attemptId: string) => void;
+  loadDetailedResult?: (attemptId: string) => Promise<TestResult>;
   loadingAttemptId?: string | null;
   viewerType?: 'student' | 'faculty';
 }
@@ -95,11 +105,14 @@ export function StudentAnalytics({
   subtitle = 'Detailed Performance Analysis',
   attemptHistory = [],
   onSelectAttempt,
+  loadDetailedResult,
   loadingAttemptId = null,
   viewerType = 'student'
 }: StudentAnalyticsProps) {
   const isMobileViewport = useIsMobileViewport();
   const [showReview, setShowReview] = useState(false);
+  const [detailedResult, setDetailedResult] = useState<TestResult | null>(null);
+  const [isLoadingDetailedResult, setIsLoadingDetailedResult] = useState(false);
   const reviewRef = useRef<HTMLDivElement | null>(null);
   const accuracy = result.totalQuestions > 0 
     ? ((result.correctAnswers / result.totalQuestions) * 100).toFixed(1)
@@ -107,7 +120,8 @@ export function StudentAnalytics({
   
   const percentage = ((result.obtainedMarks / result.totalMarks) * 100).toFixed(1);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const subjectWiseStats = aggregateSubjectWiseStats(result.questions);
+  const resolvedQuestions = detailedResult?.questions || result.questions || [];
+  const subjectWiseStats = result.subjectStats || aggregateSubjectWiseStats(resolvedQuestions);
 
   const numericRank = typeof result.rank === 'number' && Number.isFinite(result.rank) && result.rank > 0
     ? result.rank
@@ -146,12 +160,17 @@ export function StudentAnalytics({
     return () => cancelAnimationFrame(frame);
   }, [showReview]);
 
-  const reviewAnswers = result.questions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
+  useEffect(() => {
+    setDetailedResult(null);
+    setShowReview(false);
+  }, [(result as ApiAttemptSummaryResult).attempt_id]);
+
+  const reviewAnswers = resolvedQuestions.reduce<Record<string, string | number | number[] | null>>((acc, question) => {
     acc[question.id] = (question.userAnswer as any) ?? null;
     return acc;
   }, {});
 
-  const reviewQuestions = result.questions.map((question) => ({
+  const reviewQuestions = resolvedQuestions.map((question) => ({
     id: question.id,
     question: question.question ?? question.text,
     questionImage: question.questionImage,
@@ -174,17 +193,34 @@ export function StudentAnalytics({
 
   const isDppDownload = downloadType === 'dpp';
 
+  const ensureDetailedResult = async () => {
+    if (detailedResult) return detailedResult;
+    if (result.questions && result.questions.length > 0) return result as TestResult;
+    if (!loadDetailedResult) return null;
+
+    setIsLoadingDetailedResult(true);
+    try {
+      const fullResult = await loadDetailedResult((result as ApiAttemptSummaryResult).attempt_id);
+      setDetailedResult(fullResult);
+      return fullResult;
+    } finally {
+      setIsLoadingDetailedResult(false);
+    }
+  };
+
   const handleDownloadTestPDF = async () => {
     setIsDownloadingPdf(true);
     try {
+      const fullResult = await ensureDetailedResult();
+      if (!fullResult) return;
       await printTestPaperPdf({
         title: result.testTitle,
         testId: result.testId,
         duration: result.duration,
         totalMarks: result.totalMarks,
         totalQuestions: result.totalQuestions,
-        instructions: isDppDownload ? undefined : result.instructions,
-        questions: result.questions,
+        instructions: isDppDownload ? undefined : fullResult.instructions,
+        questions: fullResult.questions,
         logoSrc: logo,
         documentLabel: isDppDownload ? 'DPP' : 'Test Paper',
         codeLabel: isDppDownload ? '' : 'Code',
@@ -199,9 +235,20 @@ export function StudentAnalytics({
     }
   };
 
+  const handleToggleReview = async () => {
+    if (showReview) {
+      setShowReview(false);
+      return;
+    }
+
+    const fullResult = await ensureDetailedResult();
+    if (!fullResult) return;
+    setShowReview(true);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-2 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="w-full pt-2 pb-8">
+      <div className="w-full py-4 sm:py-6">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
@@ -212,7 +259,7 @@ export function StudentAnalytics({
             <div className="shrink-0">
               <div className="flex items-center flex-wrap justify-between md:justify-end gap-2 sm:gap-4 w-full md:w-auto">
                 <button
-                  onClick={() => setShowReview((prev) => !prev)}
+                  onClick={() => { void handleToggleReview(); }}
                   className={`flex items-center justify-center ${isMobileViewport ? 'gap-1.5' : 'gap-2'} ${
                     isMobileViewport ? 'px-4 py-2 rounded-xl' : 'px-6 py-3 rounded-2xl'
                   } bg-white text-indigo-700 border border-indigo-200 shadow-sm hover:bg-indigo-50 transition-all`}
@@ -220,7 +267,7 @@ export function StudentAnalytics({
                 >
                   <BarChart3 className={isMobileViewport ? 'w-4 h-4' : 'w-5 h-5'} />
                   <span className="text-sm sm:text-base font-semibold">
-                    {isMobileViewport ? 'Detailed' : (showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis')}
+                    {isLoadingDetailedResult ? 'Loading...' : isMobileViewport ? 'Detailed' : (showReview ? 'Hide Detailed Analysis' : 'Show Detailed Analysis')}
                   </span>
                 </button>
                 {!hideDownload && (
@@ -439,28 +486,30 @@ export function StudentAnalytics({
 
         {/* Review Mode (Read Only) */}
         {showReview && (
-          <motion.div
-            ref={reviewRef}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            <TestPreviewAndReview
-              testId={result.testId}
-              testTitle={`${result.testTitle} - Review`}
-              duration={result.duration}
-              questions={reviewQuestions}
-              onSubmit={() => {}}
-              onExit={() => setShowReview(false)}
-              exitLabel="Hide"
-              initialAnswers={reviewAnswers}
-              initialTimeSpent={result.timeSpent}
-              disableEditing={true}
-              hideExplanations={hideExplanations}
-              reviewAttemptId={(result as any).attempt_id}
-              loadQuestionExplanation={fetchAttemptQuestionExplanation}
-            />
-          </motion.div>
+          <Suspense fallback={<div className="rounded-2xl bg-white p-6 shadow-lg border border-gray-100 text-sm text-gray-600">Loading detailed analysis...</div>}>
+            <motion.div
+              ref={reviewRef}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <TestPreviewAndReview
+                testId={result.testId}
+                testTitle={`${result.testTitle} - Review`}
+                duration={result.duration}
+                questions={reviewQuestions}
+                onSubmit={() => {}}
+                onExit={() => setShowReview(false)}
+                exitLabel="Hide"
+                initialAnswers={reviewAnswers}
+                initialTimeSpent={result.timeSpent}
+                disableEditing={true}
+                hideExplanations={hideExplanations}
+                reviewAttemptId={(result as any).attempt_id}
+                loadQuestionExplanation={fetchAttemptQuestionExplanation}
+              />
+            </motion.div>
+          </Suspense>
         )}
       </div>
     </div>

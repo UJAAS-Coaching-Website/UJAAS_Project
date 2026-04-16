@@ -9,6 +9,7 @@ import {
     startMyTestAttempt,
     saveMyAttemptProgress,
     submitMyAttempt,
+    getAttemptSummary,
     getAttemptResult,
     getAttemptQuestionExplanation,
     getTestAnalysis,
@@ -21,6 +22,7 @@ import {
 const router = Router();
 
 router.get("/attempts/mine", authenticate, requireRole("student"), checkCache(req => `student:${req.user?.sub}:test_attempts`, 600), listMyAttemptResults);
+router.get("/attempts/:attemptId/summary", authenticate, requireAnyRole("admin", "faculty", "student"), checkCache(req => `attempts:${req.params.attemptId}:summary`, 3600), getAttemptSummary);
 router.get("/attempts/:attemptId/result", authenticate, requireAnyRole("admin", "faculty", "student"), checkCache(req => `attempts:${req.params.attemptId}:result`, 3600), getAttemptResult);
 router.get("/attempts/:attemptId/questions/:questionId/explanation", authenticate, requireAnyRole("admin", "faculty", "student"), checkCache(req => `attempts:${req.params.attemptId}:expl:${req.params.questionId}`, 3600), getAttemptQuestionExplanation);
 router.patch("/attempts/:attemptId/progress", authenticate, requireRole("student"), saveMyAttemptProgress); // Exclude from invalidation due to high frequency, TTL expires.
