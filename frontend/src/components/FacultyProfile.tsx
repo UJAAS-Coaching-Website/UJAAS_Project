@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { changeMyPassword, me, verifyMyPassword, type FacultyDetails } from '../api/auth';
 import { motion } from 'motion/react';
@@ -234,9 +234,10 @@ function OverviewSection({
   );
 }
 
-function SettingsSection({ onLogout }: { onLogout: () => void }) {
+function SettingsSection({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const { isDark } = useTheme();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
@@ -247,9 +248,24 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
   const [passwordAction, setPasswordAction] = useState<'idle' | 'verifying' | 'updating'>('idle');
   useBodyScrollLock(showLogoutConfirm || showChangePassword);
 
-  const handleLogout = () => {
-    setShowLogoutConfirm(false);
-    onLogout();
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await Promise.resolve(onLogout());
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoggingOut(false);
+        setShowLogoutConfirm(false);
+      }
+    }
   };
 
   const closeChangePassword = () => {
@@ -355,7 +371,9 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-layer-modal p-4"
-              onClick={() => setShowLogoutConfirm(false)}
+              onClick={() => {
+                if (!isLoggingOut) setShowLogoutConfirm(false);
+              }}
             >
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
@@ -375,15 +393,21 @@ function SettingsSection({ onLogout }: { onLogout: () => void }) {
                 <div className="flex gap-3">
                   <motion.button
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition"
+                    disabled={isLoggingOut}
+                    className={`flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold transition ${
+                      isLoggingOut ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-200'
+                    }`}
                   >
                     Cancel
                   </motion.button>
                   <motion.button
                     onClick={handleLogout}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition"
+                    disabled={isLoggingOut}
+                    className={`flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold shadow-lg transition ${
+                      isLoggingOut ? 'opacity-90 cursor-wait' : 'hover:shadow-xl'
+                    }`}
                   >
-                    Logout
+                    {isLoggingOut ? 'Please wait..' : 'Logout'}
                   </motion.button>
                 </div>
               </motion.div>

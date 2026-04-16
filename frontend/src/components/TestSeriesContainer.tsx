@@ -190,6 +190,7 @@ export function TestSeriesContainer({
       }
       if (!cachedResult) {
         openResult(result);
+        setLoadingAnalysisAttemptId(null);
       }
 
       const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
