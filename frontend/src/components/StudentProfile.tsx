@@ -235,7 +235,7 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
       </motion.div>
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className={isMobileViewport ? 'grid grid-cols-3 gap-1 overflow-x-hidden pb-2' : 'flex gap-2 overflow-x-auto pb-2'}>
         {[
           { id: 'overview', label: 'Overview', icon: User },
           { id: 'performance', label: 'Performance', icon: BarChart3 },
@@ -244,8 +244,8 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
           <motion.button
             key={tab.id}
             onClick={() => setActiveSection(tab.id as any)}
-            className={`flex items-center font-medium transition-all rounded-lg whitespace-nowrap ${
-              isMobileViewport ? 'gap-2 px-3 py-2 text-xs' : 'gap-2 px-4 py-2 text-base'
+            className={`flex items-center justify-center font-medium transition-all rounded-lg whitespace-nowrap ${
+              isMobileViewport ? 'min-w-0 gap-1 px-1.5 py-2 text-[11px]' : 'gap-2 px-4 py-2 text-base'
             } ${
               activeSection === tab.id
                 ? 'bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-500 text-white shadow-lg'
@@ -254,8 +254,8 @@ export function StudentProfile({ user, onLogout, initialSection = 'overview' }: 
                   : 'text-gray-600 bg-white hover:bg-gray-50 border border-gray-200'
             }`}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <tab.icon className={isMobileViewport ? 'h-3.5 w-3.5 shrink-0' : 'h-4 w-4'} />
+            <span className="min-w-0 truncate">{tab.label}</span>
           </motion.button>
         ))}
       </div>

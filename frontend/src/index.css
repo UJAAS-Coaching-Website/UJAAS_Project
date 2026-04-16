@@ -3892,6 +3892,19 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, #0f766e, #0891b2);
 }
 
+html.landing-scrollbar-hidden,
+body.landing-scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html.landing-scrollbar-hidden::-webkit-scrollbar,
+body.landing-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

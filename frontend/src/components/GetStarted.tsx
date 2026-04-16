@@ -60,6 +60,16 @@ export function GetStarted({ onGetStarted, isNewUser, userName, landingData, isL
   const [achieversItemsPerView, setAchieversItemsPerView] = useState(() => getItemsPerView('achievers'));
 
   useEffect(() => {
+    document.documentElement.classList.add('landing-scrollbar-hidden');
+    document.body.classList.add('landing-scrollbar-hidden');
+
+    return () => {
+      document.documentElement.classList.remove('landing-scrollbar-hidden');
+      document.body.classList.remove('landing-scrollbar-hidden');
+    };
+  }, []);
+
+  useEffect(() => {
     setFacultyItemsPerView(getItemsPerView('faculty'));
     setAchieversItemsPerView(getItemsPerView('achievers'));
   }, [viewportWidth]);
