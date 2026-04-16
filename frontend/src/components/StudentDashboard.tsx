@@ -14,7 +14,6 @@ import { getFacultiesToRate, type FacultyToRate, type ReviewSession } from '../a
 const QuestionBank = lazy(() => import('./QuestionBank').then(m => ({ default: m.QuestionBank })));
 import { Notification } from './NotificationCenter';
 import { StudentNotificationSheet } from './StudentNotificationSheet';
-import { Footer } from './Footer';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from '../assets/logo.svg';
 import type { DppPracticeSession } from './DPPPractice';
@@ -746,8 +745,6 @@ export function StudentDashboard({
       </main>
 
       {/* Footer */}
-      {!isNavbarHidden && <Footer />}
-
       {/* Faculty Review Modal */}
       <AnimatePresence>
         {showReviewModalInternal && toRateFaculties.length > 0 && (

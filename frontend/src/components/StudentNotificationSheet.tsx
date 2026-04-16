@@ -6,6 +6,8 @@ import { Notification } from './NotificationCenter';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useIsMobile } from './ui/use-mobile';
 
+const NOTIFICATION_HISTORY_MARKER = '__student_notification_sheet__';
+
 interface StudentNotificationSheetProps {
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
@@ -28,6 +30,38 @@ export function StudentNotificationSheet({
 
   useBodyScrollLock(open);
 
+  const openNotifications = () => {
+    if (isMobile && typeof window !== 'undefined') {
+      const currentState = window.history.state && typeof window.history.state === 'object'
+        ? window.history.state
+        : {};
+
+      if ((currentState as Record<string, unknown>)[NOTIFICATION_HISTORY_MARKER] !== true) {
+        window.history.pushState(
+          { ...currentState, [NOTIFICATION_HISTORY_MARKER]: true },
+          '',
+          window.location.pathname + window.location.search + window.location.hash
+        );
+      }
+    }
+
+    setOpen(true);
+  };
+
+  const closeNotifications = () => {
+    if (!open) return;
+
+    if (isMobile && typeof window !== 'undefined' && window.history.state && typeof window.history.state === 'object') {
+      const currentState = window.history.state as Record<string, unknown>;
+      if (currentState[NOTIFICATION_HISTORY_MARKER] === true) {
+        window.history.back();
+        return;
+      }
+    }
+
+    setOpen(false);
+  };
+
   useEffect(() => {
     if (!open) return;
 
@@ -40,6 +74,23 @@ export function StudentNotificationSheet({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !isMobile) return;
+
+    const handlePopState = () => {
+      const currentState = window.history.state && typeof window.history.state === 'object'
+        ? window.history.state as Record<string, unknown>
+        : null;
+
+      if (!currentState || currentState[NOTIFICATION_HISTORY_MARKER] !== true) {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [open, isMobile]);
 
   useEffect(() => {
     if (!open || isMobile) return;
@@ -116,7 +167,7 @@ export function StudentNotificationSheet({
       <motion.button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openNotifications}
         aria-label="Open notifications"
         aria-expanded={open}
         className="relative rounded-lg p-2 transition"
@@ -142,7 +193,7 @@ export function StudentNotificationSheet({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setOpen(false)}
+                onClick={closeNotifications}
                 className="fixed inset-0 z-layer-modal bg-slate-950/35 backdrop-blur-[2px]"
               />
 
@@ -187,7 +238,7 @@ export function StudentNotificationSheet({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setOpen(false)}
+                      onClick={closeNotifications}
                       className="rounded-lg p-2 transition hover:bg-white/15"
                       aria-label="Close notifications"
                     >
