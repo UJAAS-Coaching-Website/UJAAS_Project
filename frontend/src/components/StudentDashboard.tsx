@@ -74,7 +74,6 @@ export function StudentDashboard({
   const isMobileViewport = useIsMobileViewport();
   const [mobileNavOffset, setMobileNavOffset] = useState(0);
   const [isNavbarInternalHidden, setIsNavbarInternalHidden] = useState(false);
-  const [tabSlideDirection, setTabSlideDirection] = useState<-1 | 0 | 1>(0);
   const [testSeriesMode, setTestSeriesMode] = useState<'list' | 'overview' | 'taking' | 'analytics' | 'viewResults'>('list');
   const [showFullTimetable, setShowFullTimetable] = useState(false);
   const [activeDppSession, setActiveDppSession] = useState<DppPracticeSession | null>(null);
@@ -87,6 +86,7 @@ export function StudentDashboard({
   const [reviewSession, setReviewSession] = useState<ReviewSession | null>(null);
   const [showReviewModalInternal, setShowReviewModalInternal] = useState(false);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [tabSlideDirection, setTabSlideDirection] = useState<-1 | 0 | 1>(0);
   const previousSwipeTabRef = useRef<'home' | 'test-series' | 'question-bank' | null>(getSwipeTab(activeTab));
   const [hasDismissedReview, setHasReviewDismissed] = useState(() => {
     return localStorage.getItem('ujaas_dismissed_review_session') === 'true';
@@ -311,7 +311,7 @@ export function StudentDashboard({
   const isNavbarHidden = isNavbarInternalHidden || isDppRoute;
   const isTestAttemptRoute = activeTab === 'test-series' && testSeriesMode === 'taking';
   const isTestAnalyticsRoute = activeTab === 'test-series' && testSeriesMode === 'analytics';
-  const activeSwipeTab = getSwipeTab(activeTab);
+  const activeSwipeTab = getSwipeTab(activeTab === 'batch-detail' ? 'home' : activeTab);
   const canSwipeBetweenTabs = Boolean(
     isMobileViewport
     && activeSwipeTab
@@ -320,13 +320,10 @@ export function StudentDashboard({
     && !isTestAttemptRoute
     && !isTestAnalyticsRoute
   );
-  const useHorizontalSlide = Boolean(isMobileViewport && activeSwipeTab);
-  const slideEnterOffset = tabSlideDirection === 0 ? 0 : tabSlideDirection > 0 ? 56 : -56;
-  const slideExitOffset = tabSlideDirection === 0 ? 0 : tabSlideDirection > 0 ? -56 : 56;
   const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
 
   useEffect(() => {
-    const nextSwipeTab = getSwipeTab(activeTab);
+    const nextSwipeTab = getSwipeTab(activeTab === 'batch-detail' ? 'home' : activeTab);
     const previousSwipeTab = previousSwipeTabRef.current;
 
     if (!nextSwipeTab || !previousSwipeTab || nextSwipeTab === previousSwipeTab) {
@@ -386,6 +383,66 @@ export function StudentDashboard({
       setProfileSection('overview');
     }
     onNavigate(nextTab);
+  };
+
+  const renderMobileSwipePanel = (tab: 'home' | 'test-series' | 'question-bank') => {
+    if (tab === 'home') {
+      if (subTab === 'dpp' && activeDppSession) {
+        return (
+          <Suspense fallback={<DashboardHeroSkeleton />}>
+            <DPPPractice
+              session={activeDppSession}
+              onExit={handleExitDpp}
+              onSessionChange={(nextSession) => {
+                setActiveDppSession(nextSession);
+                sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+              }}
+            />
+          </Suspense>
+        );
+      }
+
+      if (subTab === 'dpp' && !activeDppSession) {
+        return (
+          <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
+            <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
+            <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>
+            <button
+              onClick={() => onNavigate('home')}
+              className="mt-6 rounded-2xl bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        );
+      }
+
+      return <StudentDashboardHome {...homeTabProps} />;
+    }
+
+    if (tab === 'test-series') {
+      return (
+        <Suspense fallback={<TestSeriesSkeleton />}>
+          <TestSeriesContainer
+            user={user}
+            publishedTests={publishedTests}
+            onStateChange={handleTestSeriesStateChange}
+            subTab={subTab}
+            onNavigateSubTab={handleSubTabNavigate}
+          />
+        </Suspense>
+      );
+    }
+
+    return (
+      <Suspense fallback={<QuestionBankSkeleton />}>
+        <QuestionBank
+          userRole="student"
+          userBatch={user.studentDetails?.batch}
+          onBack={() => onNavigate('home')}
+        />
+      </Suspense>
+    );
   };
 
   const handleSubTabNavigate = useCallback((newSubTab?: string) => {
@@ -591,82 +648,101 @@ export function StudentDashboard({
             ? (isMobileViewport ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6')
             : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
         }`}
-        onTouchStart={handleContentTouchStart}
-        onTouchEnd={handleContentTouchEnd}
-        style={canSwipeBetweenTabs ? { touchAction: 'pan-y' } : undefined}
       >
         {!isNavbarHidden && (
           <div style={{ height: isMobileViewport ? `${mobileSpacerHeight}px` : '4rem' }} />
         )}
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={`${activeTab}:${subTab ?? 'root'}`}
-            initial={useHorizontalSlide ? { opacity: 1, x: slideEnterOffset } : { opacity: 0, y: 20 }}
-            animate={useHorizontalSlide ? { opacity: 1, x: 0 } : { opacity: 1, y: 0 }}
-            exit={useHorizontalSlide ? { opacity: 1, x: slideExitOffset } : { opacity: 0, y: -20 }}
-            transition={{ duration: useHorizontalSlide ? 0.24 : 0.3, ease: 'easeOut' }}
+        {isMobileViewport && canSwipeBetweenTabs && activeSwipeTab ? (
+          <div
+            className="overflow-hidden"
+            onTouchStart={handleContentTouchStart}
+            onTouchEnd={handleContentTouchEnd}
+            style={{ touchAction: 'pan-y' }}
           >
-          {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
-            <Suspense fallback={<DashboardHeroSkeleton />}>
-              <DPPPractice
-                session={activeDppSession}
-                onExit={handleExitDpp}
-                onSessionChange={(nextSession) => {
-                  setActiveDppSession(nextSession);
-                  sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
-                }}
-              />
-            </Suspense>
-          )}
-          {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
-            <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
-              <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
-              <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>
-              <button
-                onClick={() => onNavigate('home')}
-                className="mt-6 rounded-2xl bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg"
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeSwipeTab}
+                className="w-full"
+                initial={{ opacity: 1, x: tabSlideDirection >= 0 ? 60 : -60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 1, x: tabSlideDirection >= 0 ? -60 : 60 }}
+                transition={{ duration: 0.26, ease: 'easeOut' }}
               >
-                Back to Dashboard
-              </button>
-            </div>
-          )}
-          {activeTab === 'home' && subTab !== 'dpp' && (
-            <StudentDashboardHome {...homeTabProps} />
-          )}
-          {activeTab === 'test-series' && (
-            <Suspense fallback={<TestSeriesSkeleton />}>
-              <TestSeriesContainer
-                user={user}
-                publishedTests={publishedTests}
-                onStateChange={handleTestSeriesStateChange}
-                subTab={subTab}
-                onNavigateSubTab={handleSubTabNavigate}
-              />
-            </Suspense>
-          )}
-          {activeTab === 'profile' && (
-            <Suspense fallback={<ProfileSkeleton />}>
-              <StudentProfile
-                user={user}
-                onLogout={onLogout}
-                initialSection={profileSection}
-              />
-            </Suspense>
-          )}
-          {activeTab === 'batch-detail' && (
-            <StudentDashboardHome {...homeTabProps} />
-          )}
-          {activeTab === 'question-bank' && (
-            <Suspense fallback={<QuestionBankSkeleton />}>
-              <QuestionBank
-                userRole="student"
-                userBatch={user.studentDetails?.batch}
-                onBack={() => onNavigate('home')}
-              />
-            </Suspense>
-          )}
-          </motion.div>
-        </AnimatePresence>
+                {renderMobileSwipePanel(activeSwipeTab)}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={`${activeTab}:${subTab ?? 'root'}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              {activeTab === 'home' && subTab === 'dpp' && activeDppSession && (
+                <Suspense fallback={<DashboardHeroSkeleton />}>
+                  <DPPPractice
+                    session={activeDppSession}
+                    onExit={handleExitDpp}
+                    onSessionChange={(nextSession) => {
+                      setActiveDppSession(nextSession);
+                      sessionStorage.setItem(ACTIVE_DPP_SESSION_KEY, JSON.stringify(nextSession));
+                    }}
+                  />
+                </Suspense>
+              )}
+              {activeTab === 'home' && subTab === 'dpp' && !activeDppSession && (
+                <div className="rounded-3xl border border-gray-200 bg-white/80 p-10 text-center shadow-lg">
+                  <h2 className="text-2xl font-bold text-gray-900">No active DPP session</h2>
+                  <p className="mt-2 text-gray-600">Open a DPP from your batch content to start a new attempt.</p>
+                  <button
+                    onClick={() => onNavigate('home')}
+                    className="mt-6 rounded-2xl bg-gradient-to-r from-teal-600 to-blue-600 px-6 py-3 font-bold text-white shadow-lg"
+                  >
+                    Back to Dashboard
+                  </button>
+                </div>
+              )}
+              {activeTab === 'home' && subTab !== 'dpp' && (
+                <StudentDashboardHome {...homeTabProps} />
+              )}
+              {activeTab === 'test-series' && (
+                <Suspense fallback={<TestSeriesSkeleton />}>
+                  <TestSeriesContainer
+                    user={user}
+                    publishedTests={publishedTests}
+                    onStateChange={handleTestSeriesStateChange}
+                    subTab={subTab}
+                    onNavigateSubTab={handleSubTabNavigate}
+                  />
+                </Suspense>
+              )}
+              {activeTab === 'profile' && (
+                <Suspense fallback={<ProfileSkeleton />}>
+                  <StudentProfile
+                    user={user}
+                    onLogout={onLogout}
+                    initialSection={profileSection}
+                  />
+                </Suspense>
+              )}
+              {activeTab === 'batch-detail' && (
+                <StudentDashboardHome {...homeTabProps} />
+              )}
+              {activeTab === 'question-bank' && (
+                <Suspense fallback={<QuestionBankSkeleton />}>
+                  <QuestionBank
+                    userRole="student"
+                    userBatch={user.studentDetails?.batch}
+                    onBack={() => onNavigate('home')}
+                  />
+                </Suspense>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        )}
       </main>
 
       {/* Footer */}
