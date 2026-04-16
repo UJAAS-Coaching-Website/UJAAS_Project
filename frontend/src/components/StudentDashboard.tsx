@@ -416,31 +416,39 @@ export function StudentDashboard({
         );
       }
 
-      return <StudentDashboardHome {...homeTabProps} />;
+      return (
+        <div className={isMobileViewport ? 'px-4' : ''}>
+          <StudentDashboardHome {...homeTabProps} />
+        </div>
+      );
     }
 
     if (tab === 'test-series') {
       return (
-        <Suspense fallback={<TestSeriesSkeleton />}>
-          <TestSeriesContainer
-            user={user}
-            publishedTests={publishedTests}
-            onStateChange={handleTestSeriesStateChange}
-            subTab={subTab}
-            onNavigateSubTab={handleSubTabNavigate}
-          />
-        </Suspense>
+        <div className={isMobileViewport ? 'px-4' : ''}>
+          <Suspense fallback={<TestSeriesSkeleton />}>
+            <TestSeriesContainer
+              user={user}
+              publishedTests={publishedTests}
+              onStateChange={handleTestSeriesStateChange}
+              subTab={subTab}
+              onNavigateSubTab={handleSubTabNavigate}
+            />
+          </Suspense>
+        </div>
       );
     }
 
     return (
-      <Suspense fallback={<QuestionBankSkeleton />}>
-        <QuestionBank
-          userRole="student"
-          userBatch={user.studentDetails?.batch}
-          onBack={() => onNavigate('home')}
-        />
-      </Suspense>
+      <div className={isMobileViewport ? 'px-4' : ''}>
+        <Suspense fallback={<QuestionBankSkeleton />}>
+          <QuestionBank
+            userRole="student"
+            userBatch={user.studentDetails?.batch}
+            onBack={() => onNavigate('home')}
+          />
+        </Suspense>
+      </div>
     );
   };
 
@@ -645,7 +653,7 @@ export function StudentDashboard({
         className={`footer-reveal-main w-full flex-grow ${
           (isTestAttemptRoute || isTestAnalyticsRoute || isDppRoute)
             ? (isMobileViewport ? 'max-w-none mx-0 px-0 py-0' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6')
-            : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+            : (isMobileViewport ? 'max-w-none mx-0 px-0 py-8' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8')
         }`}
       >
         {!isNavbarHidden && (
@@ -705,39 +713,49 @@ export function StudentDashboard({
                 </div>
               )}
               {activeTab === 'home' && subTab !== 'dpp' && (
-                <StudentDashboardHome {...homeTabProps} />
+                <div className={isMobileViewport ? 'px-4' : ''}>
+                  <StudentDashboardHome {...homeTabProps} />
+                </div>
               )}
               {activeTab === 'test-series' && (
-                <Suspense fallback={<TestSeriesSkeleton />}>
-                  <TestSeriesContainer
-                    user={user}
-                    publishedTests={publishedTests}
-                    onStateChange={handleTestSeriesStateChange}
-                    subTab={subTab}
-                    onNavigateSubTab={handleSubTabNavigate}
-                  />
-                </Suspense>
+                <div className={isMobileViewport ? 'px-4' : ''}>
+                  <Suspense fallback={<TestSeriesSkeleton />}>
+                    <TestSeriesContainer
+                      user={user}
+                      publishedTests={publishedTests}
+                      onStateChange={handleTestSeriesStateChange}
+                      subTab={subTab}
+                      onNavigateSubTab={handleSubTabNavigate}
+                    />
+                  </Suspense>
+                </div>
               )}
               {activeTab === 'profile' && (
-                <Suspense fallback={<ProfileSkeleton />}>
-                  <StudentProfile
-                    user={user}
-                    onLogout={onLogout}
-                    initialSection={profileSection}
-                  />
-                </Suspense>
+                <div className={isMobileViewport ? 'px-4' : ''}>
+                  <Suspense fallback={<ProfileSkeleton />}>
+                    <StudentProfile
+                      user={user}
+                      onLogout={onLogout}
+                      initialSection={profileSection}
+                    />
+                  </Suspense>
+                </div>
               )}
               {activeTab === 'batch-detail' && (
-                <StudentDashboardHome {...homeTabProps} />
+                <div className={isMobileViewport ? 'px-4' : ''}>
+                  <StudentDashboardHome {...homeTabProps} />
+                </div>
               )}
               {activeTab === 'question-bank' && (
-                <Suspense fallback={<QuestionBankSkeleton />}>
-                  <QuestionBank
-                    userRole="student"
-                    userBatch={user.studentDetails?.batch}
-                    onBack={() => onNavigate('home')}
-                  />
-                </Suspense>
+                <div className={isMobileViewport ? 'px-4' : ''}>
+                  <Suspense fallback={<QuestionBankSkeleton />}>
+                    <QuestionBank
+                      userRole="student"
+                      userBatch={user.studentDetails?.batch}
+                      onBack={() => onNavigate('home')}
+                    />
+                  </Suspense>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>

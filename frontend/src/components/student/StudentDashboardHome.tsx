@@ -214,12 +214,12 @@ function StudentAssignedBatchContent({
           Time Table
         </button>
       </div>
-      <div className="bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100 shadow-xl">
-        <div className={`${isMobileViewport ? 'p-3' : 'p-5'} flex items-center gap-3`}>
+      <div className={`${isMobileViewport ? 'rounded-none border-0 bg-transparent p-0 shadow-none' : 'bg-white/40 backdrop-blur-md rounded-3xl p-1 border border-gray-100 shadow-xl'}`}>
+        <div className={`${isMobileViewport ? 'px-1 pb-3 pt-0' : 'p-5'} flex items-center gap-3`}>
           <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center"><BookOpen className="w-6 h-6 text-emerald-600" /></div>
           <h3 className={`${isMobileViewport ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Batch Academic Content</h3>
         </div>
-        <div className="p-1">
+        <div className={isMobileViewport ? 'p-0' : 'p-1'}>
           <NotesManagementTab onNavigate={onNavigate} currentTab={currentTab} selectedBatch={batchDetails?.name || user.studentDetails?.batch || null} onChangeBatch={() => onNavigate('home')} onViewTimetable={onViewTimetable} batches={batchDetails ? [{ id: batchDetails.id, label: batchDetails.name, subjects: batchDetails.subjects }] : []} readOnly={true} variant="student" headerMode="tracker-only" />
         </div>
       </div>
