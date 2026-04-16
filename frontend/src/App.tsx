@@ -57,6 +57,8 @@ import {
   updateTestApi,
   deleteTestApi as apiDeleteTest,
   setTestsCache,
+  setTestAnalysisCacheOwner,
+  clearTestAnalysisCache,
   type ApiTest,
 } from './api/tests';
 import { clearQuestionBankCache } from './api/questionBank';
@@ -1137,6 +1139,7 @@ function App() {
         if (profileResponse && profileResponse.user) {
           const loggedInUser = profileResponse.user as User;
           if (!cancelled) {
+            setTestAnalysisCacheOwner(loggedInUser.id);
             setUser(loggedInUser);
             setShowGetStarted(false);
           }
@@ -1150,6 +1153,7 @@ function App() {
           // that listens to activeTab and adminLandingSection.
         } else {
           if (!cancelled) {
+            setTestAnalysisCacheOwner(null);
             setUser(null);
             // If no user, set empty batches
             setAdminBatches([]);
@@ -1158,6 +1162,7 @@ function App() {
       } catch (error) {
         console.error('Error during session initialization:', error);
         if (!cancelled) {
+          setTestAnalysisCacheOwner(null);
           setUser(null);
           setAdminBatches([]); // Fallback to empty on error
         }
@@ -1274,10 +1279,12 @@ function App() {
     setStudentsCache(null);
     setTestsCache(null);
     clearQuestionBankCache();
+    clearTestAnalysisCache();
   };
 
   const handleLogin = async (userData: User) => {
     clearAllApiCaches();
+    setTestAnalysisCacheOwner(userData.id);
     setUser(userData);
     setShowGetStarted(false);
 
@@ -1360,6 +1367,7 @@ function App() {
       setAdminSubjects([]);
       setSelectedPreviewTest(null);
       setResumeDraftId(null);
+      setTestAnalysisCacheOwner(null);
       
       setUser(null);
       setAdminBatch(null);

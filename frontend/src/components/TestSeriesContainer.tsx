@@ -11,10 +11,14 @@ import {
   fetchAttemptResult,
   fetchMyAttemptResults,
   fetchMyTestAttemptSummary,
+  getCachedAttemptSummaryResult,
   fetchTestById,
   startMyTestAttempt,
   saveMyAttemptProgress,
   submitMyAttempt,
+  clearAttemptAnalysisCache,
+  clearTestAttemptCaches,
+  seedAttemptResultCache,
   type ApiAttemptUiState,
   type ApiActiveAttemptPayload,
   type ApiAttemptResult,
@@ -106,6 +110,7 @@ export function TestSeriesContainer({
   const previousResultsStateRef = useRef<TestState | null>(null);
   const analyticsOriginRef = useRef<'results' | 'list'>('list');
   const isAliveRef = useRef(true);
+  const testStateRef = useRef<TestState>({ mode: 'list' });
 
   useEffect(() => {
     return () => {
@@ -117,6 +122,10 @@ export function TestSeriesContainer({
   useEffect(() => {
     setStudentTests(publishedTests);
   }, [publishedTests]);
+
+  useEffect(() => {
+    testStateRef.current = testState;
+  }, [testState]);
 
   useEffect(() => {
     onStateChange(testState.mode);
@@ -142,22 +151,46 @@ export function TestSeriesContainer({
     return summary;
   }, []);
 
-  const openAttemptAnalytics = useCallback(async (attemptId: string) => {
+  const openAttemptAnalytics = useCallback(async (attemptId: string, expectedTestId?: string) => {
+    const currentState = testStateRef.current;
+    if (
+      currentState.mode === 'analytics' &&
+      currentState.result?.attempt_id === attemptId &&
+      (!expectedTestId || currentState.result.testId === expectedTestId)
+    ) {
+      pendingSubTabRef.current = `Analysis-${attemptId}`;
+      onNavigateSubTab?.(pendingSubTabRef.current);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+
     const requestId = analyticsRequestRef.current + 1;
     analyticsRequestRef.current = requestId;
+    const cachedResult = getCachedAttemptSummaryResult(attemptId, { expectedTestId });
+
+    const openResult = (result: ApiAttemptSummaryResult, history: ApiAttemptHistoryEntry[] = []) => {
+      localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
+      pendingSubTabRef.current = `Analysis-${attemptId}`;
+      setTestState({ mode: 'analytics', result, history });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      onNavigateSubTab?.(pendingSubTabRef.current);
+    };
 
     try {
       if (!isAliveRef.current) return;
-      setLoadingAnalysisAttemptId(attemptId);
-      const result = await fetchAttemptSummaryResult(attemptId);
+      if (cachedResult) {
+        openResult(cachedResult);
+      } else {
+        setLoadingAnalysisAttemptId(attemptId);
+      }
+
+      const result = cachedResult || await fetchAttemptSummaryResult(attemptId, { expectedTestId });
       if (analyticsRequestRef.current !== requestId || !isAliveRef.current) {
         return;
       }
-      localStorage.setItem(LAST_RESULT_STORAGE_KEY, attemptId);
-      pendingSubTabRef.current = `Analysis-${attemptId}`;
-      setTestState({ mode: 'analytics', result, history: [] });
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      onNavigateSubTab?.(pendingSubTabRef.current);
+      if (!cachedResult) {
+        openResult(result);
+      }
 
       const summary = await fetchMyTestAttemptSummary(result.testId).catch(() => null);
       if (analyticsRequestRef.current !== requestId || !isAliveRef.current || !summary) {
@@ -464,6 +497,9 @@ export function TestSeriesContainer({
       localStorage.removeItem(`${ANSWER_STORAGE_PREFIX}${testState.attemptId}`);
       localStorage.removeItem(`${UI_STATE_STORAGE_PREFIX}${testState.attemptId}`);
       localStorage.setItem(LAST_RESULT_STORAGE_KEY, result.attempt_id);
+      clearAttemptAnalysisCache(result.attempt_id);
+      seedAttemptResultCache(result);
+      clearTestAttemptCaches(result.testId);
       await patchAttemptSummary(testState.test.id);
       await loadAttemptResults();
       pendingSubTabRef.current = `Analysis-${result.attempt_id}`;
@@ -487,7 +523,7 @@ export function TestSeriesContainer({
 
           if (latestAttemptId) {
             await loadAttemptResults().catch(() => undefined);
-            await openAttemptAnalytics(latestAttemptId);
+            await openAttemptAnalytics(latestAttemptId, testState.test.id);
             return;
           }
         } catch (recoveryError) {
@@ -566,7 +602,7 @@ export function TestSeriesContainer({
   const handleViewAnalytics = useCallback((attemptId?: string | null, testId?: string) => {
     if (attemptId) {
       analyticsOriginRef.current = 'list';
-      void openAttemptAnalytics(attemptId);
+      void openAttemptAnalytics(attemptId, testId);
       return;
     }
 
@@ -586,7 +622,7 @@ export function TestSeriesContainer({
           return;
         }
 
-        await openAttemptAnalytics(fallbackAttemptId);
+        await openAttemptAnalytics(fallbackAttemptId, testId);
       } catch (error: any) {
         window.alert(error?.message || 'Unable to open analysis for this test');
       }
@@ -633,9 +669,9 @@ export function TestSeriesContainer({
         attemptHistory={testState.history || []}
         viewerType="student"
         onSelectAttempt={(attemptId) => {
-          void openAttemptAnalytics(attemptId);
+          void openAttemptAnalytics(attemptId, testState.result?.testId);
         }}
-        loadDetailedResult={async (attemptId) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId))}
+        loadDetailedResult={async (attemptId) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId, { expectedTestId: testState.result?.testId }))}
         loadingAttemptId={loadingAnalysisAttemptId}
         onClose={handleBackFromAnalytics}
       />
@@ -652,7 +688,8 @@ export function TestSeriesContainer({
         onViewDetailedAnalytics={(attemptId) => {
           analyticsOriginRef.current = 'results';
           previousResultsScrollRef.current = window.scrollY;
-          void openAttemptAnalytics(attemptId);
+          const expectedTestId = attemptResults.find((result) => result.id === attemptId)?.testId;
+          void openAttemptAnalytics(attemptId, expectedTestId);
         }}
       />
     );
