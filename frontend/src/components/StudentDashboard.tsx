@@ -44,6 +44,7 @@ interface StudentDashboardProps {
 type Tab = 'home' | 'test-series' | 'profile' | 'batch-detail' | 'question-bank';
 const ACTIVE_DPP_SESSION_KEY = 'ujaasActiveDppSession';
 const NOTES_RETURN_CONTEXT_KEY = 'ujaasNotesReturnContext';
+const TIMETABLE_HISTORY_MARKER = '__student_timetable_modal__';
 const MOBILE_SWIPE_TABS: Tab[] = ['home', 'test-series', 'question-bank'];
 
 const getSwipeTab = (tab: Tab): 'home' | 'test-series' | 'question-bank' | null => {
@@ -92,6 +93,55 @@ export function StudentDashboard({
   });
 
   useBodyScrollLock(showFullTimetable);
+
+  const openTimetable = useCallback(() => {
+    if (isMobileViewport && typeof window !== 'undefined') {
+      const currentState = window.history.state && typeof window.history.state === 'object'
+        ? window.history.state
+        : {};
+
+      if ((currentState as Record<string, unknown>)[TIMETABLE_HISTORY_MARKER] !== true) {
+        window.history.pushState(
+          { ...currentState, [TIMETABLE_HISTORY_MARKER]: true },
+          '',
+          window.location.pathname + window.location.search + window.location.hash
+        );
+      }
+    }
+
+    setShowFullTimetable(true);
+  }, [isMobileViewport]);
+
+  const closeTimetable = useCallback(() => {
+    if (!showFullTimetable) return;
+
+    if (isMobileViewport && typeof window !== 'undefined' && window.history.state && typeof window.history.state === 'object') {
+      const currentState = window.history.state as Record<string, unknown>;
+      if (currentState[TIMETABLE_HISTORY_MARKER] === true) {
+        window.history.back();
+        return;
+      }
+    }
+
+    setShowFullTimetable(false);
+  }, [isMobileViewport, showFullTimetable]);
+
+  useEffect(() => {
+    if (!showFullTimetable || !isMobileViewport) return;
+
+    const handlePopState = () => {
+      const currentState = window.history.state && typeof window.history.state === 'object'
+        ? window.history.state as Record<string, unknown>
+        : null;
+
+      if (!currentState || currentState[TIMETABLE_HISTORY_MARKER] !== true) {
+        setShowFullTimetable(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [isMobileViewport, showFullTimetable]);
 
   useEffect(() => {
     const loadReviewInfo = async () => {
@@ -298,7 +348,7 @@ export function StudentDashboard({
     },
     isMobileViewport,
     activeTab,
-    onViewTimetable: () => setShowFullTimetable(true),
+    onViewTimetable: openTimetable,
     batchDetails,
     batchDetailsLoading,
     batchDetailsError,
@@ -784,7 +834,7 @@ export function StudentDashboard({
 
       <BatchTimetableModal
         open={showFullTimetable}
-        onClose={() => setShowFullTimetable(false)}
+        onClose={closeTimetable}
         imageUrl={batchDetails?.timetable_url}
         isMobileViewport={isMobileViewport}
         onDownload={batchDetails?.timetable_url ? () => { void handleTimetableDownload(batchDetails.timetable_url); } : null}
