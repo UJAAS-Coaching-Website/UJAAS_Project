@@ -319,7 +319,14 @@ export function StudentDashboard({
     && !isTestAttemptRoute
     && !isTestAnalyticsRoute
   );
-  const shouldRenderMobileTabShell = Boolean(isMobileViewport && activeSwipeTab);
+  const shouldRenderMobileTabShell = Boolean(
+    isMobileViewport
+    && activeSwipeTab
+    && !subTab
+    && !isNavbarHidden
+    && !isTestAttemptRoute
+    && !isTestAnalyticsRoute
+  );
   const mobileSpacerHeight = activeTab === 'profile' ? 56 : MOBILE_NAV_SPACER_HEIGHT;
 
   useEffect(() => {
