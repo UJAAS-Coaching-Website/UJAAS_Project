@@ -217,7 +217,7 @@ export function TestPerformanceInsights({
     const attempts = selectedStudentAnalysis.attempts || [];
     const currentAttempt = attempts[selectedAttemptIndex] || attempts[0];
     return (
-      <div className="fixed inset-0 bg-white z-[10005] overflow-y-auto">
+      <div className="fixed inset-0 bg-gray-50 z-[10005] overflow-y-auto scrollbar-hide">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 mb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -243,19 +243,21 @@ export function TestPerformanceInsights({
             </div>
           </div>
         </div>
-        <StudentAnalytics
-          result={currentAttempt}
-          viewerType="faculty"
-          loadDetailedResult={async (attemptId, signal) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId, { expectedTestId: testId, signal }))}
-          onClose={() => {
-            studentLoadControllerRef.current?.abort();
-            setSelectedStudent(null);
-            setSelectedStudentAnalysis(null);
-            setSelectedAttemptIndex(0);
-          }}
-          hideExplanations={true}
-          hideDownload={true}
-        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <StudentAnalytics
+            result={currentAttempt}
+            viewerType="faculty"
+            loadDetailedResult={async (attemptId, signal) => mapApiAttemptResultToAnalytics(await fetchAttemptResult(attemptId, { expectedTestId: testId, signal }))}
+            onClose={() => {
+              studentLoadControllerRef.current?.abort();
+              setSelectedStudent(null);
+              setSelectedStudentAnalysis(null);
+              setSelectedAttemptIndex(0);
+            }}
+            hideExplanations={true}
+            hideDownload={true}
+          />
+        </div>
       </div>
     );
   }
